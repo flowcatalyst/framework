@@ -9,4 +9,33 @@
   </parent>
   <artifactId>framework-locks-redis</artifactId>
   <name>framework-locks-redis</name>
+  <description>The Redis lock driver (Lua scripts, one standalone server).</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-locks</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-redis</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-locks</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-redis</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>
