@@ -24,6 +24,7 @@
     <module>framework-locks</module>
     <module>framework-locks-database</module>
     <module>framework-locks-redis</module>
+    <module>examples/locks-demo</module>
   </modules>
 
   <properties>
