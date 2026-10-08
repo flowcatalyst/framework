@@ -8,7 +8,7 @@ owner rulings. Java 25 first (ruled 2026-10-08). Each capability is specified in
 
 | # | Scope | Depends on | Status |
 |---|---|---|---|
-| M1 | **Foundation and locks:** modules and the application lifecycle, named instances and the driver registry, `Context`, config (declarations, layered local sources, secrets), database connections and migrations, Redis connections, the lock capability with memory, database and Redis drivers and a shared contract test suite | — | In progress |
+| M1 | **Foundation and locks:** modules and the application lifecycle, named instances and the driver registry, `Context`, config (declarations, layered local sources, secrets), database connections and migrations, Redis connections, the lock capability with memory, database and Redis drivers and a shared contract test suite | — | Done (2026-10-08) |
 | M2 | **Write path:** unit of work, repositories, optimistic locking with per-use-case conflict policy, events into a local outbox; read path with typed queries; build-time SQL checking for Java | M1 | Not started |
 | M3 | **FlowCatalyst module:** identity and users, events through the platform outbox, dispatch and scheduled jobs; `Context` built from a request | M2, platform SDK | Not started |
 | M4 | **HTTP and UI:** routing, the one middleware pipeline, typed request validation, the Datastar adapter; the trial business service | M3 | Not started |
