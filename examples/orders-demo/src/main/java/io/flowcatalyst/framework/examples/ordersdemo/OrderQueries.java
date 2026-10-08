@@ -2,9 +2,10 @@ package io.flowcatalyst.framework.examples.ordersdemo;
 
 import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.database.Database;
-import io.flowcatalyst.framework.usecase.jdbc.Jdbc;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Reads for screens and lists: plain typed queries, not aggregates (write-path contract,
@@ -21,9 +22,16 @@ public final class OrderQueries {
    * @param version its version
    * @param lineCount how many lines
    * @param totalCents the sum of the lines, in cents
+   * @param firstSku the alphabetically first sku among the lines, or null when there are none
    */
   public record Summary(
-      String id, String customer, OrderStatus status, long version, int lineCount, long totalCents) {}
+      String id,
+      String customer,
+      OrderStatus status,
+      long version,
+      int lineCount,
+      long totalCents,
+      @Nullable String firstSku) {}
 
   private OrderQueries() {}
 
@@ -36,25 +44,19 @@ public final class OrderQueries {
    * @throws SQLException on a database error
    */
   public static List<Summary> summaries(Database db, ClientId client) throws SQLException {
-    return Jdbc.query(
-        db.dataSource(),
-        """
-        SELECT o.id, o.customer, o.status, o.version,
-               count(l.position) AS line_count,
-               coalesce(sum(l.quantity * l.unit_price_cents), 0) AS total_cents
-          FROM orders o LEFT JOIN order_lines l ON l.order_id = o.id
-         WHERE o.client_id = ?
-         GROUP BY o.id
-         ORDER BY o.id
-        """,
-        row ->
-            new Summary(
-                row.string("id"),
-                row.string("customer"),
-                OrderStatus.valueOf(row.string("status")),
-                row.longValue("version"),
-                row.integer("line_count"),
-                row.longValue("total_cents")),
-        client);
+    try (Connection c = db.dataSource().getConnection()) {
+      return OrderSql.summaries(c, client).stream()
+          .map(
+              r ->
+                  new Summary(
+                      r.id().value(),
+                      r.customer(),
+                      r.status(),
+                      r.version(),
+                      (int) r.lineCount(),
+                      r.totalCents(),
+                      r.firstSku()))
+          .toList();
+    }
   }
 }

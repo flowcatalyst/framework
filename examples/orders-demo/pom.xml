@@ -39,4 +39,69 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <!--
+        Checked SQL: src/main/sql/**/*.sql is described against the migrated schema and the typed
+        Java in src/main/java-generated is committed. add-source puts that directory on the
+        compile path; check (in verify) fails when the committed code is stale. The migration sets
+        are the ones the application applies, in the order it applies them.
+      -->
+      <plugin>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-sql-maven-plugin</artifactId>
+        <version>${project.version}</version>
+        <configuration>
+          <migrations>
+            <migration>
+              <moduleId>outbox</moduleId>
+              <location>db/migration/outbox</location>
+            </migration>
+            <migration>
+              <moduleId>orders</moduleId>
+              <location>db/migration/orders</location>
+            </migration>
+          </migrations>
+        </configuration>
+        <executions>
+          <execution>
+            <id>add-generated-source</id>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>check-sql</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- ./mvnw -Pgenerate-sql -DskipTests package -pl examples/orders-demo -am -->
+    <profile>
+      <id>generate-sql</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>io.flowcatalyst.framework</groupId>
+            <artifactId>framework-sql-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>generate-sql</id>
+                <goals>
+                  <goal>generate</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
