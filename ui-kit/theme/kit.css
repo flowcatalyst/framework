@@ -1,0 +1,36 @@
+/* Tailwind input for the FlowCatalyst UI kit.
+
+   Build:  ./build.sh   (Tailwind standalone CLI, no Node)  ->  dist/kit.css
+
+   Tailwind generates only the utility classes it finds in the files named by
+   `@source`. The component specs (components/*.md) and the gallery are
+   scanned so every class a spec mentions is available. A project that uses
+   the kit adds its own templates here (or in its own input file that imports
+   this one). */
+
+@import "tailwindcss";
+
+@source "../gallery";
+@source "../components";
+
+@import "./tokens.css";
+@import "./fc-components.css";
+
+@layer base {
+  html {
+    /* The SPA's 12.6px base: every rem shrinks with it, as PrimeVue's rem
+       tokens do there. */
+    font-size: 12.6px;
+    scrollbar-gutter: stable;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
