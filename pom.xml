@@ -25,6 +25,7 @@
     <module>framework-locks-database</module>
     <module>framework-locks-redis</module>
     <module>framework-usecase</module>
+    <module>framework-sql</module>
     <module>examples/locks-demo</module>
     <module>examples/orders-demo</module>
   </modules>
@@ -115,6 +116,12 @@
       <dependency>
         <groupId>io.flowcatalyst.framework</groupId>
         <artifactId>framework-usecase</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-sql</artifactId>
         <version>${project.version}</version>
       </dependency>
 
