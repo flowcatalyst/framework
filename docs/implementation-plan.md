@@ -11,12 +11,20 @@ owner rulings. Java 25 first (ruled 2026-10-08). Each capability is specified in
 | M1 | **Foundation and locks:** modules and the application lifecycle, named instances and the driver registry, `Context`, config (declarations, layered local sources, secrets), database connections and migrations, Redis connections, the lock capability with memory, database and Redis drivers and a shared contract test suite | — | Done (2026-10-08) |
 | M2a | **Write path:** use cases (validate, authorize, execute, plan), the runner and unit of work, optimistic locking with a per-use-case conflict policy, client scoping, events and audit rows into the SDK-compatible outbox, TSIDs — see [`contracts/write-path.md`](contracts/write-path.md) | M1 | Done (2026-10-08) |
 | M2b | **Checked SQL:** queries in `.sql` files, a generator that checks them against the migrated schema and produces typed Java functions and result records, committed output with a check mode — see [`contracts/checked-sql.md`](contracts/checked-sql.md) | M2a | Done (2026-10-08) |
-| M3 | **FlowCatalyst module:** identity and users, events through the platform outbox, dispatch and scheduled jobs; `Context` built from a request | M2, platform SDK | Not started |
-| M4 | **HTTP and UI:** routing, the one middleware pipeline, typed request validation, the Datastar adapter; the trial business service | M3 | Not started |
+| M3 | **HTTP:** the server on virtual threads, routing declared by modules, the one middleware pipeline shared with jobs, typed request validation, errors mapped to responses; the Datastar adapter | M2 | Not started |
+| M4 | **FlowCatalyst module:** the platform client as the service account (wrapping the Java SDK), definition sync at deploy time, login through the platform with a session built from the id_token, `Context` from a request, receivers for dispatch jobs and scheduled-job firings (signatures, ack/defer/reject, locks), outbox delivery; then the trial business service | M3, Java SDK | Not started |
 | M5 | **Cache and storage;** the platform config driver; metering and messaging | M2; platform config and metering features | Not started |
+
+Order changed 2026-10-08: HTTP comes before the FlowCatalyst module, because login and both job
+receivers are HTTP endpoints. The survey behind M4 (what the SDKs and the platform provide today)
+found the Java SDK has no login, token validation or job receivers; those are new framework code.
 
 Platform work the framework needs, to be built in the platform (Go first):
 
+- the application's service account cannot deliver its own outbox: the batch-ingest permissions
+  (`platform:messaging:batch:events-write`, `…:dispatch-jobs-write`,
+  `platform:admin:batch:audit-logs-write`) are in no built-in role (decision needed, see the M4
+  contract when written);
 - optimistic locking on the records administrators edit;
 - the config and secret store, keyed and access-controlled by client and
   `{application_code}:{sub_domain}` (framework-plumbing.md section 6);
