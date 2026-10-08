@@ -49,12 +49,9 @@ not start; never loosen an assertion to pass a flake without explaining why.
 
 ## Elsewhere (not this repository)
 
-- **flowcatalyst-go:** uncommitted, awaiting the owner's go-ahead to commit:
-  `.golangci.yml` (`exhaustive` with `default-signifies-exhaustive: false`) plus ten switch fixes
-  in `runner.go`, `authservice.go`, `clientselection.go`, `principal/entity.go`, `httperror.go`,
-  `handlers_dashboard.go`, `circuit_breaker.go`, `mediator.go`, `notification.go`,
-  `pkg/fcsdk/usecase/error.go`. Build and affected tests pass. `make lint` still fails on one
-  pre-existing gofumpt issue in `internal/platform/shared/auth/application_scope_test.go:92`.
+- **flowcatalyst-go:** the `exhaustive` linter change and its ten switch fixes are committed
+  (`d9422eb`). Check whether the gofumpt issue in
+  `internal/platform/shared/auth/application_scope_test.go:92` still fails `make lint`.
   Also open there: the user-sync security fix (mirror Java), the PHP app's service account
   lacking user-create rights, and the Go claims struct in `pkg/fcsdk/auth/claims.go` still
   reading `scope` as the tier (found by the survey, unverified).
