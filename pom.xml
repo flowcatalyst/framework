@@ -26,6 +26,7 @@
     <module>framework-locks-redis</module>
     <module>framework-usecase</module>
     <module>examples/locks-demo</module>
+    <module>examples/orders-demo</module>
   </modules>
 
   <properties>
