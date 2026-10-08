@@ -9,4 +9,12 @@
   </parent>
   <artifactId>framework-core</artifactId>
   <name>framework-core</name>
+  <description>Modules, application lifecycle, drivers, context and config.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.snakeyaml</groupId>
+      <artifactId>snakeyaml-engine</artifactId>
+    </dependency>
+  </dependencies>
 </project>
