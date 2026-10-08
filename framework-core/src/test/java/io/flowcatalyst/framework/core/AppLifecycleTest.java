@@ -276,6 +276,20 @@ class AppLifecycleTest {
   }
 
   @Test
+  void aStartupExceptionFromBootHasItsProblemsReportedIndividually() {
+    Mod bt =
+        Mod.of("bt")
+            .boot(
+                a -> {
+                  throw new StartupException(
+                      List.of(Problem.of("x", "k1", "first problem"), Problem.of("y", "k2", "second problem")));
+                });
+    StartupException e = failure(builder().module(bt));
+    assertThat(e.problems()).extracting(Problem::message).containsExactly("first problem", "second problem");
+    assertThat(e.problems()).extracting(Problem::module).containsExactly("x", "y");
+  }
+
+  @Test
   void oneStartReportsEveryProblemFound() {
     Mod a =
         Mod.of("a")

@@ -26,6 +26,7 @@
     <module>framework-locks-redis</module>
     <module>framework-usecase</module>
     <module>framework-http</module>
+    <module>framework-http-jetty</module>
     <module>framework-sql</module>
     <module>framework-sql-maven-plugin</module>
     <module>examples/locks-demo</module>
@@ -45,6 +46,7 @@
     <postgresql.version>42.7.14</postgresql.version>
     <jedis.version>8.0.2</jedis.version>
     <jackson.version>3.2.3</jackson.version>
+    <jetty.version>12.1.12</jetty.version>
 
     <!-- test -->
     <junit.version>6.1.3</junit.version>
@@ -130,6 +132,11 @@
       </dependency>
       <dependency>
         <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-http-jetty</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
         <artifactId>framework-sql</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -174,6 +181,11 @@
         <groupId>tools.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-server</artifactId>
+        <version>${jetty.version}</version>
       </dependency>
       <!-- Test scope only: the FlowCatalyst SDK, to prove outbox payloads are what it writes. -->
       <dependency>

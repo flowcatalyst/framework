@@ -275,6 +275,9 @@ public final class AppBuilder {
       try {
         module.boot(app);
         app.markBooted(module);
+      } catch (StartupException e) {
+        // A hook that collected problems itself (for example route checks): report each one.
+        bootProblems.addAll(e.problems());
       } catch (Exception e) {
         bootProblems.add(
             new Problem(module.id(), null, null, "boot failed: " + describe(e), e));

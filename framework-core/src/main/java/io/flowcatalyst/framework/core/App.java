@@ -91,6 +91,15 @@ public final class App implements AutoCloseable {
   }
 
   /**
+   * The time each shutdown step may take ({@code app.shutdown.drain}).
+   *
+   * @return the drain period
+   */
+  public Duration shutdownDrain() {
+    return drain;
+  }
+
+  /**
    * The order in which provided services finished building.
    *
    * @return service types, first built first
