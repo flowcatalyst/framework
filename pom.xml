@@ -25,6 +25,7 @@
     <module>framework-locks-database</module>
     <module>framework-locks-redis</module>
     <module>framework-usecase</module>
+    <module>framework-http</module>
     <module>framework-sql</module>
     <module>framework-sql-maven-plugin</module>
     <module>examples/locks-demo</module>
@@ -122,6 +123,11 @@
         <version>${project.version}</version>
       </dependency>
 
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-http</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>io.flowcatalyst.framework</groupId>
         <artifactId>framework-sql</artifactId>
