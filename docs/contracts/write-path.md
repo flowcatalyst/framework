@@ -147,9 +147,10 @@ processor reads them unchanged:
   The row carries the event id as `deduplicationId`, and the principal and execution id as
   `contextData` entries (`principalId`, `executionId`) when present; the event time is not sent
   (the platform stamps it on ingest; `created_at` of the row is the write time).
-- `outbox_messages.client_id` is `VARCHAR(26)` (the SDK's table), while a `ClientId` may be up to
-  100 characters. A longer client id makes the outbox write fail (`INTERNAL` / `OUTBOX`) until
-  the platform and SDK widen the column; keep client ids at 26 characters or fewer.
+- The SDK's table has `client_id VARCHAR(26)`, but a `ClientId` (a platform client identifier,
+  `VARCHAR(100)` in the platform) may be up to 100 characters. The outbox module's second
+  migration, `V0002__widen_outbox_client_id.sql`, widens the column to `VARCHAR(100)`; the first
+  stays byte-identical to the SDK file. The platform's outbox processor does not read `client_id`.
 
 Nothing in M2 reads the outbox; delivering it is the platform's job (M3).
 

@@ -156,20 +156,34 @@ class OutboxTest {
 
   @Test
   void theOutboxMigrationIsContributedUnderTheOutboxModuleId() {
-    assertThat(
-            rows("SELECT module, version, description FROM fw_schema_history WHERE module = 'outbox'"))
-        .singleElement()
-        .satisfies(
-            r -> {
-              assertThat(r.get("version")).isEqualTo("1");
-              assertThat(r.get("description")).contains("outbox");
-            });
+    List<Map<String, String>> applied =
+        rows(
+            "SELECT module, version, description FROM fw_schema_history WHERE module = 'outbox'"
+                + " ORDER BY version");
+    assertThat(applied).extracting(r -> r.get("version")).containsExactly("1", "2");
+    assertThat(applied.get(0).get("description")).contains("outbox");
     assertThat(count("outbox_messages")).isZero();
   }
 
   @Test
+  void theOutboxClientIdColumnHoldsAClientIdOfTheFullLength() throws Exception {
+    assertThat(
+            pg.query(
+                "SELECT character_maximum_length FROM information_schema.columns"
+                    + " WHERE table_name = 'outbox_messages' AND column_name = 'client_id'"))
+        .isEqualTo("100");
+    ClientId longest = new ClientId("c".repeat(100));
+    UseCaseResult<ThingEvent> result =
+        useCases.run(create(), Context.of(longest), new Create("t-long", "B-9"));
+    assertThat(result).isInstanceOf(UseCaseResult.Committed.class);
+    assertThat(pg.query("SELECT count(*) FROM outbox_messages WHERE client_id = '" + longest + "'"))
+        .isEqualTo("2");
+  }
+
+  @Test
   void theRecordedChecksumIsThatOfTheSdkMigrationFile() throws Exception {
-    String recorded = pg.query("SELECT checksum FROM fw_schema_history WHERE module = 'outbox'");
+    String recorded =
+        pg.query("SELECT checksum FROM fw_schema_history WHERE module = 'outbox' AND version = 1");
     try (var in = getClass().getResourceAsStream("/db/migration/outbox/V0001__create_outbox_messages.sql")) {
       assertThat(in).isNotNull();
       byte[] ours = in.readAllBytes();
