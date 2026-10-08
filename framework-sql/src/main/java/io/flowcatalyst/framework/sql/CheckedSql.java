@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +59,15 @@ public final class CheckedSql {
   public static Map<String, String> generate(
       Layout layout, String url, String user, String password, List<MigrationSet> sets) {
     migrate(url, user, password, sets);
-    try (Connection c = DriverManager.getConnection(url, user, password)) {
+    java.util.Properties properties = new java.util.Properties();
+    properties.setProperty("user", user);
+    properties.setProperty("password", password);
+    // The driver is used directly: DriverManager only sees drivers of the caller's class loader
+    // chain, which inside a build tool's plugin realm is not a given.
+    try (Connection c = new org.postgresql.Driver().connect(url, properties)) {
+      if (c == null) {
+        throw new IllegalStateException("not a PostgreSQL URL: " + url);
+      }
       return generate(layout, c);
     } catch (SQLException e) {
       throw new IllegalStateException("cannot connect to " + url + ": " + e.getMessage(), e);
@@ -206,6 +213,16 @@ public final class CheckedSql {
       }
     }
     return out;
+  }
+
+  /**
+   * Whether the project has any query file.
+   *
+   * @param layout where the files are
+   * @return true when there is at least one {@code .sql} file below the query directory
+   */
+  public static boolean hasQueryFiles(Layout layout) {
+    return !sqlFiles(layout.sqlDir()).isEmpty();
   }
 
   private static List<Path> sqlFiles(Path sqlDir) {

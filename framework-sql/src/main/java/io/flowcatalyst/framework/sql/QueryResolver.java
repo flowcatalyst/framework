@@ -81,7 +81,8 @@ public final class QueryResolver {
       ServerErrorMessage server = pe.getServerErrorMessage();
       if (server != null && server.getPosition() > 0) {
         int line = lineOfPosition(q, server.getPosition());
-        return message.strip().replace('\n', ' ') + " (SQL line " + line + " of " + file + ")";
+        String clean = message.strip().replaceAll("\\s*Position: \\d+$", "").replace('\n', ' ');
+        return clean + " (SQL line " + line + " of " + file + ")";
       }
     }
     return message.strip().replace('\n', ' ');

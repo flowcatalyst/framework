@@ -26,6 +26,7 @@
     <module>framework-locks-redis</module>
     <module>framework-usecase</module>
     <module>framework-sql</module>
+    <module>framework-sql-maven-plugin</module>
     <module>examples/locks-demo</module>
     <module>examples/orders-demo</module>
   </modules>
@@ -51,6 +52,8 @@
     <flowcatalyst-sdk.version>0.0.11</flowcatalyst-sdk.version>
 
     <!-- build -->
+    <maven-api.version>3.9.13</maven-api.version>
+    <maven-plugin-tools.version>3.15.2</maven-plugin-tools.version>
     <errorprone.version>2.50.0</errorprone.version>
     <nullaway.version>0.14.2</nullaway.version>
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>

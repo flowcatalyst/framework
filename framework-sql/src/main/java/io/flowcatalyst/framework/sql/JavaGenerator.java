@@ -114,10 +114,10 @@ public final class JavaGenerator {
     for (String d : q.doc()) {
       out.append("   * ").append(d.replace("*/", "* /")).append('\n');
     }
-    if (!q.doc().isEmpty()) {
-      out.append("   *\n");
+    if (q.doc().isEmpty()) {
+      out.append("   * The {@code ").append(q.name()).append("} query.\n");
     }
-    out.append("   * <p>From ").append(sourceLabel).append(':').append(q.line()).append(".\n");
+    out.append("   *\n   * <p>From ").append(sourceLabel).append(':').append(q.line()).append(".\n");
     out.append("   *\n   * @param connection the connection, for example a transaction's\n");
     for (ResolvedParam p : rq.params()) {
       out.append("   * @param ").append(p.javaName()).append(" :").append(p.name()).append('\n');
