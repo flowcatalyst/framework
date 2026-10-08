@@ -81,7 +81,7 @@ public final class DatabaseModule implements Module {
     if (!target.migrates()) {
       return;
     }
-    new MigrationRunner(target, sets).run();
+    Migrations.apply(target.name(), target.dataSource(), sets);
   }
 
   private static Database createInstance(

@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,12 +57,14 @@ final class MigrationRunner {
   private record MigrationFile(
       String module, int version, String description, String fileName, String checksum, String sql) {}
 
-  private final Database database;
+  private final String databaseName;
+  private final DataSource dataSource;
   private final List<MigrationSet> sets;
   private final List<Problem> problems = new ArrayList<>();
 
-  MigrationRunner(Database database, List<MigrationSet> sets) {
-    this.database = database;
+  MigrationRunner(String databaseName, DataSource dataSource, List<MigrationSet> sets) {
+    this.databaseName = databaseName;
+    this.dataSource = dataSource;
     this.sets = sets;
   }
 
@@ -84,7 +87,7 @@ final class MigrationRunner {
       throw new StartupException(problems);
     }
 
-    try (Connection c = database.dataSource().getConnection()) {
+    try (Connection c = dataSource.getConnection()) {
       c.setAutoCommit(true);
       lock(c);
       try {
@@ -97,7 +100,7 @@ final class MigrationRunner {
           List.of(
               new Problem(
                   null,
-                  "database:" + database.name(),
+                  "database:" + databaseName,
                   null,
                   "migrations failed: " + e.getMessage(),
                   e)));
