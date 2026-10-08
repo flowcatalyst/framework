@@ -2,9 +2,7 @@ package io.flowcatalyst.framework.usecase;
 
 import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.database.Database;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import io.flowcatalyst.framework.usecase.jdbc.Jdbc;
 import java.sql.SQLException;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
@@ -41,34 +39,29 @@ final class ThingRepository implements Repository<ThingId, Thing> {
 
   @Override
   public Optional<Thing> find(Database db, ClientId client, ThingId id) throws SQLException {
-    try (Connection c = db.dataSource().getConnection();
-        PreparedStatement s =
-            c.prepareStatement(
-                "SELECT version, name, code FROM thing WHERE id = ? AND client_id = ?")) {
-      s.setString(1, id.value());
-      s.setString(2, client.value());
-      try (ResultSet rs = s.executeQuery()) {
-        if (!rs.next()) {
-          return Optional.empty();
-        }
-        return Optional.of(
-            new Thing(id, client, rs.getLong(1), rs.getString(2), rs.getString(3)));
-      }
-    }
+    return Jdbc.queryOne(
+        db.dataSource(),
+        "SELECT version, name, code FROM thing WHERE id = ? AND client_id = ?",
+        row ->
+            new Thing(
+                id,
+                client,
+                row.longValue("version"),
+                row.string("name"),
+                row.optionalString("code").orElse(null)),
+        id,
+        client);
   }
 
   @Override
   public void insert(Tx tx, Thing thing) throws SQLException {
-    try (PreparedStatement s =
-        tx.connection()
-            .prepareStatement(
-                "INSERT INTO thing (id, client_id, version, name, code) VALUES (?, ?, 1, ?, ?)")) {
-      s.setString(1, thing.id().value());
-      s.setString(2, thing.client().value());
-      s.setString(3, thing.name());
-      s.setString(4, thing.code());
-      s.executeUpdate();
-    }
+    Jdbc.update(
+        tx.connection(),
+        "INSERT INTO thing (id, client_id, version, name, code) VALUES (?, ?, 1, ?, ?)",
+        thing.id(),
+        thing.client(),
+        thing.name(),
+        thing.code());
   }
 
   @Override
@@ -77,20 +70,17 @@ final class ThingRepository implements Repository<ThingId, Thing> {
     if (before != null) {
       before.after(thing);
     }
-    int rows;
-    try (PreparedStatement s =
-        tx.connection()
-            .prepareStatement(
-                "UPDATE thing SET version = ?, name = ?, code = ? "
-                    + "WHERE id = ? AND client_id = ? AND version = ?")) {
-      s.setLong(1, thing.version() + 1);
-      s.setString(2, thing.name());
-      s.setString(3, thing.code());
-      s.setString(4, thing.id().value());
-      s.setString(5, thing.client().value());
-      s.setLong(6, thing.version());
-      rows = s.executeUpdate();
-    }
+    int rows =
+        Jdbc.update(
+            tx.connection(),
+            "UPDATE thing SET version = ?, name = ?, code = ? "
+                + "WHERE id = ? AND client_id = ? AND version = ?",
+            thing.version() + 1,
+            thing.name(),
+            thing.code(),
+            thing.id(),
+            thing.client(),
+            thing.version());
     UpdateHook after = afterUpdate;
     if (after != null) {
       after.after(thing);
@@ -102,13 +92,11 @@ final class ThingRepository implements Repository<ThingId, Thing> {
 
   @Override
   public int delete(Tx tx, Thing thing) throws SQLException {
-    try (PreparedStatement s =
-        tx.connection()
-            .prepareStatement("DELETE FROM thing WHERE id = ? AND client_id = ? AND version = ?")) {
-      s.setString(1, thing.id().value());
-      s.setString(2, thing.client().value());
-      s.setLong(3, thing.version());
-      return s.executeUpdate();
-    }
+    return Jdbc.update(
+        tx.connection(),
+        "DELETE FROM thing WHERE id = ? AND client_id = ? AND version = ?",
+        thing.id(),
+        thing.client(),
+        thing.version());
   }
 }
