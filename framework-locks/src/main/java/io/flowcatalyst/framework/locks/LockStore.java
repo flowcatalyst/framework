@@ -109,7 +109,17 @@ public final class LockStore {
       if (Thread.interrupted()) {
         throw new InterruptedException();
       }
-      AcquireResult result = tryAcquire(key, lease);
+      AcquireResult result;
+      try {
+        result = tryAcquire(key, lease);
+      } catch (LockStoreUnavailableException e) {
+        // An interrupt that lands inside the driver (a JDBC or socket call) surfaces there as a
+        // failure with the flag still set; for a waiting acquire it is the interrupt that counts.
+        if (Thread.interrupted()) {
+          throw new InterruptedException();
+        }
+        throw e;
+      }
       if (result instanceof AcquireResult.Acquired) {
         return result;
       }

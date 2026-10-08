@@ -142,6 +142,33 @@ class LockStoreFailureTest {
   }
 
   @Test
+  void anInterruptThatLandsInsideTheDriverStillStopsAWaitingAcquire() {
+    LockStore interrupting =
+        new LockStore(
+            new LockDriver() {
+              @Override
+              public OptionalLong tryAcquire(String k, String o, long ms) {
+                Thread.currentThread().interrupt(); // as a JDBC call does when interrupted
+                throw new LockStoreUnavailableException("interrupted", new RuntimeException("x"));
+              }
+
+              @Override
+              public boolean refresh(String k, String o, long f, long ms) {
+                return false;
+              }
+
+              @Override
+              public boolean release(String k, String o, long f) {
+                return false;
+              }
+            },
+            System::nanoTime);
+    assertThatThrownBy(() -> interrupting.acquire(key, Duration.ofSeconds(1), Duration.ofSeconds(5)))
+        .isInstanceOf(InterruptedException.class);
+    assertThat(Thread.currentThread().isInterrupted()).as("the status was consumed by the throw").isFalse();
+  }
+
+  @Test
   void aLeaseDoesNotPrintItsOwnerToken() {
     Lease lease = ((AcquireResult.Acquired) store.tryAcquire(key, Duration.ofSeconds(5))).lease();
     assertThat(lease.toString()).doesNotContain(lease.ownerToken()).contains("flaky");
