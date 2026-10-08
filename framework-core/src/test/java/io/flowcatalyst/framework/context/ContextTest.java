@@ -17,6 +17,15 @@ class ContextTest {
   }
 
   @Test
+  void clientIdsNeverContainAColonAndAreAtMost100Characters() {
+    assertThatIllegalArgumentException().isThrownBy(() -> new ClientId("a:b"));
+    assertThatIllegalArgumentException().isThrownBy(() -> new ClientId("a b"));
+    assertThatIllegalArgumentException().isThrownBy(() -> new ClientId("x".repeat(101)));
+    assertThat(new ClientId("x".repeat(100)).value()).hasSize(100);
+    assertThat(new ClientId("clt_0Ab.c-9").value()).isEqualTo("clt_0Ab.c-9");
+  }
+
+  @Test
   void applicationCodeMatchesThePattern() {
     new ApplicationCode("billing");
     new ApplicationCode("a1-b2");

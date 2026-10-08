@@ -26,9 +26,8 @@ public record LockKey(Scope scope, @Nullable ClientId client, String name) {
 
   private static final Pattern NAME = Pattern.compile("[A-Za-z0-9._:-]{1,200}");
 
-  // A client id inside a stored key must not contain ':' or the form would be ambiguous
-  // ("a:b" + "c" versus "a" + "b:c").
-  private static final Pattern CLIENT = Pattern.compile("[A-Za-z0-9._-]{1,100}");
+  // ClientId never contains ':', so "client:<id>:<name>" is unambiguous: the first ':' after
+  // the prefix ends the client id.
 
   /** Validates the parts. */
   public LockKey {
@@ -38,14 +37,8 @@ public record LockKey(Scope scope, @Nullable ClientId client, String name) {
     if (scope == Scope.SERVICE && client != null) {
       throw new IllegalArgumentException("a service-scoped lock key has no client");
     }
-    if (scope == Scope.CLIENT) {
-      if (client == null) {
-        throw new IllegalArgumentException("a client-scoped lock key needs a client");
-      }
-      if (!CLIENT.matcher(client.value()).matches()) {
-        throw new IllegalArgumentException(
-            "a client id used in a lock key must match [A-Za-z0-9._-]{1,100}: " + client.value());
-      }
+    if (scope == Scope.CLIENT && client == null) {
+      throw new IllegalArgumentException("a client-scoped lock key needs a client");
     }
   }
 

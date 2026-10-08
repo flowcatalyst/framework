@@ -18,7 +18,9 @@ seen. The lock alone cannot make that guarantee; the token is what lets the reso
 | client | `LockKey.client(clientId, "invoice-run")` | `client:<clientId>:invoice-run` |
 
 Names match `[A-Za-z0-9._:-]{1,200}`; anything else is `IllegalArgumentException`. A client-scoped
-key cannot equal any service-scoped key, and keys of different clients never collide.
+key cannot equal any service-scoped key, and keys of different clients never collide: a
+`ClientId` never contains `:` (core contract section 3), so the first `:` after `client:` always
+ends the client id.
 
 ## 2. Operations
 
@@ -69,7 +71,10 @@ lock is never an exception.
 
 `acquire` with a wait is implemented once, in the capability, on top of `tryAcquire`: it retries
 with backoff starting at 10 ms, doubling to at most 250 ms, with jitter, until acquired or the wait
-is used up, then returns `Busy`. An interrupt stops it with `InterruptedException`.
+is used up, then returns `Busy`. An interrupt stops it with `InterruptedException`, including an
+interrupt that arrives during a driver call and surfaces there as a store failure (JDBC reports
+it as an SQL error): when the thread's interrupt flag is set, that failure is reported as
+`InterruptedException`, not `LockStoreUnavailableException`.
 
 ## 4. `withLock`
 
@@ -93,9 +98,9 @@ can pass the fencing token on to what it writes.
 5. Result, a sealed type:
    - `Completed(value)`: the action returned and the lock was held throughout.
    - `NotAcquired`.
-   - `Lost(Optional<T> value)`: the lock was lost while the action ran. `value` is present if the
-     action still returned normally. The caller must treat the work as having run without
-     exclusion.
+   - `Lost`: the lock was lost while the action ran. Its `value()` returns an `Optional` that is
+     present if the action still returned normally with a non-null value. The caller must treat
+     the work as having run without exclusion.
 6. An exception from the action is rethrown after step 4: unchecked exceptions unchanged, checked
    ones wrapped in `LockedActionException` (unchecked) with the original as cause. An
    `InterruptedException` from the action caused by a loss is not rethrown; it produces `Lost`.

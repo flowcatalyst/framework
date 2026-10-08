@@ -69,6 +69,11 @@ locks:
 - The factory receives the instance name, its `InstanceConfig` section and the service lookup.
   It reads its keys through typed getters. After the factory returns, any key in the section it
   did not read (other than `driver`) fails start-up as unknown: a typo cannot pass silently.
+- A capability with only one driver in practice may declare a default driver name; its instances
+  may then omit `driver` (database instances default to `postgresql`, Redis instances to
+  `redis`). Capabilities with a real choice (locks, cache) have no default driver.
+- The factory also receives the instances of the same capability already built, so wrapper
+  drivers can refer to them.
 - `default` names the instance returned by the capability's `defaultInstance()`. If there is
   exactly one instance, `default` may be omitted. If there are several and it is omitted, or it
   names a missing instance, start-up fails.
@@ -90,8 +95,9 @@ or a thread-local by the framework.
 | application | `ApplicationCode` | no |
 | correlation id | `CorrelationId` | always; generated when absent |
 
-Id types are records wrapping a validated non-blank string. `ApplicationCode` matches
-`[a-z][a-z0-9-]*`. M1 provides the types; building a `Context` from a request is M3.
+Id types are records wrapping a validated non-blank string. `ClientId` matches
+`[A-Za-z0-9._-]{1,100}`: it never contains `:`, so it can be embedded in composite keys (locks,
+cache) without two clients producing the same key. `ApplicationCode` matches `[a-z][a-z0-9-]*`. M1 provides the types; building a `Context` from a request is M3.
 
 ## 4. Config
 
