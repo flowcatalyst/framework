@@ -25,7 +25,7 @@ Written by the application, with explicit SQL. A repository for aggregate `A`:
 
 | Operation | Runs in | Contract |
 |---|---|---|
-| `find(db, client, id)` | no transaction (reads) | returns `Optional<A>`; filters by `client_id` |
+| `find(db, client, id)` | no transaction (reads) | returns `Optional<A>`; filters by `client_id`; `db` is the `Database` instance, `id` the aggregate's typed id (`Repository<I, A>`) |
 | `insert(tx, a)` | the attempt's transaction | stores `a` with version `1` |
 | `update(tx, a)` | the attempt's transaction | updates the root row with `SET version = <a.version() + 1> … WHERE id = ? AND client_id = ? AND version = <a.version()>`, then writes children; returns the root update's row count |
 | `delete(tx, a)` | the attempt's transaction | `DELETE … WHERE id = ? AND client_id = ? AND version = ?` (children by cascade or explicitly); returns the root delete's row count |
@@ -45,7 +45,7 @@ A use case is defined once, with:
 |---|---|---|
 | name | yes | `[a-z][a-z0-9-]*`, for logs and the audit row |
 | validate | no | checks the command's shape without loading data; returns `Optional<UseCaseError>` |
-| authorize | **yes** | resource-level access check; returns `Optional<UseCaseError>`. `Authorize.PUBLIC` declares an operation deliberately open. A use case built without one fails when it is defined. |
+| authorize | **yes** | resource-level access check; returns `Optional<UseCaseError>`. `Authorize.PUBLIC` declares an operation deliberately open. A use case built without one fails when it is defined (the builder's `execute(...)` is the last call and throws `IllegalStateException`). |
 | execute | yes | loads what it needs (once), applies the rules, returns a `Decision`: `Plan` or `Rejected(UseCaseError)` |
 | conflict policy | no | `ConflictPolicy.fail()` (default) or `ConflictPolicy.retry(maxAttempts, backoff)` |
 
@@ -53,8 +53,9 @@ Each phase receives the `Context` and the command. **Load once:** execute finds 
 once. If it needs fresh state, the attempt has failed and runs again from the start.
 
 **Plan:** what to write. Built with `Plan.save(aggregate, repository, event)`,
-`Plan.delete(aggregate, repository, event)`, `Plan.emit(event)`, and `.and(...)` to add further
-aggregates and events. Every plan carries at least one event; the first is the use case's result.
+`Plan.delete(aggregate, repository, event)`, `Plan.emit(event)`, and `.andSave(...)`,
+`.andDelete(...)`, `.andEmit(...)` to add further aggregates and events. Every plan carries at
+least one event; the first is the use case's result. Events are written in step order.
 
 ## 4. Running a use case
 
@@ -76,7 +77,9 @@ Outcome of a failed write:
 | stale aggregate (row count 0) | conflict: apply the policy |
 | SQLSTATE `40001` or `40P01` (serialization failure, deadlock) | conflict: apply the policy |
 | `23505` | `CONFLICT` / `UNIQUE_VIOLATION`, not retried |
-| any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`EXECUTE`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
+| any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`VALIDATE`, `AUTHORIZE`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
+| a plan with another client's aggregate | `INTERNAL` / `CROSS_CLIENT_WRITE` (step 3), not retried |
+| the thread is interrupted while waiting between attempts | `INTERNAL` / `INTERRUPTED`, the interrupt flag is restored |
 
 Every failed attempt rolls back fully. **Conflict policy:** `fail` returns `CONFLICT` with code
 `STALE_AGGREGATE`. `retry(n, backoff)` runs the whole use case again from step 1, up to `n`
@@ -114,7 +117,7 @@ fields. Metadata, as in the SDKs:
 | subject | `{domain}.{aggregate}.{id}` |
 | time | from the injected `InstantSource` |
 | correlation id, principal id | from the `Context` |
-| causation id, execution id | from the `Context` when present |
+| causation id, execution id | from the `Context` when present (M2a added both to `Context`, see core.md section 3) |
 | message group | `{domain}:{aggregate}:{id}` by default |
 
 The data payload is the record's own fields as JSON (Jackson 3, records only).
@@ -127,7 +130,11 @@ the aggregate. The table and the payloads are exactly those of the FlowCatalyst 
 `JdbcOutboxDriver`, `CreateEventDto`, `CreateAuditLogDto`), so that in M3 the platform's outbox
 processor reads them unchanged:
 
-- the migration is the SDK's, contributed by the framework's outbox module;
+- the migration is the SDK's file, byte for byte, contributed by the framework's outbox module
+  (module id `outbox`). The framework's migration runner needs the name `V0001__...`, so the file
+  is stored as `V0001__create_outbox_messages.sql`; the content, and so the recorded checksum, is
+  that of the SDK's `001_create_outbox_messages.sql`. An application that already ran the SDK's
+  migration by other means has the table; it must not also run this module's migration;
 - an event row has type `EVENT`, the event's message group, the `CreateEventDto` JSON payload,
   status `0`, and `client_id` set;
 - the audit row has type `AUDIT_LOG` and the `CreateAuditLogDto` JSON: entity type and id from the
@@ -136,14 +143,22 @@ processor reads them unchanged:
   `AuditData`, which returns the map to record.
 - `clientCode` in both payloads is the `ClientId` value. (In FlowCatalyst mode the client id is
   the platform client's identifier.)
+- The SDK's event payload has no field for the event time, the principal or the execution id.
+  The row carries the event id as `deduplicationId`, and the principal and execution id as
+  `contextData` entries (`principalId`, `executionId`) when present; the event time is not sent
+  (the platform stamps it on ingest; `created_at` of the row is the write time).
+- `outbox_messages.client_id` is `VARCHAR(26)` (the SDK's table), while a `ClientId` may be up to
+  100 characters. A longer client id makes the outbox write fail (`INTERNAL` / `OUTBOX`) until
+  the platform and SDK widen the column; keep client ids at 26 characters or fewer.
 
 Nothing in M2 reads the outbox; delivering it is the platform's job (M3).
 
 ## 8. Ids
 
 `Ids` (core) generates TSIDs: 13 Crockford base-32 characters, time-ordered, optionally with a
-prefix (`ord_0ABC...`). Monotonic within a process: when the clock does not advance or goes
-backwards, the generator continues from the last value instead of repeating or going back.
+prefix (`ord_0ABC...`). Monotonic within one `Ids` instance (the framework provides one per application): when the clock
+does not advance or goes backwards, the generator continues from the last value instead of
+repeating or going back; more than 4096 ids in one millisecond borrow the next one.
 
 ## 9. Reads
 

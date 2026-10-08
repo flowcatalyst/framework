@@ -9,7 +9,7 @@ owner rulings. Java 25 first (ruled 2026-10-08). Each capability is specified in
 | # | Scope | Depends on | Status |
 |---|---|---|---|
 | M1 | **Foundation and locks:** modules and the application lifecycle, named instances and the driver registry, `Context`, config (declarations, layered local sources, secrets), database connections and migrations, Redis connections, the lock capability with memory, database and Redis drivers and a shared contract test suite | — | Done (2026-10-08) |
-| M2a | **Write path:** use cases (validate, authorize, execute, plan), the runner and unit of work, optimistic locking with a per-use-case conflict policy, client scoping, events and audit rows into the SDK-compatible outbox, TSIDs — see [`contracts/write-path.md`](contracts/write-path.md) | M1 | In progress |
+| M2a | **Write path:** use cases (validate, authorize, execute, plan), the runner and unit of work, optimistic locking with a per-use-case conflict policy, client scoping, events and audit rows into the SDK-compatible outbox, TSIDs — see [`contracts/write-path.md`](contracts/write-path.md) | M1 | Done (2026-10-08) |
 | M2b | **Checked SQL:** queries in `.sql` files, a generator that checks them against the migrated schema and produces typed Java functions and result records, committed output with a check mode | M2a | Not started |
 | M3 | **FlowCatalyst module:** identity and users, events through the platform outbox, dispatch and scheduled jobs; `Context` built from a request | M2, platform SDK | Not started |
 | M4 | **HTTP and UI:** routing, the one middleware pipeline, typed request validation, the Datastar adapter; the trial business service | M3 | Not started |

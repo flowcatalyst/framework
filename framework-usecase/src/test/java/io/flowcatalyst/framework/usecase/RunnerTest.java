@@ -681,7 +681,9 @@ class RunnerTest {
 
     committed(a.get(60, TimeUnit.SECONDS));
     committed(b.get(60, TimeUnit.SECONDS));
-    assertThat(runs).hasValue(3); // one of them was the deadlock victim and ran twice
+    // One of them was the deadlock victim and ran at least twice. If the victim reloads before
+    // the survivor has committed, its first retry is a stale update and it runs a third time.
+    assertThat(runs.get()).isBetween(3, 4);
     assertThat(pg.query("SELECT version FROM thing WHERE id = 'x'")).isEqualTo("3");
     assertThat(pg.query("SELECT version FROM thing WHERE id = 'y'")).isEqualTo("3");
   }
