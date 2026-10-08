@@ -185,6 +185,46 @@ class InstancesTest {
   }
 
   @Test
+  void aDefaultDriverIsUsedWhenAnInstanceNamesNone() throws IOException {
+    yaml("greeters:\n  instances:\n    a: { text: x }\n    b: { driver: other, text: y }\n  default: a\n");
+    Mod m =
+        Mod.of("other")
+            .register(
+                b -> {
+                  b.drivers()
+                      .register(Other.class, "only", (n, c, l, built) -> {
+                        String t = c.string("text");
+                        return () -> n + ":" + t;
+                      });
+                  b.drivers()
+                      .register(Other.class, "other", (n, c, l, built) -> {
+                        String t = c.string("text");
+                        return () -> "o" + t;
+                      });
+                  b.provide(
+                      OtherHolder.class,
+                      l -> new OtherHolder(Instances.build(Other.class, "greeters", l, "only")));
+                });
+    Instances<Other> i =
+        App.builder()
+            .configDirectory(dir)
+            .environment(Map.of())
+            .module(m)
+            .start()
+            .get(OtherHolder.class)
+            .instances();
+    assertThat(i.get("a").value()).isEqualTo("a:x");
+    assertThat(i.get("b").value()).isEqualTo("oy");
+  }
+
+  /** A second capability, so a default driver can be exercised alone. */
+  interface Other {
+    String value();
+  }
+
+  record OtherHolder(Instances<Other> instances) {}
+
+  @Test
   void missingDriverKeyIsReported() throws IOException {
     yaml("greeters:\n  instances:\n    a: { text: x }\n");
     assertThat(failure(Map.of()).getMessage()).contains("greeters.instances.a.driver");

@@ -9,4 +9,41 @@
   </parent>
   <artifactId>framework-database</artifactId>
   <name>framework-database</name>
+  <description>Named PostgreSQL instances (HikariCP) and forward-only migrations.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- The PostgreSQL test fixture is shared with the lock driver's tests. -->
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

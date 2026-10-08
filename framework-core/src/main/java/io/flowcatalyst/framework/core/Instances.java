@@ -53,6 +53,23 @@ public final class Instances<T> implements AutoCloseable {
    * @throws StartupException listing every problem found
    */
   public static <T> Instances<T> build(Class<T> capability, String section, Lookup lookup) {
+    return build(capability, section, lookup, null);
+  }
+
+  /**
+   * As {@link #build(Class, String, Lookup)}, for a capability that has one obvious driver: an
+   * instance that gives no {@code driver} key uses {@code defaultDriver}.
+   *
+   * @param <T> the capability type
+   * @param capability the capability, the key drivers are registered under
+   * @param section the configuration section, for example {@code database}
+   * @param lookup the lookup of the provider calling this
+   * @param defaultDriver the driver used when an instance names none, or null to require one
+   * @return the instances; empty when nothing is configured
+   * @throws StartupException listing every problem found
+   */
+  public static <T> Instances<T> build(
+      Class<T> capability, String section, Lookup lookup, @Nullable String defaultDriver) {
     Config config = lookup.get(Config.class);
     Drivers drivers = lookup.get(Drivers.class);
     String module = lookup.moduleId();
@@ -86,7 +103,7 @@ public final class Instances<T> implements AutoCloseable {
       InstanceConfig ic = instances.section(name);
       String driver;
       try {
-        driver = ic.string("driver");
+        driver = defaultDriver == null ? ic.string("driver") : ic.string("driver", defaultDriver);
       } catch (ConfigException e) {
         problems.add(Problem.fromConfig(e.problem(), module));
         continue;
@@ -120,7 +137,7 @@ public final class Instances<T> implements AutoCloseable {
                 module,
                 path,
                 null,
-                "driver '" + driver + "' failed: " + rootMessage(e),
+                "driver '" + driver + "' failed: " + chain(e),
                 e));
         continue;
       }
@@ -257,13 +274,22 @@ public final class Instances<T> implements AutoCloseable {
     }
   }
 
-  private static String rootMessage(Throwable t) {
-    Throwable root = t;
-    while (root.getCause() != null && root.getCause() != root) {
-      root = root.getCause();
+  /** The exception and its causes, each as "Type: first line of message", joined by " <- ". */
+  private static String chain(Throwable t) {
+    StringBuilder sb = new StringBuilder();
+    Throwable cur = t;
+    for (int depth = 0; cur != null && depth < 4; depth++) {
+      if (depth > 0) {
+        sb.append(" <- ");
+      }
+      String m = cur.getMessage();
+      String first = m == null ? "" : m.lines().findFirst().orElse("");
+      sb.append(cur.getClass().getSimpleName());
+      if (!first.isEmpty()) {
+        sb.append(": ").append(first);
+      }
+      cur = cur.getCause() == cur ? null : cur.getCause();
     }
-    String m = root.getMessage();
-    String first = m == null ? "" : m.lines().findFirst().orElse("");
-    return root.getClass().getSimpleName() + (first.isEmpty() ? "" : ": " + first);
+    return sb.toString();
   }
 }
