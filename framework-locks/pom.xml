@@ -9,4 +9,28 @@
   </parent>
   <artifactId>framework-locks</artifactId>
   <name>framework-locks</name>
+  <description>The lock capability: contract types, memory driver, withLock and the contract test suite.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- The contract test suite is published for every driver module to extend. -->
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
