@@ -11,12 +11,32 @@ import org.jspecify.annotations.Nullable;
  * @param principal the acting principal, or null when none
  * @param application the application, or null when none
  * @param correlationId follows the request into logs and jobs; always present
+ * @param causationId the id of the event or message that caused this work, or null
+ * @param executionId the id of the job or run this work belongs to, or null
  */
 public record Context(
     ClientId client,
     @Nullable PrincipalId principal,
     @Nullable ApplicationCode application,
-    CorrelationId correlationId) {
+    CorrelationId correlationId,
+    @Nullable String causationId,
+    @Nullable String executionId) {
+
+  /**
+   * A context without causation or execution ids.
+   *
+   * @param client the client
+   * @param principal the acting principal, or null
+   * @param application the application, or null
+   * @param correlationId the correlation id
+   */
+  public Context(
+      ClientId client,
+      @Nullable PrincipalId principal,
+      @Nullable ApplicationCode application,
+      CorrelationId correlationId) {
+    this(client, principal, application, correlationId, null, null);
+  }
 
   /**
    * A context for a client with a generated correlation id.
@@ -35,7 +55,7 @@ public record Context(
    * @return the new context
    */
   public Context withPrincipal(PrincipalId value) {
-    return new Context(client, value, application, correlationId);
+    return new Context(client, value, application, correlationId, causationId, executionId);
   }
 
   /**
@@ -45,7 +65,7 @@ public record Context(
    * @return the new context
    */
   public Context withApplication(ApplicationCode value) {
-    return new Context(client, principal, value, correlationId);
+    return new Context(client, principal, value, correlationId, causationId, executionId);
   }
 
   /**
@@ -55,7 +75,27 @@ public record Context(
    * @return the new context
    */
   public Context withCorrelationId(CorrelationId value) {
-    return new Context(client, principal, application, value);
+    return new Context(client, principal, application, value, causationId, executionId);
+  }
+
+  /**
+   * Copies with a causation id.
+   *
+   * @param value the id of the event or message that caused this work
+   * @return the new context
+   */
+  public Context withCausationId(String value) {
+    return new Context(client, principal, application, correlationId, value, executionId);
+  }
+
+  /**
+   * Copies with an execution id.
+   *
+   * @param value the id of the job or run this work belongs to
+   * @return the new context
+   */
+  public Context withExecutionId(String value) {
+    return new Context(client, principal, application, correlationId, causationId, value);
   }
 
   /**

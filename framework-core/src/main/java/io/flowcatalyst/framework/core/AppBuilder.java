@@ -258,6 +258,7 @@ public final class AppBuilder {
     seeded.put(Config.class, config);
     seeded.put(Drivers.class, drivers);
     seeded.put(InstantSource.class, instantSource);
+    seeded.put(Ids.class, new Ids(instantSource));
     seeded.put(MonotonicClock.class, monotonicClock);
     ServiceGraph graph = new ServiceGraph(providers, seeded, contributions);
     graph.buildAll();
@@ -293,6 +294,7 @@ public final class AppBuilder {
     return type == Config.class
         || type == Drivers.class
         || type == InstantSource.class
+        || type == Ids.class
         || type == MonotonicClock.class;
   }
 

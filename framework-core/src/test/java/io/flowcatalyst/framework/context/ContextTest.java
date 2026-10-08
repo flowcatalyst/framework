@@ -57,4 +57,14 @@ class ContextTest {
     assertThat(d.correlationId().value()).isEqualTo("abc");
     assertThat(c.findPrincipal()).isEmpty();
   }
+
+  @Test
+  void causationAndExecutionIdsSurviveTheOtherWithMethods() {
+    Context c =
+        Context.of(new ClientId("clt_1")).withCausationId("evt_1").withExecutionId("job_7");
+    Context d = c.withPrincipal(new PrincipalId("usr_9")).withApplication(new ApplicationCode("x"));
+    assertThat(d.causationId()).isEqualTo("evt_1");
+    assertThat(d.executionId()).isEqualTo("job_7");
+    assertThat(Context.of(new ClientId("clt_1")).causationId()).isNull();
+  }
 }

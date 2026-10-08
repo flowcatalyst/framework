@@ -94,6 +94,8 @@ or a thread-local by the framework.
 | principal | `PrincipalId` | no |
 | application | `ApplicationCode` | no |
 | correlation id | `CorrelationId` | always; generated when absent |
+| causation id | text | no (added in M2a: the event or message that caused this work) |
+| execution id | text | no (added in M2a: the job or run this work belongs to) |
 
 Id types are records wrapping a validated non-blank string. `ClientId` matches
 `[A-Za-z0-9._-]{1,100}`: it never contains `:`, so it can be embedded in composite keys (locks,
