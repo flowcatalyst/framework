@@ -342,6 +342,52 @@ class AppLifecycleTest {
         .containsExactly("boot a", "boot b", "shutdown b", "shutdown a", "close a");
   }
 
+  // ---- started and find -------------------------------------------------------------------
+
+  @Test
+  void startedRunsAfterEveryBootInModuleOrder() {
+    Mod a = Mod.of("a").boot(app -> log.add("boot a")).started(app -> log.add("started a"));
+    Mod b = Mod.of("b").boot(app -> log.add("boot b")).started(app -> log.add("started b"));
+    builder().module(a).module(b).start();
+    assertThat(log).containsExactly("boot a", "boot b", "started a", "started b");
+  }
+
+  @Test
+  void aStartedFailureNamesTheModuleAndShutsDownBootedModules() {
+    Mod a =
+        Mod.of("a")
+            .register(b -> b.provide(Closing.class, l -> new CloseA()))
+            .boot(app -> log.add("boot a"))
+            .started(app -> log.add("started a"))
+            .shutdown(app -> log.add("shutdown a"));
+    Mod b =
+        Mod.of("b")
+            .boot(app -> log.add("boot b"))
+            .started(app -> { throw new IllegalStateException("started b failed"); })
+            .shutdown(app -> log.add("shutdown b"));
+    StartupException e = failure(builder().module(a).module(b));
+    assertThat(e.getMessage()).contains("module 'b'").contains("started failed");
+    assertThat(log)
+        .containsExactly(
+            "boot a", "boot b", "started a", "shutdown b", "shutdown a", "close a");
+  }
+
+  @Test
+  void startedDoesNotRunWhenABootFailed() {
+    Mod a = Mod.of("a").started(app -> log.add("started a"));
+    Mod b = Mod.of("b").boot(app -> { throw new IllegalStateException("nope"); });
+    failure(builder().module(a).module(b));
+    assertThat(log).isEmpty();
+  }
+
+  @Test
+  void findReturnsTheServiceOrEmpty() {
+    Mod a = Mod.of("a").register(b -> b.provide(Alpha.class, l -> new Alpha("x")));
+    App app = builder().module(a).start();
+    assertThat(app.find(Alpha.class)).contains(new Alpha("x"));
+    assertThat(app.find(Beta.class)).isEmpty();
+  }
+
   // ---- shutdown ---------------------------------------------------------------------------
 
   @Test

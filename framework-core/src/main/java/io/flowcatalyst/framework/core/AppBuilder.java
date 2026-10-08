@@ -52,8 +52,8 @@ public final class AppBuilder {
   // ---- configuring the application ---------------------------------------------------------
 
   /**
-   * Adds a module. Order matters: {@code register} and {@code boot} run in this order, and
-   * shutdown in reverse.
+   * Adds a module. Order matters: {@code register}, {@code boot} and {@code started} run in this
+   * order, and shutdown in reverse.
    *
    * @param module the module
    * @return this builder
@@ -286,6 +286,23 @@ public final class AppBuilder {
     if (!bootProblems.isEmpty()) {
       app.close();
       throw new StartupException(bootProblems);
+    }
+
+    // 5. Started, once every module has booted, in the order listed.
+    List<Problem> startedProblems = new ArrayList<>();
+    for (Module module : registered) {
+      try {
+        module.started(app);
+      } catch (StartupException e) {
+        startedProblems.addAll(e.problems());
+      } catch (Exception e) {
+        startedProblems.add(
+            new Problem(module.id(), null, null, "started failed: " + describe(e), e));
+      }
+    }
+    if (!startedProblems.isEmpty()) {
+      app.close();
+      throw new StartupException(startedProblems);
     }
     if (installShutdownHook) {
       app.installShutdownHook();

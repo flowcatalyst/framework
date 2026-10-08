@@ -4,13 +4,14 @@ Status: M1. Java names are given where the shape matters; the rules are language
 
 ## 1. Modules and the application lifecycle
 
-A **module** has an id (lowercase, `[a-z][a-z0-9-]*`, unique in the application) and three
+A **module** has an id (lowercase, `[a-z][a-z0-9-]*`, unique in the application) and four
 hooks:
 
 | Hook | May do | May not do |
 |---|---|---|
 | `register(AppBuilder)` | declare settings, provide services, register drivers, contribute migrations | build services, read config values, start threads |
 | `boot(App)` | read config, look up services, add health checks, start background work | provide new services |
+| `started(App)` | work that needs every module booted: compile a route table, start accepting traffic | provide new services |
 | `shutdown(App)` | stop background work it started | — |
 
 `App.builder().module(a).module(b)...start()`:
@@ -21,7 +22,10 @@ hooks:
    when it asks for another service, that one is built first. The resulting build order is
    recorded.
 4. Calls every module's `boot`, in the order listed.
-5. Returns the running `App`.
+5. Calls every module's `started`, in the order listed, after **every** `boot` has completed.
+   Use it for work that depends on what other modules did in `boot`, so that module order does
+   not matter for it. If any `boot` failed, no `started` runs.
+6. Returns the running `App`.
 
 Failures, all thrown from `start()` as `StartupException`, collected where possible so one start
 reports every problem, each naming its module and key:
@@ -31,16 +35,19 @@ reports every problem, each naming its module and key:
 - a cycle between providers (names the cycle);
 - any config error (section 4);
 - an unknown driver name or a driver factory failure (section 2);
-- an exception from a provider or a `boot` hook.
+- an exception from a provider, a `boot` hook or a `started` hook.
 
 If `start()` fails after building some services, it closes those it built, in reverse order,
 before throwing.
 
-**Lookup** is `get(Class<T>)`: a typed read from a map built in step 3. No reflection. Only one
+**Lookup** is `get(Class<T>)`: a typed read from a map built in step 3, throwing when nobody
+provides the type. `find(Class<T>)` is the same read returning `Optional<T>` (no throw), for
+optional collaborators. No reflection. Only one
 provider per type; named variants are reached through their capability's registry (section 2).
 
 **Shutdown** (`App.close()`, idempotent, also run from a JVM shutdown hook the builder may
-install): module `shutdown` hooks in reverse module order, then every built service that is
+install): module `shutdown` hooks in reverse module order (for every module whose `boot` ran, which
+includes any whose `started` ran or failed), then every built service that is
 `AutoCloseable` in reverse build order. Each step's failure is logged and does not stop the
 rest. Setting `app.shutdown.drain` (duration, default `10s`) is the time each hook may take
 before it is logged as overrun and the next one runs.

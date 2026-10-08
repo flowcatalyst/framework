@@ -161,8 +161,10 @@ CreateOrder body = request.json(CreateOrder.V);
 
 ## 8. Server (Jetty)
 
-`JettyHttpModule` (module id `http`) provides `Routes`, registers the server start in `boot` and
-stops it in `shutdown`. Settings (declared by the module):
+`JettyHttpModule` (module id `http`) provides `Routes`, registers the health endpoints in `boot`, compiles the route
+table and starts the server in `started` (after every module's `boot`), and stops it in
+`shutdown`. **Module order is irrelevant**: the module may be listed before or after the modules
+that register routes. `ContextResolver` is optional and found with `App.find`. Settings (declared by the module):
 
 | Key | Type | Default |
 |---|---|---|
@@ -178,7 +180,7 @@ stops it in `shutdown`. Settings (declared by the module):
 - Server header, version and stack traces are never sent.
 - Body over `http.max-body-bytes` (by `Content-Length` or while reading): 413, connection
   closed after the response.
-- The module's `boot` fails (`StartupException`) when the port cannot be bound.
+- The module's `started` fails (`StartupException`) when the port cannot be bound.
 - **Health endpoints**, registered by the module: `GET /health/live` always `200
   {"status":"UP"}`; `GET /health/ready` runs `App.health().check()` and returns `200
   {"status":"UP","checks":{name:{"status":"UP"}}}` or `503` with `DOWN` / `TIMED_OUT` and the

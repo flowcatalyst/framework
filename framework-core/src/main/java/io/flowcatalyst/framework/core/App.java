@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -70,6 +71,18 @@ public final class App implements AutoCloseable {
       throw new IllegalArgumentException("no service of type " + type.getName() + " is provided");
     }
     return type.cast(service);
+  }
+
+  /**
+   * Returns the service of that type when some module provides it, without throwing. For optional
+   * collaborators.
+   *
+   * @param <T> the service type
+   * @param type the service type
+   * @return the service, or empty when no module provides it
+   */
+  public <T> Optional<T> find(Class<T> type) {
+    return Optional.ofNullable(services.get(type)).map(type::cast);
   }
 
   /**

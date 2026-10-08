@@ -21,19 +21,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The HTTP server module (id {@code http}): provides {@link Routes} and {@link HttpServer}, adds
- * the health endpoints, starts Jetty in {@code boot} and stops it gracefully in
- * {@code shutdown}.
+ * the health endpoints, compiles the route table and starts Jetty in {@code started}
+ * (after every module's {@code boot}), and stops it gracefully in {@code shutdown}.
  *
- * <p><strong>Module order:</strong> list this module after every module that registers routes.
- * Its {@code boot} compiles the route table and starts listening; routes registered after that
- * fail with {@link IllegalStateException}.
- *
- * <pre>{@code
- * App app = App.builder()
- *     .module(new OrdersModule())      // registers routes in boot
- *     .module(new JettyHttpModule())   // last: starts listening
- *     .start();
- * }</pre>
+ * <p>Module order is irrelevant: routes are registered in {@code boot}, and the table is compiled
+ * only once all modules have booted.
  */
 public final class JettyHttpModule implements Module {
 
@@ -111,8 +103,13 @@ public final class JettyHttpModule implements Module {
     Routes own = routes.forModule(ID);
     own.get("/health/live", r -> Response.json(200, Map.of("status", "UP")));
     own.get("/health/ready", r -> ready(app, server));
-    ContextResolver resolver =
-        app.buildOrder().contains(ContextResolver.class) ? app.get(ContextResolver.class) : null;
+  }
+
+  @Override
+  public void started(App app) {
+    Routes routes = app.get(Routes.class);
+    HttpServer server = app.get(HttpServer.class);
+    ContextResolver resolver = app.find(ContextResolver.class).orElse(null);
     Dispatcher dispatcher = routes.compile(resolver, app.get(MonotonicClock.class));
     for (String line : dispatcher.describeRoutes()) {
       LOG.info("route {}", line);

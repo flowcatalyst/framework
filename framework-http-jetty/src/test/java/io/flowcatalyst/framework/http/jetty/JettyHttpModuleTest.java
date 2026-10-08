@@ -65,6 +65,20 @@ class JettyHttpModuleTest {
   }
 
   @Test
+  void moduleOrderIsIrrelevantTheJettyModuleMayComeFirst() throws Exception {
+    try (App app =
+        App.builder()
+            .configDirectory(dir)
+            .environment(Apps.env())
+            .module(new JettyHttpModule())
+            .module(Apps.routes("late", r -> r.get("/late", req -> Response.text(200, "late"))))
+            .start()) {
+      assertThat(get(app, "/late").statusCode()).isEqualTo(200);
+      assertThat(get(app, "/health/live").statusCode()).isEqualTo(200);
+    }
+  }
+
+  @Test
   void neverSendsAServerHeaderOrVersion() throws Exception {
     try (App app = Apps.start(dir, Apps.env(), r -> r.get("/x", req -> Response.text(200, "x")))) {
       HttpResponse<String> ok = get(app, "/x");

@@ -10,12 +10,12 @@ Resume from here. Delete this file once the work it describes is picked up.
 - **M3, HTTP: built** (contract `contracts/http.md`; commits `445693a`, `a99c30a`, `034ef24`;
   verified 2026-10-08: `./mvnw -q verify` green, 577 tests). Deviations from the contract to
   fold into it or rule on: `Datastar.stream(Request, Events)` (callback form) because the body
-  is written after the handler returns; `JettyHttpModule` must be listed after every
-  route-registering module (open: a core post-boot hook?); `Routes.forModule(id)` tags registrants;
+  is written after the handler returns; `Routes.forModule(id)` tags registrants;
   router backtracks (most-literal-at-first-difference among fitting routes); no total-read timeout
   (idle only); `data: namespace` line added per the Datastar ADR (summariser-read, re-check against
   source); access log omitting query strings is untested; `ContextResolver` presence is checked via
-  `app.buildOrder()` (open: optional-service API in core). Core gained `App.shutdownDrain()` and
+  `App.find`. Core gained `Module.started(App)` (post-boot hook; Jetty compiles routes and listens
+  there, so module order is irrelevant) and `App.find`; core also gained `App.shutdownDrain()` and
   `StartupException`-from-boot flattening. Nothing pushed.
 - **Next: M4.**
 - **M4, FlowCatalyst module:** an SDK survey was done (findings summarised in

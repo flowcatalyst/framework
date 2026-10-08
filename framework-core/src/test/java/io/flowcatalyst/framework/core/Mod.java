@@ -8,6 +8,7 @@ final class Mod implements Module {
   private final String id;
   private ThrowingConsumer<AppBuilder> register = b -> {};
   private ThrowingConsumer<App> boot = a -> {};
+  private ThrowingConsumer<App> started = a -> {};
   private ThrowingConsumer<App> shutdown = a -> {};
 
   private Mod(String id) {
@@ -25,6 +26,11 @@ final class Mod implements Module {
 
   Mod boot(ThrowingConsumer<App> hook) {
     this.boot = hook;
+    return this;
+  }
+
+  Mod started(ThrowingConsumer<App> hook) {
+    this.started = hook;
     return this;
   }
 
@@ -53,6 +59,17 @@ final class Mod implements Module {
   public void boot(App app) throws Exception {
     try {
       boot.accept(app);
+    } catch (Exception | Error e) {
+      throw e;
+    } catch (Throwable t) {
+      throw new IllegalStateException(t);
+    }
+  }
+
+  @Override
+  public void started(App app) throws Exception {
+    try {
+      started.accept(app);
     } catch (Exception | Error e) {
       throw e;
     } catch (Throwable t) {

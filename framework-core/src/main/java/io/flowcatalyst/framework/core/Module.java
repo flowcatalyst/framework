@@ -34,7 +34,21 @@ public interface Module {
   default void boot(App app) throws Exception {}
 
   /**
-   * Stops background work started in {@link #boot}. Called in reverse module order on shutdown.
+   * Called after <em>every</em> module's {@link #boot} has completed, in module order. Use it for
+   * work that needs the whole application assembled, such as compiling a route table that other
+   * modules register into during {@code boot}, or starting to accept traffic. Must not provide new
+   * services.
+   *
+   * <p>If any {@code boot} failed, no {@code started} hook runs. Modules whose {@code boot} ran are
+   * shut down either way.
+   *
+   * @param app the running application
+   * @throws Exception any failure; it is reported as a start-up problem naming this module
+   */
+  default void started(App app) throws Exception {}
+
+  /**
+   * Stops background work started in {@link #boot} or {@link #started}. Called in reverse module order on shutdown.
    *
    * @param app the application being shut down
    * @throws Exception any failure; it is logged and does not stop the shutdown
