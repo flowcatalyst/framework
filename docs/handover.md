@@ -7,25 +7,17 @@ Resume from here. Delete this file once the work it describes is picked up.
 - Done and independently verified: M1 (foundation, locks), M2a (write path, optimistic
   locking, outbox), M2b (checked SQL). Full `./mvnw -q verify` green: 424 tests, 11 modules.
   HEAD `5ab192e`. Nothing pushed.
-- **Next: M3, HTTP** (see `implementation-plan.md`; order changed so HTTP precedes the
-  FlowCatalyst module). Owner ruling 2026-10-08: **Jetty 12**. The M3 contract is not written
-  yet. Points already decided for it:
-  - Jetty 12 core handlers (no Servlet), handlers on virtual threads, hidden behind the
-    framework's own routing and middleware contracts so the server can be swapped.
-  - Error body is the platform's envelope: `{"error": "<CODE>", "message": "...", "details"?: {...}}`
-    (flowcatalyst-go `internal/platform/shared/httperror/httperror.go`); status mapping as in
-    `contracts/write-path.md` section 5.
-  - Routes declared by modules at boot; method + `{param}` patterns; duplicates fail start-up;
-    404 / 405 with `Allow`.
-  - One middleware abstraction, shared later with jobs and commands.
-  - Typed request validation without reflection or annotations (records decoded with Jackson 3,
-    a small explicit validator API returning field errors → 400).
-  - `X-Correlation-Id` read or generated, echoed, put in `Context`.
-  - A `ContextResolver` hook for routes that need a `Context` (the real one comes with M4 login);
-    start-up fails if such a route exists and no resolver is configured.
-  - Health endpoints from `App.health()`; graceful shutdown within `app.shutdown.drain`.
-  - Datastar adapter: SSE `datastar-patch-elements` / `datastar-patch-signals` per the Datastar
-    1.0 SDK specification; reading signals from the request.
+- **M3, HTTP: built** (contract `contracts/http.md`; commits `445693a`, `a99c30a`, `034ef24`;
+  verified 2026-10-08: `./mvnw -q verify` green, 577 tests). Deviations from the contract to
+  fold into it or rule on: `Datastar.stream(Request, Events)` (callback form) because the body
+  is written after the handler returns; `JettyHttpModule` must be listed after every
+  route-registering module (open: a core post-boot hook?); `Routes.forModule(id)` tags registrants;
+  router backtracks (most-literal-at-first-difference among fitting routes); no total-read timeout
+  (idle only); `data: namespace` line added per the Datastar ADR (summariser-read, re-check against
+  source); access log omitting query strings is untested; `ContextResolver` presence is checked via
+  `app.buildOrder()` (open: optional-service API in core). Core gained `App.shutdownDrain()` and
+  `StartupException`-from-boot flattening. Nothing pushed.
+- **Next: M4.**
 - **M4, FlowCatalyst module:** an SDK survey was done (findings summarised in
   `implementation-plan.md`). Key facts: the Java SDK has no login, token validation or job
   receivers; interactive-login access tokens are `token_use=identity` (build the session from the
