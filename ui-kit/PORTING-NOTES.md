@@ -129,3 +129,24 @@ None. Behaviour is attributes only. The expressions that are genuinely JavaScrip
 - Scripted checks (see the report) on dialogs (modal, Tab trap, Escape, focus return, mask dismiss, alert dialog behaviour), sheets (4 sides), dropdown (outside click, Escape, submenu, item close), tooltip and hover card, native popover, tabs, accordion, switch/checkbox/radio, dirty form, list page (filter, empty state, sort, drawer, Escape), toolbar popover positioning, pick list, local time, theme bridge, both shells (desktop collapse, rail, user menu, `<details>` nav, mobile sheet open/close by button, Escape, backdrop). Browser console: no errors or warnings.
 - Datastar server round trips verified against a throwaway mock SSE server (not part of the kit).
 - Not verified: Firefox and Safari rendering (only Chrome was available), a real server, screen-reader output, touch devices, the `base-select` picker in non-Chromium browsers.
+
+## Go templ port (2026-10-09)
+
+The Go platform (`flowcatalyst-go/internal/ui/kit`) implements the pilot components in templ; it renders all 112 fixtures in `fixtures/` identically (`TestConformance`). Its architecture and conventions are in `flowcatalyst-go/docs/ui/README.md`.
+
+Defects found and fixed here (spec and gallery now agree): four gallery inputs and `input.md` carried two `type` attributes (`type="text"` first, so the email and file inputs rendered as text); `<th>` without `scope="col"` in the gallery and `data-table.md`; gallery skeletons without `aria-hidden`; the gallery's hand-built form field error not linked by `id`/`aria-describedby`; the app shell's page header without the actions wrapper `page-header.md` requires; `select.md` eliding the checkmark data URI; `table-toolbar.md` rendering `value=""`; `_conventions.md` saying DELETE sends signals in the body (Datastar 1.0.4 sends them in the query string, like GET; GET with `contentType: 'form'` appends the form's fields to the query).
+
+Recorded, not changed:
+- `filter-select`: the gallery uses `el.form && el.form.requestSubmit()` (its select is outside a form); the spec says `el.form.requestSubmit()`. Implementations follow the spec.
+- The gallery's confirm dialog form has `data-on:submit="el.closest('dialog').close()"`: Datastar prevents the default of a submit it handles, so that form never posts. Gallery-only; the spec's native POST is right.
+- Gallery screenshots predate the fixes.
+
+Gaps (needed by the platform pilot; none invented silently):
+1. Icon sprite: 38 icons; missing at least plus, trash, external-link, eye, server, database, bell, send, clock, box, building, globe, mail, lock, link, history, book, log-in, palette, tag, wrench, network, zap, house.
+2. Row actions: no spec. PROPOSED part in `data-table.md` / `fixtures/row-actions/` (right-aligned cell of `.fc-icon-btn`); a menu variant is still needed.
+3. Table toolbar live updates (c) have no stable patch targets. The Filters button can be re-rendered alone (selector `#{formId} [popovertarget]`; patching the open popover would reset its position), but Clear All is conditional, so it goes stale after a live filter. Proposal: an always-present `#{formId}-clear` container.
+4. `app-shell` has no narrow-screen layout (the SPA has a top bar and an off-canvas nav).
+5. Missing controls: multi-select with search, client select/filter, AutoComplete, number input, password strength, secret-reference input, notification banner stack, permission-denied modal.
+6. Dark mode via a signal flashes light once before Datastar loads (no inline scripts under a strict CSP). Proposal: a theme cookie rendered as the `dark` class by the server.
+7. No convention for non-2xx Datastar answers. The Go shell turns a 401 into a navigation to login with one `data-on:datastar-fetch` listener; a 403/500 shows nothing yet.
+8. Flash-cookie plumbing (NP above) is needed as soon as a page mutates.
