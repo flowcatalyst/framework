@@ -1,6 +1,6 @@
 # Contract: the FlowCatalyst module, client side and receivers (M4a, M4b)
 
-Status: draft for M4a and M4b. Facts come from `docs/research/m4-platform-facts.md` (each with a
+Status: M4a and M4b built (2026-10-09; section 4a records where the build differs). Facts come from `docs/research/m4-platform-facts.md` (each with a
 file reference); where this contract and that sheet disagree, the sheet's source wins and this
 file is wrong. Sessions and login are M4c and have their own contract.
 
@@ -171,10 +171,12 @@ receivers.onScheduledJob("nightly-export", (ctx, firing) -> Result.of(...));
 - A per-instance log hook (`firing.log(level, message)`) posts to
   `POST /api/scheduled-jobs/instances/{id}/log` best-effort.
 
-## 4a. As built in slices 1 and 2 (2026-10-09), with rulings
+## 4a. As built (2026-10-09), with rulings
 
-Where the first two slices (commits `e07493c`, `29771c5`) differ from sections 1 and 2 above, the
-build is right and these notes are the contract:
+Where the build differs from sections 1 to 4 above, the build is right and these notes are the
+contract. Slices 1 and 2 are commits `e07493c` and `29771c5`; slices 3 to 5 (outbox health check,
+signature check and dispatch receiver, scheduled-job receiver) are `b52c323`, `b6f584a` and
+`b1642a5`.
 
 - Settings are optional in the declaration and validated when `flowcatalyst.enabled` is true: one
   `StartupException` naming every missing or malformed key. Disabled means no validation and an
@@ -349,10 +351,15 @@ As built in slice 5 (the scheduled-job receiver, 2026-10-09):
 ## 6. Tests
 
 Unit: definition validation and the sync result handling against a fake platform (a small
-in-process HTTP server in the test support); outbox status mapping table (each row of section 3);
-group ordering; positional results; lease loss stops sending; signature vectors from
-`tests/golden/webhook/` in the Go repo; each receiver response (ack, defer, reject, throw,
-timeout, no handler, bad signature, unsigned with `require-signature` on and off); overlap lock
-held / free; completion body and truncation; at-least-once helper. Integration (Testcontainers
-PostgreSQL, a real platform is not required): outbox rows delivered to the fake platform end to
-end, including a restart mid-batch.
+in-process HTTP server in the test support); signature vectors (the one shared by the Java SDK,
+TypeScript and Laravel verifiers, and the Go router test's input checked with `openssl`: the
+`tests/golden/webhook/` directory the Go wire contract names does not exist in the Go repo), the
+exact 300 s / 60 s window edges and every refusal code; each receiver response (ack, defer,
+reject, throw, timeout, null, no handler, bad signature, unsigned with `require-signature` on and
+off, bearer gate, malformed headers and envelopes, not ready); overlap lock held / free / lost /
+store down, ten concurrent firings; timeouts; completion body, truncation and retries; the log
+hook; start-up failures. Integration (Testcontainers PostgreSQL, a real platform is not required):
+the `outbox` health check on the real `outbox_messages` migration; `delivery.once` alone,
+concurrently and through the receiver; the lock-gated job end to end on the database lock driver
+with two replicas and a lease taken by another process. (The outbox delivery tests an earlier
+draft listed are the platform's, since the platform delivers.)
