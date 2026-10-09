@@ -99,6 +99,14 @@ Each phase ends with something working and a list of kit defects found, recorded
 | 6. Retire the SPA | Remove Vue, PrimeVue, the generated TS client and the frontend build from the Go repository | One binary, no Node in the build |
 | In parallel (Java) | Admin slices in the order users, event types, config, events and dispatch jobs, as the framework's M4e | The framework ships a working admin built from the same kit |
 
+## 6a. The port lives under `/ui` until the owner switches it over
+
+The new UI is served on its own path prefix, `/ui`, beside the existing SPA, which stays the
+default. It is dogfooded there until the owner is completely happy. No SPA route redirects to it,
+and no SPA code is removed, without the owner's explicit approval, area by area. The exit
+criteria in section 6 that say "switched" or "retired" mean: ready to be switched, pending that
+approval.
+
 ## 7. Risks and how they are handled
 
 - **Two template sets cost twice.** Fixtures and conformance tests are the control; only
