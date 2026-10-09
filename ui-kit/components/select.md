@@ -66,6 +66,18 @@ Native. Without `base-select` support the browser draws its normal popup; the fi
 
 Auto-submit on change (fc-web used inline `onchange`): `data-on:change="el.form.requestSubmit()"`.
 
+### Choosing among records (the SPA's `Select` with `filter`)
+
+PrimeVue's filterable `Select` (a search box inside the dropdown) is not reproduced. Pick by size:
+
+| Set | Control |
+|---|---|
+| tens of records the server can render in full (service accounts on a connection form) | this select: the label carries what the SPA's option template showed (`Orders service (orders-svc)`); the native picker's type-ahead jumps by the first letters |
+| larger or unbounded (clients) | `autocomplete.md`: the server searches as the user types |
+| several values with search | not in the kit yet (multi-select with search, PORTING-NOTES gap 5) |
+
+When the user may not list the records at all (no permission to read them), render the select `disabled` with a field description saying why, not an empty list.
+
 ## Notes for a template author
 
 Parameters: options `(value, label)`, selected value, name/id. The `--select-checkmark` value is a data URI of the Lucide check: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M20 6L9 17l-5-5'/></svg>")` (percent-encode `%`, `"` and `#` only; in an HTML attribute write the quotes as `&quot;`).
