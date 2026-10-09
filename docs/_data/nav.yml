@@ -43,4 +43,5 @@
     - { title: FlowCatalyst contract, path: contracts/flowcatalyst.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
+    - { title: UI dogfooding plan, path: ui-dogfood-plan.md }
     - { title: Laravel capability inventory, path: laravel-capability-inventory.md }
