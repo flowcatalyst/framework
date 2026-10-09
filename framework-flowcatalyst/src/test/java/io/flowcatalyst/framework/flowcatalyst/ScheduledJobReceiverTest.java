@@ -443,6 +443,45 @@ class ScheduledJobReceiverTest {
   }
 
   @Test
+  void theSdksOwnRetriesDoNotMultiplyOurs() throws Exception {
+    // 408, 429, 502, 503 and 504 are retried inside every SDK call; reports must not be.
+    int total = 0;
+    for (int status : new int[] {408, 429, 502, 503, 504}) {
+      platform.failInstanceCalls("complete", 100, status);
+      TestClient client = start((ctx, f) -> JobResult.success());
+      String id = "i" + status;
+      fire(client, envelope(id));
+      total += 1 + ScheduledJobRunner.COMPLETION_RETRIES;
+      platform.awaitInstanceCalls("complete", total, 10_000);
+      String reported = "could not report SUCCESS for scheduled job " + CODE + " instance " + id;
+      long deadline = System.nanoTime() + 5_000_000_000L;
+      while (!logs.text().contains(reported) && System.nanoTime() < deadline) {
+        Thread.sleep(10);
+      }
+      assertThat(logs.text()).as("status %d", status).contains(reported);
+      Thread.sleep(100);
+      assertThat(platform.instanceCalls("complete")).as("status %d", status).hasSize(total);
+      app.close();
+    }
+    assertThat(total).isEqualTo(20);
+  }
+
+  @Test
+  void aFailingLogLineIsOneCallEvenForARetryableStatus() throws Exception {
+    platform.failInstanceCalls("log", 100, 503);
+    TestClient client =
+        start(
+            (ctx, f) -> {
+              f.log("one line");
+              return JobResult.success();
+            });
+    fire(client, envelope("i1"));
+    assertThat(completion(0).get("status").asString()).isEqualTo("SUCCESS");
+    Thread.sleep(100);
+    assertThat(platform.instanceCalls("log")).hasSize(1);
+  }
+
+  @Test
   void theLogHookPostsToTheInstanceLogAndNeverThrows() throws Exception {
     platform.failInstanceCalls("log", 1, 500);
     TestClient client =

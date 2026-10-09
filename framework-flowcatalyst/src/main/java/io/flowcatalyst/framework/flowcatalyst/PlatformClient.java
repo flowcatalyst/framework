@@ -22,20 +22,44 @@ import tools.jackson.databind.JsonNode;
 public final class PlatformClient {
 
   private final @Nullable FlowCatalystClient sdk;
+  private final @Nullable FlowCatalystClient reporting;
   private final @Nullable ApplicationCode application;
 
-  private PlatformClient(@Nullable FlowCatalystClient sdk, @Nullable ApplicationCode application) {
+  private PlatformClient(
+      @Nullable FlowCatalystClient sdk,
+      @Nullable FlowCatalystClient reporting,
+      @Nullable ApplicationCode application) {
     this.sdk = sdk;
+    this.reporting = reporting;
     this.application = application;
   }
 
   static PlatformClient disabled() {
-    return new PlatformClient(null, null);
+    return new PlatformClient(null, null, null);
   }
 
   static PlatformClient create(
       URI baseUrl,
       ApplicationCode application,
+      String clientId,
+      Secret clientSecret,
+      Duration timeout,
+      @Nullable URI subscriptionTargetBaseUrl) {
+    FlowCatalystClient main =
+        builder(baseUrl, clientId, clientSecret, timeout, subscriptionTargetBaseUrl).build();
+    // The SDK retries 408, 429, 502, 503 and 504 inside every call, with no per-call switch. The
+    // scheduled-job reports have their own bounded retry (ScheduledJobRunner), so they use a
+    // second client that makes exactly one HTTP call per attempt; otherwise 3 retries of ours
+    // would multiply with 3 of the SDK's, up to 16 calls. It has its own token cache.
+    FlowCatalystClient reporting =
+        builder(baseUrl, clientId, clientSecret, timeout, subscriptionTargetBaseUrl)
+            .retryAttempts(0)
+            .build();
+    return new PlatformClient(main, reporting, application);
+  }
+
+  private static FlowCatalystClient.Builder builder(
+      URI baseUrl,
       String clientId,
       Secret clientSecret,
       Duration timeout,
@@ -48,7 +72,7 @@ public final class PlatformClient {
     if (subscriptionTargetBaseUrl != null) {
       builder.subscriptionTargetBaseUrl(subscriptionTargetBaseUrl.toString());
     }
-    return new PlatformClient(builder.build(), application);
+    return builder;
   }
 
   /**
@@ -136,7 +160,7 @@ public final class PlatformClient {
       request.result(result);
     }
     try {
-      sdk().scheduledJobs().completeInstance(instanceId, request);
+      reporting().scheduledJobs().completeInstance(instanceId, request);
     } catch (FlowCatalystException e) {
       throw failed(e);
     }
@@ -156,7 +180,7 @@ public final class PlatformClient {
     WriteInstanceLogRequest request =
         new WriteInstanceLogRequest().level(level.name()).message(message);
     try {
-      sdk().scheduledJobs().logForInstance(instanceId, request);
+      reporting().scheduledJobs().logForInstance(instanceId, request);
     } catch (FlowCatalystException e) {
       throw failed(e);
     }
@@ -165,6 +189,15 @@ public final class PlatformClient {
   private static PlatformException failed(FlowCatalystException e) {
     String message = e.getMessage();
     return new PlatformException(message == null ? "platform call failed" : message, e);
+  }
+
+  /** The SDK client that never retries inside a call, for the module's own bounded retries. */
+  private FlowCatalystClient reporting() {
+    FlowCatalystClient client = reporting;
+    if (client == null) {
+      throw disabledException();
+    }
+    return client;
   }
 
   /** The SDK client, for use inside this module only. */

@@ -208,6 +208,15 @@ is reported. Outcomes:
 | timeout (`timeoutSeconds`, else `job-timeout`) | handler interrupted; `FAILURE {error:"timed out after 10s"}` at once, while the lock stays held until the handler really returns |
 | application stopping | handler interrupted; `FAILURE`; the module waits up to `app.shutdown.drain` |
 
+**The completion call** (`PlatformClient.completeJobInstance`) is retried by the runner itself: 3
+retries after the first attempt, so at most **4 calls**, waiting `completion-retry-delay` (1 s by
+default), then twice that, then four times that; after the last failure it is logged at ERROR and
+dropped (the platform overwrites an earlier report for the same instance, so a late success is
+safe). The SDK client retries 408, 429, 502, 503 and 504 inside every call and cannot be told not to
+per call, so reports go through a second SDK client built with no retries (`retryAttempts(0)`, its
+own token cache). Without it the two layers multiply to up to 16 calls. Log lines
+(`logJobInstance`) use the same client and are a single best-effort call each.
+
 `firing.log(level, message)` posts a line to the instance's log on the platform, best effort, and
 never throws.
 
