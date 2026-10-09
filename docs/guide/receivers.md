@@ -66,6 +66,8 @@ environment, for example `FLOWCATALYST_RECEIVERS_SIGNING_SECRET`; see [Config](c
 | `dispatch-timeout` | duration | `25s` | how long a dispatch handler may run; keep it below the job's timeout (platform default 30 s) |
 | `job-timeout` | duration | `10m` | how long a scheduled job may run when its firing carries no `timeoutSeconds` |
 | `job-lock-lease` | duration | `10m` | lease of the scheduled-job overlap lock, 1 s to 24 h; refreshed every third of it |
+| `once-retention` | duration | `30d` | how long `DispatchDelivery.once` records are kept before the purge deletes them; keep it longer than the platform can redeliver a job |
+| `once-purge-interval` | duration | `1h` | how often the background purge runs |
 | `completion-retry-delay` | duration | `1s` | wait before the first retry of a failed completion call, 0 to 1 m; doubles |
 
 ### Why there can be two secrets
@@ -136,6 +138,16 @@ work throws, everything rolls back and the exception propagates, so the platform
 handler name is `[A-Za-z0-9._:-]{1,200}`; one job can be handled once per name. The record lives in
 table `fw_dispatch_once`, created by the module's migration set `flowcatalyst` on the default
 database whenever the database module is listed.
+
+**Retention.** Rows older than `once-retention` (30 days by default, measured with the application's
+clock against `processed_at`) are deleted by a background task the module owns: one virtual thread
+that purges at start-up and then every `once-purge-interval`, in batches of 5 000 rows and at most
+200 batches per run, and stops at shutdown. With several replicas, a run takes the service lock
+`fw-dispatch-once-purge` from the default lock instance without waiting and skips when another
+replica has it; with no lock instance configured it just runs, because the `DELETE` is idempotent.
+The task exists only when the database module is listed and the table is there. If a job is
+redelivered after its record was purged, the work runs again: keep the retention longer than the
+platform's retry horizon.
 
 ## Scheduled jobs
 

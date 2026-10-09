@@ -6,8 +6,11 @@ import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
+import io.flowcatalyst.framework.database.Database;
+import io.flowcatalyst.framework.database.Databases;
 import io.flowcatalyst.framework.http.Routes;
 import io.flowcatalyst.framework.locks.Locks;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.InstantSource;
 import java.util.ArrayList;
@@ -77,6 +80,22 @@ final class ReceiverMount {
               FlowCatalystModule.RECEIVERS_COMPLETION_RETRY_DELAY.key(),
               "must be from 0 to 1m"));
     }
+    Duration retention = config.get(FlowCatalystModule.RECEIVERS_ONCE_RETENTION);
+    if (retention.isZero() || retention.isNegative()) {
+      problems.add(
+          Problem.of(
+              FlowCatalystModule.ID,
+              FlowCatalystModule.RECEIVERS_ONCE_RETENTION.key(),
+              "must be positive"));
+    }
+    Duration purgeInterval = config.get(FlowCatalystModule.RECEIVERS_ONCE_PURGE_INTERVAL);
+    if (purgeInterval.isZero() || purgeInterval.isNegative()) {
+      problems.add(
+          Problem.of(
+              FlowCatalystModule.ID,
+              FlowCatalystModule.RECEIVERS_ONCE_PURGE_INTERVAL.key(),
+              "must be positive"));
+    }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
@@ -136,6 +155,39 @@ final class ReceiverMount {
     own.post(jobs, new ScheduledJobReceiver(receivers, jobsGate, runner, client, jobs));
     receivers.markMounted();
     return runner;
+  }
+
+  /**
+   * Starts the background purge of old {@code fw_dispatch_once} rows when the default database has
+   * that table (the module's migration creates it whenever the database module is listed).
+   *
+   * @return the running purge, for the module to stop at shutdown; null when there is no table
+   */
+  static @Nullable OncePurge startOncePurge(App app) {
+    Optional<Databases> databases = app.find(Databases.class);
+    if (databases.isEmpty() || databases.get().names().isEmpty()) {
+      return null;
+    }
+    Database db = databases.get().defaultInstance();
+    try {
+      if (!db.tableExists(OncePurge.TABLE)) {
+        LOG.info("flowcatalyst: no {} table in '{}', so no purge task", OncePurge.TABLE, db.name());
+        return null;
+      }
+    } catch (SQLException e) {
+      LOG.warn("flowcatalyst: could not look for table {}: {}; no purge task", OncePurge.TABLE, e.getMessage());
+      return null;
+    }
+    Config config = app.config();
+    OncePurge purge =
+        new OncePurge(
+            db,
+            app.find(Locks.class).orElse(null),
+            config.get(FlowCatalystModule.RECEIVERS_ONCE_RETENTION),
+            config.get(FlowCatalystModule.RECEIVERS_ONCE_PURGE_INTERVAL),
+            app.get(InstantSource.class));
+    purge.start();
+    return purge;
   }
 
   /**

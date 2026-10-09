@@ -179,6 +179,20 @@ public final class FlowCatalystModule implements Module {
               "Wait before the first retry of a failed scheduled-job completion call; it doubles"
                   + " for each of the 3 retries.");
 
+  /** {@code flowcatalyst.receivers.once-retention}: how long {@code fw_dispatch_once} rows are kept. */
+  public static final Setting<Duration> RECEIVERS_ONCE_RETENTION =
+      Setting.duration("flowcatalyst.receivers.once-retention")
+          .withDefault(Duration.ofDays(30))
+          .describedAs(
+              "How long DispatchDelivery.once keeps its records; older rows are purged. Keep it longer"
+                  + " than the platform can redeliver a job.");
+
+  /** {@code flowcatalyst.receivers.once-purge-interval}: how often old {@code fw_dispatch_once} rows are purged. */
+  public static final Setting<Duration> RECEIVERS_ONCE_PURGE_INTERVAL =
+      Setting.duration("flowcatalyst.receivers.once-purge-interval")
+          .withDefault(Duration.ofHours(1))
+          .describedAs("How often the background purge of old fw_dispatch_once rows runs.");
+
   /** {@code flowcatalyst.sync.on-boot}: whether start-up also syncs definitions. */
   public static final Setting<Boolean> SYNC_ON_BOOT =
       Setting.bool("flowcatalyst.sync.on-boot")
@@ -186,6 +200,7 @@ public final class FlowCatalystModule implements Module {
           .describedAs("Sync definitions to the platform at start-up. Normally the deploy runs 'sync' instead.");
 
   private volatile @Nullable ScheduledJobRunner runner;
+  private volatile @Nullable OncePurge purge;
 
   @Override
   public String id() {
@@ -215,6 +230,8 @@ public final class FlowCatalystModule implements Module {
     app.declare(RECEIVERS_JOB_TIMEOUT);
     app.declare(RECEIVERS_JOB_LOCK_LEASE);
     app.declare(RECEIVERS_COMPLETION_RETRY_DELAY);
+    app.declare(RECEIVERS_ONCE_RETENTION);
+    app.declare(RECEIVERS_ONCE_PURGE_INTERVAL);
     app.provide(Receivers.class, lookup -> new Receivers());
     // The table behind DispatchDelivery.once; applied to the default database instance when the
     // database module is listed.
@@ -250,6 +267,7 @@ public final class FlowCatalystModule implements Module {
     app.health().add(ID, client::verifyCredentials);
     addOutboxCheck(app);
     runner = ReceiverMount.mount(app, client);
+    purge = ReceiverMount.startOncePurge(app);
     // Learn early, and in the log, whether the credentials work. Never blocks or fails start-up.
     Thread.ofVirtual()
         .name("flowcatalyst-first-token")
@@ -287,6 +305,10 @@ public final class FlowCatalystModule implements Module {
 
   @Override
   public void shutdown(App app) {
+    OncePurge p = purge;
+    if (p != null) {
+      p.stop(app.shutdownDrain());
+    }
     ScheduledJobRunner r = runner;
     if (r != null) {
       // Running jobs are interrupted and reported as failed; the platform client is still open.
