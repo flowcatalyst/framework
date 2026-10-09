@@ -9,7 +9,7 @@
   </parent>
   <artifactId>framework-flowcatalyst</artifactId>
   <name>framework-flowcatalyst</name>
-  <description>The FlowCatalyst platform client and definition sync. The only module that imports the SDK.</description>
+  <description>The FlowCatalyst platform client, definition sync, the outbox health check and the receivers. The only module that imports the SDK.</description>
 
   <dependencies>
     <dependency>
@@ -17,8 +17,29 @@
       <artifactId>framework-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-database</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.flowcatalyst</groupId>
       <artifactId>flowcatalyst-sdk</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-database</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- The outbox health check is tested against the real outbox_messages migration. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-usecase</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

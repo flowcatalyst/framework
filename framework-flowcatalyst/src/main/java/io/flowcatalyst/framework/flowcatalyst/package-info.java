@@ -1,6 +1,6 @@
 /**
- * The FlowCatalyst module (flowcatalyst contract, sections 1 and 2): the platform client built
- * with client credentials, its health check, and definition sync.
+ * The FlowCatalyst module (flowcatalyst contract): the platform client built with client
+ * credentials, its health check, definition sync, and the {@code outbox} backlog health check.
  *
  * <p>This is the only framework module that imports the FlowCatalyst SDK; no SDK type appears in
  * a public signature.

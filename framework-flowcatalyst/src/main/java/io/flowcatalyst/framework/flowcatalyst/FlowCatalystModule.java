@@ -9,8 +9,12 @@ import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
+import io.flowcatalyst.framework.database.Database;
+import io.flowcatalyst.framework.database.Databases;
 import java.net.URI;
+import java.sql.SQLException;
 import java.time.Duration;
+import java.time.InstantSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +23,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The FlowCatalyst module (id {@code flowcatalyst}): provides {@link PlatformClient} and adds the
- * {@code flowcatalyst} health check.
+ * {@code flowcatalyst} health check, and the {@code outbox} health check when the default database
+ * has an {@code outbox_messages} table (the platform's outbox processor delivers that table; this
+ * module only watches its backlog).
  *
  * <p>The platform is not on the request path, so a platform that cannot be reached at start-up
  * does not stop the application: the failure is logged and the health check reports it. Missing
@@ -39,6 +45,9 @@ public final class FlowCatalystModule implements Module {
 
   /** The module id. */
   public static final String ID = "flowcatalyst";
+
+  /** The name of the outbox backlog health check. */
+  public static final String OUTBOX_CHECK = "outbox";
 
   /** {@code flowcatalyst.enabled}: whether the module talks to the platform at all. */
   public static final Setting<Boolean> ENABLED =
@@ -77,6 +86,13 @@ public final class FlowCatalystModule implements Module {
       Setting.uri("flowcatalyst.subscription-target-base-url")
           .describedAs("Base URL that subscription targets given as a path (/webhooks/orders) resolve against.");
 
+  /** {@code flowcatalyst.outbox.stale-after}: when the {@code outbox} health check goes down. */
+  public static final Setting<Duration> OUTBOX_STALE_AFTER =
+      Setting.duration("flowcatalyst.outbox.stale-after")
+          .withDefault(Duration.ofMinutes(5))
+          .describedAs(
+              "The 'outbox' health check is down when the oldest undelivered outbox row is older than this.");
+
   /** {@code flowcatalyst.sync.on-boot}: whether start-up also syncs definitions. */
   public static final Setting<Boolean> SYNC_ON_BOOT =
       Setting.bool("flowcatalyst.sync.on-boot")
@@ -98,6 +114,7 @@ public final class FlowCatalystModule implements Module {
     app.declare(TIMEOUT);
     app.declare(SUBSCRIPTION_TARGET_BASE_URL);
     app.declare(SYNC_ON_BOOT);
+    app.declare(OUTBOX_STALE_AFTER);
     app.provide(PlatformClient.class, lookup -> buildClient(lookup.get(Config.class)));
     app.provide(
         DefinitionCatalog.class,
@@ -127,6 +144,7 @@ public final class FlowCatalystModule implements Module {
       return;
     }
     app.health().add(ID, client::verifyCredentials);
+    addOutboxCheck(app);
     // Learn early, and in the log, whether the credentials work. Never blocks or fails start-up.
     Thread.ofVirtual()
         .name("flowcatalyst-first-token")
@@ -159,6 +177,49 @@ public final class FlowCatalystModule implements Module {
     } catch (RuntimeException e) {
       LOG.error("flowcatalyst: sync on boot failed; the application continues", e);
     }
+  }
+
+  /**
+   * Adds the {@code outbox} health check when the default database instance has an
+   * {@code outbox_messages} table. Without the database module, without an instance, or without
+   * the table (an application that writes no outbox), there is nothing to watch and no check is
+   * added. Migrations have run by now (they run when {@code Databases} is built), so a missing
+   * table is really missing.
+   */
+  private static void addOutboxCheck(App app) {
+    Duration staleAfter = app.config().get(OUTBOX_STALE_AFTER);
+    if (staleAfter.isZero() || staleAfter.isNegative()) {
+      throw new StartupException(
+          List.of(Problem.of(ID, OUTBOX_STALE_AFTER.key(), "must be positive")));
+    }
+    Optional<Databases> databases = app.find(Databases.class);
+    if (databases.isEmpty() || databases.get().names().isEmpty()) {
+      LOG.debug("flowcatalyst: no database instance, so no '{}' health check", OUTBOX_CHECK);
+      return;
+    }
+    Database db = databases.get().defaultInstance();
+    boolean present;
+    try {
+      present = db.tableExists(OutboxHealthCheck.TABLE);
+    } catch (SQLException e) {
+      // Unknown: add the check, which reports the database error rather than hiding it.
+      LOG.warn(
+          "flowcatalyst: could not look for table {} in database instance '{}': {}",
+          OutboxHealthCheck.TABLE,
+          db.name(),
+          e.getMessage());
+      present = true;
+    }
+    if (!present) {
+      LOG.info(
+          "flowcatalyst: database instance '{}' has no {} table, so no '{}' health check",
+          db.name(),
+          OutboxHealthCheck.TABLE,
+          OUTBOX_CHECK);
+      return;
+    }
+    app.health()
+        .add(OUTBOX_CHECK, new OutboxHealthCheck(db, staleAfter, app.get(InstantSource.class)));
   }
 
   private static PlatformClient buildClient(Config config) {

@@ -203,6 +203,21 @@ build is right and these notes are the contract:
   acceptable, to avoid minting a token per probe.
 - Not exposed yet: per-client sync (`--client`), principals and OpenAPI sync.
 
+As built in slice 3 (the `outbox` health check, 2026-10-09):
+
+- The check is added at `boot` only when the module is enabled, a `Databases` service exists with
+  at least one instance, and the **default** instance has an `outbox_messages` table (migrations
+  have run by then). Otherwise no check is added (INFO log): an application without the database
+  module or without an outbox has no backlog to watch. If the table lookup itself fails, the check
+  is added so it reports the database error.
+- "Undelivered" is status `0` (PENDING) or `9` (IN_PROGRESS); terminal failure statuses are not a
+  backlog (the processor will not retry them). The age is measured with the application's
+  `InstantSource`, the clock the outbox writer stamps `created_at` with. `Down` only when the age
+  is strictly greater than `stale-after`. The query is two `min(created_at)` sub-queries that use
+  the table's partial indexes; nothing is written.
+- `flowcatalyst.outbox.stale-after` must be positive (start-up fails otherwise).
+- The generated `docs` page describing the processor's settings is not built (docs work).
+
 ## 5. Platform work found by the survey (not framework code)
 
 1. **Scoped reads.** `GET /api/events` and `GET /api/dispatch-jobs` scope by client only; the
