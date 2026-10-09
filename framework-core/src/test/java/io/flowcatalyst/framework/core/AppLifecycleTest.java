@@ -260,6 +260,19 @@ class AppLifecycleTest {
   }
 
   @Test
+  void settingsSharingAnEnvironmentVariableFailStartUpNamingBothModules() {
+    Mod a = Mod.of("a").register(b -> b.declare(Setting.string("x.y-z")));
+    Mod b = Mod.of("b").register(x -> x.declare(Setting.string("x.y_z")));
+    StartupException e = failure(builder().module(a).module(b));
+    assertThat(e.getMessage())
+        .contains("module 'b'")
+        .contains("module 'a'")
+        .contains("X_Y_Z")
+        .contains("x.y-z")
+        .contains("x.y_z");
+  }
+
+  @Test
   void exceptionFromRegisterProviderAndBootAreReported() {
     Mod r = Mod.of("r").register(b -> { throw new IllegalStateException("register boom"); });
     StartupException e1 = failure(builder().module(r));

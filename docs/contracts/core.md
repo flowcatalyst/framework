@@ -190,14 +190,16 @@ differs:
 - A declaration may name an explicit platform component and path when the default mapping does
   not suit. The local name is unchanged.
 - Two different keys can map to one environment variable (`mail.host-name`, `mail.host.name`);
-  start-up must fail naming both when it happens. (Check whether the M1 loader already does; the
-  platform driver in M5 must.)
+  start-up fails naming both (built 2026-10-09: the loader compares every declared key with every
+  other, and the instance-section keys found in the files, those with an `instances` segment,
+  with the declared keys and with each other; the message names both keys and the declaring
+  module, or the file for an instance key). The platform driver in M5 must do the same.
 
 ### Errors
 
 `StartupException` lists every config problem found, each with key and source: unparseable
 value, missing required setting, unknown key in an instance section, unknown driver, duplicate
-declaration.
+declaration, two keys that read the same environment variable.
 
 ## 5. Commands (added with M4a)
 

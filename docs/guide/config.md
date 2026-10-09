@@ -81,6 +81,14 @@ The key uppercased, with `.` and `-` replaced by `_`: `mail.host` is `MAIL_HOST`
 scanned**: only names derived from declared keys and from instance sections are looked up.
 Tests pass their own map with `builder.environment(Map)`, so they never touch the real one.
 
+**Two keys, one variable.** A key may contain `_`, and both `.` and `-` become `_`, so `a.b-c`,
+`a.b_c` and `a.b.c` all read `A_B_C`. Setting that variable would configure all of them, so
+start-up **fails** when it finds two such keys: two declared keys (the message names both keys and
+both modules), or a key under an `instances` section in your files
+(`database.instances.main.url`) and a declared key or another instance key. Rename one. The check
+looks only at keys the framework knows about (declared keys and the instance keys present in the
+files); a typo in some other YAML key is not its business.
+
 ## Names, components and the platform
 
 Keys are one global namespace shared by every module: pick a key that cannot collide, usually
@@ -168,7 +176,7 @@ plan item MA-5 and M5).
 
 Config problems are collected and thrown together from `start()` as one `StartupException`: an
 unparseable value, a missing required setting, an unknown key in an instance section, an unknown
-driver, a duplicate declaration, an invalid YAML file. Each names the key and the source, for
+driver, a duplicate declaration, two keys that read one environment variable, an invalid YAML file. Each names the key and the source, for
 example the file or `environment variable MAIL_HOST`.
 
 The specification is [contracts/core.md](../contracts/core.md) section 4 and

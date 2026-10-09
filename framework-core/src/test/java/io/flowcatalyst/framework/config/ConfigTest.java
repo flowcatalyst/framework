@@ -420,4 +420,61 @@ class ConfigTest {
     InstanceConfig ic = load(Map.of()).section("db.instances.main");
     assertThat(ic.toString()).contains("password").doesNotContain("hunter2");
   }
+
+  // ---- environment-variable name collisions -----------------------------------------------
+
+  @Test
+  void declaredKeysThatShareAnEnvironmentVariableFailAndNameBothModules() {
+    Setting<String> dash = Setting.string("a.b-c");
+    Setting<String> underscore = Setting.string("a.b_c");
+    Setting<String> dotted = Setting.string("a.b.c");
+    List<Declaration> declarations =
+        List.of(
+            new Declaration("first", dash),
+            new Declaration("second", underscore),
+            new Declaration("third", dotted));
+    Config.Loaded loaded = Config.load(dir, Map.of(), declarations);
+    assertThat(loaded).isInstanceOf(Config.Failed.class);
+    List<ConfigProblem> found = ((Config.Failed) loaded).problems();
+    assertThat(found).hasSize(2);
+    assertThat(found.get(0).module()).isEqualTo("second");
+    assertThat(found.get(0).key()).isEqualTo("a.b_c");
+    assertThat(found.get(0).message())
+        .contains("A_B_C")
+        .contains("'a.b-c'")
+        .contains("declared by module 'first'");
+    assertThat(found.get(1).module()).isEqualTo("third");
+    assertThat(found.get(1).key()).isEqualTo("a.b.c");
+  }
+
+  @Test
+  void anInstanceKeyThatSharesAnEnvironmentVariableWithADeclaredKeyFails() throws IOException {
+    write("application.yaml", "db:\n  instances:\n    main:\n      url: x\n");
+    Setting<String> clash = Setting.string("db.instances-main.url");
+    List<ConfigProblem> found = problems(Map.of(), clash);
+    assertThat(found).hasSize(1);
+    assertThat(found.get(0).key()).isEqualTo("db.instances.main.url");
+    assertThat(found.get(0).message())
+        .contains("DB_INSTANCES_MAIN_URL")
+        .contains("'db.instances-main.url'");
+  }
+
+  @Test
+  void twoInstancesWhoseNamesDifferOnlyInDashAndUnderscoreFail() throws IOException {
+    write(
+        "application.yaml",
+        "db:\n  instances:\n    main-db:\n      url: x\n    main_db:\n      url: y\n");
+    List<ConfigProblem> found = problems(Map.of());
+    assertThat(found).hasSize(1);
+    assertThat(found.get(0).message()).contains("DB_INSTANCES_MAIN_DB_URL");
+  }
+
+  @Test
+  void distinctKeysAndTheSameKeyInTwoFilesAreNotCollisions() throws IOException {
+    write("application.yaml", "db:\n  instances:\n    main:\n      url: x\n");
+    write("application-local.yaml", "db:\n  instances:\n    main:\n      url: y\n");
+    Setting<String> a = Setting.string("a.b-c");
+    Setting<String> b = Setting.string("a.bc");
+    load(Map.of(), a, b);
+  }
 }

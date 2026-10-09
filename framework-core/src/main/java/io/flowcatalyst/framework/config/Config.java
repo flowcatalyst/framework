@@ -101,10 +101,76 @@ public final class Config {
       resolve(d.module(), s, sources, values, problems);
     }
 
+    checkEnvironmentNames(declarations, leaves, problems);
+
     if (!problems.isEmpty()) {
       return new Failed(problems);
     }
     return new Ok(new Config(environment, declared, values, sources));
+  }
+
+  /**
+   * Fails when two different keys would read the same environment variable. Keys may contain
+   * {@code _} and both {@code .} and {@code -} become {@code _}, so {@code a.b-c}, {@code a.b_c}
+   * and {@code a.b.c} all read {@code A_B_C}: setting it would silently configure all of them.
+   *
+   * <p>Compared: every declared key with every other declared key, and the keys of instance
+   * sections found in the files (those with an {@code instances} segment, such as {@code
+   * database.instances.main.url}) with the declared keys and with each other.
+   */
+  private static void checkEnvironmentNames(
+      List<Declaration> declarations,
+      Map<String, Sources.Leaf> leaves,
+      List<ConfigProblem> problems) {
+    Map<String, String[]> claimed = new LinkedHashMap<>();
+    for (Declaration d : declarations) {
+      String key = d.setting().key();
+      claim(
+          claimed,
+          EnvNames.of(key),
+          key,
+          "declared by module '" + d.module() + "'",
+          d.module(),
+          problems);
+    }
+    for (Map.Entry<String, Sources.Leaf> e : leaves.entrySet()) {
+      String key = e.getKey();
+      if (!(key.startsWith("instances.") || key.contains(".instances."))) {
+        continue;
+      }
+      claim(
+          claimed,
+          EnvNames.of(key),
+          key,
+          "an instance setting in " + e.getValue().source(),
+          null,
+          problems);
+    }
+  }
+
+  private static void claim(
+      Map<String, String[]> claimed,
+      String envName,
+      String key,
+      String label,
+      @Nullable String module,
+      List<ConfigProblem> problems) {
+    String[] first = claimed.putIfAbsent(envName, new String[] {key, label});
+    if (first != null && !first[0].equals(key)) {
+      problems.add(
+          new ConfigProblem(
+              module,
+              key,
+              null,
+              "reads environment variable "
+                  + envName
+                  + ", which key '"
+                  + first[0]
+                  + "' ("
+                  + first[1]
+                  + ") reads too; keys may contain '_' and both '.' and '-' become '_', so rename"
+                  + " one of them"));
+    }
   }
 
   private static void resolve(
