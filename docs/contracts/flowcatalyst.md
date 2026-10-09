@@ -58,38 +58,26 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
   the SDK's sync set marks the category as authoritative; the framework does not set that flag
   (deletions are an operator action).
 
-## 3. Outbox delivery
+## 3. Outbox delivery (ruling 2026-10-09: the platform delivers, the framework does not)
 
-The Java SDK has no outbox processor; the platform's processor is Go. This module adds one so an
-application delivers its own outbox (M2a wrote the rows; write-path contract section 7).
+The framework writes outbox rows (write-path contract section 7) and does **not** deliver them.
+Delivery is the platform's outbox processor (Go `internal/outbox`, run as `fcdev outbox` or inside
+`fc-server`), pointed at the application's database and configured with the application's own
+service-account credentials (which is why the `application-service` role carries the batch-ingest
+permissions and the batch endpoints confine it to its own application, 2026-10-09).
 
-- `OutboxProcessor`, started in `started` when `flowcatalyst.outbox.enabled` (default `true`),
-  polls `outbox_messages` on the application's database instance. Settings under
-  `flowcatalyst.outbox.`: `poll-interval` (default `500ms`), `batch-size` (default `100`, max
-  1000), `max-attempts` (default `3`), `database` (instance name, default instance).
-- **One processor at a time per outbox table:** it holds the lock `outbox-processor` (service
-  scope, lease `30s`, refreshed) from the default lock instance; it stops sending when the lease
-  is lost locally (`Lease.expiredLocally()`), the same discipline as the lock contract.
-- **Port the semantics of the Go processor** (`flowcatalyst-go/internal/outbox`; the fact sheet
-  section 1.3 lists them) and keep these invariants:
-  - POST `{"items":[payload…]}` to `/api/events/batch`, `/api/dispatch-jobs/batch`,
-    `/api/audit-logs/batch` by row type, with `Authorization: Bearer <client-credentials token>`
-    and `Content-Type: application/json`. Nothing else is forwarded.
-  - Rows with a message group are sent one request per item in strict group order; ungrouped rows
-    are batched per type. A failed row blocks later rows of its group.
-  - Results are matched to items **by position**, never by id.
-  - Statuses: `SUCCESS` and `SKIPPED` complete the row. `BAD_REQUEST` and `FORBIDDEN` are
-    terminal (row marked failed, error kept). `INTERNAL_ERROR`, `UNAUTHORIZED`, `GATEWAY_ERROR`
-    and `IN_PROGRESS` are retried until `max-attempts`, then failed.
-  - Whole-batch HTTP result: 401 → UNAUTHORIZED (token cache cleared and refetched once),
-    403 → FORBIDDEN, 502/503/504 or transport error → GATEWAY_ERROR, exactly 400 → BAD_REQUEST,
-    anything else → INTERNAL_ERROR.
-- Rows are claimed with `FOR UPDATE SKIP LOCKED` and marked in progress in a short transaction;
-  the HTTP call is made outside any transaction.
-- Metrics/health: counts of delivered, retried, failed; a health check `outbox` that is `Down`
-  when the oldest pending row is older than `flowcatalyst.outbox.stale-after` (default `5m`).
-- Because the platform now refuses other applications' items (2026-10-09), a `FORBIDDEN` or
-  `BAD_REQUEST` for a type outside this application is a code bug and is logged at ERROR.
+- An application that wants events, dispatch jobs, subscriptions or scheduled jobs needs a
+  platform. Without one the framework provides none of them: no local fan-out, no local
+  subscriptions, no local job dispatch. (An earlier draft of this section specified an in-process
+  processor; the owner ruled it out.)
+- The module provides what the operator needs to run the processor correctly: a health check
+  `outbox` that is `Down` when the oldest pending row in `outbox_messages` is older than
+  `flowcatalyst.outbox.stale-after` (default `5m`), and a `docs` page generated into the
+  project describing the processor's settings (table name, database, credentials). It reads the
+  table only; it never claims or updates rows.
+- Status semantics the processor applies (positional results, terminal `BAD_REQUEST` and
+  `FORBIDDEN`, retried gateway and server errors, three attempts) are documented in the platform
+  and the fact sheet (section 1.3); the framework does not re-implement them.
 
 ## 4. Receivers
 
