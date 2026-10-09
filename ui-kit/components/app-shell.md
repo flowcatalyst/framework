@@ -79,7 +79,12 @@ FlowCatalyst's actual app chrome: a fixed navy sidebar (logo, collapse button, g
 | Expandable item | `<details open?><summary class="fc-nav-item">` + `.fc-nav-children` > `.fc-nav-child` | - | Native disclosure; chevron `.fc-nav-chevron` rotates when open |
 | Footer / account | `.fc-sidebar-footer` > `<button class="fc-user-trigger" popovertarget="fc-user-menu">` | - | Opens the user menu |
 | User menu | `<div id="fc-user-menu" popover class="fc-user-menu">` | - | Native popover: light dismiss and Escape are built in; items `.fc-menu-item` (`.danger` for Sign Out) |
-| Main | `<div class="fc-main"><main class="p-[24px]">` | - | Shifts with `margin-left` 260px / 72px |
+| Main | `<div class="fc-main"><main class="p-[24px]">` | - | Shifts with `margin-left` 260px / 72px; 0 and 16px padding below 768px |
+| Sidebar id | `<aside id="fc-sidebar">` | - | the top bar's `aria-controls` target |
+| Close button | `<button id="fc-sidebar-close" class="fc-sidebar-close" aria-label="Close navigation">` (in the header) | shown below 768px only | `data-on:click="$sidebarMobileOpen = false; document.getElementById('fc-topbar-menu').focus()"` |
+| Backdrop | `<div class="fc-sidebar-backdrop" aria-hidden="true">` (after the user menu) | shown below 768px while open | click closes; carries the window Escape listener |
+| Top bar | `<header class="fc-topbar">` first in `.fc-main` | sticky, navy, below 768px only | `<button id="fc-topbar-menu" class="fc-topbar-menu" aria-label="Open navigation" aria-controls="fc-sidebar" aria-expanded>` (icon `menu`) + logo link `.fc-topbar-logo` |
+| Theme picker | `<div class="fc-theme-choice" role="group" aria-label="Theme">` in the user menu, when `theme` is set | - | three `<button class="fc-theme-option" aria-pressed>`: System (`monitor`), Light (`sun`), Dark (`moon`) |
 
 ## Options
 
@@ -106,9 +111,10 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `resetPasswordHref` | string | - | empty hides the item (IdP-managed users) |
 | `signOutAction` | string | - | POST target |
 | `signOutAttrs` | attrs | - | on the Sign Out form |
+| `theme` | enum(system\|light\|dark) | - | the user's theme choice; set, it renders the theme picker in the user menu (pressed state from this value) |
 | `default` | slot | - | page content inside `<main>` |
 
-The `<html>` attributes (`data-signals:sidebar-collapsed` with the literal from the `fc_sidebar` cookie, `data-class:fc-collapsed`) belong to the page layout, not to this component; the fixtures cover the `<body>` content.
+The `<html>` attributes (`data-signals:sidebar-collapsed` with the literal from the `fc_sidebar` cookie, `data-class:fc-collapsed`, `data-signals:sidebar-mobile-open="false"`, `data-class:fc-mobile-open`, and the theme attributes below) belong to the page layout, not to this component; the fixtures cover the `<body>` content (`fixtures/user-menu/theme` the picker).
 
 ## Accessibility
 
@@ -116,6 +122,8 @@ The `<html>` attributes (`data-signals:sidebar-collapsed` with the literal from 
 - Nav is a `<nav aria-label="Main">`; current item `aria-current="page"`; every item keeps its `title` for the icon-only state.
 - The user menu is a native popover (Escape and outside click close it). Its trigger has `aria-label="Account menu"`.
 - Expandable groups are `<details>` (keyboard operable).
+- Narrow screens: the menu button has `aria-controls="fc-sidebar"` and `aria-expanded`; opening moves focus to the sidebar's close button, closing (button, backdrop, Escape) returns it to the menu button. Off canvas the sidebar is `visibility: hidden`, so its links are not in the tab order. The open sidebar is not modal (no focus trap), as the SPA's.
+- Theme picker: a labelled group of toggle buttons (`aria-pressed`).
 
 ## Behaviour
 
@@ -124,6 +132,17 @@ The `<html>` attributes (`data-signals:sidebar-collapsed` with the literal from 
 **Initial value:** `data-signals:sidebar-collapsed="document.cookie.includes('fc_sidebar=collapsed')"` works on a static page; with a server, render the literal `true`/`false` from the cookie instead (also covers `HttpOnly` or differently-scoped cookies).
 
 **Menus (a):** `<details>` and `popover` are native.
+
+**Narrow screens (b), below 768px (the SPA's mobile breakpoint):** the sidebar is off canvas and the top bar shows. `$sidebarMobileOpen` (on `<html>`, class `fc-mobile-open`, always `false` on load) slides it in over the page with a backdrop. Collapse does not apply there (the collapsed rules are inside `@media (min-width: 768px)`), so a collapsed desktop sidebar opens full width on a phone. Nothing in the shell is wider than the viewport; page content keeps its own horizontal scroll (tables scroll in their container).
+
+**Theme (b + server):** dark mode is `class="dark"` on `<html>`. To have it before Datastar runs (no inline scripts under a strict CSP), the server renders the class from two cookies (path `/`, a year, SameSite=Lax, readable by the page):
+
+| Cookie | Value | Written by |
+|---|---|---|
+| `fc_theme` | `light` or `dark` (absent = follow the system) | the theme picker |
+| `fc_scheme` | `light` or `dark`: the system scheme the page last saw | the page, in system mode |
+
+`<html>` carries `data-signals:theme="'system'"` (the choice), `data-signals:dark="true|false"` (what the server rendered), `data-class:dark="$dark"`, and a `data-init` that, in system mode, sets `$dark` from `matchMedia('(prefers-color-scheme: dark)')`, follows its `change` event and records `fc_scheme`. The server resolves: `fc_theme` if set, else `fc_scheme`, else light; `?theme=light|dark` overrides one page (screenshots) without storing anything. Limit: in system mode a browser's **first** page (before `fc_scheme` exists), and the first page after the OS scheme changed, render light and switch when Datastar runs; every later page is right on first paint. Without an inline script the server cannot know the system scheme before then (`Sec-CH-Prefers-Color-Scheme` exists in Chromium only).
 
 ## Notes for a template author
 

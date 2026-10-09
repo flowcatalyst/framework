@@ -116,7 +116,7 @@ Every spec has a **Props** table: the component's parameters with language-neutr
 
 ## Icons
 
-Lucide, inline SVG, 24x24 viewBox, `stroke="currentColor"`. The kit ships `icons/lucide-sprite.svg` (86 symbols, listed in `icons/sprite-icons.txt`; add a name there and run `icons/build-sprite.sh`, which takes the paths from the pinned lucide-static 1.52.0 package). Reference with `<svg width="1em" height="1em" class="size-4" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-check"/></svg>` (the sprite must be same-origin and served over http(s)), or inline the `<path>`s. Decorative icons are `aria-hidden="true"`; a lone icon gets `role="img"` + `aria-label`.
+Lucide, inline SVG, 24x24 viewBox, `stroke="currentColor"`. The kit ships `icons/lucide-sprite.svg` (90 symbols, listed in `icons/sprite-icons.txt`; add a name there and run `icons/build-sprite.sh`, which takes the paths from the pinned lucide-static 1.52.0 package). Reference with `<svg width="1em" height="1em" class="size-4" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-check"/></svg>` (the sprite must be same-origin and served over http(s)), or inline the `<path>`s. Decorative icons are `aria-hidden="true"`; a lone icon gets `role="img"` + `aria-label`.
 
 ## Vocabulary
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-signals="{dark: window.matchMedia('(prefers-color-scheme: dark)').matches || new URLSearchParams(location.search).get('theme') === 'dark'}" data-class:dark="$dark" data-on:message__window="evt.origin === location.origin && evt.data && typeof evt.data.dark === 'boolean' && ($dark = evt.data.dark)" data-signals:sidebar-collapsed="document.cookie.includes('fc_sidebar=collapsed')" data-class:fc-collapsed="$sidebarCollapsed">
+<html lang="en" data-signals="{dark: window.matchMedia('(prefers-color-scheme: dark)').matches || new URLSearchParams(location.search).get('theme') === 'dark'}" data-class:dark="$dark" data-on:message__window="evt.origin === location.origin && evt.data && typeof evt.data.dark === 'boolean' && ($dark = evt.data.dark)" data-signals:sidebar-collapsed="document.cookie.includes('fc_sidebar=collapsed')" data-class:fc-collapsed="$sidebarCollapsed" data-signals:sidebar-mobile-open="false" data-class:fc-mobile-open="$sidebarMobileOpen">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,11 +9,12 @@
 <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.4/bundles/datastar.js"></script>
 </head>
 <body class="">
-<aside class="fc-sidebar">
+<aside id="fc-sidebar" class="fc-sidebar">
   <div class="fc-sidebar-header">
     <a href="#" class="fc-sidebar-logo" style="height: 32px">
       <span style="width: 32px; height: 32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="100%" height="100%" aria-label="FlowCatalyst"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
     </a>
+    <button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label="Close navigation" data-on:click="$sidebarMobileOpen = false; document.getElementById('fc-topbar-menu').focus()"><svg width="1em" height="1em" class="size-[1.25rem]" aria-hidden="true"><use href="../icons/lucide-sprite.svg#i-x"/></svg></button>
     <button type="button" class="fc-collapse-btn" aria-label="Collapse sidebar" aria-expanded="true"
             data-attr:aria-expanded="$sidebarCollapsed ? 'false' : 'true'"
             data-on:click="$sidebarCollapsed = !$sidebarCollapsed; document.cookie = 'fc_sidebar=' + ($sidebarCollapsed ? 'collapsed' : '') + ';path=/;max-age=31536000;samesite=lax'">
@@ -55,7 +56,12 @@
   <div class="border-t border-border p-2"><form method="post" action="#" data-on:submit="void 0"><button type="submit" class="fc-menu-item danger"><svg width="1em" height="1em" class="size-[1.1rem]" aria-hidden="true"><use href="../icons/lucide-sprite.svg#i-log-out"/></svg> Sign Out</button></form></div>
   <div class="flex justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground"><span>Version</span><span>1.0.0</span></div>
 </div>
+<div class="fc-sidebar-backdrop" aria-hidden="true" data-on:click="$sidebarMobileOpen = false; document.getElementById('fc-topbar-menu').focus()" data-on:keydown__window="evt.key === 'Escape' && $sidebarMobileOpen && !document.querySelector('dialog[open], [popover]:popover-open') && ($sidebarMobileOpen = false, document.getElementById('fc-topbar-menu').focus())"></div>
 <div class="fc-main">
+  <header class="fc-topbar">
+    <button type="button" id="fc-topbar-menu" class="fc-topbar-menu" aria-label="Open navigation" aria-controls="fc-sidebar" aria-expanded="false" data-attr:aria-expanded="$sidebarMobileOpen ? 'true' : 'false'" data-on:click="$sidebarMobileOpen = true; setTimeout(() => document.getElementById('fc-sidebar-close').focus())"><svg width="1em" height="1em" class="size-[1.25rem]" aria-hidden="true"><use href="../icons/lucide-sprite.svg#i-menu"/></svg></button>
+    <a href="#" class="fc-topbar-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="100%" height="100%" aria-label="FlowCatalyst"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></a>
+  </header>
   <main class="p-[24px]">
     <div role="status" class="fc-banner fc-banner-success mb-4">Saved.</div>
     <header class="fc-page-header"><div><h1 class="fc-page-title">Dashboard</h1><p class="fc-page-subtitle">App shell with the collapsible navy sidebar</p></div><div class="flex items-center gap-2"></div></header>

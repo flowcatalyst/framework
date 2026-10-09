@@ -823,26 +823,121 @@
     font-size: 18px;
   }
 
-  /* Collapsed: icons only. The class sits on <html> so it applies before
-     first paint (set from the `fc_sidebar` cookie). */
-  .fc-collapsed .fc-sidebar { width: 72px; }
-  .fc-collapsed .fc-main { margin-left: 72px; }
-  .fc-collapsed .fc-sidebar-logo,
-  .fc-collapsed .fc-nav-group-label,
-  .fc-collapsed .fc-nav-label,
-  .fc-collapsed .fc-nav-chevron,
-  .fc-collapsed .fc-nav-children,
-  .fc-collapsed .fc-user-text { display: none; }
-  .fc-collapsed .fc-sidebar-header { justify-content: center; }
-  .fc-collapsed .fc-collapse-btn svg { transform: rotate(180deg); }
-  .fc-collapsed .fc-nav-item { justify-content: center; padding: 12px; }
-  .fc-collapsed .fc-user-trigger { justify-content: center; }
-
   .fc-main {
     margin-left: 260px;
     min-height: 100vh;
     transition: margin-left 0.3s ease;
   }
+
+  /* Collapsed: icons only. The class sits on <html> so it applies before
+     first paint (set from the `fc_sidebar` cookie). Wide screens only: a
+     narrow screen always shows the full sidebar, off canvas (below). */
+  @media (min-width: 768px) {
+    .fc-collapsed .fc-sidebar { width: 72px; }
+    .fc-collapsed .fc-main { margin-left: 72px; }
+    .fc-collapsed .fc-sidebar-logo,
+    .fc-collapsed .fc-nav-group-label,
+    .fc-collapsed .fc-nav-label,
+    .fc-collapsed .fc-nav-chevron,
+    .fc-collapsed .fc-nav-children,
+    .fc-collapsed .fc-user-text { display: none; }
+    .fc-collapsed .fc-sidebar-header { justify-content: center; }
+    .fc-collapsed .fc-collapse-btn svg { transform: rotate(180deg); }
+    .fc-collapsed .fc-nav-item { justify-content: center; padding: 12px; }
+    .fc-collapsed .fc-user-trigger { justify-content: center; }
+  }
+
+  /* Narrow screens (< 768px, the SPA's mobile layout): a top bar with a
+     menu button; the sidebar slides in over the page with a backdrop
+     (`fc-mobile-open` on <html>, signal sidebarMobileOpen). Hidden off
+     canvas it is `visibility: hidden`, so its links leave the tab order. */
+  .fc-topbar,
+  .fc-sidebar-close,
+  .fc-sidebar-backdrop { display: none; }
+  @media (max-width: 767.98px) {
+    .fc-sidebar {
+      width: min(280px, 85vw);
+      transform: translateX(-100%);
+      visibility: hidden;
+      transition: transform 0.2s ease, visibility 0s linear 0.2s;
+      box-shadow: 8px 0 32px rgb(15 23 42 / 0.3);
+    }
+    .fc-mobile-open .fc-sidebar {
+      transform: none;
+      visibility: visible;
+      transition: transform 0.2s ease;
+    }
+    .fc-collapse-btn { display: none; }
+    .fc-sidebar-close { display: flex; }
+    .fc-mobile-open .fc-sidebar-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 39;
+      background: rgb(15 23 42 / 0.4);
+    }
+    .fc-main { margin-left: 0; }
+    .fc-main > main { padding: 16px; }
+    .fc-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 46;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 56px;
+      padding: 0 12px;
+      background: linear-gradient(90deg, #102a43 0%, #0a1929 100%);
+      color: #fff;
+    }
+    .fc-page-header { flex-wrap: wrap; }
+    .fc-user-menu { min-width: 0; width: min(280px, calc(100vw - 24px)); }
+  }
+  .fc-topbar-menu,
+  .fc-sidebar-close {
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    color: rgb(255 255 255 / 0.85);
+    cursor: pointer;
+  }
+  .fc-topbar-menu { display: flex; }
+  .fc-topbar-menu:hover,
+  .fc-sidebar-close:hover { background: rgb(255 255 255 / 0.1); }
+  .fc-topbar-menu:focus-visible,
+  .fc-sidebar-close:focus-visible { outline: 2px solid #47a3f3; outline-offset: 2px; }
+  .fc-topbar-logo { display: flex; width: 28px; height: 28px; color: #47a3f3; }
+
+  /* Theme choice in the user menu (System / Light / Dark). */
+  .fc-theme-choice {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 6px;
+    background: var(--subtle);
+  }
+  .fc-theme-option {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--fc-text);
+    cursor: pointer;
+  }
+  .fc-theme-option:hover { background: rgb(15 23 42 / 0.06); }
+  .fc-theme-option[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--fc-text-strong);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.15);
+  }
+  .fc-theme-option:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 
   /* User menu popover (native `popover`: light dismiss, Escape). */
   .fc-user-menu {
@@ -1145,6 +1240,7 @@
   .dark .fc-banner-success { background: rgb(22 101 52 / 0.25); border-color: rgb(34 197 94 / 0.4); color: #86efac; }
   .dark .fc-banner-error { background: rgb(127 29 29 / 0.3); border-color: rgb(239 68 68 / 0.4); color: #fca5a5; }
   .dark .fc-user-menu { background: var(--popover); color: var(--popover-foreground); }
+  .dark .fc-theme-option:hover { background: rgb(255 255 255 / 0.06); }
   .dark .fc-menu-item:hover { background: var(--fc-hover); color: var(--fc-text-strong); }
   .dark .fc-menu-item.danger:hover { background: rgb(220 38 38 / 0.18); color: #fca5a5; }
   .dark .fc-filter-popover { background: var(--popover); color: var(--popover-foreground); }

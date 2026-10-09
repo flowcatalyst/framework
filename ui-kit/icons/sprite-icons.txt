@@ -88,3 +88,7 @@ user-plus
 user-minus
 star
 file
+menu
+sun
+moon
+monitor

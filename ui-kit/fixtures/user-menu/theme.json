@@ -1,0 +1,14 @@
+{
+  "props": {
+    "theme": "dark",
+    "user": {
+      "name": "Ada Lovelace",
+      "email": "ada@example.com",
+      "initials": "AL"
+    },
+    "version": "1.0.0",
+    "profileHref": "/profile",
+    "signOutAction": "/ui/logout"
+  },
+  "source": "app-shell.md, Theme: the user menu with the theme picker (choice dark pressed)"
+}
