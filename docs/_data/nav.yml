@@ -1,0 +1,46 @@
+# Site navigation: the sidebar, the previous/next links and the page titles all come from this file.
+#
+# To add a page: write the .md file, then add ONE line under the right group:
+#
+#   - { title: Page title, path: guide/my-page.md }
+#
+# `path` is relative to docs/ and must exist. Order here is the reading order (previous/next follow
+# it). Every page under docs/guide/ must be listed; docs/guide/verify.sh fails otherwise, and it
+# fails on a path that does not exist. Keep titles short: they are sidebar labels.
+- group: Start
+  items:
+    - { title: Home, path: index.md }
+    - { title: Guide overview, path: guide/index.md }
+    - { title: Getting started, path: guide/getting-started.md }
+- group: Core
+  items:
+    - { title: Modules and lifecycle, path: guide/modules-and-lifecycle.md }
+    - { title: Config, path: guide/config.md }
+    - { title: Context, path: guide/context.md }
+    - { title: Locks, path: guide/locks.md }
+    - { title: The write path, path: guide/write-path.md }
+    - { title: Checked SQL, path: guide/checked-sql.md }
+- group: Web
+  items:
+    - { title: HTTP, path: guide/http.md }
+- group: FlowCatalyst
+  items:
+    - { title: The FlowCatalyst module, path: guide/flowcatalyst-module.md }
+    - { title: Receivers, path: guide/receivers.md }
+- group: Reference and status
+  items:
+    - { title: Testing, path: guide/testing.md }
+    - { title: Status and known gaps, path: guide/STATUS.md }
+    - { title: Contracts index, path: guide/reference/contracts.md }
+- group: Design documents
+  items:
+    - { title: Core contract, path: contracts/core.md }
+    - { title: Database and Redis, path: contracts/database-and-redis.md }
+    - { title: Locks contract, path: contracts/locks.md }
+    - { title: Write path contract, path: contracts/write-path.md }
+    - { title: Checked SQL contract, path: contracts/checked-sql.md }
+    - { title: HTTP contract, path: contracts/http.md }
+    - { title: FlowCatalyst contract, path: contracts/flowcatalyst.md }
+    - { title: Framework plumbing, path: framework-plumbing.md }
+    - { title: Implementation plan, path: implementation-plan.md }
+    - { title: Laravel capability inventory, path: laravel-capability-inventory.md }

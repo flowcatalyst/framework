@@ -1,0 +1,24 @@
+<aside class="fc-sidebar" id="site-nav">
+  <div class="fc-sidebar-header">
+    <a href="{{ '/' | relative_url }}" class="fc-sidebar-logo" aria-label="{{ site.title | escape }}, home">
+      <span class="logo-mark">{% include icon.html name="bolt" %}</span>
+      <span class="logo-text">FlowCatalyst <small>framework docs</small></span>
+    </a>
+    <label for="nav-toggle" class="fc-collapse-btn nav-close" aria-label="Close navigation">&times;</label>
+  </div>
+  <nav class="fc-sidebar-nav" aria-label="Documentation">
+    {%- for g in site.data.nav %}
+    {%- assign group_open = false %}
+    {%- for i in g.items %}{% if i.path == page.path %}{% assign group_open = true %}{% endif %}{% endfor %}
+    <details class="fc-nav-group"{% if group_open or forloop.first %} open{% endif %}>
+      <summary class="fc-nav-group-label">{{ g.group }} {% include icon.html name="chevron" %}</summary>
+      {%- for i in g.items %}
+      <a href="{{ '/' | append: i.path | replace: '.md', '.html' | relative_url }}" class="fc-nav-item"{% if i.path == page.path %} aria-current="page"{% endif %}><span class="fc-nav-label">{{ i.title }}</span></a>
+      {%- endfor %}
+    </details>
+    {%- endfor %}
+  </nav>
+  <div class="fc-sidebar-footer">
+    <a class="fc-nav-item" href="https://github.com/flowcatalyst/framework"><span class="fc-nav-label">Source on GitHub</span></a>
+  </div>
+</aside>

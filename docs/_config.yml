@@ -1,11 +1,18 @@
 # GitHub Pages / Jekyll configuration for the documentation site. There is no build step of our
-# own: Pages builds plain Markdown with the built-in minima theme. Pages is not enabled by this file.
+# own: Pages builds plain Markdown with the layout in _layouts/ and the one stylesheet in
+# assets/css/docs.css (the FlowCatalyst UI kit's design tokens, copied in as plain CSS).
+# Navigation lives in _data/nav.yml. Pages is not enabled by this file.
 title: FlowCatalyst application framework
 description: A Java 25 framework for business applications that run next to the FlowCatalyst platform.
-theme: minima
 
-# Render Markdown files that have no YAML front matter, and turn links between .md files into
-# working page links. Both plugins are on the GitHub Pages allow-list.
+# Project-pages URL: https://flowcatalyst.github.io/framework/. Every link in the layout goes through
+# the relative_url filter, so it carries the baseurl.
+url: https://flowcatalyst.github.io
+baseurl: /framework
+
+# Render Markdown files that have no YAML front matter and turn links between .md files into
+# working page links. Both plugins are on the GitHub Pages allow-list. Page titles come from
+# _data/nav.yml (see the layout).
 plugins:
   - jekyll-optional-front-matter
   - jekyll-relative-links
@@ -13,6 +20,12 @@ plugins:
 relative_links:
   enabled: true
   collections: false
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
 
 # Working notes, not documentation.
 exclude:

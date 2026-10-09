@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {%- assign page_title = page.title | default: site.title %}
+  {%- for g in site.data.nav %}{% for i in g.items %}{% if i.path == page.path %}{% assign page_title = i.title %}{% endif %}{% endfor %}{% endfor %}
+  <title>{% if page.path == "index.md" %}{{ site.title | escape }}{% else %}{{ page_title | strip_html | escape }} | {{ site.title | escape }}{% endif %}</title>
+  <meta name="description" content="{{ site.description | escape }}">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ '/assets/css/docs.css' | relative_url }}">
+  <script>
+    /* Apply the remembered theme before first paint. Storage can throw (private windows, blocked
+       site data): then the system preference from CSS applies. */
+    try { var t = localStorage.getItem("fc-docs-theme"); if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+  </script>
+</head>
+<body>
+{%- comment -%} Sidebar toggle on narrow screens: a checkbox + label, so it works without JavaScript. {%- endcomment %}
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true" tabindex="-1">
+{% include sidebar.html %}
+<label for="nav-toggle" class="nav-scrim" aria-hidden="true"></label>
+
+<div class="fc-main">
+  <header class="topbar">
+    <label for="nav-toggle" class="icon-btn nav-open" aria-label="Open navigation">{% include icon.html name="menu" %}</label>
+    <a class="topbar-title" href="{{ '/' | relative_url }}">{{ site.title | escape }}</a>
+    <span class="topbar-spacer"></span>
+    <button type="button" class="icon-btn theme-toggle" id="theme-toggle" aria-label="Switch colour theme" hidden>
+      <span class="icon-sun">{% include icon.html name="sun" %}</span><span class="icon-moon">{% include icon.html name="moon" %}</span>
+    </button>
+  </header>
+
+  {%- comment -%}
+    Previous / next from the flat order of _data/nav.yml.
+  {%- endcomment -%}
+  {%- assign found = false %}{% assign prev_item = nil %}{% assign next_item = nil %}{% assign last_item = nil %}
+  {%- for g in site.data.nav %}{% for i in g.items %}
+    {%- if found and next_item == nil %}{% assign next_item = i %}{% endif %}
+    {%- if i.path == page.path %}{% assign found = true %}{% assign prev_item = last_item %}{% endif %}
+    {%- assign last_item = i %}
+  {%- endfor %}{% endfor %}
+
+  {%- comment -%}
+    "On this page": the h2 headings of the rendered content (kramdown gives each an id).
+  {%- endcomment -%}
+  {%- capture toc %}
+    {%- assign parts = content | split: '<h2 id="' %}
+    {%- for part in parts offset: 1 %}
+      {%- assign hid = part | split: '"' | first %}
+      {%- assign htext = part | split: '>' | slice: 1 | first | split: '</h2' | first | strip_html | strip %}
+      {%- if hid != "" %}<li><a href="#{{ hid }}">{{ htext }}</a></li>{% endif %}
+    {%- endfor %}
+  {%- endcapture %}
+  {%- assign toc = toc | strip %}
+
+  <div class="page">
+    <main class="content" id="content">
+      {%- if toc != "" %}
+      <details class="toc-inline">
+        <summary>On this page</summary>
+        <ul>{{ toc }}</ul>
+      </details>
+      {%- endif %}
+      <article class="prose">
+        {{ content }}
+      </article>
+      {%- if prev_item or next_item %}
+      <nav class="pager" aria-label="Previous and next page">
+        {%- if prev_item %}
+        <a class="pager-prev" href="{{ '/' | append: prev_item.path | replace: '.md', '.html' | relative_url }}" rel="prev"><span>Previous</span>{{ prev_item.title }}</a>
+        {%- else %}<span></span>{% endif %}
+        {%- if next_item %}
+        <a class="pager-next" href="{{ '/' | append: next_item.path | replace: '.md', '.html' | relative_url }}" rel="next"><span>Next</span>{{ next_item.title }}</a>
+        {%- endif %}
+      </nav>
+      {%- endif %}
+    </main>
+    {%- if toc != "" %}
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <ul>{{ toc }}</ul>
+    </aside>
+    {%- endif %}
+  </div>
+</div>
+
+<script>
+  /* Theme toggle. Without JavaScript the button stays hidden and the system preference applies. */
+  (function () {
+    var btn = document.getElementById("theme-toggle");
+    if (!btn) return;
+    btn.hidden = false;
+    var root = document.documentElement;
+    function isDark() {
+      var t = root.getAttribute("data-theme");
+      if (t) return t === "dark";
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    btn.addEventListener("click", function () {
+      var next = isDark() ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("fc-docs-theme", next); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>

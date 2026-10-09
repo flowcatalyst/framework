@@ -1446,7 +1446,7 @@ Starter kits also ship **Teams** (users belong to teams with a current team and 
 
 ### Blade (verified in source: `View/`)
 
-Server-side template language compiled to cached PHP (`View/Compilers/BladeCompiler.php`). `@if`, `@foreach`, `{{ $x }}` (escaped), `{!! !!}` raw, layouts via `@extends/@section` or **components** (`<x-alert type="error"/>` anonymous or class-based with slots), `@include`, `@stack/@push`, directives (`Blade::directive`), view composers/creators, shared view data. Contracts: `View\Factory` (`make`, `share`, `composer`, `exists`), `View\View`, `View\Engine` (`get($path, $data)`). Engines: Blade and PHP. Dependent on PHP code inside templates (full language available in templates).
+Server-side template language compiled to cached PHP (`View/Compilers/BladeCompiler.php`). `@if`, `@foreach`, `{% raw %}{{ $x }}{% endraw %}` (escaped), `{!! !!}` raw, layouts via `@extends/@section` or **components** (`<x-alert type="error"/>` anonymous or class-based with slots), `@include`, `@stack/@push`, directives (`Blade::directive`), view composers/creators, shared view data. Contracts: `View\Factory` (`make`, `share`, `composer`, `exists`), `View\View`, `View\Engine` (`get($path, $data)`). Engines: Blade and PHP. Dependent on PHP code inside templates (full language available in templates).
 
 ### Livewire
 
