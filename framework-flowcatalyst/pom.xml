@@ -25,6 +25,10 @@
       <artifactId>framework-http</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-locks</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.flowcatalyst</groupId>
       <artifactId>flowcatalyst-sdk</artifactId>
     </dependency>
@@ -36,6 +40,12 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-database</artifactId>
       <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- The scheduled-job overlap lock end to end on the PostgreSQL lock driver. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-locks-database</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

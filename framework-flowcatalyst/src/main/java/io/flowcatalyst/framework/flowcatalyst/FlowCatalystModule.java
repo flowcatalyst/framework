@@ -19,6 +19,7 @@ import java.time.InstantSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,11 +128,37 @@ public final class FlowCatalystModule implements Module {
               "How long a dispatch-job handler may run before it is interrupted and the platform is"
                   + " answered 503. Keep it below the job's timeout (platform default 30s).");
 
+  /** {@code flowcatalyst.receivers.job-timeout}: how long a scheduled job may run by default. */
+  public static final Setting<Duration> RECEIVERS_JOB_TIMEOUT =
+      Setting.duration("flowcatalyst.receivers.job-timeout")
+          .withDefault(Duration.ofMinutes(10))
+          .describedAs(
+              "How long a scheduled job may run when its firing has no timeoutSeconds; then its"
+                  + " thread is interrupted and a tracked job is reported as failed.");
+
+  /** {@code flowcatalyst.receivers.job-lock-lease}: the lease of the scheduled-job overlap lock. */
+  public static final Setting<Duration> RECEIVERS_JOB_LOCK_LEASE =
+      Setting.duration("flowcatalyst.receivers.job-lock-lease")
+          .withDefault(Duration.ofMinutes(10))
+          .describedAs(
+              "Lease of the scheduled-job overlap lock, refreshed every third of it while the job"
+                  + " runs: how long a crashed run blocks the next one.");
+
+  /** {@code flowcatalyst.receivers.completion-retry-delay}: the first wait before retrying a completion. */
+  public static final Setting<Duration> RECEIVERS_COMPLETION_RETRY_DELAY =
+      Setting.duration("flowcatalyst.receivers.completion-retry-delay")
+          .withDefault(Duration.ofSeconds(1))
+          .describedAs(
+              "Wait before the first retry of a failed scheduled-job completion call; it doubles"
+                  + " for each of the 3 retries.");
+
   /** {@code flowcatalyst.sync.on-boot}: whether start-up also syncs definitions. */
   public static final Setting<Boolean> SYNC_ON_BOOT =
       Setting.bool("flowcatalyst.sync.on-boot")
           .withDefault(false)
           .describedAs("Sync definitions to the platform at start-up. Normally the deploy runs 'sync' instead.");
+
+  private volatile @Nullable ScheduledJobRunner runner;
 
   @Override
   public String id() {
@@ -154,6 +181,9 @@ public final class FlowCatalystModule implements Module {
     app.declare(RECEIVERS_BEARER_TOKEN);
     app.declare(RECEIVERS_REQUIRE_SIGNATURE);
     app.declare(RECEIVERS_DISPATCH_TIMEOUT);
+    app.declare(RECEIVERS_JOB_TIMEOUT);
+    app.declare(RECEIVERS_JOB_LOCK_LEASE);
+    app.declare(RECEIVERS_COMPLETION_RETRY_DELAY);
     app.provide(Receivers.class, lookup -> new Receivers());
     // The table behind DispatchDelivery.once; applied to the default database instance when the
     // database module is listed.
@@ -188,7 +218,7 @@ public final class FlowCatalystModule implements Module {
     }
     app.health().add(ID, client::verifyCredentials);
     addOutboxCheck(app);
-    ReceiverMount.mount(app, client);
+    runner = ReceiverMount.mount(app, client);
     // Learn early, and in the log, whether the credentials work. Never blocks or fails start-up.
     Thread.ofVirtual()
         .name("flowcatalyst-first-token")
@@ -221,6 +251,15 @@ public final class FlowCatalystModule implements Module {
       LOG.error("flowcatalyst: sync on boot failed; the application continues. {}", e.getMessage());
     } catch (RuntimeException e) {
       LOG.error("flowcatalyst: sync on boot failed; the application continues", e);
+    }
+  }
+
+  @Override
+  public void shutdown(App app) {
+    ScheduledJobRunner r = runner;
+    if (r != null) {
+      // Running jobs are interrupted and reported as failed; the platform client is still open.
+      r.stop(app.shutdownDrain());
     }
   }
 

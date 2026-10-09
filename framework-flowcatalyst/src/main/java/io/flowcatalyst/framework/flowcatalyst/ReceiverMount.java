@@ -6,6 +6,7 @@ import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.http.Routes;
+import io.flowcatalyst.framework.locks.Locks;
 import java.time.Duration;
 import java.time.InstantSource;
 import java.util.ArrayList;
@@ -27,11 +28,14 @@ final class ReceiverMount {
   private ReceiverMount() {}
 
   /**
-   * Mounts {@code {path}/dispatch} when an HTTP module provides {@link Routes}. Handlers may be
-   * registered after this (they are looked up per request); deliveries are answered 503 until
-   * {@link #open} has checked them.
+   * Mounts {@code {path}/dispatch} and {@code {path}/scheduled-jobs} when an HTTP module provides
+   * {@link Routes}. Handlers may be registered after this (they are looked up per request);
+   * deliveries are answered 503 until {@link #open} has checked them.
+   *
+   * @return the scheduled-job runner, for the module to stop at shutdown; null when nothing was
+   *     mounted
    */
-  static void mount(App app, PlatformClient client) {
+  static @Nullable ScheduledJobRunner mount(App app, PlatformClient client) {
     Config config = app.config();
     List<Problem> problems = new ArrayList<>();
     String prefix = config.get(FlowCatalystModule.RECEIVERS_PATH);
@@ -50,13 +54,35 @@ final class ReceiverMount {
               FlowCatalystModule.RECEIVERS_DISPATCH_TIMEOUT.key(),
               "must be positive"));
     }
+    Duration jobTimeout = config.get(FlowCatalystModule.RECEIVERS_JOB_TIMEOUT);
+    if (jobTimeout.isZero() || jobTimeout.isNegative()) {
+      problems.add(
+          Problem.of(
+              FlowCatalystModule.ID, FlowCatalystModule.RECEIVERS_JOB_TIMEOUT.key(), "must be positive"));
+    }
+    Duration lease = config.get(FlowCatalystModule.RECEIVERS_JOB_LOCK_LEASE);
+    if (lease.compareTo(Duration.ofSeconds(1)) < 0 || lease.compareTo(Duration.ofHours(24)) > 0) {
+      problems.add(
+          Problem.of(
+              FlowCatalystModule.ID,
+              FlowCatalystModule.RECEIVERS_JOB_LOCK_LEASE.key(),
+              "must be from 1s to 24h"));
+    }
+    Duration retryDelay = config.get(FlowCatalystModule.RECEIVERS_COMPLETION_RETRY_DELAY);
+    if (retryDelay.isNegative() || retryDelay.compareTo(Duration.ofMinutes(1)) > 0) {
+      problems.add(
+          Problem.of(
+              FlowCatalystModule.ID,
+              FlowCatalystModule.RECEIVERS_COMPLETION_RETRY_DELAY.key(),
+              "must be from 0 to 1m"));
+    }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
     Optional<Routes> routes = app.find(Routes.class);
     if (routes.isEmpty()) {
       LOG.debug("flowcatalyst: no HTTP module, so no receivers are mounted");
-      return;
+      return null;
     }
     boolean requireSignature = config.get(FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE);
     if (!requireSignature) {
@@ -78,7 +104,18 @@ final class ReceiverMount {
     own.post(
         dispatch,
         new DispatchReceiver(receivers, gate, client.application(), dispatchTimeout, dispatch));
+    ScheduledJobRunner runner =
+        new ScheduledJobRunner(
+            client,
+            client.application(),
+            app.find(Locks.class).orElse(null),
+            jobTimeout,
+            lease,
+            retryDelay);
+    String jobs = prefix + "/scheduled-jobs";
+    own.post(jobs, new ScheduledJobReceiver(receivers, gate, runner, client, jobs));
     receivers.markMounted();
+    return runner;
   }
 
   /**
@@ -89,7 +126,8 @@ final class ReceiverMount {
   static void open(App app, PlatformClient client) {
     Receivers receivers = app.get(Receivers.class);
     receivers.seal();
-    boolean any = receivers.hasDispatchHandlers();
+    boolean jobs = receivers.hasJobHandlers();
+    boolean any = receivers.hasDispatchHandlers() || jobs;
     if (!client.isEnabled()) {
       if (any) {
         LOG.warn("flowcatalyst: receivers are registered but the module is disabled; nothing is mounted");
@@ -116,15 +154,41 @@ final class ReceiverMount {
                   + FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE.key()
                   + " is true"));
     }
+    if (jobs && !hasDefaultLockInstance(app)) {
+      problems.add(
+          Problem.of(
+              FlowCatalystModule.ID,
+              null,
+              "scheduled-job handlers "
+                  + receivers.jobCodes().stream().sorted().toList()
+                  + " need the overlap lock, but no lock instance is configured: list the locks"
+                  + " module with a default instance (driver database or redis across replicas)"));
+    }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
-    if (any) {
+    if (receivers.hasDispatchHandlers()) {
       LOG.info(
           "flowcatalyst: dispatch handlers for {}",
           receivers.dispatchPatterns().stream().sorted().toList());
     }
+    if (jobs) {
+      LOG.info("flowcatalyst: scheduled-job handlers for {}", receivers.jobCodes().stream().sorted().toList());
+    }
     receivers.markReady();
+  }
+
+  private static boolean hasDefaultLockInstance(App app) {
+    Optional<Locks> locks = app.find(Locks.class);
+    if (locks.isEmpty()) {
+      return false;
+    }
+    try {
+      locks.get().defaultInstance();
+      return true;
+    } catch (IllegalStateException e) {
+      return false;
+    }
   }
 
   private static @Nullable Secret nonBlank(Optional<Secret> secret) {

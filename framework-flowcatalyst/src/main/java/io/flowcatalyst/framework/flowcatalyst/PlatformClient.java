@@ -4,9 +4,12 @@ import io.flowcatalyst.framework.config.Secret;
 import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.sdk.FlowCatalystClient;
 import io.flowcatalyst.sdk.error.FlowCatalystException;
+import io.flowcatalyst.sdk.generated.model.CompleteInstanceRequest;
+import io.flowcatalyst.sdk.generated.model.WriteInstanceLogRequest;
 import java.net.URI;
 import java.time.Duration;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.JsonNode;
 
 /**
  * The application's connection to the FlowCatalyst platform: a thin wrapper over the SDK client,
@@ -106,6 +109,62 @@ public final class PlatformClient {
    */
   public void clearToken() {
     sdk().tokenManager().clearCache();
+  }
+
+  /** How a scheduled-job instance ended, as reported with {@link #completeJobInstance}. */
+  public enum Completion {
+    /** The job succeeded. */
+    SUCCESS,
+    /** The job failed, timed out, was skipped or lost its overlap lock. */
+    FAILURE
+  }
+
+  /**
+   * Reports the end of a scheduled-job instance that tracks completion: {@code POST
+   * /api/scheduled-jobs/instances/{instanceId}/complete} with {@code {status, result?}}. The
+   * platform overwrites an earlier report for the same instance.
+   *
+   * @param instanceId the instance id from the firing
+   * @param status how it ended
+   * @param result a JSON result to store with it, or null for none
+   * @throws PlatformException when the platform refuses the call or cannot be reached
+   * @throws IllegalStateException when the module is disabled
+   */
+  public void completeJobInstance(String instanceId, Completion status, @Nullable JsonNode result) {
+    CompleteInstanceRequest request = new CompleteInstanceRequest().status(status.name());
+    if (result != null) {
+      request.result(result);
+    }
+    try {
+      sdk().scheduledJobs().completeInstance(instanceId, request);
+    } catch (FlowCatalystException e) {
+      throw failed(e);
+    }
+  }
+
+  /**
+   * Appends a log line to a scheduled-job instance: {@code POST
+   * /api/scheduled-jobs/instances/{instanceId}/log}.
+   *
+   * @param instanceId the instance id from the firing
+   * @param level the level
+   * @param message the line
+   * @throws PlatformException when the platform refuses the call or cannot be reached
+   * @throws IllegalStateException when the module is disabled
+   */
+  public void logJobInstance(String instanceId, ScheduledJobFiring.LogLevel level, String message) {
+    WriteInstanceLogRequest request =
+        new WriteInstanceLogRequest().level(level.name()).message(message);
+    try {
+      sdk().scheduledJobs().logForInstance(instanceId, request);
+    } catch (FlowCatalystException e) {
+      throw failed(e);
+    }
+  }
+
+  private static PlatformException failed(FlowCatalystException e) {
+    String message = e.getMessage();
+    return new PlatformException(message == null ? "platform call failed" : message, e);
   }
 
   /** The SDK client, for use inside this module only. */

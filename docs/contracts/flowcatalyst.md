@@ -278,6 +278,58 @@ As built in slice 4 (signature check and the dispatch receiver, 2026-10-09):
   (`V0001__create_dispatch_once.sql`), applied to the default database whenever the database
   module is listed. Handler names `[A-Za-z0-9._:-]{1,200}`. No purge of old rows yet.
 
+As built in slice 5 (the scheduled-job receiver, 2026-10-09):
+
+- **Registration.** `receivers.onScheduledJob(jobCode, (ctx, firing) -> JobResult...)` in `boot`;
+  codes are `[A-Za-z0-9._:-]{1,186}` (so `scheduled-job:{code}` is a valid lock name); a duplicate
+  or malformed code fails start-up. The section 4 example's `Result.of(...)` is
+  `JobResult.of(value)`; also `JobResult.success()` and `JobResult.failure(message)` (a failure
+  without throwing). A `null` result is a failure.
+- **Lock check at start-up.** Any registered job handler requires a `Locks` service with a default
+  instance (start-up fails otherwise, naming the job codes): which firings need the lock is only
+  known from the envelope, so every job counts as possibly needing it.
+- **Validation** (`400 VALIDATION`, nothing runs): one JSON object with unique keys; `jobId` and
+  `instanceId` strings matching `[A-Za-z0-9._:-]{1,128}` (the instance id goes into a platform URL
+  and logs), `jobCode` as above, `firedAt` an RFC 3339 time, `triggerKind` `CRON` or `MANUAL`,
+  `tracksCompletion` a boolean; when present: `concurrent` a boolean (absent means false, so the
+  lock is taken, as the TS runner), `timeoutSeconds` a positive integer, `scheduledFor` an RFC 3339
+  time, `correlationId` a string (used when printable ASCII without spaces, at most 200
+  characters, else generated). The validation is stricter than the TS runner (types and patterns
+  of the optional fields), never looser. Unknown `jobCode`: `404 NOT_FOUND`. Accepted: `202
+  {"ok":true}`; `503 UNAVAILABLE` while starting or stopping.
+- **Context.** Client `Receivers.PLATFORM_CLIENT` (the envelope names no client), application,
+  correlation id as above, execution id = instance id. The firing exposes every envelope field,
+  `fencingToken()` (the overlap lock's, empty for a concurrent job) and `log(level, message)`.
+- **Run.** A virtual thread per firing takes the lock with `LockStore.withLock(key, lease, 0)` from
+  the default lock instance and runs the handler on a second virtual thread bounded by the
+  timeout. New settings: `flowcatalyst.receivers.job-lock-lease` (default `10m`, 1 s to 24 h;
+  refreshed every third) and `flowcatalyst.receivers.completion-retry-delay` (default `1s`, 0 to
+  1 m, doubling). Outcomes, reported only when `tracksCompletion`:
+  - lock held: handler not run, `FAILURE {skipped:true, reason:"lock-held"}` (INFO log);
+  - lock store unavailable: handler not run (no exclusion, no run), `FAILURE {error:"the overlap
+    lock could not be taken; the job did not run"}`;
+  - lock lost while running (refresh `Lost`, or failing until the local deadline): the handler's
+    thread is interrupted, `FAILURE {error:"the overlap lock was lost while the job ran"}`, ERROR log;
+  - timeout: the handler's thread is interrupted and `FAILURE {error:"timed out after 10s"}` is
+    reported at once, but the lock stays held and refreshed until the handler really returns, so
+    a handler that ignores the interrupt never overlaps the next firing;
+  - throw: `FAILURE {error: <exception message, or its class name when blank>}`, the exception
+    logged at ERROR with job code, instance id and correlation id;
+  - shutdown: the module's `shutdown` interrupts running firings (`FAILURE {error:"interrupted: the
+    application is stopping"}`) and waits up to `app.shutdown.drain`;
+  - success: `SUCCESS` with `result` = the value as JSON, omitted when null; over 10 000 characters
+    of JSON it is `{truncated:true, preview:<first 10 000>}`, unwritable (a throwing getter, a
+    cycle) `{unserialisable:true}`. The same cut applies to failure results.
+- **Completion** goes through new `PlatformClient.completeJobInstance(instanceId, Completion,
+  JsonNode)` (SDK `ScheduledJobsResource.completeInstance`); the log hook through
+  `PlatformClient.logJobInstance(instanceId, LogLevel, message)` (`logForInstance`), best effort,
+  lines cut to 10 000 characters. A failed completion is retried 3 times (4 attempts) after
+  1 s, 2 s, 4 s by default, then logged at ERROR. The SDK transport also retries 408, 429, 502,
+  503 and 504 inside each attempt.
+- One `signing-secret` serves both receivers. Scheduled jobs are signed by the application's
+  service account; dispatch jobs by the subscription's or its connection's account (fact sheet
+  2), which may be a different account with a different secret: open question for the owner.
+
 ## 5. Platform work found by the survey (not framework code)
 
 1. **Scoped reads.** `GET /api/events` and `GET /api/dispatch-jobs` scope by client only; the

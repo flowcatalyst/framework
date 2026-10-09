@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
  * Receivers receivers = app.get(Receivers.class);
  * receivers.onDispatch("orders:billing:invoice:created", (ctx, delivery) -> DispatchResult.ack());
  * receivers.onDispatch("orders:billing:*", (ctx, delivery) -> DispatchResult.defer());
+ * receivers.onScheduledJob("nightly-export", (ctx, firing) -> JobResult.of(Map.of("rows", 42)));
  * }</pre>
  *
  * <p>Registration closes when the module's {@code started} hook runs; registering later throws
@@ -35,9 +36,13 @@ public final class Receivers {
 
   private static final Pattern SEGMENT = Pattern.compile("[A-Za-z0-9._-]+");
 
+  /** A job code; at most 186 characters so that {@code scheduled-job:{code}} is a valid lock name. */
+  static final Pattern JOB_CODE = Pattern.compile("[A-Za-z0-9._:-]{1,186}");
+
   private final ReentrantLock lock = new ReentrantLock();
   private final Map<String, DispatchHandler> dispatchExact = new HashMap<>();
   private final Map<String, DispatchHandler> dispatchPrefix = new HashMap<>();
+  private final Map<String, ScheduledJobHandler> jobs = new HashMap<>();
   private boolean sealed;
   private volatile boolean mounted;
   private volatile boolean ready;
@@ -79,6 +84,81 @@ public final class Receivers {
         throw new IllegalArgumentException(
             "a dispatch handler for '" + pattern + "' is already registered");
       }
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Registers the handler of a scheduled job. The platform POSTs the job's firings to
+   * {@code {prefix}/scheduled-jobs}; the job's {@code targetUrl} must point there.
+   *
+   * <p>Unless a firing says {@code concurrent}, the handler runs only while this application holds
+   * the lock {@code scheduled-job:{jobCode}} (service scope) from the default lock instance, so
+   * start-up fails when a job handler is registered and no lock instance is configured.
+   *
+   * @param jobCode the job's code, {@code [A-Za-z0-9._:-]{1,186}}
+   * @param handler the handler
+   * @throws IllegalArgumentException when the code is malformed or already registered
+   * @throws IllegalStateException after start-up
+   */
+  public void onScheduledJob(String jobCode, ScheduledJobHandler handler) {
+    if (!JOB_CODE.matcher(jobCode).matches()) {
+      throw new IllegalArgumentException(
+          "scheduled job code '"
+              + LogSafe.clean(jobCode, 200)
+              + "' is malformed: use [A-Za-z0-9._:-], at most 186 characters");
+    }
+    lock.lock();
+    try {
+      requireOpen();
+      if (jobs.putIfAbsent(jobCode, handler) != null) {
+        throw new IllegalArgumentException(
+            "a handler for scheduled job '" + jobCode + "' is already registered");
+      }
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * The handler of a job.
+   *
+   * @param jobCode the job's code
+   * @return the handler, if any
+   */
+  Optional<ScheduledJobHandler> jobHandler(String jobCode) {
+    lock.lock();
+    try {
+      return Optional.ofNullable(jobs.get(jobCode));
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Whether any scheduled-job handler is registered.
+   *
+   * @return true when at least one is
+   */
+  boolean hasJobHandlers() {
+    lock.lock();
+    try {
+      return !jobs.isEmpty();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * The registered job codes, for the start-up log.
+   *
+   * @return codes, unordered
+   */
+  List<String> jobCodes() {
+    lock.lock();
+    try {
+      return new ArrayList<>(jobs.keySet());
     } finally {
       lock.unlock();
     }

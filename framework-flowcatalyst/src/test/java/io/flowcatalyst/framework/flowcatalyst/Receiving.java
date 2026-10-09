@@ -3,6 +3,7 @@ package io.flowcatalyst.framework.flowcatalyst;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Module;
+import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.http.Routes;
 import io.flowcatalyst.framework.http.TestClient;
 import java.nio.charset.StandardCharsets;
@@ -75,7 +76,13 @@ final class Receiving {
   }
 
   static App start(Path dir, Map<String, String> env, InstantSource clock, Module... modules) {
-    AppBuilder b = App.builder().configDirectory(dir).environment(env).instantSource(clock);
+    return start(dir, env, clock, MonotonicClock.system(), modules);
+  }
+
+  static App start(
+      Path dir, Map<String, String> env, InstantSource clock, MonotonicClock monotonic, Module... modules) {
+    AppBuilder b =
+        App.builder().configDirectory(dir).environment(env).instantSource(clock).monotonicClock(monotonic);
     b.module(routes());
     for (Module m : modules) {
       b.module(m);

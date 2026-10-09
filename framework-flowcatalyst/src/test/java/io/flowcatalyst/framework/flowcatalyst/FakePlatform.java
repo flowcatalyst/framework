@@ -22,10 +22,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * An in-process stand-in for the FlowCatalyst platform, for tests: a client-credentials token
- * endpoint and the application sync endpoints ({@code POST /api/applications/{app}/{resource}/sync}).
+ * endpoint, the application sync endpoints ({@code POST /api/applications/{app}/{resource}/sync})
+ * and the scheduled-job instance callbacks ({@code POST
+ * /api/scheduled-jobs/instances/{id}/complete} and {@code .../log}, both 204).
  *
  * <p>Every request is recorded. A sync call answers with the platform's shape for a success, built
- * from the request body, unless a response was set for that resource with {@link #respond}.
+ * from the request body, unless a response was set for that resource with {@link #respond}. An
+ * instance callback can be made to fail a number of times with {@link #failInstanceCalls}.
  * Tokens are accepted only for {@link #CLIENT_ID} and {@link #CLIENT_SECRET}.
  */
 public final class FakePlatform implements AutoCloseable {
@@ -38,6 +41,8 @@ public final class FakePlatform implements AutoCloseable {
 
   private static final JsonMapper JSON = JsonMapper.builder().build();
   private static final Pattern SYNC = Pattern.compile("/api/applications/([^/]+)/([a-z-]+)/sync");
+  private static final Pattern INSTANCE =
+      Pattern.compile("/api/scheduled-jobs/instances/([^/]+)/(complete|log)");
 
   /**
    * One request the fake received.
@@ -74,10 +79,13 @@ public final class FakePlatform implements AutoCloseable {
 
   private record Canned(int status, String body) {}
 
+  private record Failing(int status, AtomicInteger remaining) {}
+
   private final HttpServer server;
   private final List<Recorded> requests = new CopyOnWriteArrayList<>();
   private final Map<String, Canned> canned = new ConcurrentHashMap<>();
   private final AtomicInteger tokens = new AtomicInteger();
+  private final Map<String, Failing> failing = new ConcurrentHashMap<>();
   private volatile int tokenFailure;
 
   private FakePlatform(HttpServer server) {
@@ -180,6 +188,51 @@ public final class FakePlatform implements AutoCloseable {
     canned.put(resource, new Canned(status, body));
   }
 
+  /**
+   * Makes the next calls to an instance callback fail.
+   *
+   * @param action {@code complete} or {@code log}
+   * @param times how many calls fail before it answers 204 again
+   * @param status the HTTP status of the failures
+   */
+  public void failInstanceCalls(String action, int times, int status) {
+    failing.put(action, new Failing(status, new AtomicInteger(times)));
+  }
+
+  /**
+   * The instance callbacks received so far, in arrival order.
+   *
+   * @param action {@code complete} or {@code log}
+   * @return the requests, including those answered with a failure
+   */
+  public List<Recorded> instanceCalls(String action) {
+    return requests.stream()
+        .filter(
+            r -> {
+              Matcher m = INSTANCE.matcher(r.path());
+              return m.matches() && m.group(2).equals(action);
+            })
+        .toList();
+  }
+
+  /**
+   * Waits until at least {@code count} instance callbacks of a kind have arrived.
+   *
+   * @param action {@code complete} or {@code log}
+   * @param count how many
+   * @param timeoutMillis how long to wait
+   * @return the calls received, possibly fewer when the wait ran out
+   * @throws InterruptedException when interrupted
+   */
+  public List<Recorded> awaitInstanceCalls(String action, int count, long timeoutMillis)
+      throws InterruptedException {
+    long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
+    while (instanceCalls(action).size() < count && System.nanoTime() < deadline) {
+      Thread.sleep(5);
+    }
+    return instanceCalls(action);
+  }
+
   @Override
   public void close() {
     server.stop(0);
@@ -199,6 +252,20 @@ public final class FakePlatform implements AutoCloseable {
       if ("/oauth/token".equals(path)) {
         tokens.incrementAndGet();
         token(ex, body);
+        return;
+      }
+      Matcher instance = INSTANCE.matcher(path);
+      if (instance.matches() && "POST".equals(ex.getRequestMethod())) {
+        if (!headers.getOrDefault("authorization", "").startsWith("Bearer tok-")) {
+          reply(ex, 401, "{\"error\":\"unauthorized\"}");
+          return;
+        }
+        Failing f = failing.get(instance.group(2));
+        if (f != null && f.remaining().getAndDecrement() > 0) {
+          reply(ex, f.status(), "{\"error\":\"failing on purpose\"}");
+          return;
+        }
+        reply(ex, 204, "");
         return;
       }
       Matcher m = SYNC.matcher(path);

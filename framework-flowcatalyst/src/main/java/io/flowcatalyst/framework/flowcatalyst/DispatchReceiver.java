@@ -192,15 +192,6 @@ final class DispatchReceiver implements Handler {
     return values.getFirst();
   }
 
-  /** The envelope's fields were wrong. The message names the field, never its value. */
-  static final class MalformedEnvelope extends Exception {
-    private static final long serialVersionUID = 1L;
-
-    MalformedEnvelope(String message) {
-      super(message, null, false, false);
-    }
-  }
-
   static DispatchDelivery parse(
       String jobId, String type, DispatchDelivery.@Nullable Client client, byte[] body)
       throws MalformedEnvelope {
