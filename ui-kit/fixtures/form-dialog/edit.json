@@ -1,0 +1,25 @@
+{
+  "props": {
+    "id": "pool-form",
+    "title": "Edit Dispatch Pool",
+    "description": "Billing (billing)",
+    "action": "/ui/dispatch-pools/dpl_1/edit",
+    "submitLabel": "Save",
+    "signal": "poolForm",
+    "requireChange": true,
+    "error": "No access to this dispatch pool",
+    "hidden": [
+      {
+        "name": "drawer",
+        "value": "",
+        "attrs": {
+          "data-attr:value": "$selPool"
+        }
+      }
+    ]
+  },
+  "slots": {
+    "default": "<div id=\"pool-form-name-field\"><label for=\"pool-form-name\">Name</label><input id=\"pool-form-name\" name=\"name\" value=\"Billing\"></div>"
+  },
+  "source": "form-dialog.md Structure: an edit form (Submit disabled until a change), a form-level error, a hidden field bound to a signal, not rendered open"
+}

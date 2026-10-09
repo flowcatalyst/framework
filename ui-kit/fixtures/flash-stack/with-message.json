@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "flash-stack"
+  },
+  "slots": {
+    "default": "<div class=\"fc-flash fc-flash-success\" data-init__delay.3s=\"el.remove()\"><span class=\"fc-flash-summary\">Success</span></div>"
+  },
+  "source": "flash-stack.md: a message rendered with the page (post/redirect/get), after the fallback templates"
+}

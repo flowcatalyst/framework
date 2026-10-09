@@ -1,0 +1,12 @@
+{
+  "props": {
+    "id": "conn-client",
+    "name": "client",
+    "value": "acme",
+    "source": "/ui/clients/options",
+    "disabled": true,
+    "invalid": true,
+    "describedBy": "conn-client-err"
+  },
+  "source": "autocomplete.md Props: disabled (no search handler), invalid, a value, no options"
+}

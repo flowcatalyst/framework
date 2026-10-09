@@ -9,6 +9,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Alert dialog](alert-dialog.md) | fc-web themed copy | (b) Datastar attributes opening a native modal `<dialog role="alertdialog">` |
 | [App shell (hand-built navy sidebar + user menu)](app-shell.md) | hand-built | (b) Datastar signal on `<html>` |
 | [Avatar](avatar.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
+| [Autocomplete (server-searched input; client select)](autocomplete.md) | new (Go platform port) | (a) `<input list>` + `<datalist>`; (c) server-refreshed suggestions |
 | [Badge](badge.md) | fc-web themed copy | (a) native |
 | [Breadcrumb](breadcrumb.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
 | [Button](button.md) | fc-web themed copy | (a) native |
@@ -29,6 +30,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Flash banner](flash-banner.md) | hand-built | (a) native |
 | [Flash stack (notification banners)](flash-stack.md) | port of the SPA's NotificationBannerStack + new request-failure fallback | (c) server patches; (b) dismiss and fallback |
 | [Form field (FcFormField)](form-field.md) | hand-built | (a) native |
+| [Form dialog (create/edit form in a modal)](form-dialog.md) | new (Go platform port) | (b) modal, dirty and busy state, discard question; (c) server validation as patches; (a) native post |
 | [Form section (FcFormSection)](form-section.md) | hand-built | (a) native |
 | [Hover card](hover-card.md) | upstream Topcoat UI registry 0.9.0 | (a) CSS only |
 | [Input](input.md) | fc-web themed copy | (a) native |

@@ -35,6 +35,19 @@ A titled block of a drawer or page with optional actions in its header; `danger`
 | Actions | any | - | Slot |
 | Body | `<div class="fc-section-body">` | `container-type: inline-size` | The container the grids' 640px query measures |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/form-section`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `title` | string | - | `h3.fc-section-title` |
+| `description` | string | - | optional |
+| `danger` | boolean | false | `fc-danger-zone` (red title) |
+| `card` | boolean | false | `fc-card` (bordered panel) |
+| `actions` | slot | - | right of the title; nothing is rendered without it |
+| `default` | slot | - | the body (`fc-detail-grid`, `fc-form-grid`, `fc-danger-item` rows) |
+
 ## Accessibility
 
 Use the right heading level for the title (`h3` in a drawer under an `h2`).

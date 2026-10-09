@@ -1,0 +1,7 @@
+{
+  "props": {
+    "label": "Rate Limit",
+    "value": "600 / minute"
+  },
+  "source": "detail-field.md Structure (escaped text value)"
+}

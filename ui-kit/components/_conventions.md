@@ -88,7 +88,9 @@ Rules:
 - Log the real outcome (e.g. "403 permission denied") server-side; the 200 is a transport detail.
 - An error for an action started in a **dialog** goes into the dialog (it covers the page); close the dialog only on success.
 - **Mutations disable network retries**: `@post('/x', {retryMaxCount: 0})`. Datastar retries a request whose connection failed up to 10 times (1s, doubling, up to 30s), which for a POST that reached the server may apply it twice; with `retryMaxCount: 0` a network failure ends at once in `retries-failed` (the offline message, which says the change may not have been saved). GETs keep the default retries.
-- A native form post (mechanism a) follows post/redirect/get: 303 to the result page with a flash (cookie, read once) on success; the form page re-rendered with errors (status 422) on validation failure.
+- A native form post (mechanism a) follows post/redirect/get: 303 to the result page with a flash on success; the form page re-rendered with errors (status 422) on validation failure.
+- **Flash after a redirect: fixed keys only.** The redirect carries a key (a short-lived cookie holding only the key, or `?flash=<key>`), the next page maps it to text through a table on the server and renders it in the flash stack (`flash-stack.md`); unknown keys are ignored. Text from a request is never rendered as a flash.
+- A form that posts through Datastar uses `@post(el.action, {contentType: 'form', retryMaxCount: 0})` on its `submit`: the URL stays in the `action` attribute (escaped like any attribute), not in the expression, and the same form posts natively without Datastar (`form-dialog.md`, `confirm-dialog.md`).
 
 ## Props
 

@@ -66,6 +66,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | Prop | Type | Default | Notes |
 |---|---|---|---|
 | `id` | string | - | the stack's id (the platform uses `flash-stack`); the fallback texts are fixed (above) |
+| `default` | slot | - | messages rendered with the page, after the fallback templates: the flash after a post/redirect/get (below) |
 
 **flash-message**
 
@@ -105,6 +106,8 @@ data: elements <div class="fc-flash fc-flash-success" data-init__delay.3s="el.re
 | `retrying`, `retries-failed` | the network failed (Datastar retries a failed connection up to `retryMaxCount` times, default 10) | offline |
 
 At most one message per fallback kind is shown at a time. Datastar does **not** process the body of a non-200 response (verified in the 1.0.4 bundle), so these messages are the only feedback a non-200 answer can give; handlers therefore answer expected failures with **200 and a patch** (`_conventions.md`, "Answering a (c) request").
+
+**Flash after a redirect (a).** A native form post (no Datastar) answers 303 to the next page; that page renders the message inside the stack (the default slot), so it is announced and auto-dismissed like a patched one. The message is carried by a **fixed key**, never by text from the request: the handler sets a short-lived cookie holding only the key (or a `?flash=<key>` parameter), the next page maps the key to its text through a table in the server, ignores unknown keys and clears the cookie. Nothing a request carries is ever rendered as a message.
 
 ## Notes for a template author
 

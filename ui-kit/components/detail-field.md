@@ -45,6 +45,17 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | `.fc-detail-grid` | 2 columns, 12px/20px gap; 1 column <= 640px |
 | `.fc-dl-grid` | alternative `9rem 1fr` two-column label/value grid |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/detail-field`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `label` | string | - |  |
+| `value` | string | - | escaped text |
+| `span` | boolean | false | `fc-span-2` |
+| `default` | slot | - | markup value (a tag, code, a link), used when `value` is empty; with neither the value is "—" |
+
 ## Accessibility
 
 Pairs are visually grouped; for strong semantics use a `<dl>` (`<dt>` label, `<dd>` value) in a template if the data is a true description list. Empty values render "—".

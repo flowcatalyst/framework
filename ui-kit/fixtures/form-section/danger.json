@@ -1,0 +1,10 @@
+{
+  "props": {
+    "title": "Danger Zone",
+    "danger": true
+  },
+  "slots": {
+    "default": "<div class=\"fc-danger-item\"><div><strong>Delete user</strong><p>This cannot be undone.</p></div><button type=\"button\" class=\"fc-btn fc-btn-danger-outline\">Delete</button></div>"
+  },
+  "source": "gallery/index.html: Form section (hand-built), danger zone (the gallery's empty actions slot is not rendered)"
+}

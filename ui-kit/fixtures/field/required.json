@@ -1,0 +1,11 @@
+{
+  "props": {
+    "label": "Code",
+    "for": "f-code",
+    "required": true
+  },
+  "slots": {
+    "default": "<input id=\"f-code\" name=\"code\" required>"
+  },
+  "source": "field.md Props: required adds the label's marker"
+}

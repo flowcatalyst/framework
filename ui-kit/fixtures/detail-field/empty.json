@@ -1,0 +1,6 @@
+{
+  "props": {
+    "label": "Created"
+  },
+  "source": "gallery/index.html: detail grid, second field (no value: an em dash)"
+}

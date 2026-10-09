@@ -1,0 +1,9 @@
+{
+  "props": {
+    "label": "Type"
+  },
+  "slots": {
+    "default": "<span class=\"fc-tag fc-tag-info\">Anchor</span>"
+  },
+  "source": "gallery/index.html: detail grid, first field"
+}

@@ -63,7 +63,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `message` | string | - |  |
 | `confirmLabel` | string | - |  |
 | `tone` | enum(default\|danger\|warn) | default |  |
-| `hidden` | list<{name, value}> | [] | record id, CSRF token if any |
+| `hidden` | list<{name, value, attrs}> | [] | record id, CSRF token if any; `attrs` on the input (e.g. `data-attr:value="$selPool"`) |
 | `formAttrs` | attrs | - | e.g. `data-on:submit` for `@post` (c) |
 
 ## Accessibility
@@ -77,6 +77,27 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 Open: `data-on:click="document.getElementById('{id}').showModal()"`. Close: Cancel `data-on:click="el.closest('dialog').close()"`; Escape native; mask click `data-on:click="evt.target === el && el.close()"` on the `<dialog>` (the dialog has no padding overlay here, so only a `::backdrop` click, which targets the dialog, matches; `closedby="any"` does the same natively where supported). Replaces fc-web's `commandfor`/`command` and inline `ui.js`.
 
 Submit is a normal POST (a). **(c):** put `data-on:submit="@post('/users/42/reset-2fa', {contentType: 'form'})"` on the form; reply: patch a flash into `#flash-stack`, patch the changed record region, and close the dialog by patching `<dialog id="dlg-confirm" data-init="el.close()">` or by adding `el.closest('dialog').close()` after the action in the same `data-on:submit` expression.
+
+### One dialog for many records (c)
+
+A list whose rows share an action (Suspend, Delete) renders **one** confirm dialog per action, not one per row. The trigger carries the record's URL in a plain attribute and sets the form's action before opening, so no URL enters an expression:
+
+```html
+<button type="button" class="fc-menu-item" data-action="/pools/7/suspend" aria-haspopup="dialog"
+        data-on:click="const d = document.getElementById('pool-suspend'); d.querySelector('form').action = el.dataset.action; d.showModal()">Suspend</button>
+
+<dialog id="pool-suspend" class="fc-dialog w-[28rem] max-w-[calc(100vw-2rem)]" closedby="any" aria-labelledby="pool-suspend-title" data-on:click="evt.target === el && el.close()">
+  <form method="post" action="/pools" data-on:submit="@post(el.action, {contentType: 'form', retryMaxCount: 0}); el.closest('dialog').close()">
+    …
+    <input type="hidden" name="drawer" value="" data-attr:value="$selPool">
+    …
+  </form>
+</dialog>
+```
+
+- The submit handler posts the form to its (current) action with retries off and closes the dialog at once; the outcome is reported by the server's patches: the changed row, a flash message (`flash-stack.md`), an error flash. A confirmation has no fields, so its errors are flash messages, not in-dialog errors (the dialog is already closed and no longer covers the page).
+- A hidden field bound to a page signal (`data-attr:value`) tells the server page state it needs, e.g. which record an open drawer shows, so it can patch that drawer too.
+- The `action` rendered with the dialog is never used (the trigger sets it); give it a harmless value (the list's URL, which accepts no POST).
 
 ## Notes for a template author
 

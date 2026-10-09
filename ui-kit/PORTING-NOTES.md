@@ -62,11 +62,13 @@ Status key: **P** ported (markup and behaviour as the source), **PD** ported wit
 | app_shell (fc-sidebar + user menu) | hand-built | PD | b + a | inline `onclick` class toggle -> signal on `<html>` (`data-class:fc-collapsed`); collapse button gets `aria-expanded`; user trigger `aria-label` |
 | data_table / list page (composition) | composition | PD | b (c) | quick filter and row-to-drawer as the originals; **client-side sort is new** (the originals sorted on the server) |
 | login page styles (`.fc-login*`) | `styles.css` | NP | - | a page, not a component; deliberately not carried over |
-| flash cookie plumbing (`set_flash`/`take_flash`) | `ui/flash.rs` | NP | - | server-side concern (cookie set on redirect, read once); the markup is ported |
+| flash cookie plumbing (`set_flash`/`take_flash`) | `ui/flash.rs` | NP | - | server-side concern (cookie set on redirect, read once); the markup is ported. The rule is now in `_conventions.md`: the cookie holds a fixed key only, mapped to text on the server (the Go platform implements it) |
 | row_actions | new (Go platform port, 2026-10-09) | new | a + b (c) | not in fc-web or Topcoat: inline `.fc-icon-btn` actions + a native `popover` overflow menu (`.fc-row-menu`, `.fc-menu-item`), destructive marking, disabled-with-reason; `row-actions.md` |
-| flash_stack / flash_message | SPA `NotificationBannerStack.vue` | new | c + b | the SPA's banner stack (four kinds, lifetimes 3s/5s/persistent, dismiss), as `.fc-flash*`; plus a **new** fallback for failed Datastar requests (`flash-stack.md`) |
+| flash_stack / flash_message | SPA `NotificationBannerStack.vue` | new | c + b | the SPA's banner stack (four kinds, lifetimes 3s/5s/persistent, dismiss), as `.fc-flash*`; plus a **new** fallback for failed Datastar requests (`flash-stack.md`); messages rendered with the page (slot) for a flash after a redirect, carried by a fixed key |
+| form_dialog | SPA create drawers / inline edit + `useDirtyForm` + discard confirmation | new | b + c (a) | composite of dialog, dirty form, field and the confirm-dialog look: server validation answered as field patches, form-level error region, busy/disabled submit, discard question (`form-dialog.md`) |
+| autocomplete | SPA `AutoComplete` (`ClientSelect`) | new | a + c | `<input list>` + `<datalist>` refreshed by a debounced server search; not a custom listbox (`autocomplete.md`) |
 
-**Counts:** 31 P, 22 PD, 2 NP (the two NP rows are server/page concerns, not components), 2 new. 55 component specs.
+**Counts:** 31 P, 22 PD, 2 NP (the two NP rows are server/page concerns, not components), 4 new. 57 component specs.
 
 Global differences (apply to every component):
 
@@ -149,9 +151,9 @@ Gaps (needed by the platform pilot; none invented silently). Status after Phase 
 2. **Done.** Row actions: `row-actions.md` (inline icons, popover overflow menu, destructive last after a separator, disabled with a reason), fixtures `row-actions/{inline,inline-buttons,menu,disabled}`; the proposed fixture is gone.
 3. **Done.** Table toolbar live updates: the hidden fields, Clear All and the Filters button are one always-present part, `<div id="{formId}-state" class="fc-toolbar-state">` (fixtures `table-toolbar-state/*`); a live answer patches it by id and never the search box or the popover. Live Clear All empties the search and popover fields client-side (by class) and submits, so the server sees an ordinary request. It also fixes a bug the old layout had: the hidden sort fields were never patched, so a search after a live sort click lost the sort.
 4. `app-shell` has no narrow-screen layout (the SPA has a top bar and an off-canvas nav). Open.
-5. Missing controls: multi-select with search, client select/filter, AutoComplete, number input, password strength, secret-reference input, permission-denied modal. Open (the notification banner stack is now `flash-stack.md`).
+5. Missing controls. **Partly done** (Phase 1, dispatch pools CRUD): the create/edit pattern is `form-dialog.md` (server validation as field patches, dirty and busy state, discard question); AutoComplete and the client select are `autocomplete.md` (a datalist the server refreshes); a number input is `input.md` with `type="number"` (section Numbers); `form-section.md` and `detail-field.md` have Props and fixtures; `confirm-dialog.md` has a shared dialog for many records; `drawer.md` has a server-loaded record (`id`, the `drawer-content` part). Still open: multi-select with search, password strength, secret-reference input, permission-denied modal.
 6. Dark mode via a signal flashes light once before Datastar loads (no inline scripts under a strict CSP). Proposal: a theme cookie rendered as the `dark` class by the server. Open.
 7. **Done.** Non-2xx Datastar answers: `_conventions.md`, "Answering a (c) request" (handled failures are 200 + patches because Datastar 1.0.4 drops non-200 bodies; mutations use `retryMaxCount: 0`) and the flash stack's fallback (refused / failed / offline; 401 left to the application).
-8. Flash-cookie plumbing for native post/redirect/get is still NP; action feedback uses the flash stack instead.
+8. **Done.** Flash after a native post/redirect/get: a fixed key in a short-lived cookie, mapped to text on the server, rendered in the flash stack's slot (`_conventions.md`, `flash-stack.md`); the Go platform implements it (`shell.SetFlash`).
 
 The gallery has the new pieces (row actions table, toolbar state, flash messages, the stack with two buttons that trigger the fallback); its screenshots were not retaken.

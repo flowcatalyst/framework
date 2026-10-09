@@ -1,0 +1,15 @@
+{
+  "props": {
+    "id": "pool-drawer",
+    "signal": "selPool",
+    "label": "Dispatch pool",
+    "title": "Billing",
+    "subtitle": "billing"
+  },
+  "slots": {
+    "default": "<p>Body</p>",
+    "extras": "<span class=\"fc-badge\">ACTIVE</span>",
+    "footer": "<button type=\"button\" class=\"fc-btn fc-btn-text\">Close</button>"
+  },
+  "source": "drawer.md, part drawer-content: the frame's children, the server's patch (mode inner, selector #pool-drawer)"
+}

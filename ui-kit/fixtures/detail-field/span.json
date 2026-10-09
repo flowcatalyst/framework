@@ -1,0 +1,8 @@
+{
+  "props": {
+    "label": "Notes",
+    "value": "Spans both columns",
+    "span": true
+  },
+  "source": "gallery/index.html: detail grid, third field"
+}

@@ -1,0 +1,16 @@
+{
+  "props": {
+    "id": "pool-form",
+    "title": "Create Dispatch Pool",
+    "description": "Configure a new pool for dispatch jobs",
+    "width": "wide",
+    "action": "/ui/dispatch-pools/new",
+    "submitLabel": "Create Pool",
+    "signal": "poolForm",
+    "open": true
+  },
+  "slots": {
+    "default": "<section class=\"fc-form-section\"><header class=\"fc-section-header\"><div><h3 class=\"fc-section-title\">Basic Information</h3></div></header><div class=\"fc-section-body\"><div id=\"pool-form-code-field\" role=\"group\" data-slot=\"field\" class=\"group/field flex min-w-0 flex-col gap-2\"><label for=\"pool-form-code\" data-slot=\"field-label\">Code</label><input id=\"pool-form-code\" name=\"code\" required autofocus></div></div></section>"
+  },
+  "source": "form-dialog.md Structure: a server-opened create form (open + data-init showModal), Submit enabled while not busy, no error"
+}

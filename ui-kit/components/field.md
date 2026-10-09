@@ -66,6 +66,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `description` | string | - | field_description after the control |
 | `error` | string | - | field_error (`role="alert"`), rendered only when non-empty |
 | `errorId` | string | {for}-err | the error's id (the control's `aria-describedby` points at it) |
+| `required` | boolean | false | a red `*` after the label text (`<span class="text-destructive" aria-hidden="true">*</span>`); the control carries `required` itself |
 | `class` | string | - |  |
 | `attrs` | attrs | - |  |
 | `default` | slot | - | the control (marked `aria-invalid`/`aria-describedby` by the caller) |

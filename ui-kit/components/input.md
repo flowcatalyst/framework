@@ -49,6 +49,10 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `class` | string | - |  |
 | `attrs` | attrs | - | on the `<input>` |
 
+### Numbers
+
+A number is this input with `type="number"` and its constraints as attributes: `min`, `max`, `step="1"` for whole numbers and `inputmode="numeric"` (passed through `attrs`). No separate component: the native control validates (the browser refuses a submit below `min`), and the server parses the value and answers a field error for anything else ("Enter a whole number."). PrimeVue's `InputNumber` grouping and spinner buttons are not reproduced. Fixture: `fixtures/input/number`.
+
 ## Accessibility
 
 Needs an accessible name: a `<label for>` or `aria-label`. Link an error message with `aria-describedby`. Do not rely on colour for invalid; show the error text.

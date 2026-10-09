@@ -1,0 +1,19 @@
+{
+  "props": {
+    "id": "pool-form-client",
+    "name": "client",
+    "placeholder": "Search for a client (optional)",
+    "source": "/ui/clients/options",
+    "options": [
+      {
+        "value": "acme",
+        "label": "Acme Corp"
+      },
+      {
+        "value": "globex",
+        "label": "Globex"
+      }
+    ]
+  },
+  "source": "autocomplete.md Structure"
+}

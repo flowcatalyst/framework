@@ -1,0 +1,14 @@
+{
+  "props": {
+    "id": "pool-drawer",
+    "signal": "selPool",
+    "label": "Dispatch pool",
+    "title": "Billing",
+    "subtitle": "billing"
+  },
+  "slots": {
+    "default": "<p>Body</p>",
+    "extras": "<span class=\"fc-badge\">ACTIVE</span>"
+  },
+  "source": "drawer.md Props: id on the frame and the focusable title ({id}-title, tabindex -1)"
+}

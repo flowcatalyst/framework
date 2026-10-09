@@ -80,7 +80,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `clearHref` | string | - | renders Clear All (only while a search or filter is active): the list's URL without them (keep the sort) |
 | `clearAttrs` | attrs | - | on Clear All; for a live toolbar: `{"data-on:click__prevent": <Clear filters expression>}` (Behaviour) |
 | `activeFilterCount` | number | 0 | badge in the Filters button when > 0 |
-| `hidden` | list<{name, value}> | [] | hidden inputs (first children of the state part) |
+| `hidden` | list<{name, value, attrs}> | [] | hidden inputs (first children of the state part); `attrs` on the input |
 | `searchAttrs` | attrs | - | on the search input |
 | `formAttrs` | attrs | - | on the form |
 | `filters` | slot | - | popover body; omitted → no Filters button |

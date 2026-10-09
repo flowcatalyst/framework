@@ -70,10 +70,11 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 
 ## Props
 
-Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/drawer`.
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/drawer` and `fixtures/drawer-content` (the part inside the frame: close button, header, body, footer; same props).
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
+| `id` | string | - | on the frame; the server-loaded patch target (`#{id}`), and the title becomes focusable (`h2#{id}-title tabindex="-1"`) |
 | `signal` | string | - | required; selected-record signal, '' = closed |
 | `label` | string | - | `aria-label` |
 | `size` | enum(default\|wide\|two-thirds) | default |  |
@@ -97,6 +98,8 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 **State (b):** one signal holds the selected record id (empty = closed). Rows set it: `data-on:click="$selUser = 'u-42'"`. The frame: `data-show="$selUser !== ''"` (+ `style="display: none"` to avoid a flash). Escape: `data-on:keydown__window="evt.key === 'Escape' && $selUser !== '' && !document.querySelector('dialog[open]:not([data-drawer]), [popover]:popover-open') && ($selUser = '')"`. This replaces fc-web's `ui.js` Escape handler and Topcoat `selected` signal.
 
 **Content (c):** the body is server-rendered per record. Row click: `data-on:click="$selUser = 'u-42'; @get('/users/u-42/drawer')"`; reply `datastar-patch-elements` with `selector #user-drawer-body`, `mode inner`. (Or key the content off the signal: `data-effect="$selUser && @get('/users/' + $selUser + '/drawer')"`.) Edit mode toggles a second signal (`$editing`) with `data-show`; the edit form is a normal form (a) or `@post(..., {contentType: 'form'})` (c) whose reply patches the body and a flash.
+
+**Server-loaded record (c), with an `id`.** The server renders the whole content for a record (title, subtitle, status tags, sections, actions) and patches the frame's **children**: `datastar-patch-elements` with `selector #{id}`, `mode inner`, and the `drawer-content` part as `elements`, then sets the signal (`datastar-patch-signals` `{selUser: 'u-42'}`) and moves focus to `#{id}-title`. Patching the children (not the frame) keeps the frame's `data-show` binding and inline style. A row opens it from a link in its name cell: `<a href="/users/u-42" data-on:click__prevent="@get(el.href)">` (a navigation to that URL renders the list with the drawer open: the signal's initial value is the record id). After an action on the record the server patches the content again, when the drawer shows that record (a hidden form field bound to the signal tells it, `confirm-dialog.md`), or clears the signal when the record was deleted.
 
 ## Notes for a template author
 

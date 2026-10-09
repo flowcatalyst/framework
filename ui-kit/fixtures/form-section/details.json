@@ -1,0 +1,11 @@
+{
+  "props": {
+    "title": "Pool Details",
+    "description": "Read view"
+  },
+  "slots": {
+    "default": "<div class=\"fc-detail-grid\"></div>",
+    "actions": "<button type=\"button\" class=\"fc-btn fc-btn-text-primary\">Edit</button>"
+  },
+  "source": "gallery/index.html: Form section (hand-built), first section"
+}

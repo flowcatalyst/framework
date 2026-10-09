@@ -1,0 +1,10 @@
+{
+  "props": {
+    "title": "Actions",
+    "card": true
+  },
+  "slots": {
+    "default": "<p>Body</p>"
+  },
+  "source": "form-section.md Parts: the fc-card variant"
+}

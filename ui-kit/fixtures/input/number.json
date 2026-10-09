@@ -1,0 +1,15 @@
+{
+  "props": {
+    "id": "f-concurrency",
+    "name": "concurrency",
+    "type": "number",
+    "value": "10",
+    "required": true,
+    "attrs": {
+      "min": "1",
+      "step": "1",
+      "inputmode": "numeric"
+    }
+  },
+  "source": "input.md, Numbers: type number with min/step/inputmode through attrs"
+}

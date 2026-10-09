@@ -1,0 +1,12 @@
+{
+  "props": {
+    "id": "pool-form-client-options",
+    "options": [
+      {
+        "value": "acme",
+        "label": "Acme <Corp>"
+      }
+    ]
+  },
+  "source": "autocomplete.md, part autocomplete-options: the search endpoint's answer (label escaped)"
+}

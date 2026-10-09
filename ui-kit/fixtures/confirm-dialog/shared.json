@@ -1,0 +1,23 @@
+{
+  "props": {
+    "id": "pool-suspend",
+    "action": "/ui/dispatch-pools",
+    "title": "Suspend Pool",
+    "message": "Suspend this dispatch pool? Jobs will not be processed.",
+    "confirmLabel": "Suspend",
+    "tone": "warn",
+    "hidden": [
+      {
+        "name": "drawer",
+        "value": "",
+        "attrs": {
+          "data-attr:value": "$selPool"
+        }
+      }
+    ],
+    "formAttrs": {
+      "data-on:submit": "@post(el.action, {contentType: 'form', retryMaxCount: 0}); el.closest('dialog').close()"
+    }
+  },
+  "source": "confirm-dialog.md, One dialog for many records: the trigger sets the form's action; Datastar submit closes the dialog; a hidden field bound to a signal"
+}
