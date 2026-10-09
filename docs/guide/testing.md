@@ -154,8 +154,11 @@ try (FakePlatform platform = FakePlatform.start()) {
 
 Also: `requests()`, `syncRequests()` (each `Recorded` has `json()` and `isSyncOf(resource)`),
 `tokenRequests()`, `clearRequests()`, `failTokens(status)` (make the token endpoint fail), and
-`respond` to script a sync answer. It does **not** simulate event ingestion, dispatch jobs or the
-outbox processor.
+`respond` to script a sync answer. For scheduled jobs it also records the instance callbacks a job
+makes: `instanceCalls("complete")` and `instanceCalls("log")`, `awaitInstanceCalls(action, count,
+timeoutMillis)` to wait for them, and `failInstanceCalls(action, times, status)` to make the next
+calls fail. It does **not** simulate event ingestion, dispatch jobs or the outbox processor. Testing
+the receivers is shown on the [Receivers](receivers.md#testing-receivers) page.
 
 ## Testing locks
 

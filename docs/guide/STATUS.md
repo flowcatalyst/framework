@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit ac5b1d3 (2026-10-09). `verify.sh` fails if that commit is not an
+Last verified against commit 0bd84d8 (2026-10-09). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -19,7 +19,7 @@ nothing here has been used in production. The plan, with owner rulings, is in
 | M2b | Checked SQL: queries in `.sql` files, generator, Maven plugin with `generate`, `check`, `add-source` | **Built** | [checked SQL](checked-sql.md) |
 | M3 | HTTP: Jetty 12 on virtual threads, routing, middleware, typed validation, error envelope, correlation id, health endpoints, graceful shutdown, Datastar adapter | **Built** | [http](http.md) |
 | M4a | FlowCatalyst module, client side | **Built**, except the generated docs page for the platform's outbox processor. `PlatformClient`, the `flowcatalyst` and `outbox` health checks, definitions, validation, `DefinitionSync` and the `sync` command, `Command` and `launch` in core | [flowcatalyst module](flowcatalyst-module.md) |
-| M4b | Receivers: dispatch-job and scheduled-job endpoints, signature checks, ack / defer / reject, the overlap lock | **Built** (`Receivers`, `DispatchResult`, `DispatchDelivery.once`, `JobResult`) | [receivers](receivers.md) |
+| M4b | Receivers: dispatch-job and scheduled-job endpoints, signature checks, ack / defer / reject, the overlap lock | **Built.** `Receivers`, `DispatchHandler` and `DispatchResult`, `DispatchDelivery.once` with its retention purge, `ScheduledJobHandler`, `JobOptions`, `JobResult` and `ScheduledJobFiring`, per-receiver signing secrets | [receivers](receivers.md) |
 | M4c | Sessions and login: session capability, OIDC relying-party flow, the real `ContextResolver`, login pages | Not started (depends on M-UI) | |
 | M-UI | `framework-ui`: JTE templates for the `ui-kit/` components, view response helper | Not started | |
 | M4d | Admin skeleton under `/admin` with permission gating | Not started | |
@@ -76,4 +76,3 @@ against the code. Known differences at the last verification:
   `framework-locks` and `framework-database`; the code depends on `framework-core` and the SDK only.
 - `contracts/checked-sql.md` section 4 says `check` is bound to `verify` "only when the project
   enables it"; the plugin has no such switch, and the example binds it unconditionally.
-- `implementation-plan.md` still lists M4a as "Not started"; slices 1 and 2 are built (table above).

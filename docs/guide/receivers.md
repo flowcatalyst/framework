@@ -242,7 +242,27 @@ handler, and before the body is read into one.
 ## Testing receivers
 
 `FakePlatform` (the module's test-jar) serves the token endpoint and records the completion and log
-calls a scheduled job makes; `TestClient` (from the HTTP module's test-jar) posts to the routes
-without a socket. The framework's own receiver tests, `DispatchReceiverTest`,
-`ScheduledJobReceiverTest` and `ReceiverSecretsTest`, are the worked examples. See also
-[Testing](testing.md#the-fake-platform).
+calls a scheduled job makes (`instanceCalls`, `awaitInstanceCalls`, `failInstanceCalls`; see
+[Testing](testing.md#the-fake-platform)). `TestClient` (the HTTP module's test-jar) posts to the
+routes without a socket. A signed dispatch delivery, from the framework's `ReceiverSecretsTest`
+(its `sign` helper is the hex HMAC-SHA256 of the timestamp header value followed by the body, keyed
+with the secret):
+
+```java
+client
+    .post("/fc/dispatch")
+    .header("Content-Type", "application/json")
+    .header("X-Dispatch-Job-Id", "dj_1")
+    .header("X-Event-Type", TYPE)
+    .header("X-FlowCatalyst-Signature", sign(secret, TS, DISPATCH_BODY))
+    .header("X-FlowCatalyst-Timestamp", TS)
+    .body(DISPATCH_BODY)
+    .send();
+```
+
+The application is built with the module's settings in its environment (`FLOWCATALYST_BASE_URL`
+pointing at `platform.baseUrl()`, and `FLOWCATALYST_RECEIVERS_SIGNING_SECRET`), an injected
+`InstantSource` so the timestamp is inside the tolerance, and a module that registers handlers in
+`boot`. The framework's own tests, `DispatchReceiverTest`, `ScheduledJobReceiverTest`,
+`ReceiverSecretsTest`, `DispatchOnceTest` and `OncePurgeTest`, are the worked examples (the last two
+need Docker for PostgreSQL).

@@ -94,7 +94,7 @@ secret fails closed, optional bearer gate (`Authorization`) AND-ed. Settings:
 
 | Key | Meaning |
 |---|---|
-| `flowcatalyst.receivers.signing-secret` (secret) | the secret the platform signs with |
+| `flowcatalyst.receivers.signing-secret` (secret) | the shared secret the platform signs with (per-receiver overrides: section 4a, follow-up 1) |
 | `flowcatalyst.receivers.bearer-token` (secret, optional) | when set, `Authorization: Bearer` must match |
 | `flowcatalyst.receivers.require-signature` (boolean, default `true`) | `false` accepts unsigned deliveries; start-up logs a warning |
 
@@ -278,7 +278,7 @@ As built in slice 4 (signature check and the dispatch receiver, 2026-10-09):
   a concurrent repeat waits for the first and then skips (or runs, if the first rolled back).
   Table `fw_dispatch_once (handler, job_id, processed_at)`, migration set `flowcatalyst`
   (`V0001__create_dispatch_once.sql`), applied to the default database whenever the database
-  module is listed. Handler names `[A-Za-z0-9._:-]{1,200}`. No purge of old rows yet.
+  module is listed. Handler names `[A-Za-z0-9._:-]{1,200}`. Old rows are purged (follow-up 2).
 
 As built in slice 5 (the scheduled-job receiver, 2026-10-09):
 
@@ -289,7 +289,8 @@ As built in slice 5 (the scheduled-job receiver, 2026-10-09):
   without throwing). A `null` result is a failure.
 - **Lock check at start-up.** Any registered job handler requires a `Locks` service with a default
   instance (start-up fails otherwise, naming the job codes): which firings need the lock is only
-  known from the envelope, so every job counts as possibly needing it.
+  known from the envelope, so every job counts as possibly needing it. Exception: a handler
+  registered `JobOptions.alwaysConcurrent()` (follow-up 3).
 - **Validation** (`400 VALIDATION`, nothing runs): one JSON object with unique keys; `jobId` and
   `instanceId` strings matching `[A-Za-z0-9._:-]{1,128}` (the instance id goes into a platform URL
   and logs), `jobCode` as above, `firedAt` an RFC 3339 time, `triggerKind` `CRON` or `MANUAL`,
@@ -326,11 +327,51 @@ As built in slice 5 (the scheduled-job receiver, 2026-10-09):
   JsonNode)` (SDK `ScheduledJobsResource.completeInstance`); the log hook through
   `PlatformClient.logJobInstance(instanceId, LogLevel, message)` (`logForInstance`), best effort,
   lines cut to 10 000 characters. A failed completion is retried 3 times (4 attempts) after
-  1 s, 2 s, 4 s by default, then logged at ERROR. The SDK transport also retries 408, 429, 502,
-  503 and 504 inside each attempt.
-- One `signing-secret` serves both receivers. Scheduled jobs are signed by the application's
-  service account; dispatch jobs by the subscription's or its connection's account (fact sheet
-  2), which may be a different account with a different secret: open question for the owner.
+  1 s, 2 s, 4 s by default, then logged at ERROR. (The SDK transport also retries 408, 429, 502,
+  503 and 504 inside each call; follow-up 4 removes that multiplication.)
+- One shared `signing-secret` served both receivers in the first build. Scheduled jobs are signed
+  by the application's service account; dispatch jobs by the subscription's or its connection's
+  account (fact sheet 2), which may be a different account with a different secret. Resolved by
+  follow-up 1.
+
+### Follow-up rulings (2026-10-09, after slice 5)
+
+1. **Per-receiver secrets.** `flowcatalyst.receivers.dispatch.signing-secret` and
+   `flowcatalyst.receivers.scheduled-jobs.signing-secret`, and
+   `flowcatalyst.receivers.dispatch.bearer-token` / `flowcatalyst.receivers.scheduled-jobs.bearer-token`,
+   each optional and each falling back, independently, to the shared `signing-secret` /
+   `bearer-token`; a blank value counts as unset. Start-up validation is per receiver: a receiver
+   with handlers needs a non-blank effective secret while `require-signature` is true, and the
+   `StartupException` problem carries that receiver's own key (not the shared one), so both
+   receivers can be reported at once. A receiver without handlers needs no secret.
+2. **`fw_dispatch_once` retention.** `flowcatalyst.receivers.once-retention` (duration, default
+   `30d`, must be positive) and `flowcatalyst.receivers.once-purge-interval` (default `1h`, must be
+   positive). One module-owned virtual thread purges at start-up and then every interval: rows
+   whose `processed_at` is before `now - retention` (the application's `InstantSource`, not the
+   database clock), in batches of 5 000, at most 200 batches per run. It stops in the module's
+   `shutdown` within `app.shutdown.drain`. Several replicas: when a default lock instance exists a
+   run takes service lock `fw-dispatch-once-purge` without waiting and skips if it is held;
+   without one, the idempotent `DELETE` just runs. The task exists only when the database module
+   is listed and the table exists. Retention must exceed the platform's retry horizon, or a late
+   redelivery runs the work again.
+3. **Lock opt-out.** `Receivers.onScheduledJob(code, handler, JobOptions.alwaysConcurrent())`
+   (`JobOptions.exclusive()` is the default). Such handlers do not count when start-up checks for a
+   lock instance. If a firing for one says `concurrent=false` (or omits it, which means false), the
+   **handler is not run**: the definition asked for exclusion that this registration cannot give,
+   and running it unprotected would silently break that. The firing is logged at ERROR and, when it
+   tracks completion, reported `FAILURE {skipped:true, reason:"not-registered-for-exclusive-run"}`
+   (the shape of `lock-held`). It is refused on every tick until the job is defined with
+   `concurrent` true or the handler is registered exclusive: failing loudly was preferred to a
+   silent run without exclusion.
+4. **Completion retries.** The runner's own retry (3 retries after the first attempt, so 4 calls,
+   delay doubling from `completion-retry-delay`) is the only retry. The SDK's transport retry
+   (`retryAttempts`, default 3 on 408/429/502/503/504) is a builder setting with no per-call
+   switch, so `PlatformClient` keeps a second SDK client built with `retryAttempts(0)` (and its own
+   token cache) for `completeJobInstance` and `logJobInstance`. Tests count exactly 4 completion
+   calls and 1 log call for each of those statuses. The SDK's single token refresh on a `401` is
+   not a retry of this kind and remains.
+5. **Docs.** The guide has a Receivers page (`docs/guide/receivers.md`) documenting all of the
+   above; STATUS rows M4a and M4b are Built.
 
 ## 5. Platform work found by the survey (not framework code)
 
@@ -358,8 +399,10 @@ exact 300 s / 60 s window edges and every refusal code; each receiver response (
 reject, throw, timeout, null, no handler, bad signature, unsigned with `require-signature` on and
 off, bearer gate, malformed headers and envelopes, not ready); overlap lock held / free / lost /
 store down, ten concurrent firings; timeouts; completion body, truncation and retries; the log
-hook; start-up failures. Integration (Testcontainers PostgreSQL, a real platform is not required):
+hook; per-receiver secret fallbacks; the always-concurrent opt-out; exact completion call counts
+against the SDK's retryable statuses; start-up failures. Integration (Testcontainers PostgreSQL, a real platform is not required):
 the `outbox` health check on the real `outbox_messages` migration; `delivery.once` alone,
-concurrently and through the receiver; the lock-gated job end to end on the database lock driver
+concurrently and through the receiver; the retention purge (cutoff edges, batches, lock held,
+shutdown); the lock-gated job end to end on the database lock driver
 with two replicas and a lease taken by another process. (The outbox delivery tests an earlier
 draft listed are the platform's, since the platform delivers.)
