@@ -165,3 +165,12 @@ sections for instance configuration. Values do not change while running in M1.
 `StartupException` lists every config problem found, each with key and source: unparseable
 value, missing required setting, unknown key in an instance section, unknown driver, duplicate
 declaration.
+
+## 5. Commands (added with M4a)
+
+A module may claim a command name in `register` with `app.command(Command)`; `Command` is a name
+and `run(App, List<String> args, PrintStream out)` returning an exit code. `AppBuilder.launch(args)`
+looks at the first argument: a claimed name runs the command after start-up step 3 (services built,
+no `boot`) and closes the application, returning `Launch.Ran(exitCode)`; anything else starts
+normally and returns `Launch.Started(app)`. Two modules claiming one name fail start-up. `start()`
+is unchanged for callers that do not use commands.

@@ -183,6 +183,38 @@ receivers.onScheduledJob("nightly-export", (ctx, firing) -> Result.of(...));
 - A per-instance log hook (`firing.log(level, message)`) posts to
   `POST /api/scheduled-jobs/instances/{id}/log` best-effort.
 
+## 4a. As built in slices 1 and 2 (2026-10-09), with rulings
+
+Where the first two slices (commits `e07493c`, `29771c5`) differ from sections 1 and 2 above, the
+build is right and these notes are the contract:
+
+- Settings are optional in the declaration and validated when `flowcatalyst.enabled` is true: one
+  `StartupException` naming every missing or malformed key. Disabled means no validation and an
+  empty catalog; `PlatformClient` is still provided and every method but `isEnabled()` throws.
+- Definition validation runs at start-up step 3 (settings are unreadable in `register`) and
+  reports one problem per issue naming the contributing module. Rules **stricter than the
+  platform's** (kept, owner may relax): lowercase `[a-z0-9][a-z0-9_-]*` segments; event type,
+  permission and process codes start with the application code; role names carry no `app:`
+  prefix; cron has 6 fields; subscriptions name at least one event type; codes unique across
+  modules.
+- New setting `flowcatalyst.subscription-target-base-url` (the SDK fails a subscription whose
+  target is a path with no base URL).
+- `DRY_RUN` never contacts the platform (neither SDK nor platform has a preview): it validates
+  and reports `WOULD_SYNC` with the codes. The `sync --dry-run` command makes zero requests.
+- Each category is synced by its own SDK call so one failure does not stop the others. Order:
+  roles, event types, connections, dispatch pools, subscriptions, processes, scheduled jobs,
+  docs (pools before subscriptions, unlike the SDK, so a first deploy works). Permissions travel
+  only inside roles; a declared permission no role grants is a WARN.
+- `sync` exit codes: 0 success, 1 a category failed, 2 bad argument or module disabled. The
+  command runs after start-up step 3 and before any `boot`. Core gained `Command`,
+  `AppBuilder.command(Command)` and `AppBuilder.launch(String...)` (`Launch.Started` or
+  `Launch.Ran`).
+- Sync on boot (off by default) runs synchronously in `started` and never stops start-up. The
+  start-up token check runs on a virtual thread in `boot`. The `flowcatalyst` health check uses
+  the SDK's cached token (so it can stay Up briefly after the platform goes down): ruled
+  acceptable, to avoid minting a token per probe.
+- Not exposed yet: per-client sync (`--client`), principals and OpenAPI sync.
+
 ## 5. Platform work found by the survey (not framework code)
 
 1. **Scoped reads.** `GET /api/events` and `GET /api/dispatch-jobs` scope by client only; the
