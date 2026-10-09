@@ -233,15 +233,16 @@ final class ReceiverMount {
         problems.add(missingSecret(FlowCatalystModule.RECEIVERS_JOBS_SIGNING_SECRET, "scheduled-job"));
       }
     }
-    if (jobs && !hasDefaultLockInstance(app)) {
+    if (!receivers.exclusiveJobCodes().isEmpty() && !hasDefaultLockInstance(app)) {
       problems.add(
           Problem.of(
               FlowCatalystModule.ID,
               null,
               "scheduled-job handlers "
-                  + receivers.jobCodes().stream().sorted().toList()
+                  + receivers.exclusiveJobCodes().stream().sorted().toList()
                   + " need the overlap lock, but no lock instance is configured: list the locks"
-                  + " module with a default instance (driver database or redis across replicas)"));
+                  + " module with a default instance (driver database or redis across replicas),"
+                  + " or register them with JobOptions.alwaysConcurrent()"));
     }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);

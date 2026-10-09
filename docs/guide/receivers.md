@@ -1,4 +1,4 @@
-<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobResult, ScheduledJobFiring, FlowCatalystModule, PlatformClient, Context, Locks, LockStore -->
+<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, FlowCatalystModule, PlatformClient, Context, Locks, LockStore -->
 # Receivers: dispatch jobs and scheduled jobs
 
 The platform delivers work **to** your application over HTTP: dispatch jobs (an event, fanned out by
@@ -166,8 +166,33 @@ A `ScheduledJobHandler` receives the `Context` and a `ScheduledJobFiring` (`jobI
 means false), the run takes the lock `scheduled-job:{jobCode}` (service scope) from the **default**
 lock instance, with a lease of `job-lock-lease` refreshed while the handler runs. Pass
 `firing.fencingToken()` on to what you write if a stale run must be rejected there. So start-up
-fails when a job handler is registered and no lock instance is configured: list the locks module
-with a default instance (driver `database` or `redis` across replicas; `memory` only for one process).
+fails when such a job handler is registered and no lock instance is configured: list the locks
+module with a default instance (driver `database` or `redis` across replicas; `memory` only for one
+process).
+
+### Opting out of the lock: `JobOptions.alwaysConcurrent()`
+
+A handler that is safe to run in overlap with itself (or that protects itself, say with the fencing
+token or a database constraint) can be registered without the lock:
+
+```java
+r.onScheduledJob(
+    CODE,
+    (ctx, f) -> {
+      runs.incrementAndGet();
+      return JobResult.success();
+    },
+    JobOptions.alwaysConcurrent());
+```
+
+Such handlers do not count when start-up checks for a lock instance, so an application with only
+these needs no locks module; the start-up error for the others names just the exclusive jobs. The
+job must be **defined on the platform with `concurrent` true**. If a firing arrives with
+`concurrent` false (or absent, which means false), the handler is **not run**: the application was
+asked for an exclusive run and has no lock to give one, and running it unprotected would silently
+break what the definition says. The firing is logged at ERROR, and when it tracks completion it is
+reported `FAILURE {skipped:true, reason:"not-registered-for-exclusive-run"}`, so the mismatch shows
+on every tick until the definition or the registration is fixed.
 
 When the job `tracksCompletion`, the outcome is reported to the platform; when it does not, nothing
 is reported. Outcomes:
@@ -176,6 +201,7 @@ is reported. Outcomes:
 |---|---|
 | handler returned a result | `SUCCESS` with the value as JSON (omitted when null; over 10 000 characters it becomes `{truncated:true, preview}`) |
 | `JobResult.failure(m)` or a throw | `FAILURE {error: m}` (the exception message, or its class name when blank) |
+| always-concurrent handler, firing says `concurrent=false` | handler not run; `FAILURE {skipped:true, reason:"not-registered-for-exclusive-run"}` |
 | lock held by another run | handler not run; `FAILURE {skipped:true, reason:"lock-held"}` |
 | lock store unavailable | handler not run (no exclusion means no run); `FAILURE` |
 | lock lost while running | handler interrupted; `FAILURE` |

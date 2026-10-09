@@ -131,6 +131,14 @@ class ScheduledJobReceiverTest {
         .send();
   }
 
+  private void awaitLog(String text) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (!logs.text().contains(text) && System.nanoTime() < deadline) {
+      Thread.sleep(5);
+    }
+    assertThat(logs.text()).contains(text);
+  }
+
   private JsonNode completion(int index) throws InterruptedException {
     List<FakePlatform.Recorded> calls = platform.awaitInstanceCalls("complete", index + 1, 10_000);
     assertThat(calls).hasSizeGreaterThan(index);
@@ -760,6 +768,108 @@ class ScheduledJobReceiverTest {
     public boolean release(String key, String ownerToken, long fencingToken) {
       throw new LockStoreUnavailableException("down", new java.io.IOException("connection refused"));
     }
+  }
+
+  // ---- always-concurrent jobs (no lock instance needed) --------------------------------------
+
+  @Test
+  void anAlwaysConcurrentJobNeedsNoLockInstanceAndRunsWithoutOne() throws Exception {
+    Files.delete(dir.resolve("application.yaml"));
+    AtomicInteger runs = new AtomicInteger();
+    TestClient client =
+        start(
+            r ->
+                r.onScheduledJob(
+                    CODE,
+                    (ctx, f) -> {
+                      runs.incrementAndGet();
+                      return JobResult.success();
+                    },
+                    JobOptions.alwaysConcurrent()));
+    assertThat(fire(client, envelope("i1", true, Map.of("concurrent", true))).status()).isEqualTo(202);
+    assertThat(completion(0).get("status").asString()).isEqualTo("SUCCESS");
+    assertThat(runs).hasValue(1);
+  }
+
+  @Test
+  void anAlwaysConcurrentJobTakesNoLockEvenWhenOneIsConfigured() throws Exception {
+    AtomicReference<ScheduledJobFiring> seen = new AtomicReference<>();
+    TestClient client =
+        start(
+            r ->
+                r.onScheduledJob(
+                    CODE,
+                    (ctx, f) -> {
+                      seen.set(f);
+                      return JobResult.success();
+                    },
+                    JobOptions.alwaysConcurrent()));
+    lockStore().tryAcquire(KEY, Duration.ofMinutes(1));
+    fire(client, envelope("i1", true, Map.of("concurrent", true)));
+    assertThat(completion(0).get("status").asString()).isEqualTo("SUCCESS");
+    assertThat(seen.get().fencingToken()).isEmpty();
+  }
+
+  @Test
+  void anExclusiveFiringForAnAlwaysConcurrentJobIsRefusedAndReported() throws Exception {
+    AtomicInteger runs = new AtomicInteger();
+    TestClient client =
+        start(
+            r ->
+                r.onScheduledJob(
+                    CODE,
+                    (ctx, f) -> {
+                      runs.incrementAndGet();
+                      return JobResult.success();
+                    },
+                    JobOptions.alwaysConcurrent()));
+    // concurrent=false, and an absent concurrent means false too
+    assertThat(fire(client, envelope("i1")).status()).isEqualTo(202);
+    JsonNode c = completionOf("i1");
+    assertThat(c.get("status").asString()).isEqualTo("FAILURE");
+    assertThat(c.get("result").toString())
+        .isEqualTo("{\"skipped\":true,\"reason\":\"not-registered-for-exclusive-run\"}");
+    assertThat(runs).hasValue(0);
+    awaitLog("instance i1 was not run");
+    assertThat(logs.text()).contains("always-concurrent");
+  }
+
+  @Test
+  void anExclusiveFiringForAnUntrackedAlwaysConcurrentJobIsRefusedWithoutAReport() throws Exception {
+    AtomicInteger runs = new AtomicInteger();
+    TestClient client =
+        start(
+            r ->
+                r.onScheduledJob(
+                    CODE,
+                    (ctx, f) -> {
+                      runs.incrementAndGet();
+                      return JobResult.success();
+                    },
+                    JobOptions.alwaysConcurrent()));
+    assertThat(fire(client, envelope("i1", false, Map.of())).status()).isEqualTo(202);
+    awaitLog("instance i1 was not run");
+    assertThat(runs).hasValue(0);
+    assertThat(platform.awaitInstanceCalls("complete", 1, 300)).isEmpty();
+  }
+
+  @Test
+  void onlyExclusiveJobsNeedTheLockAtStartUp() throws IOException {
+    Files.delete(dir.resolve("application.yaml"));
+    Throwable t =
+        catchThrowable(
+            () ->
+                start(
+                    r -> {
+                      r.onScheduledJob("free", (ctx, f) -> JobResult.success(), JobOptions.alwaysConcurrent());
+                      r.onScheduledJob("guarded", (ctx, f) -> JobResult.success());
+                    }));
+    assertThat(t)
+        .isInstanceOf(StartupException.class)
+        .hasMessageContaining("[guarded]")
+        .hasMessageNotContaining("free")
+        .hasMessageContaining("JobOptions.alwaysConcurrent()");
+    app = null;
   }
 
   // ---- start-up and shutdown ---------------------------------------------------------------

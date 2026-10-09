@@ -63,7 +63,7 @@ final class ScheduledJobReceiver implements Handler {
     } catch (MalformedEnvelope e) {
       return HttpErrors.validation("the scheduled-job envelope is malformed: " + e.getMessage());
     }
-    Optional<ScheduledJobHandler> handler = receivers.jobHandler(firing.jobCode());
+    Optional<Receivers.JobRegistration> handler = receivers.jobHandler(firing.jobCode());
     if (handler.isEmpty()) {
       LOG.warn(
           "flowcatalyst: no handler for scheduled job {} (instance {})",

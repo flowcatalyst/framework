@@ -42,7 +42,7 @@ public final class Receivers {
   private final ReentrantLock lock = new ReentrantLock();
   private final Map<String, DispatchHandler> dispatchExact = new HashMap<>();
   private final Map<String, DispatchHandler> dispatchPrefix = new HashMap<>();
-  private final Map<String, ScheduledJobHandler> jobs = new HashMap<>();
+  private final Map<String, JobRegistration> jobs = new HashMap<>();
   private boolean sealed;
   private volatile boolean mounted;
   private volatile boolean ready;
@@ -95,7 +95,9 @@ public final class Receivers {
    *
    * <p>Unless a firing says {@code concurrent}, the handler runs only while this application holds
    * the lock {@code scheduled-job:{jobCode}} (service scope) from the default lock instance, so
-   * start-up fails when a job handler is registered and no lock instance is configured.
+   * start-up fails when such a job handler is registered and no lock instance is configured. Use
+   * {@link #onScheduledJob(String, ScheduledJobHandler, JobOptions)} with {@link
+   * JobOptions#alwaysConcurrent()} to opt out.
    *
    * @param jobCode the job's code, {@code [A-Za-z0-9._:-]{1,186}}
    * @param handler the handler
@@ -103,6 +105,21 @@ public final class Receivers {
    * @throws IllegalStateException after start-up
    */
   public void onScheduledJob(String jobCode, ScheduledJobHandler handler) {
+    onScheduledJob(jobCode, handler, JobOptions.exclusive());
+  }
+
+  /**
+   * Registers the handler of a scheduled job with options. With {@link JobOptions#alwaysConcurrent()}
+   * the handler never takes the overlap lock, so it does not need a lock instance; a firing that
+   * asks for exclusion ({@code concurrent=false}) is then not run.
+   *
+   * @param jobCode the job's code, {@code [A-Za-z0-9._:-]{1,186}}
+   * @param handler the handler
+   * @param options how the handler runs
+   * @throws IllegalArgumentException when the code is malformed or already registered
+   * @throws IllegalStateException after start-up
+   */
+  public void onScheduledJob(String jobCode, ScheduledJobHandler handler, JobOptions options) {
     if (!JOB_CODE.matcher(jobCode).matches()) {
       throw new IllegalArgumentException(
           "scheduled job code '"
@@ -112,7 +129,7 @@ public final class Receivers {
     lock.lock();
     try {
       requireOpen();
-      if (jobs.putIfAbsent(jobCode, handler) != null) {
+      if (jobs.putIfAbsent(jobCode, new JobRegistration(handler, options)) != null) {
         throw new IllegalArgumentException(
             "a handler for scheduled job '" + jobCode + "' is already registered");
       }
@@ -122,12 +139,20 @@ public final class Receivers {
   }
 
   /**
-   * The handler of a job.
+   * A registered scheduled job.
+   *
+   * @param handler the handler
+   * @param options how it runs
+   */
+  record JobRegistration(ScheduledJobHandler handler, JobOptions options) {}
+
+  /**
+   * The registration of a job.
    *
    * @param jobCode the job's code
    * @return the handler, if any
    */
-  Optional<ScheduledJobHandler> jobHandler(String jobCode) {
+  Optional<JobRegistration> jobHandler(String jobCode) {
     lock.lock();
     try {
       return Optional.ofNullable(jobs.get(jobCode));
@@ -145,6 +170,23 @@ public final class Receivers {
     lock.lock();
     try {
       return !jobs.isEmpty();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * The codes of the jobs that may need the overlap lock (those not registered always-concurrent).
+   *
+   * @return codes, unordered
+   */
+  List<String> exclusiveJobCodes() {
+    lock.lock();
+    try {
+      return jobs.entrySet().stream()
+          .filter(e -> !e.getValue().options().concurrentOnly())
+          .map(Map.Entry::getKey)
+          .toList();
     } finally {
       lock.unlock();
     }

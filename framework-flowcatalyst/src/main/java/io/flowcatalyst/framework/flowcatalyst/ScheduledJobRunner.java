@@ -38,7 +38,10 @@ import tools.jackson.databind.node.ObjectNode;
  *   <li>timeout: the handler's thread is interrupted and a tracked job is completed {@code FAILURE}
  *       at once, but the lock is held (and refreshed) until the handler really stops, so a run
  *       that ignores the interrupt never overlaps the next one;
- *   <li>lock store unavailable: the handler does not run (no exclusion means no run).
+ *   <li>lock store unavailable: the handler does not run (no exclusion means no run);
+ *   <li>registered {@link JobOptions#alwaysConcurrent()} but the firing is not {@code concurrent}:
+ *       the handler does not run, and a tracked job is completed {@code FAILURE {skipped: true,
+ *       reason: "not-registered-for-exclusive-run"}}.
  * </ul>
  *
  * <p>The completion call is retried {@value #COMPLETION_RETRIES} times, the delay doubling from
@@ -83,7 +86,7 @@ final class ScheduledJobRunner {
    *
    * @return false when the application is shutting down and nothing was started
    */
-  boolean start(ScheduledJobFiring firing, ScheduledJobHandler handler) {
+  boolean start(ScheduledJobFiring firing, Receivers.JobRegistration registration) {
     if (stopping) {
       return false;
     }
@@ -93,7 +96,7 @@ final class ScheduledJobRunner {
             .unstarted(
                 () -> {
                   try {
-                    run(firing, handler);
+                    run(firing, registration);
                   } catch (RuntimeException | Error e) {
                     LOG.error(
                         "flowcatalyst: scheduled job {} instance {} ended unexpectedly",
@@ -146,7 +149,8 @@ final class ScheduledJobRunner {
 
   // ---- one firing --------------------------------------------------------------------------
 
-  private void run(ScheduledJobFiring firing, ScheduledJobHandler handler) {
+  private void run(ScheduledJobFiring firing, Receivers.JobRegistration registration) {
+    ScheduledJobHandler handler = registration.handler();
     Context ctx =
         new Context(
             Receivers.PLATFORM_CLIENT,
@@ -159,6 +163,19 @@ final class ScheduledJobRunner {
     Report report = new Report(firing);
     if (firing.concurrent()) {
       report.complete(invoke(handler, ctx, firing, timeout, report));
+      return;
+    }
+    if (registration.options().concurrentOnly()) {
+      // The handler declared it never takes the overlap lock, but this firing asks for exclusion,
+      // which only the lock could give. Refuse rather than run it unprotected; the job's
+      // definition on the platform should say concurrent=true.
+      LOG.error(
+          "flowcatalyst: scheduled job {} instance {} was not run: it is registered always-concurrent"
+              + " but the platform asked for an exclusive run (concurrent=false); define the job with"
+              + " concurrent=true or register the handler without JobOptions.alwaysConcurrent()",
+          firing.jobCode(),
+          firing.instanceId());
+      report.complete(Outcome.refused());
       return;
     }
     Locks registry = locks;
@@ -310,6 +327,13 @@ final class ScheduledJobRunner {
       ObjectNode result = Envelopes.JSON.createObjectNode();
       result.put("skipped", true);
       result.put("reason", "lock-held");
+      return new Outcome(PlatformClient.Completion.FAILURE, result, false);
+    }
+
+    static Outcome refused() {
+      ObjectNode result = Envelopes.JSON.createObjectNode();
+      result.put("skipped", true);
+      result.put("reason", "not-registered-for-exclusive-run");
       return new Outcome(PlatformClient.Completion.FAILURE, result, false);
     }
 
