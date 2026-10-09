@@ -905,15 +905,20 @@
     outline: 2px solid var(--primary);
     outline-offset: -2px;
   }
-  .fc-menu-item[aria-disabled="true"] {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
+  /* Disabled: muted text (not faded, so the reason stays readable), a
+     faded icon (red for a destructive item), no hover. */
+  .fc-menu-item[aria-disabled="true"],
+  .fc-menu-item.danger[aria-disabled="true"],
   .fc-menu-item[aria-disabled="true"]:hover {
     background: transparent;
-    color: var(--fc-text);
+    color: var(--muted-foreground);
+    cursor: not-allowed;
   }
+  .fc-menu-item[aria-disabled="true"] > svg { opacity: 0.6; }
+  .fc-menu-item.danger[aria-disabled="true"] > svg { color: var(--destructive); }
   .fc-menu-item > svg { flex-shrink: 0; }
+  .fc-menu-item:has(.fc-menu-hint) { align-items: flex-start; }
+  .fc-menu-item:has(.fc-menu-hint) > svg { margin-top: 0.15em; }
   .fc-menu-hint {
     display: block;
     margin-top: 2px;
@@ -1145,6 +1150,7 @@
   .dark .fc-filter-popover { background: var(--popover); color: var(--popover-foreground); }
   .dark .fc-row-menu { background: var(--popover); color: var(--popover-foreground); }
   .dark .fc-menu-item.danger { color: #f87171; }
+  .dark .fc-menu-item.danger[aria-disabled="true"] { color: var(--muted-foreground); }
   .dark .fc-icon-btn-danger:hover { background: rgb(220 38 38 / 0.18); color: #fca5a5; }
   .dark .fc-flash { border-bottom-color: rgb(255 255 255 / 0.06); }
   .dark .fc-flash-success { background: rgb(16 185 129 / 0.16); color: #6ee7b7; }
