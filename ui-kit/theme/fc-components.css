@@ -183,6 +183,20 @@
     background: var(--fc-hover);
     color: var(--fc-text-strong);
   }
+  /* NEW (row-actions.md): a destructive icon action, and a disabled one
+     that stays focusable (aria-disabled) so its reason can be read. */
+  .fc-icon-btn-danger:hover {
+    background: rgb(220 38 38 / 0.08);
+    color: var(--destructive);
+  }
+  .fc-icon-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .fc-icon-btn[aria-disabled="true"]:hover {
+    background: transparent;
+    color: var(--muted-foreground);
+  }
 
   /* ----------------------------------------------------------------- tags */
   .fc-tag {
@@ -345,6 +359,18 @@
   .fc-toolbar-search {
     width: 260px;
     max-width: 100%;
+  }
+  /* NEW (table-toolbar.md): the toolbar's server-rendered state (hidden
+     fields, Clear All, the Filters button) in one patch target. Hidden
+     when it holds nothing visible, so it adds no gap. */
+  .fc-toolbar-state {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .fc-toolbar-state:not(:has(> :not(input[type="hidden"]))) {
+    display: none;
   }
   .fc-badge {
     display: inline-flex;
@@ -537,6 +563,72 @@
   }
   .fc-banner-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
   .fc-banner-error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+
+  /* NEW (flash-stack.md): the notification banner stack, ported from the
+     SPA's NotificationBannerStack.vue (geometry and light colours as there).
+     Sticky at the top of the content; banners are appended by server
+     patches or by the stack's fallback for failed Datastar requests. */
+  .fc-flash-stack {
+    position: sticky;
+    top: 0;
+    z-index: 45;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    pointer-events: none;
+  }
+  .fc-flash {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 16px 10px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    border-bottom: 1px solid rgb(15 23 42 / 0.08);
+    border-left: 4px solid transparent;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  }
+  .fc-flash-success { background: #ecfdf5; color: #065f46; border-left-color: #10b981; }
+  .fc-flash-info { background: #eff6ff; color: #1e3a8a; border-left-color: #3b82f6; }
+  .fc-flash-warn { background: #fffbeb; color: #78350f; border-left-color: #f59e0b; }
+  .fc-flash-error { background: #fef2f2; color: #991b1b; border-left-color: #ef4444; }
+  .fc-flash-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .fc-flash-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+  }
+  .fc-flash-summary { font-weight: 600; }
+  .fc-flash-detail {
+    opacity: 0.92;
+    word-break: break-word;
+  }
+  .fc-flash-dismiss {
+    flex-shrink: 0;
+    display: inline-flex;
+    padding: 4px 6px;
+    margin: -2px -4px 0 0;
+    border-radius: 4px;
+    color: currentColor;
+    opacity: 0.55;
+    line-height: 1;
+    cursor: pointer;
+    transition: opacity 0.15s, background-color 0.15s;
+  }
+  .fc-flash-dismiss:hover,
+  .fc-flash-dismiss:focus-visible {
+    opacity: 1;
+    background: rgb(15 23 42 / 0.06);
+  }
 
   /* ------------------------------------------------------------ sidebar */
   .fc-sidebar {
@@ -773,7 +865,7 @@
     padding: 10px 12px;
     border-radius: 6px;
     font-size: 14px;
-    color: #475569;
+    color: var(--fc-text);
     text-align: left;
     text-decoration: none;
     cursor: pointer;
@@ -788,6 +880,50 @@
   .fc-menu-item.danger:hover {
     background: #fef2f2;
     color: #b91c1c;
+  }
+
+  /* NEW (row-actions.md): a row's overflow menu, a native popover placed
+     under its trigger like the toolbar's filter popover. Items are the
+     user menu's .fc-menu-item; disabled items stay focusable and show
+     their reason (.fc-menu-hint). */
+  .fc-row-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    min-width: 200px;
+    max-width: min(320px, calc(100vw - 32px));
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--fc-surface);
+    box-shadow: 0 10px 30px rgb(15 23 42 / 0.15);
+    color: var(--fc-text-strong);
+    text-align: left;
+    white-space: normal;
+  }
+  .fc-menu-item:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
+  .fc-menu-item[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .fc-menu-item[aria-disabled="true"]:hover {
+    background: transparent;
+    color: var(--fc-text);
+  }
+  .fc-menu-item > svg { flex-shrink: 0; }
+  .fc-menu-hint {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--muted-foreground);
+  }
+  .fc-menu-separator {
+    height: 1px;
+    margin: 4px 0;
+    background: var(--border);
   }
 
   /* ---------------------------------------------------- drawer & dialog */
@@ -1007,6 +1143,16 @@
   .dark .fc-menu-item:hover { background: var(--fc-hover); color: var(--fc-text-strong); }
   .dark .fc-menu-item.danger:hover { background: rgb(220 38 38 / 0.18); color: #fca5a5; }
   .dark .fc-filter-popover { background: var(--popover); color: var(--popover-foreground); }
+  .dark .fc-row-menu { background: var(--popover); color: var(--popover-foreground); }
+  .dark .fc-menu-item.danger { color: #f87171; }
+  .dark .fc-icon-btn-danger:hover { background: rgb(220 38 38 / 0.18); color: #fca5a5; }
+  .dark .fc-flash { border-bottom-color: rgb(255 255 255 / 0.06); }
+  .dark .fc-flash-success { background: rgb(16 185 129 / 0.16); color: #6ee7b7; }
+  .dark .fc-flash-info { background: rgb(59 130 246 / 0.16); color: #93c5fd; }
+  .dark .fc-flash-warn { background: rgb(245 158 11 / 0.16); color: #fcd34d; }
+  .dark .fc-flash-error { background: rgb(239 68 68 / 0.16); color: #fca5a5; }
+  .dark .fc-flash-dismiss:hover,
+  .dark .fc-flash-dismiss:focus-visible { background: rgb(255 255 255 / 0.08); }
   .dark .fc-drawer { background: var(--card); }
   .dark .fc-dialog { background: var(--card); color: var(--card-foreground); }
   .dark .fc-drawer-title,

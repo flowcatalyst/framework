@@ -1,0 +1,9 @@
+{
+  "props": {
+    "kind": "success",
+    "summary": "Secret rotated.",
+    "detail": "Copy it now; it is shown once.",
+    "persistent": true
+  },
+  "source": "gallery/index.html: Flash stack card, the 'success-persistent' banner"
+}

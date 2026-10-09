@@ -29,7 +29,7 @@ How a FlowCatalyst list page is assembled, with the client-only behaviours (quic
     
     <button type="submit" class="fc-icon-btn" title="Refresh" aria-label="Refresh"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-refresh-cw"/></svg></button>
     
-    <button type="button" class="fc-btn fc-btn-primary-outline" popovertarget="users-list-filters"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-funnel"/></svg> Filters </button>
+    <div id="users-list-state" class="fc-toolbar-state"><button type="button" class="fc-btn fc-btn-primary-outline" popovertarget="users-list-filters"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-funnel"/></svg> Filters </button></div>
     <div id="users-list-filters" popover class="fc-filter-popover" data-on:toggle__capture="evt.newState === 'open' && (el.style.top = (el.previousElementSibling.getBoundingClientRect().bottom + 6) + 'px'); evt.newState === 'open' && (el.style.left = Math.max(16, el.previousElementSibling.getBoundingClientRect().right - el.offsetWidth) + 'px')">
       <div class="fc-filter-popover-body">
 <div class="fc-form-field">
@@ -117,7 +117,7 @@ How a FlowCatalyst list page is assembled, with the client-only behaviours (quic
 
 ## Props
 
-Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/data-table`, `fixtures/sortable-header` and `fixtures/row-actions`.
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/data-table` and `fixtures/sortable-header` (row actions: `row-actions.md`, `fixtures/row-actions`).
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
@@ -127,7 +127,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `empty` | empty-state props | - | when set, one empty row replaces the rows |
 | `default` | slot | - | the rows |
 
-The table part of the list page: dense, caps header (static row), striped body. **sortable header**: `label`, `href`, `direction` (""\|asc\|desc), `class`, `linkAttrs` (e.g. the `@get` enhancement). **row actions** (PROPOSED by the Go port, not yet a spec part): `actions` list<{icon, label, href, attrs}>: a right-aligned `<td class="... w-px text-right">` of `.fc-icon-btn` links/buttons.
+The table part of the list page: dense, caps header (static row), striped body. **sortable header**: `label`, `href`, `direction` (""\|asc\|desc), `class`, `linkAttrs` (e.g. the `@get` enhancement). **row actions**: the trailing cell, specified in `row-actions.md` (inline icon buttons + overflow menu).
 
 ## Accessibility
 
@@ -145,8 +145,10 @@ This is JavaScript in an attribute: acceptable for one table, not a pattern to m
 
 | Interaction | Datastar attribute | Server reply (SSE) |
 |---|---|---|
-| search | `data-on:input__debounce.300ms="@get('/users')"` with `data-bind:q` | `datastar-patch-elements`, `selector #users-rows`, `mode inner`; also patch the paginator |
-| sort | `data-on:click__prevent="@get('/users?sort=name&dir=desc')"` on the heading link (real `href` kept for no-JS) | patch `#users-rows` and the `<thead>` (to move `aria-sort`/icons) |
+| search, filters | the toolbar form's `@get('/users', {contentType: 'form'})` (`table-toolbar.md`, Live) | patch `#users-rows` (or the table), the paginator, the toolbar state `#users-list-state`; replace the URL |
+| sort | `data-on:click__prevent="@get(el.href)"` on the heading link (real `href` kept for no-JS) | patch the table (to move `aria-sort`/icons) and `#users-list-state` (its hidden sort fields) |
+| Clear All | `table-toolbar.md`, Live Clear All | as search |
+| row action | `row-actions.md` | the changed row by its `id`, a flash message (`flash-stack.md`) |
 | page / rows | link or select as in `paginator.md` | patch `#users-rows` and the paginator |
 | open drawer | `data-on:click="$selUser = 'u-42'; @get('/users/u-42/drawer')"` | patch `#user-drawer-body` |
 

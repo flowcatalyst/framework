@@ -4,7 +4,7 @@ A language-neutral port of the FlowCatalyst server-rendered UI components (the T
 
 - **Datastar:** 1.0.4 (stable, released 2026-09-21). Pinned in `gallery/*.html` as `https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.4/bundles/datastar.js`. All attribute names/separators in the specs are that release's (`data-on:click`, `data-attr:aria-current`, `data-signals:my-signal`, SSE events `datastar-patch-elements` / `datastar-patch-signals`).
 - **Tailwind CSS:** 4.3.2 standalone CLI (the same version fc-web builds with); downloaded to `.bin/` by `build.sh`.
-- **Components:** 53 specs (31 Topcoat UI components + 22 hand-built/composite), see `components/README.md`.
+- **Components:** 55 specs (31 Topcoat UI components + 24 hand-built/composite/new), see `components/README.md`.
 
 ## Layout
 
@@ -16,7 +16,7 @@ A language-neutral port of the FlowCatalyst server-rendered UI components (the T
 | `theme/kit.css` | Tailwind entry file (imports the two above, scans `gallery/` and `components/`) |
 | `build.sh` | Builds `dist/kit.css` with the Tailwind standalone CLI |
 | `dist/kit.css` | Build output (gitignored) |
-| `icons/` | Lucide sprite (38 icons) and its licence |
+| `icons/` | Lucide sprite (86 icons), its licence, the icon list and `build-sprite.sh` (rebuilds the sprite from the pinned lucide-static release) |
 | `gallery/index.html` | Every component, every variant and state, light and dark, interactive |
 | `gallery/sidebar.html`, `gallery/app-shell.html` | The two shells, embedded in the gallery as iframes |
 | `gallery/CHECKS.md` | Result of the scripted interaction checks (69 pass) |

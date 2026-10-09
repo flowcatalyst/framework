@@ -1,0 +1,13 @@
+{
+  "props": {
+    "rowLabel": "Billing pool",
+    "actions": [
+      {
+        "icon": "pencil",
+        "label": "Edit",
+        "href": "/pools/3/edit"
+      }
+    ]
+  },
+  "source": "gallery/index.html: Row actions table, row 'Billing pool' (one inline link, no menu: no id needed)"
+}

@@ -1,0 +1,37 @@
+{
+  "props": {
+    "id": "pool-7-actions",
+    "rowLabel": "Orders pool",
+    "actions": [
+      {
+        "icon": "pencil",
+        "label": "Edit",
+        "href": "/pools/7/edit"
+      }
+    ],
+    "menu": [
+      {
+        "icon": "eye",
+        "label": "View details",
+        "href": "/pools/7"
+      },
+      {
+        "icon": "pause",
+        "label": "Suspend",
+        "attrs": {
+          "data-on:click": "@post('/pools/7/suspend', {retryMaxCount: 0})"
+        }
+      },
+      {
+        "icon": "trash-2",
+        "label": "Delete…",
+        "destructive": true,
+        "attrs": {
+          "data-on:click": "document.getElementById('dlg-confirm').showModal()",
+          "aria-haspopup": "dialog"
+        }
+      }
+    ]
+  },
+  "source": "gallery/index.html: Row actions table, row 'Orders pool' (inline Edit + overflow menu with a separator before the destructive item)"
+}

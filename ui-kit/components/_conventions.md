@@ -71,6 +71,25 @@ data: signals {q: 'patched'}
 - Multi-line `elements` use one `data: elements ` prefix per line.
 - Authorisation, CSRF and validation are the endpoint's job, exactly as for a normal form post.
 
+## Answering a (c) request: success, expected failure, unexpected failure
+
+Datastar 1.0.4 applies the body of a response **only when its status is 200** (checked in the bundle: any other status ends the request after the `datastar-fetch` `error` event; the body is never read, whatever its content type). So the status tells the client only "your patches are here" or "something outside the handler went wrong":
+
+| Outcome | Status | Body | What the user sees |
+|---|---|---|---|
+| Success | 200 | SSE patches: the changed region(s) by id, and usually a flash message appended to `#flash-stack` (`flash-stack.md`) | the result + "Saved." |
+| Expected failure the handler detects: validation, a business rule, not found, a permission check, a conflict | **200** | SSE patches that show the error where it belongs: the form re-rendered with field errors (`form-field.md`: the message `<small id="{for}-msg">`, `aria-invalid`, `aria-describedby`) or the dialog's error region; otherwise an error flash message | the message, next to the field when there is one |
+| Unexpected failure: a guard refused the request (CSRF 403, no session 401, no access 403), the handler crashed (500), a proxy or timeout (502/503/504), an unknown URL (404) | non-200 | anything (ignored) | the flash stack's generic fallback (refused / failed), or the application's session-expired handling for 401 |
+| Network failure | none | - | the flash stack's fallback (offline) |
+
+Rules:
+
+- **Never an empty body for a handled request.** A Datastar request that reaches the handler always gets at least one patch: if nothing on the page changes, append a flash message saying what happened.
+- Log the real outcome (e.g. "403 permission denied") server-side; the 200 is a transport detail.
+- An error for an action started in a **dialog** goes into the dialog (it covers the page); close the dialog only on success.
+- **Mutations disable network retries**: `@post('/x', {retryMaxCount: 0})`. Datastar retries a request whose connection failed up to 10 times (1s, doubling, up to 30s), which for a POST that reached the server may apply it twice; with `retryMaxCount: 0` a network failure ends at once in `retries-failed` (the offline message, which says the change may not have been saved). GETs keep the default retries.
+- A native form post (mechanism a) follows post/redirect/get: 303 to the result page with a flash (cookie, read once) on success; the form page re-rendered with errors (status 422) on validation failure.
+
 ## Props
 
 Every spec has a **Props** table: the component's parameters with language-neutral names, so every template implementation (templ in the Go platform, JTE in the framework) exposes the same signature and the fixtures in `fixtures/` can drive all of them.
@@ -95,7 +114,7 @@ Every spec has a **Props** table: the component's parameters with language-neutr
 
 ## Icons
 
-Lucide, inline SVG, 24x24 viewBox, `stroke="currentColor"`. The kit ships `icons/lucide-sprite.svg` (38 symbols). Reference with `<svg width="1em" height="1em" class="size-4" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-check"/></svg>` (the sprite must be same-origin and served over http(s)), or inline the `<path>`s. Decorative icons are `aria-hidden="true"`; a lone icon gets `role="img"` + `aria-label`.
+Lucide, inline SVG, 24x24 viewBox, `stroke="currentColor"`. The kit ships `icons/lucide-sprite.svg` (86 symbols, listed in `icons/sprite-icons.txt`; add a name there and run `icons/build-sprite.sh`, which takes the paths from the pinned lucide-static 1.52.0 package). Reference with `<svg width="1em" height="1em" class="size-4" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-check"/></svg>` (the sprite must be same-origin and served over http(s)), or inline the `<path>`s. Decorative icons are `aria-hidden="true"`; a lone icon gets `role="img"` + `aria-label`.
 
 ## Vocabulary
 

@@ -63,8 +63,10 @@ Status key: **P** ported (markup and behaviour as the source), **PD** ported wit
 | data_table / list page (composition) | composition | PD | b (c) | quick filter and row-to-drawer as the originals; **client-side sort is new** (the originals sorted on the server) |
 | login page styles (`.fc-login*`) | `styles.css` | NP | - | a page, not a component; deliberately not carried over |
 | flash cookie plumbing (`set_flash`/`take_flash`) | `ui/flash.rs` | NP | - | server-side concern (cookie set on redirect, read once); the markup is ported |
+| row_actions | new (Go platform port, 2026-10-09) | new | a + b (c) | not in fc-web or Topcoat: inline `.fc-icon-btn` actions + a native `popover` overflow menu (`.fc-row-menu`, `.fc-menu-item`), destructive marking, disabled-with-reason; `row-actions.md` |
+| flash_stack / flash_message | SPA `NotificationBannerStack.vue` | new | c + b | the SPA's banner stack (four kinds, lifetimes 3s/5s/persistent, dismiss), as `.fc-flash*`; plus a **new** fallback for failed Datastar requests (`flash-stack.md`) |
 
-**Counts:** 31 P, 22 PD, 2 NP (the two NP rows are server/page concerns, not components). 53 component specs.
+**Counts:** 31 P, 22 PD, 2 NP (the two NP rows are server/page concerns, not components), 2 new. 55 component specs.
 
 Global differences (apply to every component):
 
@@ -72,6 +74,7 @@ Global differences (apply to every component):
 - `.tc-theme` (a scope in fc-web) is folded into `@theme`, as fc-web's own doc says it should be once the older sections are gone.
 - Topcoat's `icon()` (Iconify at build time) -> inline Lucide SVG via an SVG sprite.
 - Class strings are the Rust source's, concatenated (`\` continuations joined). The gallery and specs are generated from one set of constants.
+- `.fc-menu-item`'s text colour is `var(--fc-text)` (same light value, #475569) instead of the raw hex, so the user menu's items are readable in dark mode (2026-10-09).
 - `scrollbar-gutter: stable` on `<html>` (carried over) leaves a 15px strip beside full-viewport overlays on desktops with classic scrollbars.
 
 ## How Topcoat's reactive model mapped to Datastar
@@ -141,12 +144,14 @@ Recorded, not changed:
 - The gallery's confirm dialog form has `data-on:submit="el.closest('dialog').close()"`: Datastar prevents the default of a submit it handles, so that form never posts. Gallery-only; the spec's native POST is right.
 - Gallery screenshots predate the fixes.
 
-Gaps (needed by the platform pilot; none invented silently):
-1. Icon sprite: 38 icons; missing at least plus, trash, external-link, eye, server, database, bell, send, clock, box, building, globe, mail, lock, link, history, book, log-in, palette, tag, wrench, network, zap, house.
-2. Row actions: no spec. PROPOSED part in `data-table.md` / `fixtures/row-actions/` (right-aligned cell of `.fc-icon-btn`); a menu variant is still needed.
-3. Table toolbar live updates (c) have no stable patch targets. The Filters button can be re-rendered alone (selector `#{formId} [popovertarget]`; patching the open popover would reset its position), but Clear All is conditional, so it goes stale after a live filter. Proposal: an always-present `#{formId}-clear` container.
-4. `app-shell` has no narrow-screen layout (the SPA has a top bar and an off-canvas nav).
-5. Missing controls: multi-select with search, client select/filter, AutoComplete, number input, password strength, secret-reference input, notification banner stack, permission-denied modal.
-6. Dark mode via a signal flashes light once before Datastar loads (no inline scripts under a strict CSP). Proposal: a theme cookie rendered as the `dark` class by the server.
-7. No convention for non-2xx Datastar answers. The Go shell turns a 401 into a navigation to login with one `data-on:datastar-fetch` listener; a 403/500 shows nothing yet.
-8. Flash-cookie plumbing (NP above) is needed as soon as a page mutates.
+Gaps (needed by the platform pilot; none invented silently). Status after Phase 1 step 1 (2026-10-09, "kit decisions"):
+1. **Done.** Icon sprite: 86 icons (was 38), from `icons/sprite-icons.txt` by `icons/build-sprite.sh` (pinned lucide-static 1.52.0, sha1-checked; the script reproduces the original 38 symbols byte for byte). Added: the navigation icons (house, server, code, id-card, mail, shield, lock, app-window, globe, layout-grid, building-2, link, history, book-open, log-in, palette, tag, wrench, database, zap, bell, box, send, clock, network) and the CRUD icons (plus, trash-2, ellipsis-vertical, eye, eye-off, ban, pause, play, archive, archive-restore, rotate-ccw, external-link, arrow-left, arrow-right, circle-x, circle-plus, download, upload, save, user-plus, user-minus, star, file).
+2. **Done.** Row actions: `row-actions.md` (inline icons, popover overflow menu, destructive last after a separator, disabled with a reason), fixtures `row-actions/{inline,inline-buttons,menu,disabled}`; the proposed fixture is gone.
+3. **Done.** Table toolbar live updates: the hidden fields, Clear All and the Filters button are one always-present part, `<div id="{formId}-state" class="fc-toolbar-state">` (fixtures `table-toolbar-state/*`); a live answer patches it by id and never the search box or the popover. Live Clear All empties the search and popover fields client-side (by class) and submits, so the server sees an ordinary request. It also fixes a bug the old layout had: the hidden sort fields were never patched, so a search after a live sort click lost the sort.
+4. `app-shell` has no narrow-screen layout (the SPA has a top bar and an off-canvas nav). Open.
+5. Missing controls: multi-select with search, client select/filter, AutoComplete, number input, password strength, secret-reference input, permission-denied modal. Open (the notification banner stack is now `flash-stack.md`).
+6. Dark mode via a signal flashes light once before Datastar loads (no inline scripts under a strict CSP). Proposal: a theme cookie rendered as the `dark` class by the server. Open.
+7. **Done.** Non-2xx Datastar answers: `_conventions.md`, "Answering a (c) request" (handled failures are 200 + patches because Datastar 1.0.4 drops non-200 bodies; mutations use `retryMaxCount: 0`) and the flash stack's fallback (refused / failed / offline; 401 left to the application).
+8. Flash-cookie plumbing for native post/redirect/get is still NP; action feedback uses the flash stack instead.
+
+The gallery has the new pieces (row actions table, toolbar state, flash messages, the stack with two buttons that trigger the fallback); its screenshots were not retaken.

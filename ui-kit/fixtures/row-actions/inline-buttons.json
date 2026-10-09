@@ -1,0 +1,24 @@
+{
+  "props": {
+    "rowLabel": "Draft rule",
+    "actions": [
+      {
+        "icon": "copy",
+        "label": "Duplicate",
+        "attrs": {
+          "data-on:click": "@post('/rules/4/duplicate', {retryMaxCount: 0})"
+        }
+      },
+      {
+        "icon": "trash-2",
+        "label": "Delete",
+        "destructive": true,
+        "attrs": {
+          "data-on:click": "document.getElementById('dlg-confirm').showModal()",
+          "aria-haspopup": "dialog"
+        }
+      }
+    ]
+  },
+  "source": "gallery/index.html: Row actions table, row 'Draft rule' (inline buttons; a destructive inline action, which the spec allows only behind a confirmation)"
+}

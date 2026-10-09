@@ -14,7 +14,17 @@
       "selected": 200
     },
     "clearHref": "/users",
-    "activeFilterCount": 2
+    "activeFilterCount": 2,
+    "hidden": [
+      {
+        "name": "sort",
+        "value": "name"
+      },
+      {
+        "name": "dir",
+        "value": "desc"
+      }
+    ]
   },
   "slots": {
     "filters": "<div class=\"fc-form-field\">\n  <label class=\"fc-field-label\" for=\"filter-scope\">Type</label>\n  <select id=\"filter-scope\" name=\"scope\" class=\"fc-select\"><option value=\"\">All types</option><option value=\"ANCHOR\">Anchor</option><option value=\"CLIENT\">Client</option></select>\n</div>"

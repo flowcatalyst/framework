@@ -1,0 +1,12 @@
+{
+  "props": {
+    "formId": "ev-list",
+    "clearHref": "#",
+    "clearAttrs": {
+      "data-on:click__prevent": "const f = el.closest('form'); f.querySelectorAll('.fc-toolbar-search [name], .fc-filter-popover [name]').forEach(c => c.type === 'checkbox' || c.type === 'radio' ? c.checked = false : c.value = ''); f.querySelector('.fc-toolbar-search input')?.focus(); f.requestSubmit()"
+    },
+    "activeFilterCount": 2,
+    "filters": true
+  },
+  "source": "gallery/index.html: element starting with '<div id=\"ev-list-state\"' (the toolbar card)"
+}

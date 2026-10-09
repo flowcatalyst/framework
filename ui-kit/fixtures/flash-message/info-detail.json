@@ -1,0 +1,8 @@
+{
+  "props": {
+    "kind": "info",
+    "summary": "Requeue started.",
+    "detail": "42 dispatch jobs will be retried."
+  },
+  "source": "gallery/index.html: Flash stack card, the 'info-detail' banner"
+}

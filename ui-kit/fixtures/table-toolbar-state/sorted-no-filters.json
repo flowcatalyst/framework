@@ -1,0 +1,17 @@
+{
+  "props": {
+    "formId": "pools-list",
+    "hidden": [
+      {
+        "name": "sort",
+        "value": "name"
+      },
+      {
+        "name": "dir",
+        "value": "desc"
+      }
+    ],
+    "filters": true
+  },
+  "source": "components/table-toolbar.md, state part: hidden sort fields, Filters button without a count, no Clear All (written from the spec)"
+}

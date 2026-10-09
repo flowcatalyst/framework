@@ -16,7 +16,7 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 
 ## Lucide icons (ISC, with MIT for the Feather-derived icons)
 
-The inline icons (`icons/lucide-sprite.svg`, 38 icons from lucide-static 1.52.0) are from Lucide (https://lucide.dev). Lucide is ISC-licensed; the subset derived from Feather is MIT (Cole Bemis). Full text: `icons/LICENSE-lucide.txt`. Topcoat's own components use the same icon set.
+The inline icons (`icons/lucide-sprite.svg`, 86 icons from lucide-static 1.52.0, built by `icons/build-sprite.sh`) are from Lucide (https://lucide.dev). Lucide is ISC-licensed; the subset derived from Feather is MIT (Cole Bemis). Full text: `icons/LICENSE-lucide.txt`. Topcoat's own components use the same icon set.
 
 ## Datastar (MIT)
 

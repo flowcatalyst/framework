@@ -1,0 +1,6 @@
+{
+  "props": {
+    "id": "flash-stack"
+  },
+  "source": "gallery/index.html: element starting with '<div id=\"flash-stack\"' (server-driven pieces)"
+}

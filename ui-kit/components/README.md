@@ -27,6 +27,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Field (form layout)](field.md) | fc-web themed copy | (a) native |
 | [Filter select](filter-select.md) | hand-built | (a) native |
 | [Flash banner](flash-banner.md) | hand-built | (a) native |
+| [Flash stack (notification banners)](flash-stack.md) | port of the SPA's NotificationBannerStack + new request-failure fallback | (c) server patches; (b) dismiss and fallback |
 | [Form field (FcFormField)](form-field.md) | hand-built | (a) native |
 | [Form section (FcFormSection)](form-section.md) | hand-built | (a) native |
 | [Hover card](hover-card.md) | upstream Topcoat UI registry 0.9.0 | (a) CSS only |
@@ -42,6 +43,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Pick list (dual pane)](pick-list.md) | hand-built | (b) Datastar signals (array bind, filter) |
 | [Progress](progress.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
 | [Radio group](radio-group.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
+| [Row actions](row-actions.md) | new (Go platform port) | (a) links + native popover menu; (b) positioning |
 | [Search input](search-input.md) | hand-built | (a) native |
 | [Select](select.md) | fc-web themed copy | (a) native |
 | [Separator](separator.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
@@ -51,7 +53,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Spinner](spinner.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
 | [Switch](switch.md) | fc-web themed copy | (a) native |
 | [Table](table.md) | fc-web themed copy | (a) native |
-| [Table toolbar](table-toolbar.md) | hand-built | (a) native form |
+| [Table toolbar](table-toolbar.md) | hand-built | (a) native form; (c) live, with the state part as patch target |
 | [Tabs](tabs.md) | upstream Topcoat UI registry 0.9.0 | (b) Datastar signal (client tabs) or (a) plain links / (c) server-rendered panel |
 | [Tag](tag.md) | hand-built | (a) native |
 | [Textarea](textarea.md) | upstream Topcoat UI registry 0.9.0 | (a) native |

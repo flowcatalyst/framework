@@ -5,7 +5,7 @@
 
 ## Purpose
 
-A one-shot message after a post/redirect/get, or appended by a server patch.
+A one-shot message rendered with a full page after a post/redirect/get. For feedback after a Datastar action, use the notification stack in `flash-stack.md` (four kinds, dismiss button, the SPA's look and lifetimes, and a fallback for failed requests).
 
 ## Structure
 

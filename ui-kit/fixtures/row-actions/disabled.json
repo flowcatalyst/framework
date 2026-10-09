@@ -1,0 +1,31 @@
+{
+  "props": {
+    "id": "pool-9-actions",
+    "rowLabel": "Legacy pool",
+    "actions": [
+      {
+        "icon": "pencil",
+        "label": "Edit",
+        "href": "/pools/9/edit",
+        "disabledReason": "Archived pools cannot be edited."
+      }
+    ],
+    "menu": [
+      {
+        "icon": "eye",
+        "label": "View details",
+        "href": "/pools/9"
+      },
+      {
+        "icon": "trash-2",
+        "label": "Delete…",
+        "destructive": true,
+        "disabledReason": "Only an archived pool with no jobs can be deleted.",
+        "attrs": {
+          "data-on:click": "document.getElementById('dlg-confirm').showModal()"
+        }
+      }
+    ]
+  },
+  "source": "gallery/index.html: Row actions table, row 'Legacy pool' (disabled with a reason, inline and in the menu)"
+}

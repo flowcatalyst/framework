@@ -1,0 +1,8 @@
+{
+  "props": {
+    "kind": "error",
+    "summary": "Could not save the pool.",
+    "detail": "A pool with code 'orders' already exists."
+  },
+  "source": "gallery/index.html: Flash stack card, the 'error' banner"
+}
