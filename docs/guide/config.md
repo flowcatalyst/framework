@@ -81,6 +81,19 @@ The key uppercased, with `.` and `-` replaced by `_`: `mail.host` is `MAIL_HOST`
 scanned**: only names derived from declared keys and from instance sections are looked up.
 Tests pass their own map with `builder.environment(Map)`, so they never touch the real one.
 
+## Names, components and the platform
+
+Keys are one global namespace shared by every module: pick a key that cannot collide, usually
+starting with your component (`mail.host`). The first segment is the **component** and the rest is
+the **path**: in `mail.smtp.host` the component is `mail` and the path is `smtp.host`. Locally the
+name is the key itself (environment variable `MAIL_SMTP_HOST`). When settings are held by the
+FlowCatalyst platform (planned, M5), the same setting is addressed as
+`{application}:{component}` plus the path, scoped to your application
+(`amazing-app:mail` / `smtp.host`); you never write the application code in a key. A module id
+does not have to match its keys. The framework's own settings (`app`, `http`, `database`, `redis`,
+`locks`, `flowcatalyst`) stay in environment variables and files. See
+[the core contract](../contracts/core.md) for the full rules.
+
 ## Named instances
 
 Capabilities with drivers (databases, Redis, locks) are configured as named instances under a

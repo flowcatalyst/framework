@@ -160,6 +160,39 @@ it came from and the expected type. The raw text of a secret is never included i
 After start-up, `Config` returns typed values for declared settings (`config.get(setting)`) and
 sections for instance configuration. Values do not change while running in M1.
 
+### Names and where a setting can live (ruling 2026-10-09)
+
+Keys are one global namespace; the framework adds no module prefix (a duplicate key fails
+start-up naming both modules). A module id need not appear in its keys.
+
+Every key has a **component** (its first segment) and a **path** (the rest, any number of dotted
+parts): `mail.host` is component `mail`, path `host`; `mail.smtp.host` is component `mail`, path
+`smtp.host`. The name is the same everywhere a setting can live; only the address around it
+differs:
+
+| Store | Address of `mail.smtp.host` in application `amazing-app` |
+|---|---|
+| default, files, environment | `mail.smtp.host` (env `MAIL_SMTP_HOST`) |
+| FlowCatalyst platform (M5) | client (tenant-scoped settings only) / `amazing-app:mail` / `smtp.host` |
+
+- The application code comes from `flowcatalyst.application` and is never written in a key. On the
+  platform it is the scope of the setting (access is checked on application and client, plan
+  section 6 of `framework-plumbing.md`); `{application}:{component}` has the same shape as an
+  event type's prefix.
+- A setting stored on the platform needs at least two segments. A one-segment key is allowed for
+  local sources only; declaring it with a platform store fails start-up.
+- The framework's own components cannot be stored on the platform: `app`, `http`, `database`,
+  `redis`, `locks`, `flowcatalyst`. They are deployment settings (env or files). Declaring a
+  platform-stored setting under one of them fails start-up.
+- Scope: a **service**-scoped setting has one value for the application; a **tenant**-scoped
+  setting has one value per client. Local sources have no client dimension, so a tenant-scoped
+  setting read locally needs an explicit client to resolve against.
+- A declaration may name an explicit platform component and path when the default mapping does
+  not suit. The local name is unchanged.
+- Two different keys can map to one environment variable (`mail.host-name`, `mail.host.name`);
+  start-up must fail naming both when it happens. (Check whether the M1 loader already does; the
+  platform driver in M5 must.)
+
 ### Errors
 
 `StartupException` lists every config problem found, each with key and source: unparseable
