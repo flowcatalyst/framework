@@ -72,6 +72,17 @@ public final class FlowCatalystModule implements Module {
           .withDefault(Duration.ofSeconds(30))
           .describedAs("Timeout of requests to the platform.");
 
+  /** {@code flowcatalyst.subscription-target-base-url}: what path-style subscription targets resolve against. */
+  public static final Setting<URI> SUBSCRIPTION_TARGET_BASE_URL =
+      Setting.uri("flowcatalyst.subscription-target-base-url")
+          .describedAs("Base URL that subscription targets given as a path (/webhooks/orders) resolve against.");
+
+  /** {@code flowcatalyst.sync.on-boot}: whether start-up also syncs definitions. */
+  public static final Setting<Boolean> SYNC_ON_BOOT =
+      Setting.bool("flowcatalyst.sync.on-boot")
+          .withDefault(false)
+          .describedAs("Sync definitions to the platform at start-up. Normally the deploy runs 'sync' instead.");
+
   @Override
   public String id() {
     return ID;
@@ -85,7 +96,27 @@ public final class FlowCatalystModule implements Module {
     app.declare(CLIENT_ID);
     app.declare(CLIENT_SECRET);
     app.declare(TIMEOUT);
+    app.declare(SUBSCRIPTION_TARGET_BASE_URL);
+    app.declare(SYNC_ON_BOOT);
     app.provide(PlatformClient.class, lookup -> buildClient(lookup.get(Config.class)));
+    app.provide(
+        DefinitionCatalog.class,
+        lookup -> {
+          PlatformClient client = lookup.get(PlatformClient.class);
+          if (!client.isEnabled()) {
+            return DefinitionCatalog.empty();
+          }
+          Config config = lookup.get(Config.class);
+          return DefinitionCatalog.build(
+              lookup.contributions(Definitions.Contribution.class),
+              client.application(),
+              config.find(SUBSCRIPTION_TARGET_BASE_URL).isPresent());
+        });
+    app.provide(
+        DefinitionSync.class,
+        lookup ->
+            new DefinitionSync(lookup.get(PlatformClient.class), lookup.get(DefinitionCatalog.class)));
+    app.command(new SyncCommand());
   }
 
   @Override
@@ -112,6 +143,22 @@ public final class FlowCatalystModule implements Module {
                     ID);
               }
             });
+  }
+
+  @Override
+  public void started(App app) {
+    PlatformClient client = app.get(PlatformClient.class);
+    if (!client.isEnabled() || !app.config().get(SYNC_ON_BOOT)) {
+      return;
+    }
+    // The platform is not on the request path: a failed sync is logged, never fatal.
+    try {
+      app.get(DefinitionSync.class).run(DefinitionSync.Mode.APPLY);
+    } catch (SyncException e) {
+      LOG.error("flowcatalyst: sync on boot failed; the application continues. {}", e.getMessage());
+    } catch (RuntimeException e) {
+      LOG.error("flowcatalyst: sync on boot failed; the application continues", e);
+    }
   }
 
   private static PlatformClient buildClient(Config config) {
@@ -153,7 +200,12 @@ public final class FlowCatalystModule implements Module {
       throw new StartupException(problems);
     }
     return PlatformClient.create(
-        baseUrl.orElseThrow(), code, clientId.orElseThrow(), clientSecret.orElseThrow(), timeout);
+        baseUrl.orElseThrow(),
+        code,
+        clientId.orElseThrow(),
+        clientSecret.orElseThrow(),
+        timeout,
+        config.find(SUBSCRIPTION_TARGET_BASE_URL).orElse(null));
   }
 
   private static void require(List<Problem> problems, Setting<?> setting, boolean present) {

@@ -3,6 +3,7 @@ package io.flowcatalyst.framework.core;
 import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.Declaration;
 import io.flowcatalyst.framework.config.Setting;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.time.InstantSource;
 import java.util.ArrayList;
@@ -13,6 +14,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Describes an application and starts it.
@@ -29,6 +32,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class AppBuilder {
 
+  private static final Logger LOG = LoggerFactory.getLogger(AppBuilder.class);
   private static final Pattern MODULE_ID = Pattern.compile("[a-z][a-z0-9-]*");
 
   private final List<Module> modules = new ArrayList<>();
@@ -46,6 +50,9 @@ public final class AppBuilder {
   private final List<Declaration> declarations = new ArrayList<>();
   private final Map<Class<?>, ServiceGraph.Entry> providers = new LinkedHashMap<>();
   private final Map<Class<?>, List<Object>> contributions = new LinkedHashMap<>();
+  private final Map<String, Command> commands = new LinkedHashMap<>();
+  private final Map<String, String> commandModules = new LinkedHashMap<>();
+  private final List<Module> registeredModules = new ArrayList<>();
 
   AppBuilder() {}
 
@@ -190,6 +197,26 @@ public final class AppBuilder {
   }
 
   /**
+   * Claims a command name for {@link #launch}. Two modules claiming one name fails start-up.
+   *
+   * @param command the command
+   */
+  public void command(Command command) {
+    String module = requireRegistering("claim a command");
+    String name = command.name();
+    if (!MODULE_ID.matcher(name).matches()) {
+      problems.add(Problem.of(module, name, "command name must match [a-z][a-z0-9-]*"));
+    } else if (commandModules.containsKey(name)) {
+      problems.add(
+          Problem.of(
+              module, name, "command already claimed by module '" + commandModules.get(name) + "'"));
+    } else {
+      commands.put(name, command);
+      commandModules.put(name, module);
+    }
+  }
+
+  /**
    * The id of the module being registered.
    *
    * @return the module id
@@ -208,6 +235,49 @@ public final class AppBuilder {
    * @throws StartupException listing every problem found; services already built are closed
    */
   public App start() {
+    return bootAndStart(assemble());
+  }
+
+  /**
+   * Runs a module's {@link Command} when the first program argument names one, otherwise starts
+   * the application exactly as {@link #start()} does. Unknown arguments are not an error: they fall
+   * through to a normal start.
+   *
+   * <p>A command runs after registration, configuration and building services (steps 1 to 3 of
+   * the lifecycle) and before any {@code boot}; the application is closed afterwards.
+   *
+   * <pre>{@code
+   * switch (App.builder().module(...).launch(args)) {
+   *   case Launch.Ran ran -> System.exit(ran.exitCode());
+   *   case Launch.Started started -> started.app();
+   * }
+   * }</pre>
+   *
+   * @param args the program arguments
+   * @return what happened
+   * @throws StartupException listing every problem found while assembling or starting
+   */
+  public Launch launch(String... args) {
+    App app = assemble();
+    @Nullable Command command = args.length == 0 ? null : commands.get(args[0]);
+    if (command == null) {
+      return new Launch.Started(bootAndStart(app));
+    }
+    PrintStream out = System.out;
+    try {
+      int code = command.run(app, List.of(args).subList(1, args.length), out);
+      out.flush();
+      return new Launch.Ran(code);
+    } catch (Exception e) {
+      LOG.error("command '{}' failed: {}", command.name(), describe(e), e);
+      return new Launch.Ran(1);
+    } finally {
+      app.close();
+    }
+  }
+
+  /** Steps 1 to 3: register, load configuration, build services. Nothing is booted. */
+  private App assemble() {
     requireNotStarted();
     started = true;
 
@@ -216,7 +286,7 @@ public final class AppBuilder {
     all.addAll(modules);
 
     // 1. Register, in the order listed.
-    List<Module> registered = new ArrayList<>();
+    List<Module> registered = registeredModules;
     Set<String> ids = new HashSet<>();
     for (Module module : all) {
       String id = module.id();
@@ -266,10 +336,13 @@ public final class AppBuilder {
       Shutdown.closeInReverse(graph.builtInOrder(), drain);
       throw new StartupException(graph.problems());
     }
+    return new App(config, health, drain, graph.services(), graph.order(), registered);
+  }
 
+  /** Steps 4 and 5: boot, then started. */
+  private App bootAndStart(App app) {
+    List<Module> registered = registeredModules;
     // 4. Boot, in the order listed.
-    App app =
-        new App(config, health, drain, graph.services(), graph.order(), registered);
     List<Problem> bootProblems = new ArrayList<>();
     for (Module module : registered) {
       try {

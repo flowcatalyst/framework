@@ -35,14 +35,17 @@ public final class PlatformClient {
       ApplicationCode application,
       String clientId,
       Secret clientSecret,
-      Duration timeout) {
-    FlowCatalystClient client =
+      Duration timeout,
+      @Nullable URI subscriptionTargetBaseUrl) {
+    FlowCatalystClient.Builder builder =
         FlowCatalystClient.builder()
             .baseUrl(baseUrl.toString())
             .clientCredentials(clientId, clientSecret.reveal())
-            .timeout(timeout)
-            .build();
-    return new PlatformClient(client, application);
+            .timeout(timeout);
+    if (subscriptionTargetBaseUrl != null) {
+      builder.subscriptionTargetBaseUrl(subscriptionTargetBaseUrl.toString());
+    }
+    return new PlatformClient(builder.build(), application);
   }
 
   /**
