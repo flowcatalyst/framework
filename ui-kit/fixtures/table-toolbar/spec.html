@@ -1,0 +1,22 @@
+<form id="users-list" method="get" action="/users" class="fc-table-toolbar">
+  <div class="fc-toolbar-start">
+      <div class="fc-input-icon fc-toolbar-search">
+        <svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-search"/></svg>
+        <input type="search" name="q" class="fc-input" placeholder="Search users" aria-label="Search users">
+      </div>
+  </div>
+  <div class="fc-toolbar-end">
+    <select name="size" class="fc-select w-24" title="Result size" aria-label="Result size" data-on:change="el.form.requestSubmit()"><option value="50">50</option><option value="100">100</option><option value="200" selected>200</option><option value="500">500</option><option value="1000">1000</option></select>
+    <button type="submit" class="fc-icon-btn" title="Refresh" aria-label="Refresh"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-refresh-cw"/></svg></button>
+    <a href="/users" class="fc-btn fc-btn-text"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-funnel-x"/></svg> Clear All</a>
+    <button type="button" class="fc-btn fc-btn-primary-outline" popovertarget="users-list-filters"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-funnel"/></svg> Filters <span class="fc-badge">2</span></button>
+    <div id="users-list-filters" popover class="fc-filter-popover" data-on:toggle__capture="evt.newState === 'open' && (el.style.top = (el.previousElementSibling.getBoundingClientRect().bottom + 6) + 'px'); evt.newState === 'open' && (el.style.left = Math.max(16, el.previousElementSibling.getBoundingClientRect().right - el.offsetWidth) + 'px')">
+      <div class="fc-filter-popover-body">
+<div class="fc-form-field">
+  <label class="fc-field-label" for="filter-scope">Type</label>
+  <select id="filter-scope" name="scope" class="fc-select"><option value="">All types</option><option value="ANCHOR">Anchor</option><option value="CLIENT">Client</option></select>
+</div>
+      </div>
+    </div>
+  </div>
+</form>

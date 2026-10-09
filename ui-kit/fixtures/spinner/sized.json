@@ -1,0 +1,7 @@
+{
+  "props": {
+    "size": "size-4",
+    "label": "Saving"
+  },
+  "source": "spinner.md Structure with the size and label parameters"
+}

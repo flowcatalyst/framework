@@ -1,0 +1,7 @@
+{
+  "props": {
+    "id": "s2",
+    "label": "Switch off"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"flex items-center gap-2\"><span class=\"peer relative inline-flex shrink-0 has-[:disabled]:opacity-50\"><input type=\"checkbox\" role=\"switch\"' (occurrence 2), its children"
+}

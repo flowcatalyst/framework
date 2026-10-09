@@ -1,0 +1,15 @@
+<dialog id="dlg-confirm" class="fc-dialog w-[28rem] max-w-[calc(100vw-2rem)]" closedby="any" aria-labelledby="dlg-confirm-title"
+        data-on:click="evt.target === el && el.close()">
+  <form method="post" action="/users/42/reset-2fa">
+    <div class="fc-dialog-header"><span id="dlg-confirm-title">Reset 2FA</span></div>
+    <div class="fc-dialog-body flex items-start gap-3 text-subtle-foreground">
+      <svg width="1em" height="1em" class="size-6 mt-0.5 shrink-0 text-red-600" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-triangle-alert"/></svg>
+      <p>Are you sure you want to reset two-factor authentication for Ada?</p>
+    </div>
+    <input type="hidden" name="csrf" value="{token}">
+    <div class="fc-dialog-footer">
+      <button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="el.closest('dialog').close()">Cancel</button>
+      <button type="submit" class="fc-btn fc-btn-danger">Reset</button>
+    </div>
+  </form>
+</dialog>

@@ -1,0 +1,18 @@
+{
+  "props": {
+    "items": [
+      {
+        "label": "Home",
+        "href": "/"
+      },
+      {
+        "label": "Users",
+        "href": "/users"
+      },
+      {
+        "label": "Ada"
+      }
+    ]
+  },
+  "source": "components/breadcrumb.md: element starting with '<nav aria-label=\"breadcrumb\">'"
+}

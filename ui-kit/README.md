@@ -21,6 +21,7 @@ A language-neutral port of the FlowCatalyst server-rendered UI components (the T
 | `gallery/sidebar.html`, `gallery/app-shell.html` | The two shells, embedded in the gallery as iframes |
 | `gallery/CHECKS.md` | Result of the scripted interaction checks (69 pass) |
 | `gallery/screenshots/` | Desktop screenshots, light and dark, plus open overlays |
+| `fixtures/` | Conformance fixtures (props JSON + golden HTML) every template implementation must render identically; format and normalisation in `fixtures/README.md` |
 | `PORTING-NOTES.md` | Per-component status and differences, how Topcoat concepts map to Datastar, what did not fit |
 | `THIRD-PARTY-NOTICES.md` | Topcoat UI (MIT) notice and the other licences |
 

@@ -1,0 +1,10 @@
+{
+  "props": {
+    "variant": "secondary",
+    "class": "[&]:text-[11px]"
+  },
+  "slots": {
+    "default": "a · native"
+  },
+  "source": "gallery/index.html: element starting with '<span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-foreground/5 text-foreground [&]:text-[11px]\">a'"
+}

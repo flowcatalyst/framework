@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "events-pager",
+    "summary": "Older events",
+    "newestHref": "/events",
+    "olderHref": "/events?before=42"
+  },
+  "source": "cursor-pager.md Structure with both links enabled"
+}

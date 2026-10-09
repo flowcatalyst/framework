@@ -1,0 +1,7 @@
+{
+  "props": {
+    "icon": "refresh-cw",
+    "label": "Refresh"
+  },
+  "source": "gallery/index.html: element starting with '<button type=\"button\" class=\"fc-icon-btn\" aria-label=\"Refresh\">'"
+}

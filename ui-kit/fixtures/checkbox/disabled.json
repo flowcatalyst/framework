@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "c3",
+    "name": "c3",
+    "disabled": true,
+    "label": "Disabled"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"flex items-center gap-2\"><span class=\"peer relative inline-flex shrink-0 has-[:disabled]:opacity-50\"><input type=\"checkbox\" class=\"peer' (occurrence 3), its children"
+}

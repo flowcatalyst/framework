@@ -1,0 +1,66 @@
+{
+  "props": {
+    "logoHref": "#",
+    "nav": [
+      {
+        "label": "Platform",
+        "items": [
+          {
+            "label": "Dashboard",
+            "href": "#",
+            "icon": "layout-dashboard",
+            "current": true
+          },
+          {
+            "label": "Authorization",
+            "icon": "shield-check",
+            "open": true,
+            "children": [
+              {
+                "label": "Roles",
+                "href": "#",
+                "icon": "key-round"
+              },
+              {
+                "label": "Users",
+                "href": "#",
+                "icon": "users"
+              }
+            ]
+          },
+          {
+            "label": "Event types",
+            "href": "#",
+            "icon": "workflow"
+          }
+        ]
+      },
+      {
+        "label": "Settings",
+        "items": [
+          {
+            "label": "General",
+            "href": "#",
+            "icon": "settings"
+          }
+        ]
+      }
+    ],
+    "user": {
+      "name": "Ada Lovelace",
+      "email": "ada@example.com",
+      "initials": "AL"
+    },
+    "version": "1.0.0",
+    "profileHref": "#",
+    "resetPasswordHref": "#",
+    "signOutAction": "#",
+    "signOutAttrs": {
+      "data-on:submit": "void 0"
+    }
+  },
+  "slots": {
+    "default": "<div role=\"status\" class=\"fc-banner fc-banner-success mb-4\">Saved.</div>\n    <header class=\"fc-page-header\"><div><h1 class=\"fc-page-title\">Dashboard</h1><p class=\"fc-page-subtitle\">App shell with the collapsible navy sidebar</p></div><div class=\"flex items-center gap-2\"></div></header>\n    <div class=\"fc-card\">Collapse state is the <code>fc-collapsed</code> class on &lt;html&gt;, driven by the <code>sidebarCollapsed</code> signal.</div>"
+  },
+  "source": "gallery/app-shell.html: element starting with '<body', its children; the body of gallery/app-shell.html (the <html> attributes are the layout's: see app-shell.md)"
+}

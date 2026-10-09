@@ -1,0 +1,29 @@
+{
+  "props": {
+    "id": "users-table",
+    "bodyId": "users-rows",
+    "columns": [
+      {
+        "label": "Name",
+        "href": "#",
+        "direction": "asc"
+      },
+      {
+        "label": "Email",
+        "href": "#"
+      },
+      {
+        "label": "Type"
+      },
+      {
+        "label": "Status"
+      }
+    ],
+    "empty": {
+      "message": "No users found",
+      "status": true,
+      "clearHref": "/users"
+    }
+  },
+  "source": "composed: the gallery's sorted table header + table.md 'Empty tables' (one colspan row holding empty-state.md with role=status)"
+}

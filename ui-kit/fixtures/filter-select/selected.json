@@ -1,0 +1,19 @@
+{
+  "props": {
+    "name": "type",
+    "label": "Type",
+    "placeholder": "All types",
+    "selected": "a",
+    "options": [
+      {
+        "value": "a",
+        "label": "Created"
+      },
+      {
+        "value": "b",
+        "label": "Updated"
+      }
+    ]
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"fc-form-field\">\\n  <label class=\"fc-field-label\" for=\"filter-type\">'"
+}

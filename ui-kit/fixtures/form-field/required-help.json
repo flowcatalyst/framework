@@ -1,0 +1,12 @@
+{
+  "props": {
+    "label": "Name",
+    "for": "hf1",
+    "required": true,
+    "help": "As shown in the list"
+  },
+  "slots": {
+    "default": "<input type=\"text\" class=\"fc-input\" id=\"hf1\" value=\"Ada\">"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"fc-form-field\">'"
+}

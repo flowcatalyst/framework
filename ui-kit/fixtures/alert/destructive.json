@@ -1,0 +1,10 @@
+{
+  "props": {
+    "variant": "destructive",
+    "role": "alert",
+    "icon": "triangle-alert",
+    "title": "Build failed",
+    "description": "The last deploy did not finish."
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"grid w-full grid-cols-[0_1fr]' (occurrence 2)"
+}

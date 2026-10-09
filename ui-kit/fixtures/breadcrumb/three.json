@@ -1,0 +1,18 @@
+{
+  "props": {
+    "items": [
+      {
+        "label": "Home",
+        "href": "#"
+      },
+      {
+        "label": "Users",
+        "href": "#"
+      },
+      {
+        "label": "Ada"
+      }
+    ]
+  },
+  "source": "gallery/index.html: element starting with '<nav aria-label=\"breadcrumb\">'"
+}

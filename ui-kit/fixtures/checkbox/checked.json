@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "c1",
+    "name": "c1",
+    "checked": true,
+    "label": "Checked"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"flex items-center gap-2\"><span class=\"peer relative inline-flex shrink-0 has-[:disabled]:opacity-50\"><input type=\"checkbox\" class=\"peer', its children; the gallery wraps checkbox + label in a layout <div class=\"flex items-center gap-2\">; the component is the two siblings inside it"
+}

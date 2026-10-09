@@ -1,0 +1,17 @@
+{
+  "props": {
+    "id": "users-list",
+    "action": "#",
+    "searchPlaceholder": "Search users",
+    "searchAttrs": {
+      "data-bind:q-users": true
+    },
+    "formAttrs": {
+      "data-on:submit": "void 0"
+    }
+  },
+  "slots": {
+    "filters": "<div class=\"fc-form-field\">\n  <label class=\"fc-field-label\" for=\"filter-scope\">Type</label>\n  <select id=\"filter-scope\" name=\"scope\" class=\"fc-select\"><option value=\"\">All types</option><option value=\"ANCHOR\">Anchor</option><option value=\"PARTNER\">Partner</option><option value=\"CLIENT\">Client</option></select>\n</div>\n<div class=\"fc-form-field\">\n  <label class=\"fc-field-label\" for=\"filter-active\">Status</label>\n  <select id=\"filter-active\" name=\"active\" class=\"fc-select\"><option value=\"\">All statuses</option><option value=\"true\">Active</option><option value=\"false\">Inactive</option></select>\n</div>"
+  },
+  "source": "components/data-table.md: element starting with '<form id=\"users-list\"'; the list-page toolbar in data-table.md (client-side quick filter, Filters popover without a count)"
+}

@@ -1,0 +1,25 @@
+{
+  "props": {
+    "columns": [
+      {
+        "label": "Name",
+        "href": "#",
+        "direction": "asc"
+      },
+      {
+        "label": "Email",
+        "href": "#"
+      },
+      {
+        "label": "Type"
+      },
+      {
+        "label": "Status"
+      }
+    ]
+  },
+  "slots": {
+    "default": "<tr class=\"border-b border-border transition-colors hover:bg-foreground/5\"><td class=\"p-3 align-middle whitespace-nowrap\">Ada Lovelace</td><td class=\"p-3 align-middle whitespace-nowrap\">ada@example.com</td><td class=\"p-3 align-middle whitespace-nowrap\">Anchor</td><td class=\"p-3 align-middle whitespace-nowrap\"><span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-success text-success-foreground\">Active</span></td></tr><tr class=\"border-b border-border transition-colors hover:bg-foreground/5\"><td class=\"p-3 align-middle whitespace-nowrap\">Grace Hopper</td><td class=\"p-3 align-middle whitespace-nowrap\">grace@example.com</td><td class=\"p-3 align-middle whitespace-nowrap\">Partner</td><td class=\"p-3 align-middle whitespace-nowrap\"><span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-success text-success-foreground\">Active</span></td></tr><tr class=\"border-b border-border transition-colors hover:bg-foreground/5\"><td class=\"p-3 align-middle whitespace-nowrap\">Alan Turing</td><td class=\"p-3 align-middle whitespace-nowrap\">alan@example.com</td><td class=\"p-3 align-middle whitespace-nowrap\">Client</td><td class=\"p-3 align-middle whitespace-nowrap\"><span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-foreground/5 text-foreground\">Inactive</span></td></tr><tr class=\"border-b border-border transition-colors hover:bg-foreground/5\"><td class=\"p-3 align-middle whitespace-nowrap\">Edsger Dijkstra</td><td class=\"p-3 align-middle whitespace-nowrap\">edsger@example.com</td><td class=\"p-3 align-middle whitespace-nowrap\">Client</td><td class=\"p-3 align-middle whitespace-nowrap\"><span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-success text-success-foreground\">Active</span></td></tr><tr class=\"border-b border-border transition-colors hover:bg-foreground/5\"><td class=\"p-3 align-middle whitespace-nowrap\">Barbara Liskov</td><td class=\"p-3 align-middle whitespace-nowrap\">barbara@example.com</td><td class=\"p-3 align-middle whitespace-nowrap\">Partner</td><td class=\"p-3 align-middle whitespace-nowrap\"><span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-foreground/5 text-foreground\">Inactive</span></td></tr>"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"w-full overflow-x-auto\"><table' (occurrence 2); the gallery's dense/caps/striped table with server sort headings shown at rest"
+}

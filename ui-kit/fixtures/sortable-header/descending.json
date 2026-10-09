@@ -1,0 +1,8 @@
+{
+  "props": {
+    "label": "Name",
+    "href": "/users?sort=name&dir=asc",
+    "direction": "desc"
+  },
+  "source": "the gallery's ascending heading with the arrow-down icon data-table.md uses for descending"
+}

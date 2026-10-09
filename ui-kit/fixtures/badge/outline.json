@@ -1,0 +1,9 @@
+{
+  "props": {
+    "variant": "outline"
+  },
+  "slots": {
+    "default": "Outline"
+  },
+  "source": "gallery/index.html: element starting with '<span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-border text-foreground\">Outline'"
+}

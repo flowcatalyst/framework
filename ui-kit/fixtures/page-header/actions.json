@@ -1,0 +1,10 @@
+{
+  "props": {
+    "title": "Users",
+    "subtitle": "Manage platform users and their access"
+  },
+  "slots": {
+    "actions": "<button class=\"fc-btn fc-btn-primary\" type=\"button\">New user</button>"
+  },
+  "source": "components/page-header.md: element starting with '<header class=\"fc-page-header\">'"
+}

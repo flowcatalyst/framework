@@ -1,0 +1,7 @@
+{
+  "props": {},
+  "slots": {
+    "default": "Ada Lovelace"
+  },
+  "source": "gallery/index.html: element starting with '<td class=\"p-3 align-middle whitespace-nowrap\">Ada Lovelace'"
+}

@@ -1,0 +1,10 @@
+{
+  "props": {
+    "href": "#",
+    "variant": "outline"
+  },
+  "slots": {
+    "default": "Sign in"
+  },
+  "source": "gallery/index.html: element starting with '<a href=\"#\" class=\"inline-flex shrink-0'"
+}

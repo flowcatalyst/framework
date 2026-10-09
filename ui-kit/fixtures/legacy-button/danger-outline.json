@@ -1,0 +1,9 @@
+{
+  "props": {
+    "variant": "danger-outline"
+  },
+  "slots": {
+    "default": "Danger-Outline"
+  },
+  "source": "gallery/index.html: element starting with '<button class=\"fc-btn fc-btn-danger-outline\"'"
+}

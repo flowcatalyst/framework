@@ -1,0 +1,9 @@
+{
+  "props": {
+    "class": "text-[13px] text-muted-foreground"
+  },
+  "slots": {
+    "default": "ada@example.com"
+  },
+  "source": "gallery/index.html: element starting with '<td class=\"p-3 align-middle whitespace-nowrap text-[13px] text-muted-foreground\">'"
+}

@@ -1,0 +1,10 @@
+{
+  "props": {
+    "id": "notes",
+    "name": "notes",
+    "value": "too short",
+    "invalid": true,
+    "describedBy": "notes-err"
+  },
+  "source": "textarea.md Structure class list + the state table (invalid: aria-invalid=\"true\"); the gallery has no invalid textarea"
+}

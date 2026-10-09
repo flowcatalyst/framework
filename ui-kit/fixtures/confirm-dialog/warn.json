@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "dlg-suspend",
+    "action": "/pools/7/suspend",
+    "title": "Suspend pool",
+    "message": "Dispatch into this pool stops until it is resumed.",
+    "confirmLabel": "Suspend",
+    "tone": "warn"
+  },
+  "source": "confirm-dialog.md Structure with tone warn (fc-btn-warn, amber icon) and no hidden fields"
+}

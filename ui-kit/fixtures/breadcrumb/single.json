@@ -1,0 +1,10 @@
+{
+  "props": {
+    "items": [
+      {
+        "label": "Dispatch pools"
+      }
+    ]
+  },
+  "source": "breadcrumb.md Structure reduced to its current-page item"
+}

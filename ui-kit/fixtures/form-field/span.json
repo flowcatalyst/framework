@@ -1,0 +1,11 @@
+{
+  "props": {
+    "label": "Notes",
+    "for": "hf3",
+    "span": true
+  },
+  "slots": {
+    "default": "<textarea id=\"hf3\" class=\"fc-input\"></textarea>"
+  },
+  "source": "form-field.md Structure + the grid option (fc-span-2)"
+}

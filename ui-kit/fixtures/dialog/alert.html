@@ -1,0 +1,10 @@
+<dialog role="alertdialog" id="dlg-alert" aria-labelledby="dlg-alert-title" aria-describedby="dlg-alert-desc" class="fixed inset-0 z-50 size-full max-h-none max-w-none items-start justify-center overflow-y-auto bg-background/80 p-4 text-foreground backdrop-blur-sm open:flex opacity-0 open:opacity-100 starting:open:opacity-0 [transition:opacity_200ms_ease-out,display_200ms_allow-discrete]">
+  <div class="relative my-auto flex w-full max-w-lg flex-col gap-4 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-sm scale-95 opacity-0 in-[[open]]:scale-100 in-[[open]]:opacity-100 starting:in-[[open]]:scale-95 starting:in-[[open]]:opacity-0 [transition:scale_200ms_ease-out,opacity_200ms_ease-out]">
+    <div class="flex flex-col gap-1.5">
+      <h2 id="dlg-alert-title" class="text-lg leading-none font-semibold">Delete this workspace?</h2>
+      <p id="dlg-alert-desc" class="text-sm text-muted-foreground">Its projects and deploys go with it. This cannot be undone.</p>
+    </div>
+    
+    <div class="flex flex-wrap items-center justify-end gap-2"><button class="inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 border-transparent text-foreground hover:bg-foreground/5 active:bg-foreground/10 h-9 gap-2 rounded-lg px-4" type="button" autofocus data-on:click="el.closest('dialog').close()">Keep it</button><button class="inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 border-transparent bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 active:bg-destructive/80 h-9 gap-2 rounded-lg px-4" type="button" data-on:click="el.closest('dialog').close()">Delete</button></div>
+  </div>
+</dialog>

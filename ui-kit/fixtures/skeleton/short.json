@@ -1,0 +1,6 @@
+{
+  "props": {
+    "class": "h-4 w-1/2"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"animate-pulse rounded-md bg-foreground/10 h-4 w-1/2\"'"
+}

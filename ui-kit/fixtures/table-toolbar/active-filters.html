@@ -1,0 +1,26 @@
+<form id="ev-list" method="get" action="#" class="fc-table-toolbar" data-on:submit="void 0">
+  <div class="fc-toolbar-start">
+      <div class="fc-input-icon fc-toolbar-search">
+        <svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-search"/></svg>
+        <input type="search" name="q" class="fc-input" placeholder="Search events" aria-label="Search events" value="invoice">
+      </div>
+  </div>
+  <div class="fc-toolbar-end">
+    <select name="size" class="fc-select w-24" title="Result size" aria-label="Result size" data-on:change="el.form.requestSubmit()"><option value="50">50</option><option value="100">100</option><option value="200" selected>200</option><option value="500">500</option><option value="1000">1000</option></select>
+    <button type="submit" class="fc-icon-btn" title="Refresh" aria-label="Refresh"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-refresh-cw"/></svg></button>
+    <a href="#" class="fc-btn fc-btn-text"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-funnel-x"/></svg> Clear All</a>
+    <button type="button" class="fc-btn fc-btn-primary-outline" popovertarget="ev-list-filters"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-funnel"/></svg> Filters <span class="fc-badge">2</span></button>
+    <div id="ev-list-filters" popover class="fc-filter-popover" data-on:toggle__capture="evt.newState === 'open' && (el.style.top = (el.previousElementSibling.getBoundingClientRect().bottom + 6) + 'px'); evt.newState === 'open' && (el.style.left = Math.max(16, el.previousElementSibling.getBoundingClientRect().right - el.offsetWidth) + 'px')">
+      <div class="fc-filter-popover-body">
+<div class="fc-form-field">
+  <label class="fc-field-label" for="filter-type">Type</label>
+  <select id="filter-type" name="type" class="fc-select"><option value="">All types</option><option value="a" selected>Created</option><option value="b">Updated</option></select>
+</div>
+<div class="fc-form-field">
+  <label class="fc-field-label" for="filter-app">Application</label>
+  <select id="filter-app" name="app" class="fc-select"><option value="">All applications</option><option value="o" selected>Orders</option></select>
+</div>
+      </div>
+    </div>
+  </div>
+</form>

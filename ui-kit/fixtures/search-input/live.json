@@ -1,0 +1,10 @@
+{
+  "props": {
+    "placeholder": "Search users",
+    "attrs": {
+      "data-bind:q": true,
+      "data-on:input__debounce.300ms": "@get('/users')"
+    }
+  },
+  "source": "search-input.md Behaviour, live search (c)"
+}

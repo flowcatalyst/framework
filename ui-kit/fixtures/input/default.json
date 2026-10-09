@@ -1,0 +1,7 @@
+{
+  "props": {
+    "id": "f-name",
+    "placeholder": "Ada Lovelace"
+  },
+  "source": "gallery/index.html: element starting with '<input type=\"text\" class=\"h-9'"
+}

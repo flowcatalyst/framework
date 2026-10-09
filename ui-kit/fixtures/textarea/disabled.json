@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "notes",
+    "rows": 4,
+    "disabled": true,
+    "value": "Locked"
+  },
+  "source": "textarea.md Structure class list + the state table (disabled); the gallery has no disabled textarea"
+}

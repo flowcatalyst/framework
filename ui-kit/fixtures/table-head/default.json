@@ -1,0 +1,7 @@
+{
+  "props": {},
+  "slots": {
+    "default": "Name"
+  },
+  "source": "gallery/index.html: element starting with '<th class=\"h-10 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground\" scope=\"col\">Name'"
+}

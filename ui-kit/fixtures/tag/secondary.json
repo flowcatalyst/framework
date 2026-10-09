@@ -1,0 +1,7 @@
+{
+  "props": {
+    "severity": "secondary",
+    "label": "Secondary"
+  },
+  "source": "gallery/index.html: element starting with '<span class=\"fc-tag fc-tag-secondary\">'"
+}

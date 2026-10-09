@@ -1,0 +1,7 @@
+{
+  "props": {
+    "kind": "success",
+    "message": "User saved."
+  },
+  "source": "gallery/index.html: element starting with '<div role=\"status\" class=\"fc-banner fc-banner-success mb-4\">User saved.'"
+}

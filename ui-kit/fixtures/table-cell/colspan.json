@@ -1,0 +1,9 @@
+{
+  "props": {
+    "colspan": 2
+  },
+  "slots": {
+    "default": "Total"
+  },
+  "source": "gallery/index.html: element starting with '<td class=\"p-3 align-middle whitespace-nowrap\" colspan=\"2\">'"
+}

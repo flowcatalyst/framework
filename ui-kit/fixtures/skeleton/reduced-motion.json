@@ -1,0 +1,6 @@
+{
+  "props": {
+    "class": "size-10 motion-reduce:animate-none"
+  },
+  "source": "skeleton.md Structure + its note on motion-reduce:animate-none"
+}

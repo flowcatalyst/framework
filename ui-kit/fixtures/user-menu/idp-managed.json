@@ -1,0 +1,61 @@
+{
+  "props": {
+    "logoHref": "#",
+    "nav": [
+      {
+        "label": "Platform",
+        "items": [
+          {
+            "label": "Dashboard",
+            "href": "#",
+            "icon": "layout-dashboard",
+            "current": true
+          },
+          {
+            "label": "Authorization",
+            "icon": "shield-check",
+            "open": true,
+            "children": [
+              {
+                "label": "Roles",
+                "href": "#",
+                "icon": "key-round"
+              },
+              {
+                "label": "Users",
+                "href": "#",
+                "icon": "users"
+              }
+            ]
+          },
+          {
+            "label": "Event types",
+            "href": "#",
+            "icon": "workflow"
+          }
+        ]
+      },
+      {
+        "label": "Settings",
+        "items": [
+          {
+            "label": "General",
+            "href": "#",
+            "icon": "settings"
+          }
+        ]
+      }
+    ],
+    "user": {
+      "name": "Ada Lovelace",
+      "email": "ada@example.com",
+      "initials": "AL"
+    },
+    "version": "1.0.0",
+    "profileHref": "#",
+    "resetPasswordHref": "",
+    "signOutAction": "/auth/logout",
+    "signOutAttrs": {}
+  },
+  "source": "app-shell.md user menu for an IdP-managed user (no Reset Password item)"
+}

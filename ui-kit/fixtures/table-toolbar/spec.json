@@ -1,0 +1,23 @@
+{
+  "props": {
+    "id": "users-list",
+    "action": "/users",
+    "searchPlaceholder": "Search users",
+    "size": {
+      "options": [
+        50,
+        100,
+        200,
+        500,
+        1000
+      ],
+      "selected": 200
+    },
+    "clearHref": "/users",
+    "activeFilterCount": 2
+  },
+  "slots": {
+    "filters": "<div class=\"fc-form-field\">\n  <label class=\"fc-field-label\" for=\"filter-scope\">Type</label>\n  <select id=\"filter-scope\" name=\"scope\" class=\"fc-select\"><option value=\"\">All types</option><option value=\"ANCHOR\">Anchor</option><option value=\"CLIENT\">Client</option></select>\n</div>"
+  },
+  "source": "components/table-toolbar.md: element starting with '<form id=\"users-list\"'"
+}

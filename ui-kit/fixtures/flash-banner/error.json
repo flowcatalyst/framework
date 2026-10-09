@@ -1,0 +1,7 @@
+{
+  "props": {
+    "kind": "error",
+    "message": "Could not save: name is required."
+  },
+  "source": "gallery/index.html: element starting with '<div role=\"status\" class=\"fc-banner fc-banner-error mb-4\">'"
+}

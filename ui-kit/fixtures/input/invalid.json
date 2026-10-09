@@ -1,0 +1,10 @@
+{
+  "props": {
+    "id": "f-email",
+    "type": "email",
+    "value": "not-an-email",
+    "invalid": true,
+    "describedBy": "f-email-err"
+  },
+  "source": "gallery/index.html: element starting with '<input type=\"email\" class=\"h-9'"
+}

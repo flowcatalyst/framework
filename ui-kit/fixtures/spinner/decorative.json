@@ -1,0 +1,6 @@
+{
+  "props": {
+    "decorative": true
+  },
+  "source": "gallery/index.html: element starting with '<svg width=\"1em\" height=\"1em\" class=\"animate-spin\" aria-hidden=\"true\">'"
+}

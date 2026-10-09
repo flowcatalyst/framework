@@ -1,0 +1,18 @@
+{
+  "props": {
+    "name": "active",
+    "label": "Status",
+    "placeholder": "All statuses",
+    "options": [
+      {
+        "value": "true",
+        "label": "Active"
+      },
+      {
+        "value": "false",
+        "label": "Inactive"
+      }
+    ]
+  },
+  "source": "components/data-table.md: element starting with '<div class=\"fc-form-field\">\\n  <label class=\"fc-field-label\" for=\"filter-active\">'"
+}

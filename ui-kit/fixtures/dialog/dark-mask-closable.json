@@ -1,0 +1,14 @@
+{
+  "props": {
+    "id": "dlg-dark",
+    "title": "Grant client access",
+    "description": "Dark mask, close button, click the mask to dismiss.",
+    "mask": "dark",
+    "width": "narrow",
+    "closable": true
+  },
+  "slots": {
+    "footer": "<button class=\"inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 border-transparent text-foreground hover:bg-foreground/5 active:bg-foreground/10 h-9 gap-2 rounded-lg px-4\" type=\"button\" data-on:click=\"el.closest('dialog').close()\">Cancel</button><button class=\"inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 border-transparent bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80 h-9 gap-2 rounded-lg px-4\" type=\"button\" data-on:click=\"el.closest('dialog').close()\">Grant</button>"
+  },
+  "source": "gallery/index.html: element starting with '<dialog id=\"dlg-dark\"'"
+}

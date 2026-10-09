@@ -1,0 +1,7 @@
+{
+  "props": {
+    "summary": "Showing the 200 most recent events",
+    "olderHref": "#"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"fc-table-footer\">'"
+}

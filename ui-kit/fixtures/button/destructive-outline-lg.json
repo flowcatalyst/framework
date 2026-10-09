@@ -1,0 +1,10 @@
+{
+  "props": {
+    "variant": "destructive-outline",
+    "size": "lg"
+  },
+  "slots": {
+    "default": "lg"
+  },
+  "source": "gallery/index.html: element starting with '<button class=\"inline-flex shrink-0 items-center justify-center border' (occurrence 33)"
+}

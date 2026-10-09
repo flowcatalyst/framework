@@ -1,0 +1,9 @@
+{
+  "props": {
+    "static": true
+  },
+  "slots": {
+    "default": "<th class=\"h-10 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground\" scope=\"col\" aria-sort=\"ascending\"><a href=\"#\" class=\"inline-flex items-center gap-1 text-inherit no-underline hover:text-foreground\">Name <svg width=\"1em\" height=\"1em\" class=\"size-[0.85rem]\" aria-hidden=\"true\"><use href=\"/icons/lucide-sprite.svg#i-arrow-up\"/></svg></a></th><th class=\"h-10 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground\" scope=\"col\"><a href=\"#\" class=\"inline-flex items-center gap-1 text-inherit no-underline hover:text-foreground\">Email <svg width=\"1em\" height=\"1em\" class=\"size-[0.85rem] opacity-40\" aria-hidden=\"true\"><use href=\"/icons/lucide-sprite.svg#i-arrow-up-down\"/></svg></a></th><th class=\"h-10 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground\" scope=\"col\">Type</th><th class=\"h-10 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground\" scope=\"col\">Status</th>"
+  },
+  "source": "gallery/index.html: element starting with '<tr class=\"border-b border-border transition-colors hover:bg-foreground/5 hover:bg-transparent\">'"
+}

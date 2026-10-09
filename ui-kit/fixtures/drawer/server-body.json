@@ -1,0 +1,14 @@
+{
+  "props": {
+    "signal": "selPool",
+    "label": "Dispatch pool",
+    "size": "wide",
+    "title": "Billing",
+    "subtitle": "billing",
+    "bodyId": "pool-drawer-body"
+  },
+  "slots": {
+    "default": "<p>Loading</p>"
+  },
+  "source": "drawer.md Structure, size wide (fc-drawer-wide), static titles, a body id for the server patch (c), no extras or footer"
+}

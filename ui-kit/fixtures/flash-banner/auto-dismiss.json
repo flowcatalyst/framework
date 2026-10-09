@@ -1,0 +1,8 @@
+{
+  "props": {
+    "kind": "success",
+    "message": "Saved.",
+    "autoDismiss": true
+  },
+  "source": "flash-banner.md Behaviour (auto-dismiss: data-init__delay.5s=\"el.remove()\")"
+}

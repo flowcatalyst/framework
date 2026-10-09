@@ -1,0 +1,17 @@
+{
+  "props": {
+    "items": [
+      {
+        "page": 1,
+        "href": "/x?page=1"
+      },
+      {
+        "page": 2,
+        "href": "/x?page=2"
+      }
+    ],
+    "current": 1,
+    "nextHref": "/x?page=2"
+  },
+  "source": "pagination.md Structure + link-state table: current page outline/icon without the users-list primary fill; disabled previous = aria-disabled + pointer-events-none opacity-50, no href"
+}

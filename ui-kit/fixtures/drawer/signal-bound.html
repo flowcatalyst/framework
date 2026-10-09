@@ -1,0 +1,34 @@
+<aside class="fc-drawer" role="complementary" aria-label="User" data-drawer style="display: none"
+       data-show="$selUser !== ''"
+       data-on:keydown__window="evt.key === 'Escape' && $selUser !== '' && !document.querySelector('dialog[open]:not([data-drawer]), [popover]:popover-open') && ($selUser = '')">
+  <button type="button" class="fc-icon-btn absolute top-[1.1rem] right-[1.1rem] z-10" aria-label="Close" data-on:click="$selUser = ''"><svg width="1em" height="1em" class="size-[1.2rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-x"/></svg></button>
+  <header class="fc-drawer-header pr-14">
+    <div class="fc-drawer-titles">
+      <div class="min-w-0">
+        <h2 class="fc-drawer-title" data-text="$selUser"></h2>
+        <p class="fc-drawer-subtitle" data-text="$selEmail"></p>
+      </div>
+      <div class="flex shrink-0 items-center gap-2"><span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-success text-success-foreground">Active</span></div>
+    </div>
+  </header>
+  <div class="fc-drawer-body">
+<section class="fc-form-section">
+  <header class="fc-section-header">
+    <div>
+      <h3 class="fc-section-title">Details</h3>
+    </div>
+    <button type="button" class="fc-btn fc-btn-text-primary">Edit</button>
+  </header>
+  <div class="fc-section-body">
+<div class="fc-detail-grid"><div class="fc-detail-field">
+  <span class="fc-field-label">Name</span>
+  <div class="fc-detail-value"><span data-text="$selUser"></span></div>
+</div><div class="fc-detail-field">
+  <span class="fc-field-label">Email</span>
+  <div class="fc-detail-value"><span data-text="$selEmail"></span></div>
+</div></div>
+  </div>
+</section>
+  </div>
+  <div class="fc-drawer-footer"><button type="button" class="fc-btn fc-btn-text" data-on:click="$selUser = ''">Close</button></div>
+</aside>

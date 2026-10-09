@@ -1,0 +1,27 @@
+{
+  "props": {
+    "id": "ev-list",
+    "action": "#",
+    "searchPlaceholder": "Search events",
+    "searchValue": "invoice",
+    "size": {
+      "options": [
+        50,
+        100,
+        200,
+        500,
+        1000
+      ],
+      "selected": 200
+    },
+    "clearHref": "#",
+    "activeFilterCount": 2,
+    "formAttrs": {
+      "data-on:submit": "void 0"
+    }
+  },
+  "slots": {
+    "filters": "<div class=\"fc-form-field\">\n  <label class=\"fc-field-label\" for=\"filter-type\">Type</label>\n  <select id=\"filter-type\" name=\"type\" class=\"fc-select\"><option value=\"\">All types</option><option value=\"a\" selected>Created</option><option value=\"b\">Updated</option></select>\n</div>\n<div class=\"fc-form-field\">\n  <label class=\"fc-field-label\" for=\"filter-app\">Application</label>\n  <select id=\"filter-app\" name=\"app\" class=\"fc-select\"><option value=\"\">All applications</option><option value=\"o\" selected>Orders</option></select>\n</div>"
+  },
+  "source": "gallery/index.html: element starting with '<form id=\"ev-list\"'"
+}

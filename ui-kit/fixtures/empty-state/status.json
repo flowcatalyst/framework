@@ -1,0 +1,7 @@
+{
+  "props": {
+    "message": "No users found",
+    "status": true
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"fc-empty\" role=\"status\">'"
+}

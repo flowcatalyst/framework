@@ -1,0 +1,8 @@
+{
+  "props": {
+    "id": "f-dis",
+    "value": "Read only",
+    "disabled": true
+  },
+  "source": "gallery/index.html: element starting with '<input type=\"text\" class=\"h-9' (occurrence 2)"
+}

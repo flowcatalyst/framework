@@ -1,0 +1,7 @@
+{
+  "props": {
+    "title": "Dashboard",
+    "subtitle": "App shell with the collapsible navy sidebar"
+  },
+  "source": "gallery/app-shell.html: element starting with '<header class=\"fc-page-header\">'"
+}

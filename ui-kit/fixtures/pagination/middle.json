@@ -1,0 +1,26 @@
+{
+  "props": {
+    "items": [
+      {
+        "page": 1,
+        "href": "#"
+      },
+      {
+        "page": 2,
+        "href": "#"
+      },
+      {
+        "page": 3,
+        "href": "#"
+      },
+      {
+        "ellipsis": true
+      }
+    ],
+    "current": 2,
+    "prevHref": "#",
+    "nextHref": "#",
+    "primaryCurrent": true
+  },
+  "source": "gallery/index.html: element starting with '<nav aria-label=\"pagination\"'"
+}

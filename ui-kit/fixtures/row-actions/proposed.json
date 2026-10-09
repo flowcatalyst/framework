@@ -1,0 +1,12 @@
+{
+  "props": {
+    "actions": [
+      {
+        "icon": "pencil",
+        "label": "Edit",
+        "href": "/dispatch-pools/1?edit=true"
+      }
+    ]
+  },
+  "source": "PROPOSED (no spec yet): table_cell + .fc-icon-btn links, right-aligned; see PORTING-NOTES 'Go templ port'"
+}

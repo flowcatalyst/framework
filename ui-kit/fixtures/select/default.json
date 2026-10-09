@@ -1,0 +1,24 @@
+{
+  "props": {
+    "name": "type",
+    "options": [
+      {
+        "value": "a",
+        "label": "Anchor"
+      },
+      {
+        "value": "p",
+        "label": "Partner"
+      },
+      {
+        "value": "c",
+        "label": "Client"
+      }
+    ],
+    "selected": "p",
+    "attrs": {
+      "aria-label": "Type"
+    }
+  },
+  "source": "gallery/index.html: element starting with '<span class=\"relative block has-[:disabled]'"
+}

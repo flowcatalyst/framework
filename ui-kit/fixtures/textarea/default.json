@@ -1,0 +1,9 @@
+{
+  "props": {
+    "placeholder": "Textarea grows with its content",
+    "attrs": {
+      "aria-label": "Notes"
+    }
+  },
+  "source": "gallery/index.html: element starting with '<textarea class='"
+}

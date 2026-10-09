@@ -1,0 +1,10 @@
+{
+  "props": {
+    "colspan": 4,
+    "empty": {
+      "message": "No users found",
+      "status": true
+    }
+  },
+  "source": "the gallery list page's empty row without its client-filter attributes (data-show/style)"
+}

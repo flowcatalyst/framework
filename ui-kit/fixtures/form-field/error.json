@@ -1,0 +1,11 @@
+{
+  "props": {
+    "label": "Email",
+    "for": "hf2",
+    "error": "Enter a valid email"
+  },
+  "slots": {
+    "default": "<input id=\"hf2\" type=\"email\" class=\"fc-input\" value=\"bad\" aria-invalid=\"true\" aria-describedby=\"hf2-msg\">"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"fc-form-field\">' (occurrence 2)"
+}

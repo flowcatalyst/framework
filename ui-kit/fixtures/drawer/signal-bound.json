@@ -1,0 +1,14 @@
+{
+  "props": {
+    "signal": "selUser",
+    "label": "User",
+    "titleSignal": "selUser",
+    "subtitleSignal": "selEmail"
+  },
+  "slots": {
+    "extras": "<span class=\"inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-success text-success-foreground\">Active</span>",
+    "default": "<section class=\"fc-form-section\">\n  <header class=\"fc-section-header\">\n    <div>\n      <h3 class=\"fc-section-title\">Details</h3>\n    </div>\n    <button type=\"button\" class=\"fc-btn fc-btn-text-primary\">Edit</button>\n  </header>\n  <div class=\"fc-section-body\">\n<div class=\"fc-detail-grid\"><div class=\"fc-detail-field\">\n  <span class=\"fc-field-label\">Name</span>\n  <div class=\"fc-detail-value\"><span data-text=\"$selUser\"></span></div>\n</div><div class=\"fc-detail-field\">\n  <span class=\"fc-field-label\">Email</span>\n  <div class=\"fc-detail-value\"><span data-text=\"$selEmail\"></span></div>\n</div></div>\n  </div>\n</section>",
+    "footer": "<button type=\"button\" class=\"fc-btn fc-btn-text\" data-on:click=\"$selUser = ''\">Close</button>"
+  },
+  "source": "gallery/index.html: element starting with '<aside class=\"fc-drawer\"'"
+}

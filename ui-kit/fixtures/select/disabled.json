@@ -1,0 +1,15 @@
+{
+  "props": {
+    "options": [
+      {
+        "value": "a",
+        "label": "Anchor"
+      }
+    ],
+    "disabled": true,
+    "attrs": {
+      "aria-label": "Disabled select"
+    }
+  },
+  "source": "gallery/index.html: element starting with '<span class=\"relative block has-[:disabled]' (occurrence 2)"
+}

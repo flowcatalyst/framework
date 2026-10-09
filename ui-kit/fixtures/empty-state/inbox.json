@@ -1,0 +1,7 @@
+{
+  "props": {
+    "message": "No event types found",
+    "clearHref": "#"
+  },
+  "source": "gallery/index.html: element starting with '<div class=\"fc-empty\">' (occurrence 2)"
+}

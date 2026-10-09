@@ -1,0 +1,19 @@
+{
+  "props": {
+    "name": "scope",
+    "label": "Type",
+    "placeholder": "All types",
+    "autoSubmit": true,
+    "options": [
+      {
+        "value": "ANCHOR",
+        "label": "Anchor"
+      },
+      {
+        "value": "CLIENT",
+        "label": "Client"
+      }
+    ]
+  },
+  "source": "components/filter-select.md: element starting with '<div class=\"fc-form-field\">'"
+}

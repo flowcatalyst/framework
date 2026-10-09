@@ -1,0 +1,9 @@
+{
+  "props": {
+    "disabled": true
+  },
+  "slots": {
+    "default": "Disabled"
+  },
+  "source": "gallery/index.html: element starting with '<button class=\"inline-flex shrink-0 items-center justify-center border' (occurrence 5)"
+}

@@ -1,0 +1,9 @@
+{
+  "props": {
+    "disabled": true
+  },
+  "slots": {
+    "default": "Disabled"
+  },
+  "source": "gallery/index.html: element starting with '<button type=\"button\" class=\"fc-btn fc-btn-primary\" disabled>'"
+}

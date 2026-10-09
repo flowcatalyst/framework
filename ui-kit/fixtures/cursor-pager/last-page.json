@@ -1,0 +1,7 @@
+{
+  "props": {
+    "summary": "No older events",
+    "newestHref": "/events"
+  },
+  "source": "cursor-pager.md Structure with Older disabled"
+}

@@ -1,0 +1,17 @@
+{
+  "props": {
+    "id": "dlg-confirm",
+    "action": "/users/42/reset-2fa",
+    "title": "Reset 2FA",
+    "message": "Are you sure you want to reset two-factor authentication for Ada?",
+    "confirmLabel": "Reset",
+    "tone": "danger",
+    "hidden": [
+      {
+        "name": "csrf",
+        "value": "{token}"
+      }
+    ]
+  },
+  "source": "components/confirm-dialog.md: element starting with '<dialog id=\"dlg-confirm\"'"
+}

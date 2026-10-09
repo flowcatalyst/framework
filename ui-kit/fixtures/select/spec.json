@@ -1,0 +1,22 @@
+{
+  "props": {
+    "id": "type",
+    "name": "type",
+    "options": [
+      {
+        "value": "a",
+        "label": "Anchor"
+      },
+      {
+        "value": "p",
+        "label": "Partner"
+      },
+      {
+        "value": "c",
+        "label": "Client"
+      }
+    ],
+    "selected": "p"
+  },
+  "source": "components/select.md: element starting with '<span class=\"relative block has-[:disabled]'"
+}

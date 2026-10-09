@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "s1",
+    "name": "notify",
+    "checked": true,
+    "attrs": {
+      "aria-label": "Notifications"
+    }
+  },
+  "source": "components/switch.md: element starting with '<span class=\"peer relative inline-flex shrink-0'"
+}
