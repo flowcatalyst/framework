@@ -1,7 +1,7 @@
 # Plan: porting the FlowCatalyst UI to the framework UI (dogfooding)
 
-Status: proposal, 2026-10-09. Nothing here is built. Decisions needed from the owner are in
-section 8.
+Status: approved in direction 2026-10-09 (owner: move off PrimeVue completely; build the Go templ
+version; keep the Go platform). Phase 0 starts in the Go repository. Rulings are in section 8.
 
 ## 1. Goal
 
@@ -115,12 +115,21 @@ Each phase ends with something working and a list of kit defects found, recorded
 - **Accessibility and browser support.** The kit already has an accessibility checklist; the
   port must not regress it. Dialogs use Datastar rather than `commandfor` for browser support.
 
-## 8. Decisions needed
+## 8. Rulings and open points
 
-1. Extract the kit into its own repository now (recommended), or use a subtree first.
-2. Own Datastar adapter in Go (recommended) or the official SDK.
-3. Is the Go platform UI to be replaced completely (the plan above), or only new areas in the
-   new UI and the old SPA left for the rest?
-4. Pilot pages: dispatch pools and connections (proposed), or a different small area.
-5. Do the first Java admin pages (phase 2) wait for M4c login, or run first against a
-   development session?
+Rulings (2026-10-09):
+- The Go platform stays (the Java platform port is frozen). Replacing PrimeVue is the reason for
+  the port, so the Vue SPA is replaced **completely** in phases (section 6), not only for new areas.
+- Datastar for Go: the **official SDK**, `github.com/starfederation/datastar-go` (v1.2.2, MIT;
+  direct dependencies include a compression library, `klauspost/compress`, `bytebufferpool` and
+  a JSON-schema validator). It is wrapped by a thin `ui/ds` package of ours, so the dependency
+  stays contained and can be dropped later.
+- The Java framework `/admin` (JTE) remains the second target; templ comes first because it
+  replaces a working product.
+
+Defaults being used until the owner says otherwise:
+- The kit stays in the framework repository for now; the Go repository vendors the built
+  stylesheet, the icon sprite and a pinned `datastar.js` (no CDN at run time), with a sync script.
+  Extracting the kit into its own repository is a later step.
+- Pilot pages: dispatch pools and connections.
+- The first Java admin pages do not wait for M4c login.
