@@ -600,7 +600,7 @@ class DispatchReceiverTest {
             r -> r.onDispatch(TYPE, (ctx, d) -> DispatchResult.ack()),
             "FLOWCATALYST_RECEIVERS_SIGNING_SECRET",
             null);
-    assertThat(e.problems()).extracting(Problem::key).containsExactly("flowcatalyst.receivers.signing-secret");
+    assertThat(e.problems()).extracting(Problem::key).containsExactly("flowcatalyst.receivers.dispatch.signing-secret");
   }
 
   @Test
@@ -610,7 +610,7 @@ class DispatchReceiverTest {
             r -> r.onDispatch(TYPE, (ctx, d) -> DispatchResult.ack()),
             "FLOWCATALYST_RECEIVERS_SIGNING_SECRET",
             "   ");
-    assertThat(e.problems()).extracting(Problem::key).containsExactly("flowcatalyst.receivers.signing-secret");
+    assertThat(e.problems()).extracting(Problem::key).containsExactly("flowcatalyst.receivers.dispatch.signing-secret");
   }
 
   @Test

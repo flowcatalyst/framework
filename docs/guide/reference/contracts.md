@@ -16,7 +16,7 @@ end of [STATUS](../STATUS.md#where-the-guide-and-the-contracts-can-differ).
 | [write path](../../contracts/write-path.md) | aggregates, repositories, use cases, optimistic locking, events, the outbox, ids | [The write path](../write-path.md) |
 | [checked SQL](../../contracts/checked-sql.md) | query files, types, generated code, the Maven plugin | [Checked SQL](../checked-sql.md) |
 | [HTTP](../../contracts/http.md) | routing, middleware, validation, errors, Jetty, Datastar | [HTTP](../http.md) |
-| [FlowCatalyst module](../../contracts/flowcatalyst.md) | the platform client, definition sync, outbox delivery stance, receivers (planned) | [The FlowCatalyst module](../flowcatalyst-module.md) |
+| [FlowCatalyst module](../../contracts/flowcatalyst.md) | the platform client, definition sync, outbox delivery stance, receivers | [The FlowCatalyst module](../flowcatalyst-module.md), [Receivers](../receivers.md) |
 
 Design documents behind the contracts:
 

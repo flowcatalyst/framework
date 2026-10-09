@@ -105,14 +105,41 @@ public final class FlowCatalystModule implements Module {
   public static final Setting<Secret> RECEIVERS_SIGNING_SECRET =
       Setting.secret("flowcatalyst.receivers.signing-secret")
           .describedAs(
-              "The signing secret of the service account that signs deliveries to this application."
-                  + " Required when receivers are registered and require-signature is true.");
+              "The shared signing secret of the service account that signs deliveries to this application;"
+                  + " used by each receiver without its own. Required for a receiver with handlers"
+                  + " when require-signature is true and it has no secret of its own.");
 
   /** {@code flowcatalyst.receivers.bearer-token}: an optional second gate on deliveries. */
   public static final Setting<Secret> RECEIVERS_BEARER_TOKEN =
       Setting.secret("flowcatalyst.receivers.bearer-token")
           .describedAs(
-              "When set, deliveries must also carry 'Authorization: Bearer <token>' (AND-ed with the signature).");
+              "Shared bearer token; when set, deliveries must also carry 'Authorization: Bearer <token>' (AND-ed with the signature).");
+
+  /** {@code flowcatalyst.receivers.dispatch.signing-secret}: overrides the shared secret for dispatch jobs. */
+  public static final Setting<Secret> RECEIVERS_DISPATCH_SIGNING_SECRET =
+      Setting.secret("flowcatalyst.receivers.dispatch.signing-secret")
+          .describedAs(
+              "Signing secret for deliveries to the dispatch receiver (the subscription's or"
+                  + " connection's service account). Falls back to flowcatalyst.receivers.signing-secret.");
+
+  /** {@code flowcatalyst.receivers.dispatch.bearer-token}: overrides the shared bearer token for dispatch jobs. */
+  public static final Setting<Secret> RECEIVERS_DISPATCH_BEARER_TOKEN =
+      Setting.secret("flowcatalyst.receivers.dispatch.bearer-token")
+          .describedAs(
+              "Bearer token for the dispatch receiver. Falls back to flowcatalyst.receivers.bearer-token.");
+
+  /** {@code flowcatalyst.receivers.scheduled-jobs.signing-secret}: overrides the shared secret for scheduled jobs. */
+  public static final Setting<Secret> RECEIVERS_JOBS_SIGNING_SECRET =
+      Setting.secret("flowcatalyst.receivers.scheduled-jobs.signing-secret")
+          .describedAs(
+              "Signing secret for deliveries to the scheduled-job receiver (the application's service"
+                  + " account). Falls back to flowcatalyst.receivers.signing-secret.");
+
+  /** {@code flowcatalyst.receivers.scheduled-jobs.bearer-token}: overrides the shared bearer token for scheduled jobs. */
+  public static final Setting<Secret> RECEIVERS_JOBS_BEARER_TOKEN =
+      Setting.secret("flowcatalyst.receivers.scheduled-jobs.bearer-token")
+          .describedAs(
+              "Bearer token for the scheduled-job receiver. Falls back to flowcatalyst.receivers.bearer-token.");
 
   /** {@code flowcatalyst.receivers.require-signature}: whether unsigned deliveries are refused. */
   public static final Setting<Boolean> RECEIVERS_REQUIRE_SIGNATURE =
@@ -179,6 +206,10 @@ public final class FlowCatalystModule implements Module {
     app.declare(RECEIVERS_PATH);
     app.declare(RECEIVERS_SIGNING_SECRET);
     app.declare(RECEIVERS_BEARER_TOKEN);
+    app.declare(RECEIVERS_DISPATCH_SIGNING_SECRET);
+    app.declare(RECEIVERS_DISPATCH_BEARER_TOKEN);
+    app.declare(RECEIVERS_JOBS_SIGNING_SECRET);
+    app.declare(RECEIVERS_JOBS_BEARER_TOKEN);
     app.declare(RECEIVERS_REQUIRE_SIGNATURE);
     app.declare(RECEIVERS_DISPATCH_TIMEOUT);
     app.declare(RECEIVERS_JOB_TIMEOUT);

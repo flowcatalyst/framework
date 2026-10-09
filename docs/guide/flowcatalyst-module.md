@@ -1,4 +1,4 @@
-<!-- types: FlowCatalystModule, PlatformClient, PlatformException, Definitions, Definition, DefinitionCatalog, DefinitionSync, SyncReport, CategoryResult, SyncException, SyncCommand, Command, Launch, FakePlatform -->
+<!-- types: FlowCatalystModule, Receivers, PlatformClient, PlatformException, Definitions, Definition, DefinitionCatalog, DefinitionSync, SyncReport, CategoryResult, SyncException, SyncCommand, Command, Launch, FakePlatform -->
 # The FlowCatalyst module
 
 `framework-flowcatalyst` connects the application to the FlowCatalyst platform: it holds the
@@ -11,8 +11,6 @@ Be clear about what it is *not*, today:
 
 | Not built | Where |
 |---|---|
-| Receivers: HTTP endpoints for dispatch jobs and scheduled-job firings, signature checks, ack / defer / reject | M4b, not started |
-| A health check on the outbox backlog (`outbox`) | planned in M4a, not built |
 | Dispatch-job rows in the outbox writer | MA-4 |
 | Per-client sync, principals sync, OpenAPI sync | not exposed |
 | Docs sync (`Definitions.docs(...)`) | accepted, skipped (the Java SDK cannot sync docs yet) |
@@ -43,6 +41,8 @@ flowcatalyst:
 | `flowcatalyst.timeout` | duration | `30s` | timeout of calls to the platform |
 | `flowcatalyst.subscription-target-base-url` | URI | none | what subscription targets given as a path (`/webhooks/billing`) resolve against |
 | `flowcatalyst.sync.on-boot` | boolean | `false` | also sync definitions in `started`; failures are logged, never fatal |
+| `flowcatalyst.outbox.stale-after` | duration | `5m` | the `outbox` health check is down when the oldest undelivered row is older than this; must be positive |
+| `flowcatalyst.receivers.*` | | | the receivers' settings, listed on the [Receivers](receivers.md#settings) page |
 
 The service account (client id and secret) and the application code must already exist on the
 platform; the framework does not create them. When the module is enabled, missing or malformed
@@ -57,8 +57,9 @@ stay `Up` briefly after the platform goes down.
 
 A provided service wrapping the SDK client built with client credentials. Today it offers
 `isEnabled()`, `application()` (an `ApplicationCode`), `verifyCredentials()`, `accessToken()`
-(a bearer token, cached by the SDK; never log it) and `clearToken()`. Failures are the unchecked
-`PlatformException`. SDK types do not appear in its API.
+(a bearer token, cached by the SDK; never log it) and `clearToken()`. The receivers use two more,
+`completeJobInstance(instanceId, Completion, result)` and `logJobInstance(instanceId, level,
+message)`, to report a scheduled-job instance. Failures are the unchecked `PlatformException`. SDK types do not appear in its API.
 
 ## Declaring definitions
 
@@ -147,15 +148,24 @@ subscriptions. Consequences:
 - An application that wants events, dispatch jobs, subscriptions or scheduled jobs needs a platform.
   There is no local fan-out, subscription or job dispatch in the framework.
 - Operating the processor (its settings, table name, database) is a platform concern.
-- A health check on the oldest pending row's age and a generated docs page describing the processor
-  are planned (M4a) but not built. Today nothing in the framework tells you the backlog is growing.
+- The `outbox` health check (below) watches the backlog. A generated docs page describing the
+  processor's settings is planned but not built.
 
-## Receivers (not built)
+### The `outbox` health check
 
-Planned (M4b): `POST /fc/dispatch` and `POST /fc/scheduled-jobs` routes with HMAC signature checks,
-handler registration by event type, ack / defer / reject results, and lock-based overlap protection
-for scheduled jobs. Until then, an application that wants to receive deliveries writes its own
-HTTP routes (see [HTTP](http.md)) and its own signature check.
+Added at `boot` when the module is enabled, a `Databases` service exists, and the **default**
+database has an `outbox_messages` table (migrations have run by then); otherwise there is no
+check, and an INFO line says why. It reports `Down` when the oldest undelivered row (status
+`PENDING` or `IN_PROGRESS`; terminal failures are not a backlog) is **strictly older** than
+`flowcatalyst.outbox.stale-after`, measured with the application's `InstantSource`. It runs two
+`min(created_at)` queries and writes nothing. A failing lookup reports the database error.
+
+## Receivers
+
+The module also mounts the receivers for dispatch jobs and scheduled-job firings
+(`POST /fc/dispatch`, `POST /fc/scheduled-jobs`), with signature checks and ack / defer / reject
+results. They have their own page: [Receivers](receivers.md), which also lists the
+`flowcatalyst.receivers.*` settings.
 
 ## Testing
 

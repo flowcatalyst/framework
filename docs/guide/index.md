@@ -27,6 +27,7 @@ describes what is built and says plainly where something is not.
 | [Checked SQL](checked-sql.md) | Queries in `.sql` files, checked at build time |
 | [HTTP](http.md) | Routes, validation, errors, middleware, Datastar, the Jetty module |
 | [The FlowCatalyst module](flowcatalyst-module.md) | The platform client and definition sync |
+| [Receivers](receivers.md) | Handling dispatch jobs and scheduled-job firings the platform delivers |
 | [Testing](testing.md) | Testing an application today, and the known limitation |
 | [STATUS](STATUS.md) | What exists, what is planned, known gaps |
 | [Contracts](reference/contracts.md) | The specifications |

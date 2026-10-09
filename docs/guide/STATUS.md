@@ -18,8 +18,8 @@ nothing here has been used in production. The plan, with owner rulings, is in
 | M2a | Write path: use cases, runner, optimistic locking, client scoping, events and audit rows into the SDK-compatible outbox, TSIDs | **Built** | [write path](write-path.md) |
 | M2b | Checked SQL: queries in `.sql` files, generator, Maven plugin with `generate`, `check`, `add-source` | **Built** | [checked SQL](checked-sql.md) |
 | M3 | HTTP: Jetty 12 on virtual threads, routing, middleware, typed validation, error envelope, correlation id, health endpoints, graceful shutdown, Datastar adapter | **Built** | [http](http.md) |
-| M4a | FlowCatalyst module, client side | **Partly built.** Built: `PlatformClient`, the `flowcatalyst` health check, definitions, validation, `DefinitionSync` and the `sync` command, `Command` and `launch` in core. Not built: the outbox-backlog health check and the generated docs page for the platform's outbox processor | [flowcatalyst module](flowcatalyst-module.md) |
-| M4b | Receivers: dispatch-job and scheduled-job endpoints, signature checks, ack / defer / reject | Not started | |
+| M4a | FlowCatalyst module, client side | **Built**, except the generated docs page for the platform's outbox processor. `PlatformClient`, the `flowcatalyst` and `outbox` health checks, definitions, validation, `DefinitionSync` and the `sync` command, `Command` and `launch` in core | [flowcatalyst module](flowcatalyst-module.md) |
+| M4b | Receivers: dispatch-job and scheduled-job endpoints, signature checks, ack / defer / reject, the overlap lock | **Built** (`Receivers`, `DispatchResult`, `DispatchDelivery.once`, `JobResult`) | [receivers](receivers.md) |
 | M4c | Sessions and login: session capability, OIDC relying-party flow, the real `ContextResolver`, login pages | Not started (depends on M-UI) | |
 | M-UI | `framework-ui`: JTE templates for the `ui-kit/` components, view response helper | Not started | |
 | M4d | Admin skeleton under `/admin` with permission gating | Not started | |
@@ -45,10 +45,11 @@ row of `implementation-plan.md`) or a milestone.
 
 ## Other things to know
 
-- **Receivers are not built** (M4b): the framework does not accept dispatch-job or scheduled-job
-  deliveries. Write your own routes and signature check.
+- **Receivers are at-least-once**: a dispatch handler can run twice for one job. Make it idempotent
+  (`DispatchDelivery.once` helps); see [Receivers](receivers.md#at-least-once-the-rule).
 - **The framework does not deliver the outbox.** The platform's outbox processor does. Without a
-  platform, rows accumulate and nothing consumes them. There is no backlog health check yet.
+  platform, rows accumulate and nothing consumes them; the `outbox` health check goes down when the
+  oldest undelivered row is older than `flowcatalyst.outbox.stale-after`.
 - **PostgreSQL and a single default database** only. Use cases and migrations run on the default
   instance; Redis is standalone only (no Cluster or Sentinel); the Redis lock driver is not Redlock.
 - **No external config stores**, no hot reload: config is read once at start-up.

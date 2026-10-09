@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.flowcatalyst;
 
 import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.Secret;
+import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
@@ -92,18 +93,37 @@ final class ReceiverMount {
           FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE.key(),
           prefix);
     }
-    ReceiverGate gate =
+    InstantSource clock = app.get(InstantSource.class);
+    ReceiverGate dispatchGate =
         new ReceiverGate(
-            nonBlank(config.find(FlowCatalystModule.RECEIVERS_SIGNING_SECRET)),
-            nonBlank(config.find(FlowCatalystModule.RECEIVERS_BEARER_TOKEN)),
+            effective(
+                config,
+                FlowCatalystModule.RECEIVERS_DISPATCH_SIGNING_SECRET,
+                FlowCatalystModule.RECEIVERS_SIGNING_SECRET),
+            effective(
+                config,
+                FlowCatalystModule.RECEIVERS_DISPATCH_BEARER_TOKEN,
+                FlowCatalystModule.RECEIVERS_BEARER_TOKEN),
             requireSignature,
-            app.get(InstantSource.class));
+            clock);
+    ReceiverGate jobsGate =
+        new ReceiverGate(
+            effective(
+                config,
+                FlowCatalystModule.RECEIVERS_JOBS_SIGNING_SECRET,
+                FlowCatalystModule.RECEIVERS_SIGNING_SECRET),
+            effective(
+                config,
+                FlowCatalystModule.RECEIVERS_JOBS_BEARER_TOKEN,
+                FlowCatalystModule.RECEIVERS_BEARER_TOKEN),
+            requireSignature,
+            clock);
     Receivers receivers = app.get(Receivers.class);
     Routes own = routes.get().forModule(FlowCatalystModule.ID);
     String dispatch = prefix + "/dispatch";
     own.post(
         dispatch,
-        new DispatchReceiver(receivers, gate, client.application(), dispatchTimeout, dispatch));
+        new DispatchReceiver(receivers, dispatchGate, client.application(), dispatchTimeout, dispatch));
     ScheduledJobRunner runner =
         new ScheduledJobRunner(
             client,
@@ -113,7 +133,7 @@ final class ReceiverMount {
             lease,
             retryDelay);
     String jobs = prefix + "/scheduled-jobs";
-    own.post(jobs, new ScheduledJobReceiver(receivers, gate, runner, client, jobs));
+    own.post(jobs, new ScheduledJobReceiver(receivers, jobsGate, runner, client, jobs));
     receivers.markMounted();
     return runner;
   }
@@ -143,16 +163,23 @@ final class ReceiverMount {
               null,
               "receivers are registered but no HTTP module provides Routes to mount them on"));
     }
-    if (any
-        && config.get(FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE)
-        && nonBlank(config.find(FlowCatalystModule.RECEIVERS_SIGNING_SECRET)) == null) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID,
-              FlowCatalystModule.RECEIVERS_SIGNING_SECRET.key(),
-              "required while receivers are registered and "
-                  + FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE.key()
-                  + " is true"));
+    if (config.get(FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE)) {
+      if (receivers.hasDispatchHandlers()
+          && effective(
+                  config,
+                  FlowCatalystModule.RECEIVERS_DISPATCH_SIGNING_SECRET,
+                  FlowCatalystModule.RECEIVERS_SIGNING_SECRET)
+              == null) {
+        problems.add(missingSecret(FlowCatalystModule.RECEIVERS_DISPATCH_SIGNING_SECRET, "dispatch"));
+      }
+      if (jobs
+          && effective(
+                  config,
+                  FlowCatalystModule.RECEIVERS_JOBS_SIGNING_SECRET,
+                  FlowCatalystModule.RECEIVERS_SIGNING_SECRET)
+              == null) {
+        problems.add(missingSecret(FlowCatalystModule.RECEIVERS_JOBS_SIGNING_SECRET, "scheduled-job"));
+      }
     }
     if (jobs && !hasDefaultLockInstance(app)) {
       problems.add(
@@ -176,6 +203,25 @@ final class ReceiverMount {
       LOG.info("flowcatalyst: scheduled-job handlers for {}", receivers.jobCodes().stream().sorted().toList());
     }
     receivers.markReady();
+  }
+
+  private static Problem missingSecret(Setting<Secret> own, String receiver) {
+    return Problem.of(
+        FlowCatalystModule.ID,
+        own.key(),
+        "required while "
+            + receiver
+            + " handlers are registered and "
+            + FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE.key()
+            + " is true (or set the shared "
+            + FlowCatalystModule.RECEIVERS_SIGNING_SECRET.key()
+            + ")");
+  }
+
+  /** A receiver's own non-blank secret, else the shared non-blank one, else null. */
+  private static @Nullable Secret effective(Config config, Setting<Secret> own, Setting<Secret> shared) {
+    Secret mine = nonBlank(config.find(own));
+    return mine != null ? mine : nonBlank(config.find(shared));
   }
 
   private static boolean hasDefaultLockInstance(App app) {
