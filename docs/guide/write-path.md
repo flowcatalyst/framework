@@ -270,7 +270,7 @@ The event's **data payload is the record's own fields** as JSON (Jackson 3; reco
 `metadata`. Keep event records plain: strings, numbers, nested records, lists.
 
 The event type must also exist on the platform for it to be delivered. The framework's
-[definition sync](flowcatalyst-module.md#definitions-and-the-sync-command) can declare it.
+[definition sync](flowcatalyst-module.md#declaring-definitions) can declare it.
 
 ## 6. The outbox
 
@@ -280,7 +280,8 @@ outbox processor reads them unchanged:
 
 - an event row has type `EVENT`, the event's message group, the SDK's `CreateEventDto` JSON, status
   `0`, and `client_id` set. `deduplicationId` is the event id; `clientCode` is the `ClientId`
-  value; the principal and execution id travel as `contextData` entries;
+  value, which must therefore be the platform's **client code** (the identifier such as `acme`),
+  not the `clt_...` id ([Context](context.md#what-goes-in-a-clientid)); the principal and execution id travel as `contextData` entries;
 - the audit row has type `AUDIT_LOG` and the SDK's `CreateAuditLogDto` JSON: entity type and id
   from the first aggregate (or the event subject), `operation` = the use case name, the principal,
   time, correlation id and client;
@@ -299,7 +300,10 @@ public record PlaceOrder(String customer) implements AuditData {
 
 > **The framework writes the outbox; it does not deliver it.** Delivery is the platform's outbox
 > processor, pointed at your database. Without a platform nothing consumes the rows. And the writer
-> handles **events and audit rows only**: there are no dispatch-job rows yet (plan item MA-4). See
+> handles **events and audit rows only**: there are no dispatch-job rows yet (plan item MA-4), and
+> no direct framework call that creates a dispatch job either; see
+> [Creating a dispatch job](flowcatalyst-module.md#creating-a-dispatch-job). The platform delivers
+> the rows: see [How the outbox gets delivered](flowcatalyst-module.md#how-the-outbox-gets-delivered),
 > [The FlowCatalyst module](flowcatalyst-module.md) and [STATUS](STATUS.md).
 
 An application that already ran the SDK's outbox migration by other means has the table and must
@@ -324,11 +328,40 @@ variable `IN` list) there is a small JDBC helper in `io.flowcatalyst.framework.u
 with typed column getters (`string`, `integer`, `longValue`, `instant`, `optionalString`, ...) and
 `Jdbc.nullOf(sqlType)` for a null parameter. Always filter by `client_id`.
 
+**Parameter types `Jdbc` can bind** (anything else throws `IllegalArgumentException` at run time
+naming the parameter position and the class, for example `parameter 2 has unsupported type
+java.sql.Timestamp`):
+
+| You pass | Bound as |
+|---|---|
+| `String` | text |
+| `Integer`, `Long`, `Short`, `Double`, `Boolean` | the matching SQL type |
+| `BigDecimal` | numeric |
+| `Instant` | `timestamptz`, as a UTC `OffsetDateTime` |
+| `UUID` | `uuid` |
+| `byte[]` | `bytea` |
+| any `Enum` | its `name()` as text |
+| `AggregateId`, `ClientId`, `PrincipalId`, `CorrelationId` | their `value()` as text |
+| `Jdbc.nullOf(Types.X)` | a typed SQL `NULL` |
+
+**Rejected:** a bare `null` (a `NullPointerException`; write `Jdbc.nullOf(Types.VARCHAR)`), `float`/`Float`,
+`byte`/`Byte`, `char`, and every date and time type except `Instant`: `java.sql.Timestamp`,
+`java.sql.Date`, `java.util.Date`, `LocalDateTime`, `LocalDate`, `OffsetDateTime`, `ZonedDateTime`.
+The helper has exactly one way to say "a moment in time" (`Instant`, bound at UTC); the other
+types either carry no zone (`LocalDateTime`, `LocalDate`) or the JVM's default one
+(`java.sql.Timestamp`), so the helper does not guess. Convert instead: `timestamp.toInstant()`, `localDateTime.toInstant(ZoneOffset.UTC)` (choose the
+zone yourself), `offsetDateTime.toInstant()`, `zonedDateTime.toInstant()`; a `LocalDate` is
+passed as its ISO text with an explicit cast in the SQL (`localDate.toString()` bound to `?::date`),
+or the query is written as [checked SQL](checked-sql.md). Reading is the matching set on `Row`: `instant`, `optionalInstant`,
+`uuid`, `bytes`, `decimal` and the string and number getters.
+
 ## 8. What to watch for
 
 - **Client scoping is yours to write into the SQL.** The runner refuses a cross-client plan, but a
   query you write that forgets `client_id` leaks. The repository contract requires it.
-- **One database.** Use cases run on the default database instance.
+- **Use cases and migrations use the default database instance.** You may configure several named
+  instances (`Databases.get(name)`, each with its own pool) and query another one yourself with
+  `Jdbc`; only the runner, the outbox and the migrations are tied to the default.
 - **Idempotence of retries.** A retried use case re-runs `validate`, `authorize` and `execute`
   from scratch; do not do side effects (HTTP calls, emails) inside them.
 - **Tests** run use cases against a real PostgreSQL; see [Testing](testing.md).

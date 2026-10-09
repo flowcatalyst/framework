@@ -11,10 +11,10 @@ Be clear about what it is *not*, today:
 
 | Not built | Where |
 |---|---|
-| Dispatch-job rows in the outbox writer | MA-4 |
+| Dispatch-job rows in the outbox writer, or any direct framework call that creates a dispatch job | MA-4; today see [Creating a dispatch job](#creating-a-dispatch-job) |
 | Per-client sync, principals sync, OpenAPI sync | not exposed |
 | Docs sync (`Definitions.docs(...)`) | accepted, skipped (the Java SDK cannot sync docs yet) |
-| Wrapper methods for platform APIs (events, dispatch jobs, users) | not built; `PlatformClient` gives you the token only |
+| Wrapper methods for platform APIs (events, dispatch jobs, users) | not built; `PlatformClient` gives you the token only, and [Calling a platform API yourself](#calling-a-platform-api-yourself) shows how to use it. The planned HTTP client library (MA item 6) will replace that recipe |
 
 See [STATUS](STATUS.md). The contract, with the as-built notes in section 4a, is
 [contracts/flowcatalyst.md](../contracts/flowcatalyst.md).
@@ -42,7 +42,7 @@ flowcatalyst:
 | `flowcatalyst.subscription-target-base-url` | URI | none | what subscription targets given as a path (`/webhooks/billing`) resolve against |
 | `flowcatalyst.sync.on-boot` | boolean | `false` | also sync definitions in `started`; failures are logged, never fatal |
 | `flowcatalyst.outbox.stale-after` | duration | `5m` | the `outbox` health check is down when the oldest undelivered row is older than this; must be positive |
-| `flowcatalyst.receivers.*` | | | the receivers' settings, listed on the [Receivers](receivers.md#settings) page |
+| `flowcatalyst.receivers.*` | | | the receivers' settings, listed on the [Receivers](receivers.md#settings) page, including `enabled` (default true) which can switch the receiver routes off |
 
 The service account (client id and secret) and the application code must already exist on the
 platform; the framework does not create them. When the module is enabled, missing or malformed
@@ -53,6 +53,20 @@ still starts; the failure is logged and the `flowcatalyst` health check reports 
 fetches a token with the service-account credentials; it uses the SDK's cached token, so it can
 stay `Up` briefly after the platform goes down.
 
+**But readiness does depend on it.** The `flowcatalyst` check is `Down` exactly when fetching a
+token fails: the platform refuses the credentials or cannot be reached, and the cached token (the
+SDK refreshes it about a minute before it expires) has run out. `/health/ready` answers `503` when
+*any* check is down ([HTTP](http.md#health-endpoints)), so a platform outage that outlasts the
+cached token marks **every replica not ready**. An orchestrator that takes not-ready instances out
+of rotation (a Kubernetes readiness probe, a load balancer health check) then stops sending an
+application traffic it could have served without the platform. The `outbox` check below can do the
+same when the platform's processor stops draining the table.
+
+There is no setting that excludes a check from readiness. If a platform outage must not take the
+application out of rotation, point the readiness probe at `/health/live` (always `200`) and use
+`/health/ready` for dashboards and alerts; or set `flowcatalyst.enabled: false` where no platform
+exists. A per-check "informational" flag is planned (MA item 7).
+
 ## `PlatformClient`
 
 A provided service wrapping the SDK client built with client credentials. Today it offers
@@ -60,6 +74,73 @@ A provided service wrapping the SDK client built with client credentials. Today 
 (a bearer token, cached by the SDK; never log it) and `clearToken()`. The receivers use two more,
 `completeJobInstance(instanceId, Completion, result)` and `logJobInstance(instanceId, level,
 message)`, to report a scheduled-job instance. Failures are the unchecked `PlatformException`. SDK types do not appear in its API.
+
+## Calling a platform API yourself
+
+`PlatformClient` has no wrapper for the platform's own APIs (events, dispatch jobs, users, ...).
+To call one, take its token and make the request with any HTTP client. The pieces:
+
+- **Base URL:** `app.config().get(FlowCatalystModule.BASE_URL)` (a `URI`, the same
+  `flowcatalyst.base-url`).
+- **Token:** `platform.accessToken()` (cached by the SDK; never log it). It is the application's
+  service account, so the platform authorises the call by that account's roles.
+- **Timeout:** `flowcatalyst.timeout` covers only the module's **own** calls (token, sync,
+  scheduled-job reports). A request you make is yours to bound: set a timeout on it.
+- **After a `401`:** the token was refused (revoked, or the platform restarted with new keys).
+  Call `platform.clearToken()` and retry once; the next `accessToken()` fetches a new one.
+
+```java
+static HttpResponse<String> getFromPlatform(App app, HttpClient http, String path) throws Exception {
+  PlatformClient platform = app.get(PlatformClient.class);
+  String base = app.config().get(FlowCatalystModule.BASE_URL).toString().replaceAll("/+$", "");
+  HttpResponse<String> response = null;
+  for (int attempt = 0; attempt < 2; attempt++) {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(base + path))
+            .timeout(Duration.ofSeconds(10))
+            .header("Authorization", "Bearer " + platform.accessToken())
+            .GET()
+            .build();
+    response = http.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 401) {
+      return response;
+    }
+    platform.clearToken();
+  }
+  return response;
+}
+```
+
+`accessToken()` throws `PlatformException` when the token cannot be fetched. This is a stop-gap: the
+planned HTTP client library (plan item MA-6) will take over token caching, refresh, timeouts and
+retries, and will replace this recipe.
+
+## Creating a dispatch job
+
+A dispatch job is the platform's unit of delivery. Most are made by the platform itself, from an
+event and a subscription. Creating one directly (a `TASK`, or an `EVENT` job you want delivered
+without an event) is **not supported by the framework**: the outbox writer writes event and audit
+rows only, and there is no framework call that creates a job. Plan item MA-4 adds the outbox rows.
+
+Until then, call the platform with the recipe above:
+
+- `POST /api/dispatch-jobs/batch` with `{"items": [ ... ]}`, at most 1000 items per request
+  (`POST /api/dispatch-jobs` creates one). Each item has at least `code` and `targetUrl`; `kind` is
+  `EVENT` or `TASK`; optional fields include `payload` (a JSON string), `dataOnly`,
+  `messageGroup`, `subscriptionId`, `clientId`, `correlationId`, `timeoutSeconds`, `maxRetries`
+  and `queue`. For an application-scoped service account the `code` must start with one of its
+  applications, `{application}:...`.
+- The caller needs the permission **`platform:messaging:batch:dispatch-jobs-write`**. The
+  platform's `application-service` role, which an application's service account normally carries,
+  grants it.
+- The answer is `{"results": [{"id", "status", "error?"}]}`, one entry per item, in order.
+- The receiver handles the delivered job like any other: the platform sets `X-Event-Type` to the
+  job's `code`, so `receivers.onDispatch("<code>", ...)` receives it
+  ([Receivers](receivers.md#dispatch-jobs)).
+
+This is read from the platform's source (`internal/platform/shared/sdk/dispatch_jobs_batch.go` in
+the platform repository), not exercised from this framework. The Java SDK's `OutboxManager` can
+also write `DISPATCH_JOB` rows to an outbox table; the framework neither wraps nor tests that path.
 
 ## Declaring definitions
 
@@ -120,16 +201,21 @@ switch (App.builder()
 ```
 
 ```
-java -jar app.jar sync --dry-run     # validate and report; contacts nobody
+java -jar app.jar sync --dry-run     # validate and report; sends nothing to the platform
 java -jar app.jar sync               # push to the platform
 ```
 
 - Exit codes: `0` success, `1` a category failed, `2` bad argument or module disabled.
 - `--dry-run` **never contacts the platform** (neither the SDK nor the platform has a preview):
-  it validates and prints `WOULD_SYNC` with the codes.
-- The command runs after services are built and **before any `boot`**. That means the database
-  module has connected and **applied migrations** by then, so the deploy needs database access, and
-  no server starts.
+  it validates and prints `WOULD_SYNC` with the codes. It is *not* free of side effects elsewhere:
+  see the next point.
+- The command runs after services are built and **before any `boot`**. Building services includes
+  the database module, which connects and **applies migrations** to the default database. So even
+  a dry run needs database access and **changes the schema** (new migrations are applied, and a
+  checksum mismatch fails it). If the deploy step must not touch the database, set
+  `database.instances.<name>.migrate: false` (or the environment variable
+  `DATABASE_INSTANCES_<NAME>_MIGRATE=false`) for that run; the instance is still connected to, so
+  it must be reachable. No server starts and no `boot` hook runs.
 - Each category is synced by its own SDK call so one failure does not stop the others. Order:
   roles, event types, connections, dispatch pools, subscriptions, processes, scheduled jobs, docs.
   It prints one line per category, for example `ROLES SYNCED sent=2 created=1 updated=1 deleted=0`.
@@ -147,9 +233,66 @@ subscriptions. Consequences:
 
 - An application that wants events, dispatch jobs, subscriptions or scheduled jobs needs a platform.
   There is no local fan-out, subscription or job dispatch in the framework.
-- Operating the processor (its settings, table name, database) is a platform concern.
-- The `outbox` health check (below) watches the backlog. A generated docs page describing the
-  processor's settings is planned but not built.
+- Operating the processor is a platform concern, but it has to be pointed at **your** database;
+  how is described next.
+- The `outbox` health check (below) watches the backlog.
+
+### How the outbox gets delivered
+
+The processor is part of the platform repository (`github.com/flowcatalyst/flowcatalyst`, the Go
+platform). There are two ways to run it; only one of them reads your application's database.
+
+**`fcdev outbox`: the standalone poller for an application's own PostgreSQL.** `fcdev` is the
+platform's developer binary (that repository's README installs it with
+`curl -fsSL https://raw.githubusercontent.com/flowcatalyst/flowcatalyst/main/install.sh | sh` and
+updates it with `fcdev upgrade`). Run it beside your application:
+
+```
+fcdev outbox \
+  --source-db-url 'postgres://user:pass@db-host:5432/app' \
+  --target-url https://platform.example.com \
+  --client-id orders-service --client-secret "$FLOWCATALYST_CLIENT_SECRET"
+```
+
+Every setting is a flag or an environment variable (a flag wins; a `.env` file in the working
+directory, or the file named by `--env-file`, is loaded without overriding the real environment):
+
+| Flag | Environment variable | Meaning |
+|---|---|---|
+| `--source-db-url` | `FC_OUTBOX_SOURCE_DB_URL` | your application's PostgreSQL URL. **Required** |
+| `--target-url` | `FC_OUTBOX_PLATFORM_URL` | the platform's base URL (default `http://localhost:8080`) |
+| `--client-id` | `FC_OUTBOX_CLIENT_ID`, else `FLOWCATALYST_CLIENT_ID` | the application's service account (the one `flowcatalyst.client-id` names) |
+| `--client-secret` | `FC_OUTBOX_CLIENT_SECRET`, else `FLOWCATALYST_CLIENT_SECRET` | its secret |
+| `--token-url` | `FC_OUTBOX_TOKEN_URL` | token endpoint; default `<target-url>/oauth/token` |
+| `--scope` | `FC_OUTBOX_SCOPE` | optional scope to narrow the token |
+| `--auth-token` | `FC_OUTBOX_PLATFORM_AUTH_TOKEN` | a static bearer token, used only when no client id and secret are given |
+| `--batch-size` | `FC_OUTBOX_BATCH_SIZE` | rows per poll (default 100) |
+| `--max-in-flight` | `FC_OUTBOX_MAX_IN_FLIGHT` | cap on outstanding requests (default 1000) |
+| `--poll-interval-ms` | `FC_OUTBOX_POLL_INTERVAL_MS` | wait between empty polls (default 1000) |
+
+It mints and refreshes the token with the client-credentials grant, claims rows with `status = 0`
+using `FOR UPDATE SKIP LOCKED`, posts them by row type (`EVENT` to `/api/events/batch`,
+`DISPATCH_JOB` to `/api/dispatch-jobs/batch`, `AUDIT_LOG` to `/api/audit-logs/batch`), and
+**deletes a row once the platform accepts it**, so the table holds only the backlog. At start-up it
+runs `CREATE TABLE IF NOT EXISTS outbox_messages` and the same three indexes, under the same names,
+that the framework's `OutboxModule` migration creates, so against a migrated database it changes
+nothing. `fcdev outbox create-table --db-type pg --db-url ...` creates the table without running
+the poller, for a database the framework did not migrate. Two pollers on one table never take the
+same row (`SKIP LOCKED`), but a message group's order is enforced inside one process, so run one
+poller per outbox.
+
+**`fc-server` with `FC_OUTBOX_ENABLED=true`** (the platform's own server; it also needs
+`FC_OUTBOX_PLATFORM_URL` and takes the other `FC_OUTBOX_*` variables listed in that repository's
+`docs/environment-variables.md`) runs the same processor over the **platform's own database
+pool** (or MongoDB with `FC_OUTBOX_BACKEND=mongo`). It does **not** read an application's separate
+PostgreSQL. Use it only when the application's `outbox_messages` lives in the platform's database;
+otherwise use `fcdev outbox`.
+
+All of this was read from the platform source (`cmd/fcdev/outbox.go`,
+`internal/server/subsystems.go`, `internal/outbox/postgres/postgres.go`, `internal/common/outbox.go`)
+and its environment-variable reference; no framework application was run against a poller here.
+The service account needs the batch-ingest permissions that the platform's `application-service`
+role carries.
 
 ### The `outbox` health check
 
@@ -165,7 +308,9 @@ check, and an INFO line says why. It reports `Down` when the oldest undelivered 
 The module also mounts the receivers for dispatch jobs and scheduled-job firings
 (`POST /fc/dispatch`, `POST /fc/scheduled-jobs`), with signature checks and ack / defer / reject
 results. They have their own page: [Receivers](receivers.md), which also lists the
-`flowcatalyst.receivers.*` settings.
+`flowcatalyst.receivers.*` settings. A receiver you register no handler for answers `404`, and
+`flowcatalyst.receivers.enabled: false` removes both routes (for an application that only wants the
+token).
 
 ## Testing
 

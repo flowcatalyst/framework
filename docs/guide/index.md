@@ -1,10 +1,12 @@
-<!-- types: App, AppBuilder, Module, UseCases, Routes, JettyHttpModule, DatabaseModule, OutboxModule, UseCaseModule, Launch -->
+<!-- types: App, AppBuilder, Module, UseCases, Routes, JettyHttpModule, DatabaseModule, OutboxModule, UseCaseModule, Launch, ContextResolver, FlowCatalystModule, ClientId -->
 # FlowCatalyst application framework
 
 A Java 25 framework for **business applications** that run next to the FlowCatalyst platform:
 modules and a start-up lifecycle, typed configuration, PostgreSQL with migrations, a use-case
 write path with optimistic locking and a transactional outbox, checked SQL, a small HTTP layer on
-Jetty, locks, and a client for the platform's definition sync.
+Jetty, locks, and a FlowCatalyst platform module: the application's service-account client, the
+sync of its definitions (event types, roles, subscriptions, scheduled jobs) and receivers for the
+dispatch jobs and scheduled-job firings the platform delivers to it.
 
 It is for a developer, or an AI agent, building one service on top of it. You do not need to have
 read the framework's code. The pages here say how to use it; the specifications are the
@@ -26,8 +28,8 @@ describes what is built and says plainly where something is not.
 | [The write path](write-path.md) | Aggregates, repositories, use cases, plans, optimistic locking, the outbox |
 | [Checked SQL](checked-sql.md) | Queries in `.sql` files, checked at build time |
 | [HTTP](http.md) | Routes, validation, errors, middleware, Datastar, the Jetty module |
-| [The FlowCatalyst module](flowcatalyst-module.md) | The platform client and definition sync |
-| [Receivers](receivers.md) | Handling dispatch jobs and scheduled-job firings the platform delivers |
+| [The FlowCatalyst module](flowcatalyst-module.md) | The platform client, definition sync, how the outbox is delivered, health |
+| [Receivers](receivers.md) | Handling dispatch jobs and scheduled-job firings the platform delivers (and switching the routes off) |
 | [Testing](testing.md) | Testing an application today, and the known limitation |
 | [STATUS](STATUS.md) | What exists, what is planned, known gaps |
 | [Contracts](reference/contracts.md) | The specifications |
@@ -45,7 +47,9 @@ public final class Main {
         .module(new DatabaseModule())
         .module(new OutboxModule())
         .module(new UseCaseModule())
+        .module(new FlowCatalystModule())
         .module(new OrdersModule())
+        .module(new OrdersHttpModule())
         .module(new JettyHttpModule())
         .shutdownHook(true)
         .launch(args)) {
@@ -57,8 +61,13 @@ public final class Main {
 ```
 
 `OrdersModule` is your own module (it is [`examples/orders-demo`](https://github.com/flowcatalyst/framework/blob/main/examples/orders-demo/src/main/java/io/flowcatalyst/framework/examples/ordersdemo/OrdersModule.java)):
-it contributes its migrations and provides its use cases. Behaviour is a *use case*, run with a
-`Context` that says which client is acting:
+it contributes its migrations and provides its use cases. `FlowCatalystModule` holds the
+application's service-account credentials, syncs its definitions and mounts the receivers; set
+`flowcatalyst.enabled: false` to run without a platform. `JettyHttpModule` is listed last on
+purpose: it opens the port in its `started` hook, so the port opens only once every other module has
+started ([why](http.md#wiring-it-up)). Behaviour is a *use case*, run with a `Context` that says
+which client is acting (the **client code**, such as `acme`, in a
+[`ClientId`](context.md#what-goes-in-a-clientid)):
 
 ```java
 UseCaseResult<OrderEvents.OrderPlaced> placed =
@@ -67,10 +76,18 @@ UseCaseResult<OrderEvents.OrderPlaced> placed =
 
 The run validates, authorizes, loads, decides, and then writes the aggregate, the domain event and
 an audit row in **one transaction**. The result is `Committed` or `Failed`; expected outcomes never
-throw. An HTTP route calls it like this (`request.context()` needs a
-[`ContextResolver`](http.md#context-and-authentication)):
+throw. An HTTP route calls it like this. `request.context()` only works if your application
+provides a [`ContextResolver`](http.md#context-and-authentication); the framework ships none (login
+is not built), so the module that owns the route supplies one. The one below is a placeholder that
+treats every request as one fixed user, and its route is registered in `boot`:
 
 ```java
+// in register(AppBuilder app):
+app.provide(
+    ContextResolver.class,
+    lookup -> request -> Context.of(new ClientId("acme")).withPrincipal(new PrincipalId("usr_demo")));
+
+// in boot(App app), with Routes routes = app.get(Routes.class).forModule(id()):
 routes.post(
     "/orders",
     request -> {
@@ -86,15 +103,19 @@ routes.post(
 ```
 
 The event row lands in the `outbox_messages` table. The framework does not deliver it: the
-platform's outbox processor reads that table and does (see
-[The FlowCatalyst module](flowcatalyst-module.md)).
+platform's outbox processor reads that table and does, which needs a platform and a processor
+pointed at your database ([how](flowcatalyst-module.md#how-the-outbox-gets-delivered)). Listing
+`FlowCatalystModule` gives the application its credentials, the definition sync and the receivers;
+it does not move the outbox rows.
 
 ## Conventions you will see everywhere
 
 - **Values are records.** No Lombok, no mutable beans.
 - **Expected outcomes are sealed result types**, handled with an exhaustive `switch`. Exceptions
   are for programming errors and infrastructure failure.
-- **Nullness is checked at build time** (JSpecify `@NullMarked`, Error Prone and NullAway).
+- **Nullness is checked at build time in the framework** (JSpecify `@NullMarked`, Error Prone and
+  NullAway), and the annotations are there for your tools. Your own build checks it only if you
+  add the same compiler setup, which is optional ([Getting started](getting-started.md#3-compiler-setup-error-prone-and-nullaway-stop-gap)).
 - **No reflection, no annotation scanning, no classpath scanning** for wiring.
 - **Blocking code on virtual threads.** No reactive APIs.
 - **Time comes from an injected `InstantSource`**, never `Instant.now()` in library code.

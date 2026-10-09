@@ -13,7 +13,7 @@
 | JDK 25 | everything | the build sets `maven.compiler.release` to 25 |
 | Maven 3.9 | everything | the repository ships a wrapper (`./mvnw`, Maven 3.9.13); your application can use its own |
 | Docker | tests, and `generate`/`check` of [checked SQL](checked-sql.md) | tests start PostgreSQL 18 (and Redis) with Testcontainers; checked SQL starts a throwaway `postgres:18-alpine` unless you point it at an empty database |
-| PostgreSQL | running an application | the only database supported |
+| PostgreSQL | running an application | the only database system supported. Several named instances may be configured; use cases and migrations run on the default one |
 | Redis or Valkey | only the `redis` lock driver | optional |
 | A FlowCatalyst platform | only the [flowcatalyst module](flowcatalyst-module.md) | optional; the module can be disabled |
 
@@ -33,10 +33,28 @@ This runs the whole build, including the tests (which need Docker). To skip the 
 The artifacts get group id `io.flowcatalyst.framework` and version `0.1.0-SNAPSHOT`.
 
 The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.11` (the
-FlowCatalyst Java SDK). **Not verified:** whether that artifact resolves from a remote repository
-on a clean machine; on the author's machine it sits in the local repository (installed, not
-downloaded). If `install` cannot resolve it, build and install the SDK from the platform
-repository's `clients/java-sdk` first.
+FlowCatalyst Java SDK). **That artifact is not published to Maven Central or to any other remote
+repository.** Its source is `clients/java-sdk` in the platform repository,
+`github.com/flowcatalyst/flowcatalyst`; that repository has no workflow that publishes it (nor has `flowcatalyst-javalin`, where the
+SDK is mirrored from), its `pom.xml` has no `distributionManagement`, and `make release-java-sdk`
+only bumps the version and pushes a `java-sdk/vX.Y.Z` tag. So the only way to get it is to build it into your local Maven
+repository **before** step 1 (JDK 25 and Maven; the build downloads its own dependencies from Maven
+Central):
+
+```
+git clone https://github.com/flowcatalyst/flowcatalyst.git
+cd flowcatalyst
+git checkout java-sdk/v0.0.11
+cd clients/java-sdk
+mvn install -DskipTests
+```
+
+This installs `io.flowcatalyst:flowcatalyst-sdk:0.0.11` into `~/.m2/repository`. (Checked by
+extracting that tag and running `mvn package -DskipTests` against an empty local repository, which
+produced `flowcatalyst-sdk-0.0.11.jar`; `install` is the same build plus the copy.) The version has
+to match `flowcatalyst-sdk.version` in the framework's root `pom.xml`. Drop `-DskipTests` to run
+its tests too. A repository (GitHub Packages, an internal Nexus) that serves the SDK works equally:
+the framework does not care where the artifact comes from.
 
 ## 2. Import `framework-parent` as a BOM
 
@@ -105,14 +123,15 @@ The modules, and what each is for:
 | `framework-locks-database` | `LocksDatabaseModule` | [locks](locks.md) |
 | `framework-locks-redis` | `LocksRedisModule` | [locks](locks.md) |
 | `framework-usecase` | `OutboxModule`, `UseCaseModule` | [write path](write-path.md) |
-| `framework-http` | none; the HTTP types and `TestClient`, no server (it depends on `framework-usecase`) | [http](http.md) |
+| `framework-http` | none; the HTTP types and `TestClient`, no server. It depends on `framework-usecase`, so an HTTP-only application also gets `framework-database`, HikariCP and the PostgreSQL driver on its classpath, only because `HttpErrors.of(UseCaseError)` needs the use case error types ([why](http.md#what-framework-http-pulls-in)) | [http](http.md) |
 | `framework-http-jetty` | `JettyHttpModule` | [http](http.md) |
 | `framework-flowcatalyst` | `FlowCatalystModule` | [flowcatalyst module](flowcatalyst-module.md) |
 | `framework-sql`, `framework-sql-maven-plugin` | none; the checked-SQL generator and its Maven plugin | [checked SQL](checked-sql.md) |
 
-Test support is published as test-jars (`<type>test-jar</type>`, `<scope>test</scope>`) of
-`framework-database`, `framework-redis`, `framework-locks` and `framework-flowcatalyst`; the parent
-already manages them. See [Testing](testing.md).
+Test support: `TestClient` is in `framework-http`'s ordinary jar; the fixtures are published as
+test-jars (`<type>test-jar</type>`, `<scope>test</scope>`) of `framework-database`,
+`framework-redis`, `framework-locks` and `framework-flowcatalyst`; the parent already manages them.
+See [Testing](testing.md).
 
 ## 3. Compiler setup: Error Prone and NullAway (stop-gap)
 
@@ -200,7 +219,10 @@ project root (this is the framework's own file, verbatim):
 ```
 
 You may leave Error Prone and NullAway out of your own build; nothing in the framework requires
-them.
+them. What that costs: the framework's own build checks nullness at compile time, and its
+`@NullMarked` annotations tell your IDE and any checker you run what can be null, but without
+NullAway in *your* build nothing stops you passing a `null` to a method that says it never takes
+one, and a mistake there surfaces at run time.
 
 ## 4. A first application
 

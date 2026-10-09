@@ -49,8 +49,12 @@ thrown. `StartupException.problems()` lists them.
 `builder.shutdownHook(true)` also closes the app from a JVM shutdown hook; the default is off so
 tests leave no hooks behind. Closing runs each booted module's `shutdown` in reverse module order,
 then closes every built service that is `AutoCloseable`, in reverse build order. A failure in one
-step is logged and does not stop the rest. Each step gets `app.shutdown.drain` (default `10s`)
-before it is logged as overrun.
+step is logged and does not stop the rest. Each step runs on its own virtual thread and gets
+`app.shutdown.drain` (default `10s`). A step that is still running after that is logged as an
+overrun, **interrupted, and left behind**: shutdown moves on to the next step without waiting for
+it, so a `shutdown` hook that ignores interruption can still be running while later steps (and
+the closing of services it uses) proceed. Write hooks that stop promptly and notice
+interruption.
 
 ## Services
 
@@ -102,7 +106,11 @@ A module can hand a value to another module that collects them. This is how migr
 MigrationSet.contribute(app, OrdersModule.class, "db/migration/orders");
 ```
 
-stores a `MigrationSet`; the database module collects every set with
+stores a `MigrationSet`, a record of three things: the contributing module's id (taken from the
+module whose `register` is running, so it must be called there), a class loader and the classpath
+directory. The class you pass (`OrdersModule.class`) is used **only for its class loader**: it
+says which jar to look in for `db/migration/orders`, so pass any class from the jar that holds
+the SQL files (your module class is the natural choice). The database module collects every set with
 `lookup.contributions(MigrationSet.class)` and applies them. The raw form is
 `app.contribute(Class<T>, T)`. `Definitions.in(app)` in the
 [flowcatalyst module](flowcatalyst-module.md) uses the same mechanism.
@@ -115,8 +123,9 @@ Configuration is in [Config](config.md#named-instances). `Database` has `dataSou
 
 Migrations are plain SQL files, forward only, named `V<version>__<description>.sql` with a
 positive integer version (for example `V0001__create_orders.sql`). Each module contributes at most
-one set (its module id plus a classpath location); your application's module contributes its own
-the same way. Sets are applied to the **default** database instance, in module registration order,
+one set (its module id plus a classpath location, found through the class loader of the class the
+module passes to `MigrationSet.contribute`); your application's module contributes its own the
+same way. Sets are applied to the **default** database instance, in module registration order,
 and by version within a set, only when that instance's `migrate` is true (the default). Each file
 runs in its own transaction together with its row in `fw_schema_history`, under a PostgreSQL
 advisory lock so instances starting together apply each file once. A changed checksum of an

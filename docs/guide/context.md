@@ -17,7 +17,7 @@ public record Context(
 
 | Field | Required | Meaning |
 |---|---|---|
-| `client` | always | the tenant the work is for. Every aggregate carries one, and a use case refuses to write another client's aggregate |
+| `client` | always | the tenant the work is for, as a `ClientId` that holds the platform's **client code** (see below). Every aggregate carries one, and a use case refuses to write another client's aggregate |
 | `principal` | no | the user or service account acting; the audit row and event metadata record it |
 | `application` | no | the application code |
 | `correlationId` | always | follows a request into logs, events and jobs; generated when absent |
@@ -34,6 +34,24 @@ Each is a record wrapping a validated string, so a mix-up is a compile error rat
 | `PrincipalId` | non-blank |
 | `ApplicationCode` | `[a-z][a-z0-9-]*` |
 | `CorrelationId` | non-blank; `CorrelationId.generate()` makes a random UUID |
+
+### What goes in a ClientId
+
+A `ClientId` is a string wrapper with a name that suggests the platform's internal client id. It is
+not. The platform has two names for a client: the generated id (`clt_0HZ...`) and the **client code**
+(also called its identifier: a short slug such as `acme`, matching `[a-z0-9][a-z0-9-]*`). The
+framework uses the **code** everywhere:
+
+- the dispatch receiver puts the code from `X-FlowCatalyst-Client: {id}:{code}` into the handler's
+  `Context` (`DispatchDelivery.client()` is an `Optional` of both halves, `id()` and `code()`);
+- the [outbox](write-path.md#6-the-outbox) writes the `ClientId` value as the payload's
+  `clientCode` (and in the row's `client_id` column), which is how the platform learns whose event
+  it is.
+
+So when you build a `Context` yourself, for example in a `ContextResolver`, put the client **code**
+in `new ClientId(...)`. Putting a `clt_...` id there writes events the platform cannot attribute to
+the client you meant. Nothing in the type or the framework can tell the two apart, because both are
+valid strings. The class itself is only validated for shape: `[A-Za-z0-9._-]{1,100}`.
 
 ## Building one
 
@@ -69,6 +87,6 @@ request's `X-Correlation-Id` (or the one it generated), so logs, events and the 
   client scopes every read and write, the principal and ids go into event metadata and the audit
   row. See [The write path](write-path.md).
 - **Locks** can be client-scoped: `LockKey.client(clientId, "invoice-run")`. See [Locks](locks.md).
-- **Outbox rows** use the `ClientId` value as the payload's `clientCode`.
+- **Outbox rows** use the `ClientId` value as the payload's `clientCode` (the client code, above).
 
 Specification: [contracts/core.md](../contracts/core.md) section 3.

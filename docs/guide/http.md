@@ -12,10 +12,28 @@ Application code depends on `framework-http` types only. There is no Servlet API
 static files, no TLS (terminate in front), no HTTP/2, no CORS, no compression, no rate limiting, and
 no OpenAPI generation.
 
+## What `framework-http` pulls in
+
+`framework-http` depends on `framework-usecase`, and through it on `framework-database` (HikariCP
+and the PostgreSQL JDBC driver). The reason is one method: `HttpErrors.of(UseCaseError)` maps a
+use case's failure (`ErrorKind` to a status, the code and message to the envelope) and therefore
+needs the `UseCaseError` and `ErrorKind` types. Nothing else in `framework-http` uses the write
+path. The consequence is that an application that only wants HTTP (an ingestor with no database)
+still gets the database module's classes and the driver on its classpath; they do nothing unless you
+list `DatabaseModule`. Splitting that dependency out is planned (MA item 8 in
+[the plan](../implementation-plan.md)); it is not done.
+
 ## Wiring it up
 
-List `JettyHttpModule` among your modules. **Order is irrelevant**: it compiles the route table and
-starts listening in `started`, after every module has booted.
+List `JettyHttpModule` among your modules. **Order is irrelevant for registering routes**: every
+module registers its routes in `boot`, and no module's `started` runs until every `boot` has
+finished. But the module compiles the route table and **opens the port in its own `started` hook**,
+and `started` hooks run in the order the modules are listed. A module listed *after* Jetty therefore
+runs its `started` work with the port already open, and a request can arrive before that work is
+done (the FlowCatalyst receivers answer `503` until their `started` hook has run; a module that
+registers routes in `started` fails with `IllegalStateException`, because the table is already
+compiled). **List `JettyHttpModule` last**, as every example here does, so the port opens only once
+every other module has fully started.
 
 ```java
 App.builder()

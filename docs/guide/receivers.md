@@ -1,4 +1,4 @@
-<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, FlowCatalystModule, PlatformClient, Context, Locks, LockStore -->
+<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, Database, Databases, FlowCatalystModule, PlatformClient, Context, Locks, LockStore -->
 # Receivers: dispatch jobs and scheduled jobs
 
 The platform delivers work **to** your application over HTTP: dispatch jobs (an event, fanned out by

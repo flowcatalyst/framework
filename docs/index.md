@@ -3,7 +3,9 @@
 A Java 25 framework for business applications that run next to the FlowCatalyst platform: modules
 and a start-up lifecycle, typed configuration, PostgreSQL with migrations, a use-case write path
 with optimistic locking and a transactional outbox, checked SQL, a small HTTP layer on Jetty,
-locks, and a client for the platform's definition sync.
+locks, and a FlowCatalyst platform module: the application's service-account client, the sync of
+its definitions, and receivers for the dispatch jobs and scheduled-job firings the platform delivers
+to it.
 
 The framework is pre-release. **Start with [the guide's status page](guide/STATUS.md).**
 
@@ -20,6 +22,7 @@ How to build an application with it. Start at the [guide index](guide/index.md).
 - [Checked SQL](guide/checked-sql.md)
 - [HTTP](guide/http.md)
 - [The FlowCatalyst module](guide/flowcatalyst-module.md)
+- [Receivers](guide/receivers.md): dispatch jobs and scheduled-job firings
 - [Testing](guide/testing.md)
 - [Status and known gaps](guide/STATUS.md)
 

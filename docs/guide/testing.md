@@ -3,7 +3,8 @@
 
 The framework tests itself with JUnit 5 and AssertJ against **real PostgreSQL 18 and Redis**
 (Testcontainers, one container per test class), and expects you to test your application the
-same way. The test helpers are published as test-jars.
+same way. The helpers come from two places: `TestClient` is in `framework-http`'s ordinary jar, and
+the rest are published as test-jars.
 
 > **Known limitation: services cannot be replaced in tests.** Each service type has exactly one
 > provider, and a test cannot swap one for a fake without changing your module. A planned
@@ -80,8 +81,14 @@ void stop() {
 }
 ```
 
-- `builder.environment(Map)` replaces the process environment, so tests never read the real one and
-  config is deterministic ([Config](config.md#environment-variable-names)).
+- `builder.environment(Map)` replaces the process environment, so tests never read the real one
+  ([Config](config.md#environment-variable-names)). It also supplies `APP_ENV`: when the map has no
+  `APP_ENV`, the environment is `local`, and `local` (like `test`) **reads
+  `config/secrets.local.yaml`** from the config directory. With
+  `configDirectory(Path.of("config"))` a test therefore reads the developer's own secrets file
+  unless the map sets `APP_ENV` to something else (a name for which that file is ignored, such as
+  `ci`), or the test points `configDirectory` at a directory of its own. Include an `APP_ENV` entry in
+  the map to make the config the same on every machine.
 - `builder.instantSource(() -> NOW)` fixes the clock; event times and audit rows follow it.
   `builder.monotonicClock(...)` does the same for locks and timeouts.
 - `pg.reset()` drops and recreates the `public` schema, so each test starts clean and migrations
