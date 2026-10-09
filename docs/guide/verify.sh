@@ -7,7 +7,10 @@
 #   1. the page has a "<!-- types: A, B, C -->" comment;
 #   2. every type named there is declared (class, interface, record or enum) somewhere under
 #      framework-*/src (main and test, because the test-jars publish helpers such as PostgresFixture);
-#   3. every relative link to a .md file resolves to a file;
+#   3. every relative link to a .md file resolves to a file, and when it carries an #anchor (or is a
+#      bare #anchor within the page), the target page has a heading whose GitHub-style slug is that
+#      anchor (lowercase, punctuation other than - and _ removed, spaces to hyphens, a repeated
+#      heading gets -1, -2 ...; headings inside code fences are ignored);
 #   4. the page contains no Liquid markers ("{{" or "{%"), which Jekyll would try to evaluate.
 # Site checks: every page under docs/guide is listed in docs/_data/nav.yml, every nav.yml path
 # exists, the layout and stylesheet exist, _config.yml has no theme dependency, and the layout and
@@ -15,7 +18,7 @@
 # include_relative; filters from an allow-list).
 # And that STATUS.md names a "Last verified against commit <hash>" that is an ancestor of HEAD.
 #
-# POSIX sh; needs only grep, find, sed, cut, tr and git.
+# POSIX sh; needs only grep, find, sed, cut, tr, awk and git.
 
 set -u
 
@@ -38,6 +41,25 @@ pages=$(find docs/guide -type f -name '*.md' | sort)
 if [ -z "$pages" ]; then
   fail "no pages found under docs/guide"
 fi
+
+# Prints the GitHub-style anchor of every heading in $1, one per line.
+anchors_of() {
+  awk '
+    /^```/ { fence = !fence; next }
+    fence { next }
+    /^#+[ \t]/ {
+      h = $0
+      sub(/^#+[ \t]+/, "", h)
+      sub(/[ \t#]+$/, "", h)
+      h = tolower(h)
+      gsub(/[^a-z0-9 _-]/, "", h)
+      gsub(/ /, "-", h)
+      n = seen[h]++
+      if (n > 0) h = h "-" n
+      print h
+    }
+  ' "$1"
+}
 
 declared() {
   # $1 = type name. True when some Java file declares it.
@@ -88,6 +110,26 @@ for page in $pages; do
     esac
     if [ ! -f "$dir/$link" ]; then
       fail "$page: link to '$link' does not resolve to a file"
+    fi
+  done
+
+  # Anchors: "](file.md#anchor)" and "](#anchor)".
+  anchor_links=$(grep -oE '\]\(([^)#[:space:]]*\.md)?#[^)[:space:]]+\)' "$page" 2>/dev/null \
+    | sed -E 's/^\]\(//; s/\)$//' | sort -u)
+  for al in $anchor_links; do
+    case $al in
+      http://* | https://* | mailto:*) continue ;;
+    esac
+    target=${al%%#*}
+    anchor=${al#*#}
+    if [ -z "$target" ]; then
+      target_file=$page
+    else
+      target_file="$dir/$target"
+    fi
+    [ -f "$target_file" ] || continue # reported above
+    if ! anchors_of "$target_file" | grep -qxF -- "$anchor"; then
+      fail "$page: link '$al' points at a heading that does not exist in ${target:-this page}"
     fi
   done
 done
