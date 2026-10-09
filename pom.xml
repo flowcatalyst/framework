@@ -27,6 +27,7 @@
     <module>framework-usecase</module>
     <module>framework-http</module>
     <module>framework-http-jetty</module>
+    <module>framework-flowcatalyst</module>
     <module>framework-sql</module>
     <module>framework-sql-maven-plugin</module>
     <module>examples/locks-demo</module>
@@ -140,6 +141,18 @@
         <artifactId>framework-sql</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-flowcatalyst</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-flowcatalyst</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
 
       <dependency>
         <groupId>org.jspecify</groupId>
@@ -187,12 +200,12 @@
         <artifactId>jetty-server</artifactId>
         <version>${jetty.version}</version>
       </dependency>
-      <!-- Test scope only: the FlowCatalyst SDK, to prove outbox payloads are what it writes. -->
+      <!-- The FlowCatalyst SDK. Compile dependency of framework-flowcatalyst only; framework-usecase
+           uses it in test scope, to prove outbox payloads are what it writes. -->
       <dependency>
         <groupId>io.flowcatalyst</groupId>
         <artifactId>flowcatalyst-sdk</artifactId>
         <version>${flowcatalyst-sdk.version}</version>
-        <scope>test</scope>
       </dependency>
 
       <dependency>
