@@ -12,7 +12,13 @@ owner rulings. Java 25 first (ruled 2026-10-08). Each capability is specified in
 | M2a | **Write path:** use cases (validate, authorize, execute, plan), the runner and unit of work, optimistic locking with a per-use-case conflict policy, client scoping, events and audit rows into the SDK-compatible outbox, TSIDs — see [`contracts/write-path.md`](contracts/write-path.md) | M1 | Done (2026-10-08) |
 | M2b | **Checked SQL:** queries in `.sql` files, a generator that checks them against the migrated schema and produces typed Java functions and result records, committed output with a check mode — see [`contracts/checked-sql.md`](contracts/checked-sql.md) | M2a | Done (2026-10-08) |
 | M3 | **HTTP:** the server on virtual threads, routing declared by modules, the one middleware pipeline shared with jobs, typed request validation, errors mapped to responses; the Datastar adapter | M2 | Done 2026-10-08 (contracts/http.md) |
-| M4 | **FlowCatalyst module:** the platform client as the service account (wrapping the Java SDK), definition sync at deploy time, login through the platform with a session built from the id_token, `Context` from a request, receivers for dispatch jobs and scheduled-job firings (signatures, ack/defer/reject, locks), outbox delivery; then the trial business service | M3, Java SDK | Not started |
+| M4a | **FlowCatalyst module, client side:** the platform client as the application's service account (wrapping the Java SDK), definition sync at deploy time (event types, roles and permissions including the framework's own `admin:*`, subscriptions, connections, scheduled jobs), outbox delivery to batch ingest with the application's own credentials | M3, Java SDK, platform batch-ingest permissions (done 2026-10-09) | Not started |
+| M4b | **Receivers:** HTTP endpoints for dispatch jobs and scheduled-job firings: signature checks, ack / defer / reject, a handler failure or timeout is a transient error (owner ruling 2026-10-09), locks | M4a | Not started |
+| M4c | **Sessions and login:** a session capability with `cookie`, `database` and `redis` drivers (ported from the TS SDK's stores); OIDC relying-party flow ported from the TS and Laravel SDKs (PKCE, discovery, JWKS, id_token validation, refresh, logout); a session built from the id_token; the real `ContextResolver`; default login, callback, logout and not-permitted pages | M3, M4a, M-UI | Not started |
+| M-UI | **`framework-ui`:** JTE templates (precompiled, no reflection) for the `ui-kit/` components, and a view response helper that returns a full page or a Datastar element patch from one template | M3 | Not started |
+| M4d | **Admin skeleton:** the `admin` module mounted under `/admin` (shell, navigation, permission gating, `admin:*` permissions and roles declared and synced); routes replaceable by an app; start-up fails if an admin route has no required permission | M4c, M-UI | Not started |
+| M4e | **Admin pages, one slice each:** users and invitations, event types, config and secret status, then scoped events and dispatch jobs (needs a scoped read endpoint on the platform and read methods in the Java SDK) | M4d | Not started |
+| M4f | **Trial business service** on these contracts, with a Datastar front end | M4e | Not started |
 | M5 | **Cache and storage;** the platform config driver; metering and messaging | M2; platform config and metering features | Not started |
 
 Order changed 2026-10-08: HTTP comes before the FlowCatalyst module, because login and both job
@@ -21,10 +27,12 @@ found the Java SDK has no login, token validation or job receivers; those are ne
 
 Platform work the framework needs, to be built in the platform (Go first):
 
-- the application's service account cannot deliver its own outbox: the batch-ingest permissions
-  (`platform:messaging:batch:events-write`, `…:dispatch-jobs-write`,
-  `platform:admin:batch:audit-logs-write`) are in no built-in role (decision needed, see the M4
-  contract when written);
+- ~~the application's service account cannot deliver its own outbox~~ Done 2026-10-09: the
+  `application-service` role carries the three batch-ingest permissions and the batch endpoints
+  confine an application-scoped caller to its own applications (Go `9c9986a`, Java `14a67de2`,
+  Rust `14a1ec9f`; audit-batch permission enforcement in progress);
+- a scoped read endpoint for an application's own events and dispatch jobs, and read methods for
+  them in the Java SDK (M4e);
 - optimistic locking on the records administrators edit;
 - the config and secret store, keyed and access-controlled by client and
   `{application_code}:{sub_domain}` (framework-plumbing.md section 6);
