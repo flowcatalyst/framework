@@ -28,6 +28,16 @@ The title block every page starts with: title, subtitle, and right-aligned actio
 | Subtitle | `<p class="fc-page-subtitle">` | 14px, `--fc-subtitle` |  |
 | Actions | `<div class="flex items-center gap-2">` | - | Slot, right-aligned |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/page-header`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `title` | string | - | the page's one `<h1>` |
+| `subtitle` | string | - |  |
+| `actions` | slot | - | right-aligned; the wrapper is always rendered |
+
 ## Accessibility
 
 One `<h1>`. Actions are buttons or links with visible text.

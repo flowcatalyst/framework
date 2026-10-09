@@ -34,6 +34,15 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | secondary | fc-tag-secondary | `--fc-secondary-bg` |
 | primary | fc-tag-primary | `--primary` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/tag`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `severity` | enum(success\|info\|warn\|danger\|secondary\|primary) | secondary |  |
+| `label` | string | - |  |
+
 ## Accessibility
 
 Text carries the meaning (never colour alone).

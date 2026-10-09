@@ -33,6 +33,14 @@ A trail of links ending in the current page.
 | breadcrumb_separator | `<li aria-hidden="true">` | chevron icon `size-3.5` |  |
 | breadcrumb_ellipsis | `<span>` | `flex items-center` + icon + sr-only "More" | Collapsed segments |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/breadcrumb`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `items` | list<{label, href}> | [] | the last item, or one without href, is the current page (`aria-current`) |
+
 ## Accessibility
 
 `<nav aria-label="breadcrumb">` landmark, ordered list, current page `aria-current="page"`, decorative separators `aria-hidden`.

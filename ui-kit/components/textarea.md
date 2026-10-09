@@ -24,6 +24,24 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | invalid | `aria-invalid="true"` | destructive border and ring |
 | disabled | `disabled` | dimmed |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/textarea`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - |  |
+| `name` | string | - |  |
+| `value` | string | - | the text content |
+| `placeholder` | string | - |  |
+| `rows` | number | - | fallback height where `field-sizing` is unsupported |
+| `required` | boolean | false |  |
+| `disabled` | boolean | false |  |
+| `invalid` | boolean | false | `aria-invalid="true"` |
+| `describedBy` | string | - |  |
+| `class` | string | - |  |
+| `attrs` | attrs | - |  |
+
 ## Accessibility
 
 As `input`.

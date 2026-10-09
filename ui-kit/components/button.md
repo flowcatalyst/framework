@@ -61,6 +61,22 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | `disabled` attribute | `disabled:pointer-events-none disabled:opacity-50` (in BASE) |
 | link: `aria-disabled="true"` | add `pointer-events-none opacity-50` yourself and `tabindex="-1"`; a link cannot be natively disabled |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/button`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `variant` | enum(primary\|secondary\|outline\|ghost\|destructive\|text\|destructive-outline\|success-outline) | primary | classes from `variant` |
+| `size` | enum(sm\|md\|lg\|icon) | md | icon = square; give it an aria-label in attrs |
+| `type` | string | button | never left to the implicit `submit` |
+| `href` | string | - | renders `<a>` with the same classes; with `disabled` the link loses its href and gets `aria-disabled="true" tabindex="-1"` + `pointer-events-none opacity-50` |
+| `disabled` | boolean | false |  |
+| `icon` | string | - | leading Lucide icon name (sprite `#i-{icon}`) |
+| `class` | string | - | appended to the root |
+| `attrs` | attrs | - | on the root |
+| `default` | slot | - | the label |
+
 ## Accessibility
 
 - Native `<button>` keeps role, Enter/Space activation and focus.

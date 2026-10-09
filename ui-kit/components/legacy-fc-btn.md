@@ -50,6 +50,25 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | small | fc-btn-sm |
 | full width | fc-btn-block |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/legacy-button` and `fixtures/icon-button`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `variant` | enum(primary\|primary-outline\|secondary\|outline\|warn-outline\|danger-outline\|danger\|warn\|text\|text-primary\|link) | primary | `fc-btn-{variant}` |
+| `small` | boolean | false | `fc-btn-sm` |
+| `block` | boolean | false | `fc-btn-block` |
+| `type` | string | button |  |
+| `href` | string | - | renders `<a>`; disabled drops the href and sets `aria-disabled="true"` |
+| `disabled` | boolean | false |  |
+| `icon` | string | - | leading icon, class `size-[1rem]` |
+| `class` | string | - |  |
+| `attrs` | attrs | - |  |
+| `default` | slot | - | label |
+
+**Icon button** (`.fc-icon-btn`): `icon` (string), `label` (string, required: `aria-label`), `type` (button), `class`, `attrs`.
+
 ## Accessibility
 
 Same as `button`: native `<button>`, `type` required, `aria-label` on icon-only buttons. Focus ring is `outline: 2px solid var(--primary)` in `.fc-btn:focus-visible`.

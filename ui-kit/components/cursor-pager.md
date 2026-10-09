@@ -28,6 +28,18 @@
 | Nav | `<nav class="flex items-center gap-2" aria-label="Pagination">` | - |  |
 | Link | `<a class="fc-btn fc-btn-outline fc-btn-sm">` | - | Disabled: `<span ... aria-disabled="true">` (no href) |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/cursor-pager`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | patch target |
+| `summary` | string | - |  |
+| `newestHref` | string | - | empty → disabled `<span aria-disabled>` |
+| `olderHref` | string | - | as newestHref |
+| `linkAttrs` | attrs | - |  |
+
 ## Accessibility
 
 `<nav aria-label="Pagination">`; disabled controls are not links and carry `aria-disabled="true"`.

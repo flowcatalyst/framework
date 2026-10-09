@@ -62,6 +62,24 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | on (default) | `data-on:click="evt.target === el && el.close()"` |
 | off | omit it (always off for `alert-dialog`) |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/dialog`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | required; `{id}-title`/`{id}-desc` are derived |
+| `title` | string | - |  |
+| `description` | string | - |  |
+| `mask` | enum(frosted\|dark) | frosted |  |
+| `width` | enum(default\|narrow\|wide) | default |  |
+| `persistent` | boolean | false | turns light dismiss off (no mask-click handler) |
+| `closable` | boolean | false | the X button |
+| `role` | string | - | `alertdialog` for alert-dialog.md (with `persistent`) |
+| `attrs` | attrs | - | on `<dialog>` (e.g. `data-init="el.showModal()"` when server-opened) |
+| `default` | slot | - | body |
+| `footer` | slot | - | actions |
+
 ## Accessibility
 
 - `aria-labelledby` -> the title id; `aria-describedby` -> the description id (or `aria-label` if there is no visible title).

@@ -39,7 +39,7 @@ Rules that bite:
 - HTML attribute names are case-insensitive, so write signal keys in kebab-case in attributes (`data-signals:tabs-team`) and camelCase in expressions (`$tabsTeam`).
 - Signals starting with `_` are not sent to the server.
 - Expressions are JavaScript. Inside a double-quoted attribute use single quotes (`'page'`); never emit a raw `"` in an expression.
-- `@post(..., {contentType: 'form'})` sends the closest `<form>` (so the element must be inside one, or pass `selector`), validates it, and sends **no signals**. Without `contentType: 'form'` all non-`_` signals are sent: as JSON for POST/PUT/PATCH/DELETE, as the `datastar` query parameter (`?datastar={"q":"abc"}`) for GET.
+- `@post(..., {contentType: 'form'})` sends the closest `<form>` (so the element must be inside one, or pass `selector`), validates it, and sends **no signals**. Without `contentType: 'form'` all non-`_` signals are sent: as JSON for POST/PUT/PATCH, as the `datastar` query parameter (`?datastar={"q":"abc"}`) for GET **and DELETE** (Datastar 1.0.4 sends a body only for methods other than GET and DELETE; checked in the bundle and in the Go SDK's `ReadSignals`). With `contentType: 'form'` a GET appends the form's fields to the query string, so a filter form can drive `@get` with plain query parameters.
 - A new request to the same URL+method cancels the one in flight (`requestCancellation: 'auto'`).
 - Attribute order matters (`data-indicator:x` before the `data-init` that starts a request).
 
@@ -70,6 +70,15 @@ data: signals {q: 'patched'}
 - A blank line ends each event.
 - Multi-line `elements` use one `data: elements ` prefix per line.
 - Authorisation, CSRF and validation are the endpoint's job, exactly as for a normal form post.
+
+## Props
+
+Every spec has a **Props** table: the component's parameters with language-neutral names, so every template implementation (templ in the Go platform, JTE in the framework) exposes the same signature and the fixtures in `fixtures/` can drive all of them.
+
+- Names are camelCase. Each implementation maps them to its own idiom (Go: an exported field `Variant` with the JSON tag `variant`).
+- Types: `string`, `boolean`, `number`, `enum(a|b)` (first value or the listed default applies when absent), `list<T>`, `{...}` (an object), `attrs` (extra attributes passed through to the part the row names), `slot` (caller markup; `default` is the unnamed slot).
+- Absent = the default. Booleans default to false, so a prop that is on by default is named for its opposite (`persistent` turns light dismiss *off*).
+- Values that end up in a Datastar expression (ids, signal names) must be validated by the implementation (`[A-Za-z][A-Za-z0-9_-]*` for ids, camelCase for signals); they never carry user data.
 
 ## Escaping and security
 

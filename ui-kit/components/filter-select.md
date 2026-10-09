@@ -24,6 +24,20 @@ A labelled `<select>` in a filter row or the Filters popover that submits its GE
 | Label | `<label class="fc-field-label" for="filter-{name}">` | 13px/500/#475569 |  |
 | Select | `<select id="filter-{name}" class="fc-select">` | `.fc-select` (custom chevron background) |  |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/filter-select`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `name` | string | - | the select's id is `filter-{name}` |
+| `label` | string | - |  |
+| `placeholder` | string | - | the empty option |
+| `options` | list<{value, label}> | [] |  |
+| `selected` | string | - |  |
+| `autoSubmit` | boolean | false | `data-on:change="el.form.requestSubmit()"` |
+| `attrs` | attrs | - | on the `<select>` (live filter) |
+
 ## Accessibility
 
 Visible label with `for`/`id`.

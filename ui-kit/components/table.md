@@ -49,6 +49,21 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | clickable row | `<tr>` | `cursor-pointer` |
 | fixed column width | `<th>` | `w-[20%]` etc. |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/table`, `fixtures/table-row`, `fixtures/table-head`, `fixtures/table-cell` and `fixtures/empty-row`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | on the scrolling container (patch target) |
+| `caption` | string | - |  |
+| `dense` | boolean | false | users-list cell padding |
+| `class` | string | - | on `<table>` |
+| `attrs` | attrs | - | on `<table>` |
+| `default` | slot | - | thead/tbody/tfoot |
+
+Parts: **thead** `caps` (boolean); **tbody** `id`, `striped` (boolean), `attrs`; **tfoot**; **tr** `static` (header row, no hover), `clickable` (`cursor-pointer`), `id`, `class`, `attrs`; **th** `class`, `attrs` (always `scope="col"`); **td** `colspan` (number), `class`, `attrs`; **empty row** `colspan` (number), `empty` (empty-state props): one `<tr><td colspan>` holding the empty state.
+
 ## Accessibility
 
 - Use `<th scope="col">`; a caption (or `aria-label` on the table) names it.

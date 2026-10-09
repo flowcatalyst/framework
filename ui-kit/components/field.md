@@ -54,6 +54,24 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | legend | `text-base font-semibold` |
 | label | `text-sm font-medium` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/field` and `fixtures/field-group`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `label` | string | - | field_label text; omitted when empty (e.g. a horizontal row with field_content) |
+| `for` | string | - | the control's id |
+| `orientation` | enum(vertical\|horizontal\|responsive) | vertical | responsive needs a field_group ancestor |
+| `description` | string | - | field_description after the control |
+| `error` | string | - | field_error (`role="alert"`), rendered only when non-empty |
+| `errorId` | string | {for}-err | the error's id (the control's `aria-describedby` points at it) |
+| `class` | string | - |  |
+| `attrs` | attrs | - |  |
+| `default` | slot | - | the control (marked `aria-invalid`/`aria-describedby` by the caller) |
+
+**field_group**: `class`, default slot (the fields).
+
 ## Accessibility
 
 - Every control inside needs its label (`<label for>`); `field_label` is the label.

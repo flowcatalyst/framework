@@ -51,6 +51,21 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | warn | fc-btn-warn | `mt-0.5 shrink-0 text-amber-600` |
 | default | fc-btn-primary | `mt-0.5 shrink-0 text-amber-600` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/confirm-dialog`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - |  |
+| `action` | string | - | POST target |
+| `title` | string | - |  |
+| `message` | string | - |  |
+| `confirmLabel` | string | - |  |
+| `tone` | enum(default\|danger\|warn) | default |  |
+| `hidden` | list<{name, value}> | [] | record id, CSRF token if any |
+| `formAttrs` | attrs | - | e.g. `data-on:submit` for `@post` (c) |
+
 ## Accessibility
 
 - Native modal: focus trap, Escape, focus return (verified).

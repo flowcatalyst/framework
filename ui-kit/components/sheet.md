@@ -49,6 +49,20 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | default drawer width | `[&]:w-[min(560px,calc(100vw-24px))] [&]:max-w-none` |
 | no padding, flat gap, SPA shadow | `[&]:gap-0 [&]:p-0 [&]:shadow-[-8px_0_32px_rgb(15_23_42/0.18)]` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/sheet`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - |  |
+| `side` | enum(right\|left\|top\|bottom) | right |  |
+| `title` | string | - |  |
+| `description` | string | - |  |
+| `class` | string | - | on the panel (width overrides) |
+| `default` | slot | - | body (inside `<div class="flex-1">`) |
+| `footer` | slot | - |  |
+
 ## Accessibility
 
 As `dialog.md` (label, title, focus trap, Escape and focus return come from `showModal()`). Give the close control `aria-label="Close"`.

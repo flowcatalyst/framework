@@ -10,7 +10,7 @@ A text-like `<input>`.
 ## Structure
 
 ```html
-<input type="text" class="h-9 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors outline-none placeholder:text-muted-foreground file:mr-3 file:h-full file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50" id="email" type="email" name="email" placeholder="you@example.com">
+<input type="email" class="h-9 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors outline-none placeholder:text-muted-foreground file:mr-3 file:h-full file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50" id="email" name="email" placeholder="you@example.com">
 ```
 
 ## Parts
@@ -30,6 +30,24 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | invalid | `aria-invalid="true"` | `aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive`; the enclosing `field` label turns red |
 | disabled | `disabled` | `disabled:pointer-events-none disabled:opacity-50` |
 | file | `type="file"` | `file:` variants style the button |
+
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/input`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - |  |
+| `name` | string | - |  |
+| `type` | string | text | exactly one `type` attribute |
+| `value` | string | - | omitted when empty |
+| `placeholder` | string | - |  |
+| `required` | boolean | false |  |
+| `disabled` | boolean | false |  |
+| `invalid` | boolean | false | `aria-invalid="true"` |
+| `describedBy` | string | - | `aria-describedby` (error/help id) |
+| `class` | string | - |  |
+| `attrs` | attrs | - | on the `<input>` |
 
 ## Accessibility
 

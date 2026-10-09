@@ -45,6 +45,19 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | other page | button `ghost` `icon` |
 | disabled prev/next | `aria-disabled="true" class="pointer-events-none opacity-50"` on the `<a>` (no `href`) |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/pagination`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `items` | list<{page, href, ellipsis}> | [] | the window of pages; `ellipsis: true` renders the More-pages marker |
+| `current` | number | - | the current page (`aria-current="page"`, outline/icon) |
+| `prevHref` | string | - | empty → disabled (no href, `aria-disabled`, `pointer-events-none opacity-50`) |
+| `nextHref` | string | - | as prevHref |
+| `primaryCurrent` | boolean | false | the users-list primary fill on the current page |
+| `linkAttrs` | attrs | - | on every enabled link (Datastar `@get`) |
+
 ## Accessibility
 
 `<nav aria-label="pagination">`, current page marked `aria-current="page"`, previous/next have visible or `sr-only` text, ellipsis has `sr-only` text. Disabled links lose their `href`.

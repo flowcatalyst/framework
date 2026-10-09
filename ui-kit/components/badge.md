@@ -43,6 +43,18 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 |---|
 | `inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/badge`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `variant` | enum(primary\|secondary\|outline\|destructive\|success\|info\|warn) | primary |  |
+| `href` | string | - | renders `<a>` |
+| `class` | string | - | e.g. `[&]:text-[11px]` |
+| `attrs` | attrs | - |  |
+| `default` | slot | - | label |
+
 ## Accessibility
 
 Colour is never the only signal: the label text carries the status. All fills use the `*-foreground` token paired with the fill for contrast.

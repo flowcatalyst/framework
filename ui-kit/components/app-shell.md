@@ -61,7 +61,7 @@ FlowCatalyst's actual app chrome: a fixed navy sidebar (logo, collapse button, g
 <div class="fc-main">
   <main class="p-[24px]">
     <div role="status" class="fc-banner fc-banner-success mb-4">Saved.</div>
-    <header class="fc-page-header"><div><h1 class="fc-page-title">Dashboard</h1><p class="fc-page-subtitle">App shell with the collapsible navy sidebar</p></div></header>
+    <header class="fc-page-header"><div><h1 class="fc-page-title">Dashboard</h1><p class="fc-page-subtitle">App shell with the collapsible navy sidebar</p></div><div class="flex items-center gap-2"></div></header>
     <div class="fc-card">Collapse state is the <code>fc-collapsed</code> class on &lt;html&gt;, driven by the <code>sidebarCollapsed</code> signal.</div>
   </main>
 </div>
@@ -91,6 +91,24 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 |---|---|
 | expanded | no class |
 | collapsed | `fc-collapsed`: sidebar 72px, logo / group labels / labels / chevrons / children / user text hidden, items centred, `.fc-main` margin 72px |
+
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/app-shell`, `fixtures/app-sidebar` and `fixtures/user-menu`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `logoHref` | string | - |  |
+| `nav` | list<{label, items: list<{label, href, icon, current, open, children}>}> | [] | items with children are `<details>` groups |
+| `user` | {name, email, initials} | - |  |
+| `version` | string | - |  |
+| `profileHref` | string | - |  |
+| `resetPasswordHref` | string | - | empty hides the item (IdP-managed users) |
+| `signOutAction` | string | - | POST target |
+| `signOutAttrs` | attrs | - | on the Sign Out form |
+| `default` | slot | - | page content inside `<main>` |
+
+The `<html>` attributes (`data-signals:sidebar-collapsed` with the literal from the `fc_sidebar` cookie, `data-class:fc-collapsed`) belong to the page layout, not to this component; the fixtures cover the `<body>` content.
 
 ## Accessibility
 

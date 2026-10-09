@@ -26,6 +26,17 @@ Shown in place of table rows when there are none: an icon, a message, and "Clear
 | Message | `<span>` | block |  |
 | Clear | `<a class="fc-btn fc-btn-text-primary">` | - | Only when a filter is active; links to the unfiltered list |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/empty-state`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `message` | string | - |  |
+| `icon` | string | inbox |  |
+| `clearHref` | string | - | renders "Clear filters" (only while a filter is active) |
+| `status` | boolean | false | `role="status"` |
+
 ## Accessibility
 
 Add `role="status"` when the region appears after a filter change so it is announced. The icon is decorative.

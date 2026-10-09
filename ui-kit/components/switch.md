@@ -33,6 +33,21 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | off | unchecked |
 | disabled | `disabled` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/switch`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - |  |
+| `name` | string | - |  |
+| `value` | string | - |  |
+| `checked` | boolean | false |  |
+| `disabled` | boolean | false |  |
+| `label` | string | - | sibling `<label for>`; otherwise put `aria-label` in attrs |
+| `class` | string | - | on the wrapper `<span>` |
+| `attrs` | attrs | - | on the `<input>` |
+
 ## Accessibility
 
 `role="switch"` with native checked state exposes on/off. Label it (`<label for>` or `aria-label`). Space toggles.

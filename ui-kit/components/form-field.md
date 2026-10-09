@@ -45,6 +45,20 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | `.fc-form-grid` | 2 columns, 16px/20px gap; 1 column when the container is <= 640px (`.fc-section-body` is the container) |
 | `.fc-span-2` | spans both columns |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/form-field`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `label` | string | - |  |
+| `for` | string | - | control id |
+| `required` | boolean | false | red `*` |
+| `span` | boolean | false | `fc-span-2` |
+| `help` | string | - | `<small class="fc-field-help">` |
+| `error` | string | - | `<small id="{for}-msg" class="fc-field-error">`; replaces help |
+| `default` | slot | - | the control |
+
 ## Accessibility
 
 - `label for` = control `id`. The required marker is visual; also set `required` on the control (`aria-required` is implied).

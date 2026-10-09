@@ -14,7 +14,7 @@ The toolbar above a list: quick search (left); result-size select, refresh, Clea
   <div class="fc-toolbar-start">
       <div class="fc-input-icon fc-toolbar-search">
         <svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-search"/></svg>
-        <input type="search" name="q" class="fc-input" placeholder="Search users" aria-label="Search users" value="">
+        <input type="search" name="q" class="fc-input" placeholder="Search users" aria-label="Search users">
       </div>
   </div>
   <div class="fc-toolbar-end">
@@ -57,6 +57,26 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | filters active | Clear All link rendered + `<span class="fc-badge">N</span>` in the Filters button |
 | no filters | neither |
 | search hidden | omit the search wrapper (`show_search=false`) |
+
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/table-toolbar`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | form id; the popover is `{id}-filters` |
+| `action` | string | - | GET target |
+| `searchPlaceholder` | string | - |  |
+| `searchValue` | string | - | omitted when empty |
+| `hideSearch` | boolean | false |  |
+| `size` | {options: list<number>, selected: number} | - | result-size select (firehose lists) |
+| `hideRefresh` | boolean | false |  |
+| `clearHref` | string | - | renders Clear All (only while filters are active) |
+| `activeFilterCount` | number | 0 | badge in the Filters button when > 0 |
+| `hidden` | list<{name, value}> | [] | hidden inputs (first children of the form) |
+| `searchAttrs` | attrs | - | on the search input |
+| `formAttrs` | attrs | - | on the form |
+| `filters` | slot | - | popover body; omitted → no Filters button |
 
 ## Accessibility
 

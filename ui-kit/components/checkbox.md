@@ -34,6 +34,21 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | disabled | `disabled` (wrapper dims via `has-[:disabled]:opacity-50`) |
 | indeterminate | not styled (needs the DOM property) |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/checkbox`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - |  |
+| `name` | string | - |  |
+| `value` | string | - |  |
+| `checked` | boolean | false |  |
+| `disabled` | boolean | false |  |
+| `label` | string | - | renders the sibling `<label for>`; without it the caller labels the input |
+| `class` | string | - | on the wrapper `<span>` |
+| `attrs` | attrs | - | on the `<input>` (`data-bind:...`) |
+
 ## Accessibility
 
 Native checkbox: role, Space key, form participation. Label every checkbox (`<label for>`). The check icon is `aria-hidden`.

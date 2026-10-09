@@ -31,6 +31,17 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | success | fc-banner-success |
 | error | fc-banner-error |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/flash-banner`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `kind` | enum(success\|error) | success |  |
+| `message` | string | - | escaped |
+| `role` | string | status | `alert` for errors that need attention |
+| `autoDismiss` | boolean | false | `data-init__delay.5s="el.remove()"` |
+
 ## Accessibility
 
 `role="status"` (polite live region). For errors that need immediate attention use `role="alert"`. The message text is the whole content.

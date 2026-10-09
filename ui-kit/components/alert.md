@@ -37,6 +37,21 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | neutral | `border-border text-foreground` |
 | destructive | `border-destructive/50 text-destructive` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/alert`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `variant` | enum(neutral\|destructive) | neutral |  |
+| `role` | string | - | `alert` or `status`, only for messages inserted during the visit |
+| `icon` | string | - | first-child icon |
+| `title` | string | - |  |
+| `description` | string | - |  |
+| `id` | string | - | patch target |
+| `class` | string | - |  |
+| `default` | slot | - | extra content after the description |
+
 ## Accessibility
 
 - `role="alert"` is deliberately absent by default: it interrupts a screen reader the moment the element appears, which suits a message that arrives during the visit but not one rendered with the page. Add `role="alert"` (assertive) or `role="status"` (polite) only for dynamically inserted messages.

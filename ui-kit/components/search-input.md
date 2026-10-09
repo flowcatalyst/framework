@@ -24,6 +24,18 @@ A search box with a leading icon, submitting its GET form on Enter.
 | Icon | `<svg>` | `.fc-input-icon > svg` absolute, left .625rem |  |
 | Input | `<input type="search" class="fc-input">` | `.fc-input` (+ left padding 2rem) |  |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/search-input`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `name` | string | q |  |
+| `placeholder` | string | - | also the `aria-label` |
+| `value` | string | - | omitted when empty |
+| `class` | string | w-80 max-w-full | replaces the wrapper's width classes |
+| `attrs` | attrs | - | on the `<input>` (live search) |
+
 ## Accessibility
 
 `aria-label` (the placeholder text) names it; the placeholder is not a label.

@@ -68,6 +68,24 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | wide | `fc-drawer-wide` (800px) |
 | two-thirds | `fc-drawer-two-thirds` (66.667vw) |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/drawer`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `signal` | string | - | required; selected-record signal, '' = closed |
+| `label` | string | - | `aria-label` |
+| `size` | enum(default\|wide\|two-thirds) | default |  |
+| `title` | string | - | static title |
+| `subtitle` | string | - |  |
+| `titleSignal` | string | - | binds the title (`data-text`) instead |
+| `subtitleSignal` | string | - |  |
+| `bodyId` | string | - | body patch target (c) |
+| `extras` | slot | - | tags beside the titles |
+| `default` | slot | - | body |
+| `footer` | slot | - | actions |
+
 ## Accessibility
 
 - `role="complementary"` with `aria-label`; close button `aria-label="Close"`.
