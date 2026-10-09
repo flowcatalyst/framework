@@ -15,6 +15,13 @@ services next to the FlowCatalyst platform. Read `docs/guide/STATUS.md` for what
   contract and the code disagree, say so in STATUS.md ("Where the guide and the contracts can
   differ"); do not silently change either.
 - No Liquid markers (`{{`, `{%`) in guide pages; Jekyll would evaluate them.
+- Adding a page is one line in `docs/_data/nav.yml` (`- { title: ..., path: guide/x.md }`, in the
+  right group; the order there is the reading order and drives the sidebar and previous/next).
+  `verify.sh` fails if a guide page is not listed or a listed path does not exist.
+- Site look: `docs/_layouts/default.html`, `docs/_includes/` and the single stylesheet
+  `docs/assets/css/docs.css` (the UI kit's tokens copied in as plain CSS; no Node, no theme gem).
+  Use only Liquid tags and filters that GitHub Pages' Jekyll supports (`verify.sh` checks an
+  allow-list) and `relative_url` on every link, because the site lives under `/framework/`.
 
 ## Contracts first
 

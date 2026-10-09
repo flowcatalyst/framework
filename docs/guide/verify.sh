@@ -9,6 +9,10 @@
 #      framework-*/src (main and test, because the test-jars publish helpers such as PostgresFixture);
 #   3. every relative link to a .md file resolves to a file;
 #   4. the page contains no Liquid markers ("{{" or "{%"), which Jekyll would try to evaluate.
+# Site checks: every page under docs/guide is listed in docs/_data/nav.yml, every nav.yml path
+# exists, the layout and stylesheet exist, _config.yml has no theme dependency, and the layout and
+# includes use only Liquid tags and filters that GitHub Pages' Jekyll accepts (no render, liquid,
+# include_relative; filters from an allow-list).
 # And that STATUS.md names a "Last verified against commit <hash>" that is an ancestor of HEAD.
 #
 # POSIX sh; needs only grep, find, sed, cut, tr and git.
@@ -86,6 +90,57 @@ for page in $pages; do
       fail "$page: link to '$link' does not resolve to a file"
     fi
   done
+done
+
+
+# ---------------------------------------------------------------- site: navigation and layout
+nav=docs/_data/nav.yml
+if [ ! -f "$nav" ]; then
+  fail "$nav is missing (the sidebar, previous/next and titles come from it)"
+else
+  nav_paths=$(grep -v '^[[:space:]]*#' "$nav" | grep -oE 'path:[[:space:]]*[^ ,}]+' | sed -E 's/^path:[[:space:]]*//')
+  for p in $nav_paths; do
+    if [ ! -f "docs/$p" ]; then
+      fail "$nav: path '$p' does not exist under docs/"
+    fi
+  done
+  for page in $pages; do
+    rel=${page#docs/}
+    if ! printf '%s\n' "$nav_paths" | grep -qxF "$rel"; then
+      fail "$page: not listed in $nav (add one line: - { title: ..., path: $rel })"
+    fi
+  done
+fi
+
+for f in docs/_layouts/default.html docs/assets/css/docs.css; do
+  [ -f "$f" ] || fail "$f is missing"
+done
+if grep -qE '^[[:space:]]*(theme|remote_theme):' docs/_config.yml; then
+  fail "docs/_config.yml still names a theme; the custom layout replaces it"
+fi
+if ! grep -qE 'layout:[[:space:]]*default' docs/_config.yml; then
+  fail "docs/_config.yml: defaults must set 'layout: default' for all pages"
+fi
+
+tpl_files=$(find docs/_layouts docs/_includes -type f -name '*.html' 2>/dev/null | sort)
+allowed_tags=" assign capture endcapture comment endcomment for endfor if elsif else endif unless endunless include break continue case when endcase raw endraw "
+allowed_filters=" relative_url absolute_url append prepend replace escape default strip_html strip split first last slice size join downcase upcase date date_to_xml where sort uniq truncate jsonify markdownify slugify "
+for f in $tpl_files; do
+  for tag in $(grep -oE '\{%-?[[:space:]]*[a-z_]+' "$f" | sed -E 's/^\{%-?[[:space:]]*//' | sort -u); do
+    case "$allowed_tags" in
+      *" $tag "*) ;;
+      *) fail "$f: Liquid tag '$tag' is not in the GitHub Pages-safe list (render/liquid/include_relative are not supported)" ;;
+    esac
+  done
+  for filt in $(grep -oE '\{[{%][^}]*[}%]\}' "$f" | grep -oE '[^|]\|[[:space:]]*[a-z_]+' | sed -E 's/^.\|[[:space:]]*//' | sort -u); do
+    case "$allowed_filters" in
+      *" $filt "*) ;;
+      *) fail "$f: Liquid filter '$filt' is not in the allow-list in verify.sh (check Jekyll 3.x supports it, then add it)" ;;
+    esac
+  done
+  if grep -nE "href=\"/|src=\"/" "$f" | grep -v relative_url >/dev/null 2>&1; then
+    fail "$f: absolute-path href/src without relative_url (breaks on a project-pages URL)"
+  fi
 done
 
 # STATUS.md: the commit it was last verified against must be an ancestor of HEAD.
