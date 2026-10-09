@@ -125,7 +125,7 @@ A Maven plugin, `framework-sql-maven-plugin`, with three goals:
   gone.
 - `check`: does the same in memory, writes nothing, and fails if any generated file differs from
   the committed one, is missing, or a committed generated file has no source; it lists the
-  files. Bound to `verify` only when the project enables it (CI does).
+  files. Bound to `verify` by the project's pom; there is no plugin switch (a project that wants it off binds it in a profile). Do not skip it with `fw.sql.skip`, which also skips `add-source`.
 - `add-source`: adds the generated-source directory to the compile source roots. A build that
   only compiles the committed code (no database, no `generate`) needs this; `generate` does it
   as well.

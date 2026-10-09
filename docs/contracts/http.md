@@ -55,7 +55,7 @@ values on).
 
 `Response` is a value built with static factories and fluent `header(name, value)`:
 `Response.ok(body)`, `Response.json(status, object)` (Jackson 3, records and maps only),
-`Response.text(status, string)`, `Response.noContent()`, `Response.bytes(status, contentType,
+`Response.text(status, string)`, `Response.noContent()`, `Response.html(status, string), Response.bytes(status, contentType,
 bytes)`, `Response.stream(status, contentType, StreamBody)` (a callback that writes to an
 `OutputStream`; used by Datastar). Default JSON content type `application/json`. Response
 header names/values containing CR or LF fail with `IllegalArgumentException` at construction.
@@ -206,8 +206,10 @@ published spec when implementing and flag any difference).
 - `Datastar.signals(Request)` returns the client's signals as a `JsonNode`: for `GET` and
   `HEAD`, the JSON in the `datastar` query parameter; otherwise the JSON request body.
   `Datastar.signals(Request, Class<T>)` decodes to a record. Absent/invalid: `ValidationException`.
-- `Datastar.stream(request)` returns a `ServerSentEventGenerator` wrapping a streamed
-  `Response` (`text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive` only
+- `Datastar.stream(Request, Datastar.Events)` returns the streamed `Response`; the body is written
+  after the handler returns, so the callback receives a `ServerSentEventGenerator` when the server
+  sends the body (`new ServerSentEventGenerator(OutputStream)` can also be used directly). The
+  response is (`text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive` only
   for HTTP/1.1). Methods:
   - `patchElements(String html)` and an options form: `selector`, `mode` (`outer`, `inner`,
     `replace`, `prepend`, `append`, `before`, `after`, `remove`), `useViewTransition`,
