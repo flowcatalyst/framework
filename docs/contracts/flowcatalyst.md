@@ -218,6 +218,66 @@ As built in slice 3 (the `outbox` health check, 2026-10-09):
 - `flowcatalyst.outbox.stale-after` must be positive (start-up fails otherwise).
 - The generated `docs` page describing the processor's settings is not built (docs work).
 
+As built in slice 4 (signature check and the dispatch receiver, 2026-10-09):
+
+- **Registration.** `Receivers` is a provided service; handlers are registered in `boot`
+  (`receivers.onDispatch(pattern, handler)`), a duplicate or malformed pattern throws at once (so
+  `boot` fails start-up), and registration closes in the module's `started`. The routes are
+  mounted in `boot` when the module is enabled and an HTTP module provides `Routes`; deliveries
+  are answered `503 UNAVAILABLE` until `started` has checked the registrations (the server may
+  already be listening). Start-up fails when handlers are registered and no `Routes` exists, or
+  when handlers are registered, `require-signature` is true and `signing-secret` is absent or
+  blank. Without handlers the routes are still mounted and refuse every delivery (`401
+  MISSING_SECRET` when there is no secret). A disabled module mounts nothing.
+- New settings: `flowcatalyst.receivers.path` must be literal segments (`/fc`, no trailing `/`);
+  `flowcatalyst.receivers.dispatch-timeout` must be positive.
+- **Signature.** Ported (not the SDK class): the SDK reads the system clock and echoes the
+  timestamp header in its messages. Same rules, compared in whole seconds like every SDK
+  (`ts < now-300` expired, `ts > now+60` future, so exactly 300 s and 60 s are accepted); time
+  from the application's `InstantSource`. Stricter: Unix seconds must be ASCII digits, a
+  timestamp over 64 characters is invalid, a signature that is not 64 characters is invalid
+  before hashing, the bearer token is compared as SHA-256 digests (constant time, length not
+  revealed), and a signature, timestamp or `Authorization` header sent twice is refused
+  (`DUPLICATE_HEADER`). The headers are checked before the body is read; the body is read once
+  (`Request.bodyBytes`, cached) and those same bytes are verified, parsed and handed to the
+  handler. A refusal is `401 {"error":"UNAUTHENTICATED","message":"the delivery could not be
+  authenticated","details":{"reason":"<CODE>"}}` and a WARN naming the code and the framework's
+  correlation id (never a header value or a secret).
+- `require-signature: false`: an unsigned delivery is accepted, and so is every delivery when no
+  secret is configured; a signed delivery is still verified when a secret is configured. The
+  bearer gate applies whenever `bearer-token` is set, signed or not.
+- **Dispatch headers.** `X-Dispatch-Job-Id` (`[A-Za-z0-9._:-]{1,128}`) and `X-Event-Type`
+  (`[A-Za-z0-9._:-]{1,255}`) are required, once each; `X-FlowCatalyst-Client` is optional and must
+  be `{id}:{code}` with each part `[A-Za-z0-9._-]{1,100}`. Otherwise `400 VALIDATION`.
+- **Envelope or data-only.** The job id and type come from the headers. The body is the envelope
+  when it is a JSON object whose `id` and `type` equal them; then `attemptNumber` must be a
+  positive integer, `source`, `subject`, `correlationId`, `messageGroup`, `clientId` and
+  `clientCode` strings when present, and keys unique, else `400 VALIDATION` and no handler runs.
+  Any other body is data-only: `data()` is the body parsed as JSON (empty when it is not JSON),
+  `attemptNumber()` is empty.
+- **Context.** Client: the code from `X-FlowCatalyst-Client`, or `Receivers.PLATFORM_CLIENT`
+  (`_platform`, which no platform client identifier can equal) for a platform-scoped job.
+  Application: `flowcatalyst.application`. Correlation id: the envelope's when it is printable
+  ASCII without spaces, at most 200 characters, else generated. Execution id: the job id.
+- **Results.** `Ack` → `200 {"ack":true}`. `Defer(delay)` → `200
+  {"ack":false,"delaySeconds":n}` with `n` the delay rounded up to whole seconds, 0 to 2^32-1.
+  `Reject(reason)` → `422 {"error":"REJECTED","message":reason}` with `FlowCatalyst-Outcome:
+  reject`; the reason must be non-blank and is cleaned (control and format characters become
+  spaces, cut to 500 characters). A throw, a timeout (the handler's virtual thread is
+  interrupted; the request does not wait for it to stop) or a `null` result is `503
+  {"error":"UNAVAILABLE"}` with a fixed message; the exception is logged at ERROR in the
+  application's log with the job id and correlation id, never returned. No handler: `422`
+  reject `no handler for <type>`, logged at WARN.
+- **Matching.** Exact type, then the longest `prefix:*` family, then `*`. `orders:*` does not
+  match `orders` itself.
+- **`delivery.once(db, handlerName, work)`** returns `OnceResult.Ran(value)` or
+  `OnceResult.AlreadyDone`. `work` receives the open `java.sql.Connection` (READ COMMITTED, not
+  auto-commit; it must not commit). The record row is inserted first (`ON CONFLICT DO NOTHING`), so
+  a concurrent repeat waits for the first and then skips (or runs, if the first rolled back).
+  Table `fw_dispatch_once (handler, job_id, processed_at)`, migration set `flowcatalyst`
+  (`V0001__create_dispatch_once.sql`), applied to the default database whenever the database
+  module is listed. Handler names `[A-Za-z0-9._:-]{1,200}`. No purge of old rows yet.
+
 ## 5. Platform work found by the survey (not framework code)
 
 1. **Scoped reads.** `GET /api/events` and `GET /api/dispatch-jobs` scope by client only; the

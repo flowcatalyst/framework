@@ -11,6 +11,7 @@ import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.database.Database;
 import io.flowcatalyst.framework.database.Databases;
+import io.flowcatalyst.framework.database.MigrationSet;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -93,6 +94,39 @@ public final class FlowCatalystModule implements Module {
           .describedAs(
               "The 'outbox' health check is down when the oldest undelivered outbox row is older than this.");
 
+  /** {@code flowcatalyst.receivers.path}: where the receiver routes are mounted. */
+  public static final Setting<String> RECEIVERS_PATH =
+      Setting.string("flowcatalyst.receivers.path")
+          .withDefault("/fc")
+          .describedAs("Path prefix of the receivers: {path}/dispatch and {path}/scheduled-jobs.");
+
+  /** {@code flowcatalyst.receivers.signing-secret}: the secret the platform signs deliveries with. */
+  public static final Setting<Secret> RECEIVERS_SIGNING_SECRET =
+      Setting.secret("flowcatalyst.receivers.signing-secret")
+          .describedAs(
+              "The signing secret of the service account that signs deliveries to this application."
+                  + " Required when receivers are registered and require-signature is true.");
+
+  /** {@code flowcatalyst.receivers.bearer-token}: an optional second gate on deliveries. */
+  public static final Setting<Secret> RECEIVERS_BEARER_TOKEN =
+      Setting.secret("flowcatalyst.receivers.bearer-token")
+          .describedAs(
+              "When set, deliveries must also carry 'Authorization: Bearer <token>' (AND-ed with the signature).");
+
+  /** {@code flowcatalyst.receivers.require-signature}: whether unsigned deliveries are refused. */
+  public static final Setting<Boolean> RECEIVERS_REQUIRE_SIGNATURE =
+      Setting.bool("flowcatalyst.receivers.require-signature")
+          .withDefault(true)
+          .describedAs("Refuse unsigned deliveries. False accepts them (start-up logs a warning).");
+
+  /** {@code flowcatalyst.receivers.dispatch-timeout}: how long a dispatch handler may run. */
+  public static final Setting<Duration> RECEIVERS_DISPATCH_TIMEOUT =
+      Setting.duration("flowcatalyst.receivers.dispatch-timeout")
+          .withDefault(Duration.ofSeconds(25))
+          .describedAs(
+              "How long a dispatch-job handler may run before it is interrupted and the platform is"
+                  + " answered 503. Keep it below the job's timeout (platform default 30s).");
+
   /** {@code flowcatalyst.sync.on-boot}: whether start-up also syncs definitions. */
   public static final Setting<Boolean> SYNC_ON_BOOT =
       Setting.bool("flowcatalyst.sync.on-boot")
@@ -115,6 +149,15 @@ public final class FlowCatalystModule implements Module {
     app.declare(SUBSCRIPTION_TARGET_BASE_URL);
     app.declare(SYNC_ON_BOOT);
     app.declare(OUTBOX_STALE_AFTER);
+    app.declare(RECEIVERS_PATH);
+    app.declare(RECEIVERS_SIGNING_SECRET);
+    app.declare(RECEIVERS_BEARER_TOKEN);
+    app.declare(RECEIVERS_REQUIRE_SIGNATURE);
+    app.declare(RECEIVERS_DISPATCH_TIMEOUT);
+    app.provide(Receivers.class, lookup -> new Receivers());
+    // The table behind DispatchDelivery.once; applied to the default database instance when the
+    // database module is listed.
+    MigrationSet.contribute(app, FlowCatalystModule.class, "db/migration/flowcatalyst");
     app.provide(PlatformClient.class, lookup -> buildClient(lookup.get(Config.class)));
     app.provide(
         DefinitionCatalog.class,
@@ -145,6 +188,7 @@ public final class FlowCatalystModule implements Module {
     }
     app.health().add(ID, client::verifyCredentials);
     addOutboxCheck(app);
+    ReceiverMount.mount(app, client);
     // Learn early, and in the log, whether the credentials work. Never blocks or fails start-up.
     Thread.ofVirtual()
         .name("flowcatalyst-first-token")
@@ -166,6 +210,7 @@ public final class FlowCatalystModule implements Module {
   @Override
   public void started(App app) {
     PlatformClient client = app.get(PlatformClient.class);
+    ReceiverMount.open(app, client);
     if (!client.isEnabled() || !app.config().get(SYNC_ON_BOOT)) {
       return;
     }

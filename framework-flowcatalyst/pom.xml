@@ -21,19 +21,21 @@
       <artifactId>framework-database</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.flowcatalyst</groupId>
       <artifactId>flowcatalyst-sdk</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
     </dependency>
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-database</artifactId>
       <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <!-- The outbox health check is tested against the real outbox_messages migration. -->
-    <dependency>
-      <groupId>io.flowcatalyst.framework</groupId>
-      <artifactId>framework-usecase</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
