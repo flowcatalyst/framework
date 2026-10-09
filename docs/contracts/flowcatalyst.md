@@ -229,8 +229,8 @@ As built in slice 4 (signature check and the dispatch receiver, 2026-10-09):
   are answered `503 UNAVAILABLE` until `started` has checked the registrations (the server may
   already be listening). Start-up fails when handlers are registered and no `Routes` exists, or
   when handlers are registered, `require-signature` is true and `signing-secret` is absent or
-  blank. Without handlers the routes are still mounted and refuse every delivery (`401
-  MISSING_SECRET` when there is no secret). A disabled module mounts nothing.
+  blank. (Reversed by follow-up 5: a receiver without handlers now answers 404.) A disabled module
+  mounts nothing.
 - New settings: `flowcatalyst.receivers.path` must be literal segments (`/fc`, no trailing `/`);
   `flowcatalyst.receivers.dispatch-timeout` must be positive.
 - **Signature.** Ported (not the SDK class): the SDK reads the system clock and echoes the
@@ -370,7 +370,23 @@ As built in slice 5 (the scheduled-job receiver, 2026-10-09):
    token cache) for `completeJobInstance` and `logJobInstance`. Tests count exactly 4 completion
    calls and 1 log call for each of those statuses. The SDK's single token refresh on a `401` is
    not a retry of this kind and remains.
-5. **Docs.** The guide has a Receivers page (`docs/guide/receivers.md`) documenting all of the
+5. **Receivers off, or without handlers (ruling 2026-10-09, reverses "the routes still exist and
+   refuse everything").** An application that wants only the token (an ingestor, say) got
+   `/fc/dispatch` and `/fc/scheduled-jobs` answering `401`, which advertises two endpoints that
+   do nothing for it. Now: (a) a receiver with **no registered handler** answers `404 NOT_FOUND`
+   (the router's own envelope) **before any signature work**, once the registrations are sealed
+   (until then `503`, as before); (b) new `flowcatalyst.receivers.enabled` (boolean, default
+   `true`): when `false`, **neither route is mounted at all**, even if handlers are registered, and
+   start-up logs a WARN naming the handlers that can then never be called. A receiver that has
+   handlers keeps every start-up validation (secret, lock instance, `Routes`); when receivers are
+   disabled those validations do not apply. Smaller attack surface: nothing to probe, no signature
+   code reachable. *As built, a difference from "not mounted" for (a):* handlers are registered
+   during any module's `boot` and are known only when the module's `started` hook runs, by which
+   time the route table may already be compiled (Jetty listed first), so the two routes are
+   registered in `boot` and answer 404 themselves. Observable difference from a missing route:
+   a `GET` to them is `405` with `Allow: POST`, not `404`. `enabled=false` is known in `boot`, so
+   there nothing is registered and every method is `404`.
+6. **Docs.** The guide has a Receivers page (`docs/guide/receivers.md`) documenting all of the
    above; STATUS rows M4a and M4b are Built.
 
 ## 5. Platform work found by the survey (not framework code)

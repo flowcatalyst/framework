@@ -78,6 +78,11 @@ final class DispatchReceiver implements Handler {
     if (!receivers.isReady()) {
       return unavailable("the receivers are not ready");
     }
+    if (!receivers.hasDispatchHandlers()) {
+      // An application that registered no dispatch handler does not take dispatch jobs: answer
+      // as for an unknown route, before any signature work.
+      return HttpErrors.notFound("no route for this path");
+    }
     Optional<Response> refused = gate.refuse(request, route);
     if (refused.isPresent()) {
       return refused.get();

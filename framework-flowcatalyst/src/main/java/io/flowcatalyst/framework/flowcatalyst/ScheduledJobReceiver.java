@@ -53,6 +53,9 @@ final class ScheduledJobReceiver implements Handler {
     if (!receivers.isReady()) {
       return DispatchReceiver.unavailable("the receivers are not ready");
     }
+    if (!receivers.hasJobHandlers()) {
+      return HttpErrors.notFound("no route for this path");
+    }
     Optional<Response> refused = gate.refuse(request, route);
     if (refused.isPresent()) {
       return refused.get();

@@ -95,6 +95,15 @@ public final class FlowCatalystModule implements Module {
           .describedAs(
               "The 'outbox' health check is down when the oldest undelivered outbox row is older than this.");
 
+  /** {@code flowcatalyst.receivers.enabled}: whether the receiver routes exist at all. */
+  public static final Setting<Boolean> RECEIVERS_ENABLED =
+      Setting.bool("flowcatalyst.receivers.enabled")
+          .withDefault(true)
+          .describedAs(
+              "Mount the receiver routes. False mounts neither /dispatch nor /scheduled-jobs even when"
+                  + " handlers are registered (start-up warns). With true, a receiver that has no"
+                  + " handler answers 404.");
+
   /** {@code flowcatalyst.receivers.path}: where the receiver routes are mounted. */
   public static final Setting<String> RECEIVERS_PATH =
       Setting.string("flowcatalyst.receivers.path")
@@ -218,6 +227,7 @@ public final class FlowCatalystModule implements Module {
     app.declare(SUBSCRIPTION_TARGET_BASE_URL);
     app.declare(SYNC_ON_BOOT);
     app.declare(OUTBOX_STALE_AFTER);
+    app.declare(RECEIVERS_ENABLED);
     app.declare(RECEIVERS_PATH);
     app.declare(RECEIVERS_SIGNING_SECRET);
     app.declare(RECEIVERS_BEARER_TOKEN);

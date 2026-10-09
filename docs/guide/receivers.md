@@ -12,9 +12,15 @@ endpoints for you, checks the delivery signature, and calls the handlers you reg
 
 The prefix is `flowcatalyst.receivers.path` (default `/fc`). The routes need an HTTP module that
 provides `Routes` (for example `JettyHttpModule`); they have no session and no `Context`
-requirement, because the signature is the authentication. A disabled module mounts nothing. Set the
-dispatch connection's or the job's target URL on the platform to these routes (the framework does
-not set it for you).
+requirement, because the signature is the authentication. Set the dispatch connection's or the
+job's target URL on the platform to these routes (the framework does not set it for you).
+
+**Only a receiver that has a handler answers.** An application that registers no dispatch handler
+answers `404 NOT_FOUND` on `/fc/dispatch` without looking at the signature, and the same for
+`/fc/scheduled-jobs` without a scheduled-job handler. `flowcatalyst.receivers.enabled: false`
+removes both routes even when handlers exist. See [Applications that only want the
+token](#applications-that-only-want-the-token). A disabled module (`flowcatalyst.enabled: false`)
+mounts nothing either.
 
 Read this page with [The FlowCatalyst module](flowcatalyst-module.md) (settings, definitions) and
 [Locks](locks.md) (the overlap lock). The specification is section 4 and 4a of
@@ -22,27 +28,49 @@ Read this page with [The FlowCatalyst module](flowcatalyst-module.md) (settings,
 
 ## Registering handlers
 
-`Receivers` is a provided service. Register in `boot`; registration closes when the module's
-`started` hook runs. A duplicate or malformed registration throws at once, which fails start-up.
+`Receivers` is a service the FlowCatalyst module provides. Register in your module's `boot`;
+registration closes when the module's `started` hook runs. A duplicate or malformed registration
+throws at once, which fails start-up. This is the production form (the types are `Receivers`,
+`DispatchHandler`, `DispatchDelivery`, `OnceResult` and `Database` from the database module):
 
 ```java
-Receiving.handlers(
-    r -> {
-      r.onDispatch(TYPE, (ctx, d) -> DispatchResult.ack());
-      r.onScheduledJob("nightly", (ctx, f) -> JobResult.success());
-    });
+public final class BillingModule implements Module {
+  @Override
+  public String id() {
+    return "billing";
+  }
+
+  @Override
+  public void boot(App app) {
+    Receivers receivers = app.get(Receivers.class);
+    Database db = app.get(Databases.class).defaultInstance();
+
+    receivers.onDispatch(
+        "orders:billing:invoice:created",
+        (Context ctx, DispatchDelivery d) -> {
+          OnceResult<Integer> sent = d.once(db, "send-invoice", tx -> send(tx, d.jobId()));
+          return DispatchResult.ack();
+        });
+    receivers.onScheduledJob("nightly-export", (ctx, firing) -> JobResult.success());
+  }
+}
 ```
 
-(`Receiving.handlers` is a small test module that runs the lambda in `boot`; in your module the
-body is `app.get(Receivers.class)` then the same calls.)
+`d` is the `DispatchDelivery` (what the platform sent), and `db` is a `Database`, the default
+instance of the database module; `send(tx, ...)` is your own method taking the open
+`java.sql.Connection`. List `FlowCatalystModule` in the application (the order against your module
+does not matter, because the handlers are looked up per request). The framework's tests use a
+small helper, `Receiving.handlers(...)`, which wraps exactly this `boot` body in a test module.
 
 A dispatch pattern is an exact event type (`orders:billing:invoice:created`), a family ending in
 `:*` on a segment boundary (`orders:billing:*`), or `*`. The most specific wins: exact, then the
 longest family, then `*`. `orders:*` does not match `orders` itself. Segments are
 `[A-Za-z0-9._-]+`. A scheduled-job code is `[A-Za-z0-9._:-]{1,186}`.
 
-Every handler receives a `Context`: the client is the code from the delivery's
-`X-FlowCatalyst-Client` header, or `Receivers.PLATFORM_CLIENT` (`_platform`, which no real client
+Every handler receives a `Context`: the client is the **client code** (the platform's client
+identifier such as `acme`, never the `clt_...` id) from the `{id}:{code}` of the delivery's
+`X-FlowCatalyst-Client` header, held in a `ClientId` (see [Context](context.md#what-goes-in-a-clientid)),
+or `Receivers.PLATFORM_CLIENT` (`_platform`, which no real client
 identifier can equal) for a platform-scoped dispatch job and for every scheduled job; the
 application is `flowcatalyst.application`; the correlation id is the envelope's when it is
 printable ASCII without spaces and at most 200 characters, else generated; the execution id is the
@@ -55,6 +83,7 @@ environment, for example `FLOWCATALYST_RECEIVERS_SIGNING_SECRET`; see [Config](c
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `enabled` | boolean | `true` | `false` mounts neither route, even when handlers are registered (start-up warns); see [Applications that only want the token](#applications-that-only-want-the-token) |
 | `path` | string | `/fc` | prefix of the routes; literal segments, no trailing `/` |
 | `signing-secret` | secret | none | the **shared** secret the platform signs deliveries with; used by each receiver that has no secret of its own |
 | `bearer-token` | secret | none | the **shared** optional bearer token; when effective, `Authorization: Bearer` must match as well as the signature |
@@ -83,9 +112,17 @@ At start-up, **a receiver that has handlers needs a non-blank effective secret**
 `require-signature` is true, or `StartupException` names the receiver's key
 (`flowcatalyst.receivers.dispatch.signing-secret` or
 `flowcatalyst.receivers.scheduled-jobs.signing-secret`). A receiver with no handlers needs no secret
-and refuses every delivery (`401 MISSING_SECRET` when it has none).
+and answers `404 NOT_FOUND`.
 
 ## Dispatch jobs
+
+A dispatch job is not only an event. The platform has two kinds, `EVENT` (made from an event by a
+subscription) and `TASK` (created directly, for example through its batch endpoint), and for
+**both** it sets `X-Event-Type` to the job's `code`. So a handler registered with
+`onDispatch("<code>")` receives a TASK job whose code is `<code>` exactly as it receives an event of
+that type; patterns (`orders:billing:*`, `*`) work the same. The code of a job created through the
+platform API must start with the application code, `{application}:...`. How to create such a job
+is on [the FlowCatalyst module](flowcatalyst-module.md#creating-a-dispatch-job).
 
 The body is the platform's envelope, or the raw payload for a `dataOnly` subscription. The job id
 and type always come from the headers `X-Dispatch-Job-Id` and `X-Event-Type`, which are required;
@@ -123,6 +160,8 @@ it to stop, so write handlers that notice interruption.
 **A handler can run more than once for one job** (a timeout after a commit, a lost response, a
 retry after a 503). Make it idempotent. The delivery's job id is the idempotency key, and
 `delivery.once(db, handlerName, work)` does the bookkeeping:
+
+With `d` the `DispatchDelivery` and `db` the `Database` from the registration example above:
 
 ```java
 OnceResult<Integer> first = d.once(db, "send-invoice", tx -> send(tx, "dj_1"));
@@ -220,6 +259,27 @@ own token cache). Without it the two layers multiply to up to 16 calls. Log line
 `firing.log(level, message)` posts a line to the instance's log on the platform, best effort, and
 never throws.
 
+## Applications that only want the token
+
+An application that uses `FlowCatalystModule` only for its service-account token, definitions sync
+or health check (an ingestor, say) registers no handlers. It does not expose receivers:
+
+- A receiver with no handler answers `404 NOT_FOUND`, the same body as an unknown route, before
+  the signature is looked at. Nothing about it depends on a secret, so no secret is needed.
+- To remove the two routes entirely, set `flowcatalyst.receivers.enabled: false` (environment
+  variable `FLOWCATALYST_RECEIVERS_ENABLED`). Then **nothing is mounted** and every method on
+  `/fc/...` is `404`, even if a module registers handlers; start-up logs a WARN naming those
+  handlers, because the platform can then never deliver to them. None of the start-up checks for
+  receivers (secret, lock instance, `Routes`) apply while receivers are disabled.
+
+A difference from a route that was never registered: with `enabled` true and no handler, the path
+is registered and answers `404` to a `POST`, but a `GET` gets `405` with `Allow: POST` (the
+handlers are only known after every module has booted, which can be after the route table is
+built). With `enabled: false` nothing is registered and every method is `404`. This reverses the
+earlier decision that the routes stay and refuse everything with `401` (see
+[contracts/flowcatalyst.md](../contracts/flowcatalyst.md) section 4a, follow-up 5): fewer reachable
+endpoints for an application that never wanted them.
+
 ## Security properties of the signature check
 
 The check is the platform's webhook signature: hex HMAC-SHA256 over `timestamp + rawBody` with the
@@ -243,7 +303,7 @@ handler, and before the body is read into one.
 
 `FakePlatform` (the module's test-jar) serves the token endpoint and records the completion and log
 calls a scheduled job makes (`instanceCalls`, `awaitInstanceCalls`, `failInstanceCalls`; see
-[Testing](testing.md#the-fake-platform)). `TestClient` (the HTTP module's test-jar) posts to the
+[Testing](testing.md#the-fake-platform)). `TestClient` (in `framework-http`'s main jar, no test-jar needed) posts to the
 routes without a socket. A signed dispatch delivery, from the framework's `ReceiverSecretsTest`
 (its `sign` helper is the hex HMAC-SHA256 of the timestamp header value followed by the body, keyed
 with the secret):

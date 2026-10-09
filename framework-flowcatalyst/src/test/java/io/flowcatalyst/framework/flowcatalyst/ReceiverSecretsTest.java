@@ -238,8 +238,8 @@ class ReceiverSecretsTest {
             DISPATCH);
     assertThat(dispatch(client, DISPATCH).status()).isEqualTo(200);
     TestResponse refused = job(client, DISPATCH);
-    assertThat(refused.status()).isEqualTo(401);
-    assertThat(refused.tree().get("details").get("reason").asString()).isEqualTo("MISSING_SECRET");
+    assertThat(refused.status()).isEqualTo(404);
+    assertThat(refused.tree().get("error").asString()).isEqualTo("NOT_FOUND");
   }
 
   @Test

@@ -41,6 +41,12 @@ final class ReceiverMount {
    */
   static @Nullable ScheduledJobRunner mount(App app, PlatformClient client) {
     Config config = app.config();
+    if (!config.get(FlowCatalystModule.RECEIVERS_ENABLED)) {
+      LOG.info(
+          "flowcatalyst: {} is false, so the receiver routes are not mounted",
+          FlowCatalystModule.RECEIVERS_ENABLED.key());
+      return null;
+    }
     List<Problem> problems = new ArrayList<>();
     String prefix = config.get(FlowCatalystModule.RECEIVERS_PATH);
     if (!PATH.matcher(prefix).matches()) {
@@ -208,6 +214,17 @@ final class ReceiverMount {
     }
     List<Problem> problems = new ArrayList<>();
     Config config = app.config();
+    if (!config.get(FlowCatalystModule.RECEIVERS_ENABLED)) {
+      if (any) {
+        LOG.warn(
+            "flowcatalyst: handlers are registered (dispatch {}, scheduled jobs {}) but {} is false;"
+                + " nothing is mounted, so the platform cannot deliver to them",
+            receivers.dispatchPatterns().stream().sorted().toList(),
+            receivers.jobCodes().stream().sorted().toList(),
+            FlowCatalystModule.RECEIVERS_ENABLED.key());
+      }
+      return;
+    }
     if (any && !receivers.isMounted()) {
       problems.add(
           Problem.of(

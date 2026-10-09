@@ -614,11 +614,11 @@ class DispatchReceiverTest {
   }
 
   @Test
-  void withoutHandlersNoSecretIsNeededAndDeliveriesAreStillRefused() {
+  void withoutHandlersNoSecretIsNeededAndTheRouteAnswersNotFound() {
     TestClient client = start(r -> {}, "FLOWCATALYST_RECEIVERS_SIGNING_SECRET", null);
     TestResponse r = deliver(client);
-    assertThat(r.status()).isEqualTo(401);
-    assertThat(r.tree().get("details").get("reason").asString()).isEqualTo("MISSING_SECRET");
+    assertThat(r.status()).isEqualTo(404);
+    assertThat(r.tree().get("error").asString()).isEqualTo("NOT_FOUND");
   }
 
   @Test
