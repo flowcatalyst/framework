@@ -156,6 +156,101 @@ processor reads them unchanged:
 
 Nothing in M2 reads the outbox; delivering it is the platform's job (M3).
 
+## 7a. Dispatch-job rows (MA item 4, 2026-10-10)
+
+A plan may also carry **dispatch jobs**: `plan.andDispatch(DispatchJob)`. They are written to
+`outbox_messages` in the same transaction as the aggregates, events and audit row (after the events,
+before the audit row), and the platform's outbox processor delivers them to
+`POST /api/dispatch-jobs/batch`. A plan still needs at least one event; dispatch jobs never replace
+it. Only the runner writes them.
+
+Facts this section is built on (platform Go source, read 2026-10-10):
+
+- The processor claims rows with `status = 0` ordered by `message_group, created_at`, maps the
+  `type` column to an endpoint by exact string (`DISPATCH_JOB` → `/api/dispatch-jobs/batch`;
+  `internal/common/outbox.go`), and sends **each row's `payload` text unchanged** as one element of
+  `{"items":[...]}` (`internal/outbox/http_dispatcher.go`). It never reads `client_id`, `headers` or
+  `payload_size`; `message_group` is used only for per-group FIFO and is not copied into the body.
+  Results are positional. A whole-batch `400` is terminal (`BAD_REQUEST`) and blocks a grouped row's
+  group.
+- The batch item (`internal/platform/shared/sdk/dispatch_jobs_batch.go`, `BatchItem`) has exactly:
+  `id, externalId, kind, code, source, subject, targetUrl, payload, payloadContentType, dataOnly,
+  eventId, correlationId, clientId, subscriptionId, serviceAccountId, dispatchPoolId, messageGroup,
+  mode, sequence, timeoutSeconds, maxRetries, metadata, queue, descriptor`. Unknown keys are ignored
+  silently; `metadata` is an **array** of `{"key","value"}` (an object fails the whole batch with
+  `400 INVALID_JSON`, which is what the SDKs' object-shaped `metadata` does today). Platform
+  defaults: `kind` `EVENT`, `payloadContentType` `application/json`, `dataOnly` false, `mode`
+  `NEXT_ON_ERROR`, `sequence` 0 → 99, `timeoutSeconds` 0 → 30, `maxRetries` 0 → 3 (so an explicit 0
+  cannot be sent for those three). `targetUrl` must be an absolute `http(s)` URL with a host and no
+  user info (the platform's SSRF guard may refuse more, such as loopback addresses). `source` and
+  `payload` are `NOT NULL` columns although the item fields are optional, so leaving them out fails
+  the insert.
+- Column limits (`msg_dispatch_jobs`): ids (`id`, `eventId`, `clientId`, `subscriptionId`,
+  `serviceAccountId`, `dispatchPoolId`) `VARCHAR(17)`; `code`, `source`, `subject`, `externalId`,
+  `correlationId`, `messageGroup`, `queue`, `descriptor` `VARCHAR(255)`; `payloadContentType`
+  `VARCHAR(100)`.
+- `clientId` is stored as given (a platform client **id**, at most 17 characters); the batch endpoint
+  does not resolve a client code the way the events batch resolves `clientCode`.
+- The insert is `ON CONFLICT (id, created_at) DO NOTHING` with `created_at` set at ingest, so a
+  redelivered batch can create a second job row; the receiver's at-least-once rule covers it.
+
+The row:
+
+| Column | Value |
+|---|---|
+| `id` | the job's id (below) |
+| `type` | `DISPATCH_JOB` |
+| `message_group` | the job's message group, or null |
+| `payload` | the batch item JSON below |
+| `status` | `0` |
+| `client_id` | the context's `ClientId` (as for event rows; the processor does not read it) |
+| `payload_size`, `headers`, `created_at`, `updated_at` | as for event rows (`headers` null) |
+
+The payload is the batch item. Written always: `id`, `kind`, `code`, `source`, `targetUrl`,
+`payload`, `payloadContentType`, `dataOnly`, `correlationId` (the context's). Written only when set:
+`subject`, `externalId`, `eventId`, `clientId`, `subscriptionId`, `serviceAccountId`,
+`dispatchPoolId`, `messageGroup`, `mode`, `sequence`, `timeoutSeconds`, `maxRetries`, `metadata`
+(array form, insertion order, only when not empty), `queue`, `descriptor`. **Never written**, because
+the batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `expiresAt`,
+`idempotencyKey`, `connectionId`, `causationId`.
+
+`DispatchJob` (a record, built with `DispatchJob.builder(code, targetUrl)`) is validated when built
+(`IllegalArgumentException`), so a row the platform would refuse terminally is never written:
+
+- `code`: `{application}:{rest}`, the application segment `[a-z][a-z0-9-]*`, at most 255 characters
+  (the platform confines an application-scoped caller by this first segment).
+- `targetUrl`: absolute `http` or `https` URI with a host and no user info.
+- `source`: default the code's application segment; 1 to 255 characters.
+- payload: `payload(text, contentType)` or `jsonPayload(value)` (the framework's Jackson 3 mapper,
+  content type `application/json`); default the empty JSON object `{}` (the column is `NOT NULL`).
+- `kind`: `EVENT` or `TASK`, default **`TASK`** (ruling taken: a job the application creates itself
+  is a task; the platform's own default, `EVENT`, describes jobs fanned out from events).
+  `dataOnly` default false (the platform envelope, which the framework's receiver understands).
+- `id`: optional, `[0-9A-Za-z_-]{1,17}`; when absent the writer generates a 13-character TSID. The
+  id is in the payload, so a batch the processor sends again after a lost response creates a job
+  with the **same** id, and the receiver's `DispatchDelivery.once` (keyed on the job id) runs the
+  work once.
+- platform ids (`eventId`, `subscriptionId`, `serviceAccountId`, `dispatchPoolId`,
+  `platformClientId` → `clientId`): `[0-9A-Za-z_-]{1,17}`. `platformClientId` is the platform's id,
+  never derived from the `Context`: the framework's `ClientId` is a client identifier (up to 100
+  characters) that the platform would store unresolved, and that may not fit the column. Without it
+  the job has no client, and with no pool named the platform uses `platform-DEFAULT-POOL`.
+- `messageGroup`, `externalId`, `subject`, `descriptor`: 1 to 255 characters. `mode`: `IMMEDIATE`,
+  `NEXT_ON_ERROR`, `BLOCK_ON_ERROR`. `queue`: `DEFAULT` or `HIGH_PRIORITY`. `sequence`,
+  `timeoutSeconds`, `maxRetries`: at least 1 when set. `metadata`: keys not blank, at most 100.
+
+`Sink` gained `writeDispatchJobs(tx, context, jobs)`, a default method that throws; a `Sink` that does
+not support dispatch jobs fails the attempt at step `OUTBOX` when a plan carries one.
+
+### Platform work found
+
+- The dispatch-jobs batch should accept `clientCode` and resolve it, as the events batch does; until
+  then a framework application cannot attribute a job to a client by its identifier.
+- The Java, TypeScript and Laravel SDKs write `metadata` as an object, which the batch endpoint
+  rejects with `400` for the whole batch, and write fields the endpoint ignores (`headers`,
+  `retryStrategy`, `scheduledFor`, `expiresAt`, `idempotencyKey`, `connectionId`), and their default
+  `maxRetries` is 5 against the platform's 3. Reported; the framework does not copy them.
+
 ## 8. Ids
 
 `Ids` (core) generates TSIDs: 13 Crockford base-32 characters, time-ordered, optionally with a

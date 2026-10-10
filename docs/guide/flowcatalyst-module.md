@@ -11,7 +11,7 @@ Be clear about what it is *not*, today:
 
 | Not built | Where |
 |---|---|
-| Dispatch-job rows in the outbox writer, or any direct framework call that creates a dispatch job | MA-4; today see [Creating a dispatch job](#creating-a-dispatch-job) |
+| A framework call that creates a dispatch job outside a use case | see [Creating a dispatch job](#creating-a-dispatch-job) |
 | Per-client sync, principals sync, OpenAPI sync | not exposed |
 | Docs sync (`Definitions.docs(...)`) | accepted, skipped (the Java SDK cannot sync docs yet) |
 | Wrapper methods for platform APIs (events, dispatch jobs, users) | not built; `PlatformClient` gives you the token only, and [Calling a platform API yourself](#calling-a-platform-api-yourself) shows how to use it. The planned HTTP client library (MA item 6) will replace that recipe |
@@ -118,29 +118,21 @@ retries, and will replace this recipe.
 ## Creating a dispatch job
 
 A dispatch job is the platform's unit of delivery. Most are made by the platform itself, from an
-event and a subscription. Creating one directly (a `TASK`, or an `EVENT` job you want delivered
-without an event) is **not supported by the framework**: the outbox writer writes event and audit
-rows only, and there is no framework call that creates a job. Plan item MA-4 adds the outbox rows.
+event and a subscription. To create one from your application, add it to a use case's plan with
+`plan.andDispatch(DispatchJob)`: it is written to the outbox in the same transaction and the
+platform's outbox processor delivers it to `POST /api/dispatch-jobs/batch`. See
+[the write path](write-path.md#dispatch-jobs).
 
-Until then, call the platform with the recipe above:
-
-- `POST /api/dispatch-jobs/batch` with `{"items": [ ... ]}`, at most 1000 items per request
-  (`POST /api/dispatch-jobs` creates one). Each item has at least `code` and `targetUrl`; `kind` is
-  `EVENT` or `TASK`; optional fields include `payload` (a JSON string), `dataOnly`,
-  `messageGroup`, `subscriptionId`, `clientId`, `correlationId`, `timeoutSeconds`, `maxRetries`
-  and `queue`. For an application-scoped service account the `code` must start with one of its
-  applications, `{application}:...`.
-- The caller needs the permission **`platform:messaging:batch:dispatch-jobs-write`**. The
-  platform's `application-service` role, which an application's service account normally carries,
-  grants it.
-- The answer is `{"results": [{"id", "status", "error?"}]}`, one entry per item, in order.
+- The service account the processor runs with needs **`platform:messaging:batch:dispatch-jobs-write`**,
+  which the platform's `application-service` role grants.
 - The receiver handles the delivered job like any other: the platform sets `X-Event-Type` to the
   job's `code`, so `receivers.onDispatch("<code>", ...)` receives it
   ([Receivers](receivers.md#dispatch-jobs)).
 
-This is read from the platform's source (`internal/platform/shared/sdk/dispatch_jobs_batch.go` in
-the platform repository), not exercised from this framework. The Java SDK's `OutboxManager` can
-also write `DISPATCH_JOB` rows to an outbox table; the framework neither wraps nor tests that path.
+Outside a use case there is no framework call that creates a job; calling the endpoint yourself
+works with the recipe above (`{"items": [ ... ]}`, at most 1000 items, the answer is
+`{"results": [{"id", "status", "error?"}]}` in item order). Send `metadata` as an array of
+`{"key", "value"}`: the platform refuses the whole batch for an object.
 
 ## Declaring definitions
 

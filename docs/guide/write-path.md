@@ -1,4 +1,4 @@
-<!-- types: Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet -->
+<!-- types: DispatchJob, Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet -->
 # The write path
 
 All behaviour that changes data goes through a **use case**. A use case validates, authorizes,
@@ -171,6 +171,8 @@ written) or a `Plan`:
 - `Plan.delete(aggregate, repository, event)`.
 - `Plan.emit(event)`: an event with no aggregate write.
 - `.andSave(...)`, `.andDelete(...)`, `.andEmit(event)` add further steps.
+- `.andDispatch(DispatchJob)` adds a dispatch job for the platform, written to the outbox in the
+  same transaction ([Dispatch jobs](#dispatch-jobs)).
 
 Every plan carries at least one event; the **first is the use case's result**. Events are written
 in step order. `Plan.save` is generic in the aggregate type, so the repository must match it.
@@ -300,12 +302,66 @@ public record PlaceOrder(String customer) implements AuditData {
 ```
 
 > **The framework writes the outbox; it does not deliver it.** Delivery is the platform's outbox
-> processor, pointed at your database. Without a platform nothing consumes the rows. And the writer
-> handles **events and audit rows only**: there are no dispatch-job rows yet (plan item MA-4), and
-> no direct framework call that creates a dispatch job either; see
-> [Creating a dispatch job](flowcatalyst-module.md#creating-a-dispatch-job). The platform delivers
-> the rows: see [How the outbox gets delivered](flowcatalyst-module.md#how-the-outbox-gets-delivered),
+> processor, pointed at your database. Without a platform nothing consumes the rows. See
+> [How the outbox gets delivered](flowcatalyst-module.md#how-the-outbox-gets-delivered),
 > [The FlowCatalyst module](flowcatalyst-module.md) and [STATUS](STATUS.md).
+
+### Dispatch jobs
+
+A plan can carry **dispatch jobs**: work the platform delivers to a URL, such as a webhook to
+another system. Each becomes an outbox row of type `DISPATCH_JOB`, written after the events in the
+same transaction, and the platform's outbox processor sends it to `/api/dispatch-jobs/batch`. From
+`DispatchJobOutboxTest`:
+
+```java
+Plan<ThingEvent> plan =
+    Plan.save(
+        t,
+        repo,
+        new ThingEvent(
+            events.metadata(c, CREATED, t.id()), cmd.id(), t.name(), t.code()));
+for (DispatchJob job : cmd.jobs()) {
+  plan = plan.andDispatch(job);
+}
+return plan;
+```
+
+and a job:
+
+```java
+DispatchJob.builder("orders:billing:export", TARGET)
+    .payload("<invoice id=\"inv_1\"/>", "application/xml")
+    .messageGroup("invoice:inv_1")
+    .mode(DispatchJob.Mode.BLOCK_ON_ERROR)
+    .maxRetries(5)
+    .metadata("invoice", "inv_1")
+    .queue(DispatchJob.Queue.HIGH_PRIORITY)
+    .build();
+```
+
+- `code` is `{application}:...`; for an application's own service account the platform requires
+  the first segment to be one of its applications. `targetUrl` is an absolute `http(s)` URL.
+- The payload is `payload(text, contentType)` or `jsonPayload(value)` (Jackson, `application/json`);
+  without one it is `{}`. `dataOnly(true)` delivers it without the platform's envelope.
+- Defaults: kind `TASK` (`kind(EVENT)` to change it), source = the code's application segment,
+  correlation id = the context's. `mode`, `sequence`, `timeoutSeconds` and `maxRetries` are left to
+  the platform (`NEXT_ON_ERROR`, 99, 30 s, 3) unless set; when set they must be at least 1.
+- `id(...)` sets the job id (at most 17 characters); otherwise one is generated. The id travels in
+  the payload, so if the processor sends a batch twice the platform gets the same id and your
+  receiver's `DispatchDelivery.once` runs the work once ([Receivers](receivers.md)).
+- **No client by default.** `platformClientId(...)` takes the platform's id of the client, not
+  your `ClientId` (an identifier the platform's dispatch-jobs endpoint does not resolve). Without
+  it the platform treats the job as platform-scoped and uses its default pool; the receiver then
+  sees no `X-FlowCatalyst-Client`. Resolving client codes there is platform work.
+- Values the platform would refuse for the whole batch are refused when the job is built
+  (`IllegalArgumentException`): a malformed code or URL, text over the platform's column sizes,
+  platform ids over 17 characters, `0` for the numbers above, blank metadata keys.
+- Fields the platform's batch endpoint does not read (`headers`, `retryStrategy`, `scheduledFor`,
+  `expiresAt`, `idempotencyKey`, `connectionId`) are not offered. `metadata` is sent as the
+  platform's array of key/value pairs.
+
+The exact row and payload are in the contract,
+[write-path section 7a](../contracts/write-path.md#7a-dispatch-job-rows-ma-item-4-2026-10-10).
 
 An application that already ran the SDK's outbox migration by other means has the table and must
 not also list `OutboxModule`'s migration; the first migration file's content (and checksum) is the

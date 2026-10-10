@@ -4,14 +4,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * What to write: aggregates to save or delete and the events that say what happened. Applied by
- * the runner in one transaction, in this order. The first event is the use case's result.
+ * What to write: aggregates to save or delete and the events that say what happened, and
+ * optionally dispatch jobs for the platform. Applied by the runner in one transaction, in this
+ * order. The first event is the use case's result.
  *
  * @param <E> the type of the first event
  * @param result the first event, returned to the caller on commit
  * @param steps the writes in order; the first one carries {@code result}
+ * @param dispatchJobs dispatch jobs written to the outbox after the events (write-path contract,
+ *     section 7a), in order
  */
-public record Plan<E extends DomainEvent>(E result, List<Step> steps) implements Decision<E> {
+public record Plan<E extends DomainEvent>(E result, List<Step> steps, List<DispatchJob> dispatchJobs)
+    implements Decision<E> {
 
   /** One write of a plan, with the event it produces. */
   public sealed interface Step permits Save, Delete, Emit {
@@ -53,12 +57,23 @@ public record Plan<E extends DomainEvent>(E result, List<Step> steps) implements
    */
   public record Emit(DomainEvent event) implements Step {}
 
-  /** Copies the steps and requires at least one. */
+  /** Copies the steps and the jobs, and requires at least one step. */
   public Plan {
     steps = List.copyOf(steps);
+    dispatchJobs = List.copyOf(dispatchJobs);
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("a plan carries at least one event");
     }
+  }
+
+  /**
+   * A plan without dispatch jobs.
+   *
+   * @param result the first event
+   * @param steps the writes in order
+   */
+  public Plan(E result, List<Step> steps) {
+    this(result, steps, List.of());
   }
 
   /**
@@ -140,9 +155,22 @@ public record Plan<E extends DomainEvent>(E result, List<Step> steps) implements
     return with(new Emit(event));
   }
 
+  /**
+   * Adds a dispatch job, written to the outbox in the same transaction (write-path contract,
+   * section 7a). The platform's outbox processor delivers it to {@code /api/dispatch-jobs/batch}.
+   *
+   * @param job the job
+   * @return the extended plan
+   */
+  public Plan<E> andDispatch(DispatchJob job) {
+    List<DispatchJob> more = new ArrayList<>(dispatchJobs);
+    more.add(job);
+    return new Plan<>(result, steps, more);
+  }
+
   private Plan<E> with(Step step) {
     List<Step> more = new ArrayList<>(steps);
     more.add(step);
-    return new Plan<>(result, more);
+    return new Plan<>(result, more, dispatchJobs);
   }
 }

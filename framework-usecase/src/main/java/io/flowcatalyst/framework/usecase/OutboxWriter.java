@@ -28,6 +28,9 @@ import tools.jackson.databind.node.ObjectNode;
  *       without the metadata), {@code correlationId, causationId, deduplicationId} (the event
  *       id), {@code messageGroup}, {@code clientCode} and {@code contextData} (the principal
  *       and the execution id, when present).
+ *   <li>A dispatch-job row: type {@code DISPATCH_JOB}, row id = the job's id, the job's message
+ *       group, and the platform's dispatch-jobs batch item as the payload (section 7a), which the
+ *       platform's outbox processor sends unchanged.
  *   <li>The audit row: type {@code AUDIT_LOG}, no message group, the SDK's audit payload.
  * </ul>
  *
@@ -47,6 +50,7 @@ public final class OutboxWriter implements Sink {
 
   private static final String TYPE_EVENT = "EVENT";
   private static final String TYPE_AUDIT_LOG = "AUDIT_LOG";
+  private static final String TYPE_DISPATCH_JOB = "DISPATCH_JOB";
   private static final int STATUS_PENDING = 0;
 
   private final ObjectMapper mapper = Json.newMapper();
@@ -75,6 +79,23 @@ public final class OutboxWriter implements Sink {
               TYPE_EVENT,
               event.metadata().messageGroup(),
               payload,
+              context.client().value()));
+    }
+    insert(tx, rows);
+  }
+
+  @Override
+  public void writeDispatchJobs(Tx tx, Context context, List<DispatchJob> jobs)
+      throws SQLException {
+    List<Row> rows = new ArrayList<>(jobs.size());
+    for (DispatchJob job : jobs) {
+      String id = job.id() != null ? job.id() : ids.generate();
+      rows.add(
+          new Row(
+              id,
+              TYPE_DISPATCH_JOB,
+              job.messageGroup(),
+              serialize(dispatchJobPayload(context, id, job)),
               context.client().value()));
     }
     insert(tx, rows);
@@ -117,6 +138,53 @@ public final class OutboxWriter implements Sink {
       payload.put("contextData", contextData);
     }
     return payload;
+  }
+
+  /**
+   * The platform's dispatch-jobs batch item (Go {@code BatchItem}), with only the fields it reads;
+   * {@code metadata} is its array of key/value pairs, never an object.
+   */
+  Map<String, Object> dispatchJobPayload(Context context, String id, DispatchJob job) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("id", id);
+    payload.put("kind", job.kind().name());
+    payload.put("code", job.code());
+    payload.put("source", job.source());
+    putIfSet(payload, "subject", job.subject());
+    payload.put("targetUrl", job.targetUrl().toString());
+    payload.put("payload", job.payload());
+    payload.put("payloadContentType", job.payloadContentType());
+    payload.put("dataOnly", job.dataOnly());
+    putIfSet(payload, "externalId", job.externalId());
+    putIfSet(payload, "eventId", job.eventId());
+    payload.put("correlationId", context.correlationId().value());
+    putIfSet(payload, "clientId", job.platformClientId());
+    putIfSet(payload, "subscriptionId", job.subscriptionId());
+    putIfSet(payload, "serviceAccountId", job.serviceAccountId());
+    putIfSet(payload, "dispatchPoolId", job.dispatchPoolId());
+    putIfSet(payload, "messageGroup", job.messageGroup());
+    if (job.mode() != null) {
+      payload.put("mode", job.mode().name());
+    }
+    putIfSet(payload, "sequence", job.sequence());
+    putIfSet(payload, "timeoutSeconds", job.timeoutSeconds());
+    putIfSet(payload, "maxRetries", job.maxRetries());
+    if (!job.metadata().isEmpty()) {
+      List<Map<String, String>> metadata = new ArrayList<>(job.metadata().size());
+      job.metadata().forEach((k, v) -> metadata.add(entry(k, v)));
+      payload.put("metadata", metadata);
+    }
+    if (job.queue() != null) {
+      payload.put("queue", job.queue().name());
+    }
+    putIfSet(payload, "descriptor", job.descriptor());
+    return payload;
+  }
+
+  private static void putIfSet(Map<String, Object> payload, String key, @Nullable Object value) {
+    if (value != null) {
+      payload.put(key, value);
+    }
   }
 
   Map<String, Object> auditPayload(AuditEntry entry) {

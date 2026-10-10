@@ -185,6 +185,9 @@ public final class UseCases {
           events.add(planned.event());
         }
         sink.writeEvents(tx, context, events);
+        if (!plan.dispatchJobs().isEmpty()) {
+          sink.writeDispatchJobs(tx, context, plan.dispatchJobs());
+        }
 
         step = "AUDIT";
         sink.writeAudit(tx, auditEntry(useCase.name(), context, command, plan));
