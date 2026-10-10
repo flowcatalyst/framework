@@ -1,0 +1,40 @@
+{
+  "props": {
+    "id": "pick-demo",
+    "signal": "picked",
+    "filterSignal": "pickQ",
+    "name": "roles",
+    "itemIdPrefix": "pk-",
+    "items": [
+      {
+        "value": "admin",
+        "name": "Administrator",
+        "code": "platform:admin"
+      },
+      {
+        "value": "viewer",
+        "name": "Viewer",
+        "code": "platform:viewer"
+      },
+      {
+        "value": "ops",
+        "name": "Operator",
+        "code": "platform:ops",
+        "checked": true
+      },
+      {
+        "value": "billing",
+        "name": "Billing",
+        "code": "platform:billing"
+      }
+    ],
+    "availableTitle": "Available roles",
+    "filterPlaceholder": "Filter roles",
+    "emptyText": "No roles selected",
+    "saveLabel": "Save roles",
+    "formAttrs": {
+      "data-on:submit": "void 0"
+    }
+  },
+  "source": "pick-list.md Structure"
+}

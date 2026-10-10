@@ -1,0 +1,32 @@
+{
+  "props": {
+    "id": "pick-apps",
+    "signal": "appsPicked",
+    "filterSignal": "appsQ",
+    "name": "applicationIds",
+    "itemIdPrefix": "pk-",
+    "items": [
+      {
+        "value": "admin",
+        "name": "Administrator",
+        "code": "platform:admin"
+      },
+      {
+        "value": "viewer",
+        "name": "Viewer",
+        "code": "platform:viewer",
+        "note": "Inactive"
+      }
+    ],
+    "availableTitle": "Available (2)",
+    "selectedTitle": "Enabled",
+    "filterPlaceholder": "Filter applications",
+    "emptyText": "No applications enabled",
+    "saveLabel": "Save",
+    "action": "/ui/clients/clt_1/applications",
+    "formAttrs": {
+      "data-on:submit": "@post(el.action, {contentType: 'form', retryMaxCount: 0})"
+    }
+  },
+  "source": "pick-list.md Props: nothing picked (empty text shown), a note, action, selectedTitle; derived from the Structure"
+}

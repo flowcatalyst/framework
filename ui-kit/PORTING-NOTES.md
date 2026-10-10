@@ -178,3 +178,6 @@ Subscriptions (2026-10-10):
 Applications (2026-10-10):
 - `toggle.md` gets a Props table and `fixtures/toggle-group` (the SPA's `SelectButton` is the exclusive group; group attrs name it as a radiogroup in a form).
 - The SPA's chip list of redirect URIs (type, press +, remove chips) is a textarea with one URI per line in the Go port: a list the browser holds without a server round trip needs either templating Datastar does not have or custom JavaScript. Recorded as a gap: no `list-input` component yet.
+
+Clients (2026-10-10):
+- `pick-list.md` gets a Props table and `fixtures/pick-list`. Two markup changes from the gallery-era structure: the checkboxes share one `name` (the form posts the picked values as a list, `checked` rendered so it works without Datastar), and the right pane reads the value from `data-value` (`$picked.includes(el.dataset.value)`) instead of a literal in the expression, so a value is never code. A `note` marker per item (the SPA's "Inactive" tag).
