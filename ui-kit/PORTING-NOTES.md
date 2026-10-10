@@ -188,3 +188,6 @@ Dispatch jobs (2026-10-10):
 - `alert.md` gets a `warn` variant (the SPA's `Message severity="warn"`, used by the requeue confirm step).
 - The SPA's grid selection (PrimeVue `selectionMode="multiple"`) has no kit component: the page renders native checkboxes associated with a separate POST form (`form="…"`), and a Datastar expression counts them into a signal for the "Requeue selected (n)" label and sets the header box's `checked`/`indeterminate`. Worth a `row-selection` spec if a second list needs it.
 - `cursor-pager.md` (Newest / Older) is used for the first time: the SPA's dispatch-job list has no paging at all ("most recent N"); the Go page adds keyset paging over (created_at, id).
+
+Events (2026-10-10):
+- The SPA's whole-row click (`@row-click`) is one delegated handler on the `<tbody>` that clicks the row's real link (`evt.target.closest('tr')…querySelector('a').click()`), not a handler per row: per-row Datastar attributes are the main cost of applying a 1,000-row patch (~0.09 ms per event row, ~0.23 ms per dispatch-job row with four interactive attributes). Worth stating in `data-table.md` for firehose lists.
