@@ -191,3 +191,10 @@ Dispatch jobs (2026-10-10):
 
 Events (2026-10-10):
 - The SPA's whole-row click (`@row-click`) is one delegated handler on the `<tbody>` that clicks the row's real link (`evt.target.closest('tr')…querySelector('a').click()`), not a handler per row: per-row Datastar attributes are the main cost of applying a 1,000-row patch (~0.09 ms per event row, ~0.23 ms per dispatch-job row with four interactive attributes). Worth stating in `data-table.md` for firehose lists.
+
+Processes (2026-10-10):
+- Found in the browser: a `form-dialog` patched into a page's dialog slot by **morph** (`inner` on the slot) opens **non-modal** the second time in a visit (create, closed, then edit): the new `<dialog>` has the same id and the same `data-init`, so the morph keeps the element and Datastar does not run `data-init` (`showModal()`) again; the dialog is only `open`, under a drawer, without focus trap or inert page. Same mechanism as the `local-time` morph above. The Go port now replaces the slot element (Datastar mode `replace`) for processes; the other ported pages still morph. Worth a line in `form-dialog.md`, Behaviour ("patch a server-opened dialog with mode replace"); not changed here.
+- No Mermaid (or any diagram) component: the SPA renders process diagrams with Mermaid in the browser. By the owner's ruling the Go page shows the source in `code-block` with a notice and a link to the SPA; a diagram component would be the kit's first script beyond Datastar.
+- `alert.md`'s default slot lands in the grid's first column (beside the icon) unless the content carries `col-start-2`, as the title and description do: a link in the slot wrapped one word per line. The spec should say so (or wrap the slot in the text column).
+- `textarea.md` sizes to its content (`field-sizing-content`), so `rows` has no effect: an editor-like field (the Mermaid source) needs a minimum height override (`[&]:min-h-60`). A `minRows`-style option, or honouring `rows` as the minimum, would cover it.
+- The served kit assets (kit.css, datastar.js, the sprite) are now compressed by the Go platform (Brotli 105 KB → 16.6 KB for kit.css); nothing changes kit-side.
