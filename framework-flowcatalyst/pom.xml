@@ -42,6 +42,12 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
+    <!-- The outbox table for the outbox health check's tests (framework-http no longer brings it). -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-usecase</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- The scheduled-job overlap lock end to end on the PostgreSQL lock driver. -->
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>

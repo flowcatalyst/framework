@@ -29,4 +29,13 @@
       <artifactId>jackson-databind</artifactId>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <!-- The HTTP-only classpath rule from the parent: no write path or database on this classpath. -->
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 </project>

@@ -2,15 +2,18 @@ package io.flowcatalyst.framework.http;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.flowcatalyst.framework.usecase.ErrorKind;
-import io.flowcatalyst.framework.usecase.UseCaseError;
+import io.flowcatalyst.framework.core.ServiceError;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.JsonNode;
 
 class ErrorEnvelopeTest {
+
+  /** Any module's expected failure; the write path's UseCaseError is one (tested there). */
+  record Failure(int httpStatus, String code, String message, Map<String, String> details)
+      implements ServiceError {}
 
   record Body(String name) {
     static final Validator<Body> V =
@@ -29,9 +32,9 @@ class ErrorEnvelopeTest {
     routes.get("/forbidden", r -> HttpErrors.forbidden("NOT_ALLOWED", "no"));
     routes.get("/int/{n}", r -> Response.ok(Map.of("n", r.pathInt("n"))));
     routes.get("/q", r -> Response.ok(Map.of("n", r.queryInt("n", 1))));
-    routes.get("/usecase/{kind}", r -> HttpErrors.of(
-        new UseCaseError(ErrorKind.valueOf(r.pathParam("kind")), "SOME_CODE", "some message", Map.of("a", "b"))));
-    routes.get("/usecase-nodetails", r -> HttpErrors.of(UseCaseError.notFound("GONE", "it is gone")));
+    routes.get("/failure/{status}", r -> HttpErrors.of(
+        new Failure(r.pathInt("status"), "SOME_CODE", "some message", Map.of("a", "b"))));
+    routes.get("/failure-nodetails", r -> HttpErrors.of(new Failure(404, "GONE", "it is gone", Map.of())));
     routes.get("/ok", r -> Response.ok(Map.of("fine", true)));
     return TestClient.of(
         routes,
@@ -144,29 +147,19 @@ class ErrorEnvelopeTest {
 
   @Test
   void detailsAreOmittedWhenEmpty() {
-    TestResponse r = client().get("/usecase-nodetails").send();
+    TestResponse r = client().get("/failure-nodetails").send();
     assertEnvelope(r, 404, "GONE");
     assertThat(r.tree().has("details")).isFalse();
     assertThat(r.body()).isEqualTo("{\"error\":\"GONE\",\"message\":\"it is gone\"}");
   }
 
   @ParameterizedTest
-  @EnumSource(ErrorKind.class)
-  void everyErrorKindMapsByItsStatus(ErrorKind kind) {
-    TestResponse r = client().get("/usecase/" + kind.name()).send();
-    assertEnvelope(r, kind.httpStatus(), "SOME_CODE");
+  @ValueSource(ints = {400, 403, 404, 409, 422, 500, 503})
+  void aServiceErrorMapsByItsStatus(int status) {
+    TestResponse r = client().get("/failure/" + status).send();
+    assertEnvelope(r, status, "SOME_CODE");
     assertThat(r.tree().get("message").asString()).isEqualTo("some message");
     assertThat(r.tree().get("details").get("a").asString()).isEqualTo("b");
-  }
-
-  @Test
-  void theStatusTableMatchesTheContract() {
-    assertThat(ErrorKind.VALIDATION.httpStatus()).isEqualTo(400);
-    assertThat(ErrorKind.AUTHORIZATION.httpStatus()).isEqualTo(403);
-    assertThat(ErrorKind.NOT_FOUND.httpStatus()).isEqualTo(404);
-    assertThat(ErrorKind.CONFLICT.httpStatus()).isEqualTo(409);
-    assertThat(ErrorKind.BUSINESS_RULE.httpStatus()).isEqualTo(409);
-    assertThat(ErrorKind.INTERNAL.httpStatus()).isEqualTo(500);
   }
 
   @Test

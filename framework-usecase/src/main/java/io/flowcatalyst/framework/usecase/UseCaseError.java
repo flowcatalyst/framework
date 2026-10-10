@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.usecase;
 
+import io.flowcatalyst.framework.core.ServiceError;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -11,7 +12,8 @@ import java.util.regex.Pattern;
  * @param message safe to show a caller; never carries the text of an internal cause
  * @param details extra string values, for example the violated constraint
  */
-public record UseCaseError(ErrorKind kind, String code, String message, Map<String, String> details) {
+public record UseCaseError(ErrorKind kind, String code, String message, Map<String, String> details)
+    implements ServiceError {
 
   private static final Pattern CODE = Pattern.compile("[A-Z][A-Z0-9_]*");
 
@@ -28,6 +30,7 @@ public record UseCaseError(ErrorKind kind, String code, String message, Map<Stri
    *
    * @return the status code
    */
+  @Override
   public int httpStatus() {
     return kind.httpStatus();
   }

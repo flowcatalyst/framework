@@ -92,7 +92,9 @@ plan in a use case.
 ## 5. Errors
 
 `UseCaseError`: kind, code (`UPPER_SNAKE`), message (safe to show a caller), details (string
-map). Kinds and their HTTP status, the same as the SDKs:
+map). It implements core's `ServiceError` (MA item 8; http contract section 1), which is what the
+HTTP layer maps, so `framework-http` does not depend on this module. Kinds and their HTTP status,
+the same as the SDKs:
 
 | Kind | Status |
 |---|---|

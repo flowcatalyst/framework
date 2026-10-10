@@ -40,5 +40,12 @@
       <artifactId>flowcatalyst-sdk</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- HttpErrors.of(UseCaseError) is checked from this side; framework-http does not depend on
+         this module (MA item 8). -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

@@ -65,6 +65,7 @@
     <maven-jar-plugin.version>3.5.1</maven-jar-plugin.version>
     <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
     <maven-install-plugin.version>3.1.4</maven-install-plugin.version>
+    <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -275,6 +276,35 @@
         <plugin>
           <artifactId>maven-install-plugin</artifactId>
           <version>${maven-install-plugin.version}</version>
+        </plugin>
+        <!-- A module that lists this plugin gets the HTTP-only classpath rule (MA item 8): an
+             application using only HTTP must not get the write path, the database module, HikariCP
+             or the PostgreSQL driver, in any scope, directly or transitively. -->
+        <plugin>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>${maven-enforcer-plugin.version}</version>
+          <executions>
+            <execution>
+              <id>http-only-classpath</id>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <bannedDependencies>
+                    <searchTransitive>true</searchTransitive>
+                    <excludes>
+                      <exclude>io.flowcatalyst.framework:framework-usecase</exclude>
+                      <exclude>io.flowcatalyst.framework:framework-database</exclude>
+                      <exclude>com.zaxxer:HikariCP</exclude>
+                      <exclude>org.postgresql:postgresql</exclude>
+                    </excludes>
+                    <message>framework-http must depend on framework-core only (MA item 8): no write path, database module, HikariCP or PostgreSQL driver.</message>
+                  </bannedDependencies>
+                </rules>
+              </configuration>
+            </execution>
+          </executions>
         </plugin>
       </plugins>
     </pluginManagement>

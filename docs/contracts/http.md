@@ -15,6 +15,20 @@ swappable because nothing in `framework-http` mentions Jetty types. The router, 
 error mapping are tested without a socket through `TestClient` (section 9); the Jetty module is
 tested with real requests.
 
+**Dependencies (MA item 8, 2026-10-10).** `framework-http` depends on `framework-core` and Jackson
+only; `framework-http-jetty` adds Jetty. Neither may have `framework-usecase`, `framework-database`,
+HikariCP or the PostgreSQL driver on its classpath in any scope; a Maven Enforcer
+`bannedDependencies` execution (`http-only-classpath`, parent POM) fails the build otherwise.
+Ruling taken (the plan offered two ways): instead of moving `UseCaseError` and `ErrorKind` to a new
+module (a split package, or a package rename that breaks every application) or moving
+`HttpErrors.of` to the use-case side (a use-case to HTTP dependency), core gained the interface
+`ServiceError` (`httpStatus()`, `code()`, `message()`, `details()`), `UseCaseError` implements it,
+and `HttpErrors.of` takes it. Source compatible: no package or class moved and
+`HttpErrors.of(useCaseError)` compiles unchanged; binary incompatible for code compiled against the
+old signature (pre-release, recompile). Build-level change for applications: one that relied on
+`framework-http` bringing `framework-usecase` transitively must now declare it. The per-`ErrorKind`
+mapping test moved to `framework-usecase` (`UseCaseErrorHttpTest`, `framework-http` in test scope).
+
 ## 2. Routes
 
 A module declares routes in `boot` (never `register`) through a provided service `Routes`:
@@ -105,7 +119,8 @@ Every non-2xx response the framework produces has the platform's envelope, conte
 
 Use-case results map by `ErrorKind` (write-path contract section 5): status from
 `UseCaseError.httpStatus()`, `error` = the error's `code`, `message` = its message, `details` =
-its details. Helper `HttpErrors.of(UseCaseError)` returns the `Response`.
+its details. Helper `HttpErrors.of(UseCaseError)` returns the `Response`. (As built after MA item 8:
+`HttpErrors.of(ServiceError)`, the core interface `UseCaseError` implements; section 1.)
 
 Handlers signal errors by returning `HttpErrors.…` responses or by throwing `HttpException(status,
 code, message, details)`; the error-mapping middleware turns the exception into the envelope.

@@ -236,7 +236,8 @@ retries; a cancellation made on a stale view is for the caller to decide again, 
 | `BUSINESS_RULE` | 409 |
 | `INTERNAL` | 500 |
 
-`HttpErrors.of(UseCaseError)` turns one into the error response ([HTTP](http.md#errors)).
+`UseCaseError` implements core's `ServiceError`, so `HttpErrors.of(error)` turns one into the error
+response ([HTTP](http.md#errors)) without `framework-http` depending on the write path.
 
 ## 5. Events
 

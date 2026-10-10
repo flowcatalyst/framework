@@ -1,4 +1,4 @@
-<!-- types: Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher -->
+<!-- types: ServiceError, Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher -->
 # HTTP
 
 Two artifacts:
@@ -14,14 +14,24 @@ no OpenAPI generation.
 
 ## What `framework-http` pulls in
 
-`framework-http` depends on `framework-usecase`, and through it on `framework-database` (HikariCP
-and the PostgreSQL JDBC driver). The reason is one method: `HttpErrors.of(UseCaseError)` maps a
-use case's failure (`ErrorKind` to a status, the code and message to the envelope) and therefore
-needs the `UseCaseError` and `ErrorKind` types. Nothing else in `framework-http` uses the write
-path. The consequence is that an application that only wants HTTP (an ingestor with no database)
-still gets the database module's classes and the driver on its classpath; they do nothing unless you
-list `DatabaseModule`. Splitting that dependency out is planned (MA item 8 in
-[the plan](../implementation-plan.md)); it is not done.
+`framework-core` and Jackson, nothing else. An application that only wants HTTP (an ingestor with
+no database) does not get the write path, the database module, HikariCP or the PostgreSQL driver.
+The build enforces it: `framework-http` and `framework-http-jetty` run a Maven Enforcer
+`bannedDependencies` rule (`http-only-classpath`, declared in the parent POM) that fails if any of
+those appears in any scope, directly or transitively.
+
+`HttpErrors.of(...)` takes a `ServiceError`, a small interface in `framework-core` (`httpStatus()`,
+`code()`, `message()`, `details()`). The write path's `UseCaseError` implements it, so
+`HttpErrors.of(failed.error())` compiles unchanged; any other module's error value can implement it
+too.
+
+**Migrating from before MA item 8 (2026-10-10).** `framework-http` used to depend on
+`framework-usecase` and so brought `framework-database`, HikariCP and the driver transitively. An
+application that used the write path but declared only `framework-http` / `framework-http-jetty`
+must now declare `framework-usecase` (and `framework-database` if it uses its types directly)
+itself. No package or class name changed. Code compiled against the old
+`HttpErrors.of(UseCaseError)` signature must be recompiled (the method now takes `ServiceError`);
+the source is the same.
 
 ## Wiring it up
 
@@ -185,7 +195,7 @@ Every non-2xx response the framework produces has one envelope, content type `ap
 In a handler you either return an error `Response` or throw:
 
 ```java
-return HttpErrors.of(failed.error());                      // from a UseCaseError: status by ErrorKind
+return HttpErrors.of(failed.error());                      // any ServiceError, e.g. a UseCaseError: status by ErrorKind
 return HttpErrors.error(409, "TAKEN", "That name is taken.");
 throw new HttpException(404, "NO_SUCH_ORDER", "There is no such order.");
 ```

@@ -123,7 +123,7 @@ The modules, and what each is for:
 | `framework-locks-database` | `LocksDatabaseModule` | [locks](locks.md) |
 | `framework-locks-redis` | `LocksRedisModule` | [locks](locks.md) |
 | `framework-usecase` | `OutboxModule`, `UseCaseModule` | [write path](write-path.md) |
-| `framework-http` | none; the HTTP types and `TestClient`, no server. It depends on `framework-usecase`, so an HTTP-only application also gets `framework-database`, HikariCP and the PostgreSQL driver on its classpath, only because `HttpErrors.of(UseCaseError)` needs the use case error types ([why](http.md#what-framework-http-pulls-in)) | [http](http.md) |
+| `framework-http` | none; the HTTP types and `TestClient`, no server. Depends on `framework-core` and Jackson only ([what it pulls in](http.md#what-framework-http-pulls-in)) | [http](http.md) |
 | `framework-http-jetty` | `JettyHttpModule` | [http](http.md) |
 | `framework-flowcatalyst` | `FlowCatalystModule` | [flowcatalyst module](flowcatalyst-module.md) |
 | `framework-sql`, `framework-sql-maven-plugin` | none; the checked-SQL generator and its Maven plugin | [checked SQL](checked-sql.md) |

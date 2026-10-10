@@ -1,6 +1,6 @@
 package io.flowcatalyst.framework.http;
 
-import io.flowcatalyst.framework.usecase.UseCaseError;
+import io.flowcatalyst.framework.core.ServiceError;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -13,12 +13,13 @@ public final class HttpErrors {
   private HttpErrors() {}
 
   /**
-   * The response for a use case failure: status from the error's kind, {@code error} its code.
+   * The response for an expected failure, such as a use case's {@code UseCaseError}: status from
+   * {@link ServiceError#httpStatus()}, {@code error} its code, then its message and details.
    *
    * @param error the failure
    * @return the envelope response
    */
-  public static Response of(UseCaseError error) {
+  public static Response of(ServiceError error) {
     return error(error.httpStatus(), error.code(), error.message(), error.details());
   }
 
