@@ -184,7 +184,7 @@ Clients (2026-10-10):
 
 Dispatch jobs (2026-10-10):
 - New `date-range.md` (the SPA's "Created from" / "Created to" `DatePicker` pair): two native `<input type="date">` in a labelled group. The bound of each end (`min`/`max`) is rendered by the server and re-read from the other input **on focus**, not on change: the table toolbar's Clear All empties the inputs without input events, and `focus` leaves `change` free for the live filter's `@get`. Native date inputs display in the browser's locale; the submitted value is always ISO.
-- `local-time.md` gets a Props table and `fixtures/local-time` (`at` in UTC to whole seconds, `dateOnly`, `empty` = the SPA's `-`).
+- `local-time.md` gets a Props table and `fixtures/local-time` (`at` in UTC to whole seconds, `dateOnly`, `empty` = the SPA's `-`). Found in the browser: a **morph** keeps the `<time>`, resets its text to the UTC fallback and does not re-run `data-init`, so a live list showed UTC after the first filter; regions holding local times are patched with mode `replace` (recorded in the spec's Behaviour).
 - `alert.md` gets a `warn` variant (the SPA's `Message severity="warn"`, used by the requeue confirm step).
 - The SPA's grid selection (PrimeVue `selectionMode="multiple"`) has no kit component: the page renders native checkboxes associated with a separate POST form (`form="…"`), and a Datastar expression counts them into a signal for the "Requeue selected (n)" label and sets the header box's `checked`/`indeterminate`. Worth a `row-selection` spec if a second list needs it.
 - `cursor-pager.md` (Newest / Older) is used for the first time: the SPA's dispatch-job list has no paging at all ("most recent N"); the Go page adds keyset paging over (created_at, id).

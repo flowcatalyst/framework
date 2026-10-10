@@ -46,7 +46,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 
 ## Behaviour
 
-`data-init` runs when the element is first processed **and when the element is patched into the DOM**, so rows added by a server patch are localised too. This replaces fc-web's 50-line `ui.js` (a MutationObserver). Datastar Pro's `@intl()` would do the same declaratively; it is not used because it is a paid action. Verified in the gallery.
+`data-init` runs when the element is first processed **and when the element is patched into the DOM**, so rows added by a server patch are localised too. **A morph that keeps the element does not re-run it:** the patch resets the text to the UTC fallback and `data-init` (an unchanged attribute) stays idle, so the time reads in UTC until the next full load. A region that holds local times is therefore patched with mode `replace` (a list's table, a drawer's body), which inserts fresh elements; found in the Go dispatch-jobs list, where every live filter showed UTC. This replaces fc-web's 50-line `ui.js` (a MutationObserver). Datastar Pro's `@intl()` would do the same declaratively; it is not used because it is a paid action. Verified in the gallery.
 
 ## Notes for a template author
 
