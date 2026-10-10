@@ -67,6 +67,9 @@ routes.add(Method.PUT, "/orders/{id}", handler, RouteOptions.requiresContext());
 `correlationId()`, `attribute(key)` / `attribute(key, value)` (typed keys, for middleware to pass
 values on).
 
+*Added by MA item 9:* `remoteAddress()` (`@Nullable`), the IP literal of the connection's peer as
+the server adapter saw it (a proxy's address behind one); never taken from a header.
+
 `Response` is a value built with static factories and fluent `header(name, value)`:
 `Response.ok(body)`, `Response.json(status, object)` (Jackson 3, records and maps only),
 `Response.text(status, string)`, `Response.noContent()`, `Response.html(status, string), Response.bytes(status, contentType,
@@ -253,7 +256,7 @@ published spec when implementing and flag any difference).
 ## 11. Out of scope for M3
 
 TLS (terminate in front), HTTP/2 (Jetty default h1 only), WebSockets, multipart, cookies and
-sessions (M4), OpenAPI generation, rate limiting, compression, static assets, and any real
+sessions (M4), OpenAPI generation, rate limiting (added by MA item 9, rate-limiting contract), compression, static assets, and any real
 `ContextResolver` or authentication.
 
 ## 12. Test requirements

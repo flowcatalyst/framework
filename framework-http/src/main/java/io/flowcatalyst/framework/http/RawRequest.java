@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
  * @param contentLength the declared body length, or -1 when not declared
  * @param maxBodyBytes the largest body to accept
  * @param protocol the protocol, for example {@code HTTP/1.1}
+ * @param remoteAddress the IP address of the connection's peer, or null when unknown
  */
 public record RawRequest(
     Method method,
@@ -28,7 +29,32 @@ public record RawRequest(
     InputStream body,
     long contentLength,
     long maxBodyBytes,
-    String protocol) {
+    String protocol,
+    @Nullable String remoteAddress) {
+
+  /**
+   * A request without a known peer address.
+   *
+   * @param method the method
+   * @param rawPath the raw path
+   * @param rawQuery the raw query, or null
+   * @param headers the headers
+   * @param body the body
+   * @param contentLength the declared length, or -1
+   * @param maxBodyBytes the body limit
+   * @param protocol the protocol
+   */
+  public RawRequest(
+      Method method,
+      String rawPath,
+      @Nullable String rawQuery,
+      Map<String, List<String>> headers,
+      InputStream body,
+      long contentLength,
+      long maxBodyBytes,
+      String protocol) {
+    this(method, rawPath, rawQuery, headers, body, contentLength, maxBodyBytes, protocol, null);
+  }
 
   /** Lowercases the header names and copies the map. */
   public RawRequest {

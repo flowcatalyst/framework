@@ -122,6 +122,17 @@ public final class Request {
   }
 
   /**
+   * The IP address of the connection's peer, as the server saw it: a proxy's address when the
+   * application runs behind one. Never read from a header (see {@code KeyResolvers.forwardedFor}
+   * for that, with its trust rule).
+   *
+   * @return the address literal, or null when the server adapter does not know it
+   */
+  public @Nullable String remoteAddress() {
+    return raw.remoteAddress();
+  }
+
+  /**
    * The first value of a header.
    *
    * @param name the name, case-insensitive

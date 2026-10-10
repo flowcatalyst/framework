@@ -31,6 +31,7 @@ describes what is built and says plainly where something is not.
 | [Background and metrics](background-and-metrics.md) | Managed loops (lock-gated, health-visible), counters, gauges, timers, the Prometheus endpoint |
 | [HTTP](http.md) | Routes, validation, errors, middleware, Datastar, the Jetty module |
 | [HTTP client](http-client.md) | Calling other services: a client per service, auth, retries, `Context` propagation |
+| [Rate limiting](rate-limiting.md) | 429 with `Retry-After`: limiters in memory or Redis, choosing a safe key |
 | [The FlowCatalyst module](flowcatalyst-module.md) | The platform client, definition sync, how the outbox is delivered, health |
 | [Receivers](receivers.md) | Handling dispatch jobs and scheduled-job firings the platform delivers (and switching the routes off) |
 | [Testing](testing.md) | Testing an application today, and the known limitation |

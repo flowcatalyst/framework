@@ -26,6 +26,7 @@
   items:
     - { title: HTTP, path: guide/http.md }
     - { title: HTTP client, path: guide/http-client.md }
+    - { title: Rate limiting, path: guide/rate-limiting.md }
 - group: FlowCatalyst
   items:
     - { title: The FlowCatalyst module, path: guide/flowcatalyst-module.md }
@@ -48,6 +49,7 @@
     - { title: Background and metrics contract, path: contracts/background-and-metrics.md }
     - { title: Secrets contract, path: contracts/secrets.md }
     - { title: HTTP client contract, path: contracts/http-client.md }
+    - { title: Rate limiting contract, path: contracts/rate-limiting.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }

@@ -12,8 +12,11 @@ Every request is counted in `fw_http_server_requests_total` and timed in
 `fw_http_server_request_duration_seconds`, labelled by the route pattern
 ([metrics](background-and-metrics.md#built-in-metrics)).
 
+Rate limiting is a middleware in `framework-http` itself: see [Rate limiting](rate-limiting.md).
+`request.remoteAddress()` is the connection's peer address (never a header).
+
 Application code depends on `framework-http` types only. There is no Servlet API, no sessions, no
-static files, no TLS (terminate in front), no HTTP/2, no CORS, no compression, no rate limiting, and
+static files, no TLS (terminate in front), no HTTP/2, no CORS, no compression, and
 no OpenAPI generation.
 
 ## What `framework-http` pulls in

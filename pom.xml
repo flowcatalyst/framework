@@ -46,6 +46,7 @@
     <module>framework-usecase</module>
     <module>framework-http</module>
     <module>framework-http-jetty</module>
+    <module>framework-ratelimit-redis</module>
     <module>framework-httpclient</module>
     <module>framework-httpclient-module</module>
     <module>framework-flowcatalyst</module>

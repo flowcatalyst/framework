@@ -225,7 +225,8 @@ public final class HttpServer {
               body,
               request.getLength(),
               maxBodyBytes,
-              request.getConnectionMetaData().getProtocol());
+              request.getConnectionMetaData().getProtocol(),
+              remoteAddress(request));
       Response response = dispatcher.handle(Request.of(raw));
       if (response.status() == 413) {
         response = response.header("Connection", "close");
@@ -283,5 +284,14 @@ public final class HttpServer {
       response.write(true, ByteBuffer.wrap(bytes), callback);
       return true;
     }
+  }
+
+  /** The peer's IP address literal; never a header, never a name lookup. */
+  private static @Nullable String remoteAddress(org.eclipse.jetty.server.Request request) {
+    java.net.SocketAddress address = request.getConnectionMetaData().getRemoteSocketAddress();
+    if (address instanceof java.net.InetSocketAddress inet && inet.getAddress() != null) {
+      return inet.getAddress().getHostAddress();
+    }
+    return null;
   }
 }

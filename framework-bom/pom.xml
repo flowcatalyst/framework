@@ -140,6 +140,11 @@
       </dependency>
       <dependency>
         <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-ratelimit-redis</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
         <artifactId>framework-httpclient</artifactId>
         <version>${project.version}</version>
       </dependency>

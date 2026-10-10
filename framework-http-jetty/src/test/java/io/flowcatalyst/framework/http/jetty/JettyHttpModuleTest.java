@@ -487,4 +487,19 @@ class JettyHttpModuleTest {
     assertThat(t).isInstanceOf(io.flowcatalyst.framework.core.StartupException.class);
     assertThat(t.getMessage()).contains("http.metrics.path");
   }
+
+  @Test
+  void theRequestCarriesThePeerAddressNeverAForwardedHeader() throws Exception {
+    try (App app =
+        Apps.start(
+            dir, Apps.env(), r -> r.get("/peer", req -> Response.text(200, String.valueOf(req.remoteAddress()))))) {
+      HttpResponse<String> answer =
+          client.send(
+              HttpRequest.newBuilder(URI.create(Apps.url(app, "/peer")))
+                  .header("X-Forwarded-For", "198.51.100.1")
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertThat(answer.body()).isEqualTo("127.0.0.1");
+    }
+  }
 }

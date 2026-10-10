@@ -150,6 +150,7 @@ public final class TestClient {
     private byte[] body = new byte[0];
     private String protocol = "HTTP/1.1";
     private long declaredLength = -2;
+    private @Nullable String remoteAddress = "127.0.0.1";
 
     private Call(Method method, String target) {
       this.method = method;
@@ -216,6 +217,17 @@ public final class TestClient {
     }
 
     /**
+     * Sets the peer address the request comes from; the default is {@code 127.0.0.1}.
+     *
+     * @param value an IP address literal, or null for unknown
+     * @return this call
+     */
+    public Call remoteAddress(@Nullable String value) {
+      this.remoteAddress = value;
+      return this;
+    }
+
+    /**
      * Declares a {@code Content-Length} that differs from the body, for limit tests.
      *
      * @param length the declared length
@@ -244,7 +256,8 @@ public final class TestClient {
               new ByteArrayInputStream(body),
               declaredLength == -2 ? body.length : declaredLength,
               maxBodyBytes,
-              protocol);
+              protocol,
+              remoteAddress);
       Response response = dispatcher.handle(Request.of(raw));
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       try {
