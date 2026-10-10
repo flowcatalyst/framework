@@ -53,6 +53,7 @@ public final class AppBuilder {
   private final Map<String, Command> commands = new LinkedHashMap<>();
   private final Map<String, String> commandModules = new LinkedHashMap<>();
   private final List<Module> registeredModules = new ArrayList<>();
+  private final Map<Class<?>, Object> overrides = new LinkedHashMap<>();
 
   AppBuilder() {}
 
@@ -129,6 +130,45 @@ public final class AppBuilder {
   public AppBuilder shutdownHook(boolean install) {
     requireNotStarted();
     this.installShutdownHook = install;
+    return this;
+  }
+
+  /**
+   * Replaces the service a module provides for {@code type} with {@code instance}, <b>in tests
+   * only</b>. The module's provider for that type is not run; every lookup of the type, including
+   * other providers', gets this instance. The application does not close it: the test owns it.
+   *
+   * <p>Allowed only when the environment is {@code test} ({@code APP_ENV=test} in the builder's
+   * {@link #environment(Map) environment}, or in the process environment when none was given).
+   * Otherwise {@link #start()} and {@link #launch} fail with a {@link StartupException} before any
+   * module is registered, so an override can never reach a deployed application. Start-up also fails
+   * when no module provides {@code type} (overriding an implementation class instead of the provided
+   * interface would otherwise silently do nothing) and for the framework's own types; use
+   * {@link #instantSource} and {@link #monotonicClock} for the clocks.
+   *
+   * <pre>{@code
+   * App app = App.builder()
+   *     .environment(Map.of("APP_ENV", "test"))
+   *     .module(new MailModule())
+   *     .override(Mailer.class, fakeMailer)
+   *     .start();
+   * }</pre>
+   *
+   * @param <T> the service type
+   * @param type the type a module provides
+   * @param instance what lookups of {@code type} return instead
+   * @return this builder
+   * @throws IllegalArgumentException when {@code type} is already overridden
+   */
+  public <T> AppBuilder override(Class<T> type, T instance) {
+    requireNotStarted();
+    if (!type.isInstance(instance)) {
+      throw new IllegalArgumentException(
+          "override for " + type.getName() + " is a " + instance.getClass().getName());
+    }
+    if (overrides.putIfAbsent(type, instance) != null) {
+      throw new IllegalArgumentException(type.getName() + " is already overridden");
+    }
     return this;
   }
 
@@ -280,6 +320,7 @@ public final class AppBuilder {
   private App assemble() {
     requireNotStarted();
     started = true;
+    requireTestModeForOverrides();
 
     List<Module> all = new ArrayList<>();
     all.add(new CoreModule());
@@ -349,6 +390,7 @@ public final class AppBuilder {
     seeded.put(InstantSource.class, instantSource);
     seeded.put(Ids.class, new Ids(instantSource));
     seeded.put(MonotonicClock.class, monotonicClock);
+    applyOverrides(seeded);
     ServiceGraph graph = new ServiceGraph(providers, seeded, contributions);
     graph.buildAll();
     if (!graph.problems().isEmpty()) {
@@ -408,6 +450,67 @@ public final class AppBuilder {
       app.installShutdownHook();
     }
     return app;
+  }
+
+  /** Fails, before anything is registered, when overrides are given outside test mode. */
+  private void requireTestModeForOverrides() {
+    if (overrides.isEmpty()) {
+      return;
+    }
+    String env = environment.get("APP_ENV");
+    if (env == null || env.isBlank()) {
+      env = "local";
+    }
+    if (!env.equals("test")) {
+      List<Problem> refused = new ArrayList<>();
+      for (Class<?> type : overrides.keySet()) {
+        refused.add(
+            Problem.of(
+                CoreModule.ID,
+                type.getName(),
+                "AppBuilder.override is allowed only when APP_ENV is 'test' (it is '"
+                    + env
+                    + "')"));
+      }
+      throw new StartupException(refused);
+    }
+  }
+
+  /**
+   * Puts each override among the seeded services and removes the module's provider, so it is never
+   * run. Seeded services are not closed at shutdown, which is right: the test owns the instance.
+   */
+  private void applyOverrides(Map<Class<?>, Object> seeded) {
+    List<Problem> found = new ArrayList<>();
+    for (Map.Entry<Class<?>, Object> e : overrides.entrySet()) {
+      Class<?> type = e.getKey();
+      if (isFrameworkType(type)) {
+        found.add(
+            Problem.of(
+                CoreModule.ID,
+                type.getName(),
+                "a framework type cannot be overridden; use the builder's own method (instantSource,"
+                    + " monotonicClock, environment)"));
+        continue;
+      }
+      ServiceGraph.Entry entry = providers.remove(type);
+      if (entry == null) {
+        found.add(
+            Problem.of(
+                CoreModule.ID,
+                type.getName(),
+                "overridden, but no module provides this type (override the type modules look up)"));
+        continue;
+      }
+      seeded.put(type, e.getValue());
+      LOG.warn(
+          "test mode: service {} from module '{}' is overridden",
+          type.getName(),
+          entry.module());
+    }
+    if (!found.isEmpty()) {
+      throw new StartupException(found);
+    }
   }
 
   private static boolean isFrameworkType(Class<?> type) {

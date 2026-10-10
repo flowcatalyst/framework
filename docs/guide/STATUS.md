@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit 9d73eb2 (2026-10-10). `verify.sh` fails if that commit is not an
+Last verified against commit 9cde933 (2026-10-10). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -25,7 +25,7 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | M4d | Admin skeleton under `/admin` with permission gating | Not started | |
 | M4e | Admin pages: users, invitations, event types, config, scoped events and dispatch jobs | Not started | |
 | M4f | Trial business service on these contracts | Not started | |
-| MA | Usability gaps raised by the first application (below) | **In progress.** Built: item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
+| MA | Usability gaps raised by the first application (below) | **In progress.** Built: item 2 (`AppBuilder.override(Class, instance)`, only when `APP_ENV` is `test`; [testing](testing.md#replacing-a-service)); item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
 | M5 | Cache and storage, platform config driver, metering, messaging | Not started | |
 
 ## Known gaps
@@ -43,7 +43,6 @@ row of `implementation-plan.md`) or a milestone.
 | **No rate limiting** | Nothing limits request rates on the HTTP layer; put a limiter in front or write a middleware | MA item 9 |
 | **No secret store** | Secrets come from the environment, or `config/secrets.local.yaml` in `local` and `test` only. No secret manager, no per-client credentials | MA-5 (`SecretResolver` with env, file and platform drivers); M5 (platform config and secret store) |
 | **No background-work or metrics primitive** | Start your own threads in `boot` and stop them in `shutdown`; no managed loop, no counters or timers, no Prometheus endpoint | MA-3: `Background` and `Metrics` |
-| **One provider per service type; services cannot be replaced in tests** | A test cannot swap a service without changing the module. See [Testing](testing.md#the-known-limitation-services-cannot-be-replaced) | MA-2: `AppBuilder.override(Class, instance)`, test mode only |
 
 ## Other things to know
 

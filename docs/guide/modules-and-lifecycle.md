@@ -77,8 +77,8 @@ app.provide(
 (see below) and `moduleId()`.
 
 - **One provider per type.** A second `provide` for a type fails start-up, naming both modules.
-  Services are *not* replaceable. That is a known limitation for tests: see
-  [Testing](testing.md#the-known-limitation-services-cannot-be-replaced).
+  In tests only (`APP_ENV=test`), `AppBuilder.override(type, instance)` replaces what a module
+  provides: see [Testing](testing.md#replacing-a-service).
 - Providers run once, at start-up, in dependency order. A provider that asks for a type nobody
   provides fails start-up and names the asking module.
 - These types are provided by the framework and cannot be provided by a module: `Config`,
@@ -271,6 +271,7 @@ module) no server. `start()` is unchanged for callers that do not use commands.
 | `instantSource(InstantSource)` | the wall clock; tests pass a fixed one |
 | `monotonicClock(MonotonicClock)` | the monotonic clock used by locks and timeouts |
 | `shutdownHook(boolean)` | close from a JVM shutdown hook; default off |
+| `override(Class<T>, T)` | replace a provided service; **only when `APP_ENV` is `test`**, otherwise start-up fails ([Testing](testing.md#replacing-a-service)) |
 
 A builder starts once; reuse throws `IllegalStateException`.
 

@@ -6,11 +6,8 @@ The framework tests itself with JUnit 5 and AssertJ against **real PostgreSQL 18
 same way. The helpers come from two places: `TestClient` is in `framework-http`'s ordinary jar, and
 the rest are published as test-jars.
 
-> **Known limitation: services cannot be replaced in tests.** Each service type has exactly one
-> provider, and a test cannot swap one for a fake without changing your module. A planned
-> `AppBuilder.override(Class, instance)`, allowed only in test mode, will fix this (plan item MA-2,
-> see [STATUS](STATUS.md)). [Workarounds](#the-known-limitation-services-cannot-be-replaced) are
-> below.
+> **Replacing a service:** `AppBuilder.override(Class, instance)` swaps what a module provides for
+> a fake, in **test mode only** (`APP_ENV=test`). See [Replacing a service](#replacing-a-service).
 
 ## What you can use today
 
@@ -175,26 +172,43 @@ within the process, which is what a test wants. To test a *driver*, extend `Lock
 framework drivers are tested, and a custom driver is done when it passes the suite. `AdjustableClock`
 is a `MonotonicClock` that follows real time and can be advanced at once.
 
-## The known limitation: services cannot be replaced
+## Replacing a service
 
-`app.provide(SomeService.class, provider)` is the only way to supply a service and a second
-provider for the type fails start-up; framework driver names are also unique per capability. So you
-cannot, for example, start the full app with a fake `Mailer`, or a `LockStore` that fails on demand,
-by replacing what a module provides.
+`AppBuilder.override(type, instance)` replaces the service a module provides for `type`. The
+module's provider is not run, and every lookup of `type` gets your instance, including other
+providers that ask for it. From `framework-core`'s `OverrideTest`:
 
-What works today:
+```java
+FakeMailer fake = new FakeMailer();
+try (App app = builder("test").module(mailModule()).override(Mailer.class, fake).start()) {
+  assertThat(app.get(Mailer.class)).isSameAs(fake);
+  // Another provider that asked for Mailer got the override too.
+  assertThat(app.get(Notifier.class).mailer()).isSameAs(fake);
+  assertThat(providerRuns).hasValue(0);
+}
+```
 
-1. **Construct the object under test yourself.** Your use cases, repositories and handlers are plain
-   classes whose dependencies come in through the constructor. `OrdersModule` only wires them, and
-   `OrdersDemoTest` builds `new OrderUseCases(repository, db, events, ids, policies)` with a
-   different repository and a different conflict policy, taking the real `Databases`, `Events` and
-   `Ids` from the running app (`app.get(...)`).
-2. **Put the seam in your own module.** Provide a small interface and decide the implementation from
-   a setting declared by your module (for example `mail.driver`), then set it from the test's
-   `environment(Map)`.
-3. **Start fewer modules.** A test that does not need HTTP or the platform simply leaves those
-   modules out of the builder.
-4. **Use the real thing in a container.** That is what the framework does; it is slower but needs
-   no fakes.
+where `builder("test")` is `App.builder().configDirectory(dir).environment(Map.of("APP_ENV", "test"))`.
 
-When `AppBuilder.override` exists this page will change. Track it in [STATUS](STATUS.md).
+- **Test mode is `APP_ENV=test`** in the environment the builder reads (the map given to
+  `environment(...)`, else the process environment). With any override in another environment,
+  including the default `local`, `start()` (and `launch`) fails with a `StartupException` before any
+  module is registered: an override can never reach a deployed application. `test`, like `local`,
+  also reads `config/secrets.local.yaml` from the config directory (see the note on `APP_ENV` above).
+- Override the **type modules look up** (`Mailer`, not `SmtpMailer`): overriding a type no module
+  provides fails start-up, because it would otherwise change nothing. The framework's own types
+  (`Config`, `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`) cannot be overridden; use
+  `instantSource(...)`, `monotonicClock(...)` and `environment(...)`.
+- Overriding one type twice, or with an instance of the wrong type, throws
+  `IllegalArgumentException` at once.
+- The application does **not** close an override at shutdown; the test owns it. Each override is
+  logged at WARN.
+- Commands started with `launch` see the overrides too.
+
+Driver names are still unique per capability, so a framework *driver* cannot be replaced by name,
+and the framework's registries (`Locks`, `Databases`, `RedisConnections`) have package-private
+constructors, so they cannot be built around a fake either; configure a test instance instead (a
+`memory` lock instance). Other techniques still work and are often simpler:
+construct the object under test yourself (`OrdersDemoTest` builds `new OrderUseCases(...)` with a
+different repository and conflict policy, taking `Databases`, `Events` and `Ids` from the running
+app), start fewer modules, or use the real thing in a container.

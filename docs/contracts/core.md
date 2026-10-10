@@ -40,6 +40,31 @@ reports every problem, each naming its module and key:
 If `start()` fails after building some services, it closes those it built, in reverse order,
 before throwing.
 
+**Test overrides (MA item 2, 2026-10-10).** `AppBuilder.override(Class<T> type, T instance)`
+replaces the service a module provides for `type`: the module's provider is never run, and every
+lookup of `type` (other providers', `App.get`, `App.find`) returns `instance`. Rules:
+
+- **Test mode only.** Test mode is declared by `APP_ENV` being exactly `test` in the environment the
+  builder reads (`environment(Map)`, else the process environment; blank or absent means `local`).
+  With any override outside test mode, `start()` and `launch()` throw `StartupException` (one
+  problem per overridden type, key = the type name, message naming the actual environment) **before
+  any module's `register` runs**, so nothing is built and an override cannot reach a deployed
+  application. `APP_ENV=test` also enables `config/secrets.local.yaml` (section 4), as before.
+  Ruling taken: no separate "test mode" switch on the builder, because production code could call
+  it; the environment name is a deployment fact.
+- The type must be provided by some module; otherwise start-up fails ("overridden, but no module
+  provides this type"). Conservative ruling: overriding an implementation class instead of the
+  interface modules look up would otherwise do nothing, silently. Optional collaborators nobody
+  provides are added with a test module's `provide`, not with `override`.
+- The framework's seeded types (`Config`, `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`)
+  cannot be overridden (start-up fails); the builder has methods for the clocks and environment.
+- `override` itself throws `IllegalArgumentException` at once for a second override of one type or
+  an instance that is not of the type. It may be called in any order with the other builder methods;
+  the test-mode check happens when the application starts.
+- The application does not close an override at shutdown (the test owns it). Each override is
+  logged at WARN at start-up, naming the type and the module whose provider it replaced.
+- Commands (`launch`) see the overrides too.
+
 **Lookup** is `get(Class<T>)`: a typed read from a map built in step 3, throwing when nobody
 provides the type. `find(Class<T>)` is the same read returning `Optional<T>` (no throw), for
 optional collaborators. No reflection. Only one
