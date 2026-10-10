@@ -1,6 +1,6 @@
 <div id="filter-sub-field" class="fc-form-field">
 <span id="filter-sub-label" class="fc-field-label">Subdomains</span>
-<details class="fc-multiselect">
+<details class="fc-multiselect" data-placeholder="All Subdomains" data-max-labels="2" data-many-label="{0} selected" data-on:change="const c = [...el.querySelectorAll(&#x27;.fc-multiselect-option input:checked&#x27;)].map(i =&gt; i.nextElementSibling.textContent); el.querySelector(&#x27;.fc-multiselect-summary&#x27;).textContent = c.length === 0 ? el.dataset.placeholder : c.length &lt;= +el.dataset.maxLabels ? c.join(&#x27;, &#x27;) : el.dataset.manyLabel.replace(&#x27;{0}&#x27;, c.length)">
 <summary class="fc-select fc-multiselect-trigger" aria-labelledby="filter-sub-label filter-sub-summary"><span id="filter-sub-summary" class="fc-multiselect-summary">All Subdomains</span></summary>
 <div class="fc-multiselect-panel">
 <div id="filter-sub-options" class="fc-multiselect-options" role="group" aria-labelledby="filter-sub-label">

@@ -1,6 +1,6 @@
 <div id="f-agg-field" class="fc-form-field">
 <span id="f-agg-label" class="fc-field-label">Aggregates</span>
-<details class="fc-multiselect">
+<details class="fc-multiselect" data-placeholder="All Aggregates" data-max-labels="2" data-many-label="{0} selected" data-on:change="const c = [...el.querySelectorAll(&#x27;.fc-multiselect-option input:checked&#x27;)].map(i =&gt; i.nextElementSibling.textContent); el.querySelector(&#x27;.fc-multiselect-summary&#x27;).textContent = c.length === 0 ? el.dataset.placeholder : c.length &lt;= +el.dataset.maxLabels ? c.join(&#x27;, &#x27;) : el.dataset.manyLabel.replace(&#x27;{0}&#x27;, c.length)">
 <summary class="fc-select fc-multiselect-trigger" aria-labelledby="f-agg-label f-agg-summary"><span id="f-agg-summary" class="fc-multiselect-summary">All Aggregates</span></summary>
 <div class="fc-multiselect-panel">
 <div id="f-agg-options" class="fc-multiselect-options" role="group" aria-labelledby="f-agg-label" aria-describedby="f-agg-help">

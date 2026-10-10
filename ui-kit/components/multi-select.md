@@ -12,7 +12,7 @@ Choose any number of values from a list: a closed control that says what is chos
 ```html
 <div id="filter-app-field" class="fc-form-field">
   <span id="filter-app-label" class="fc-field-label">Applications</span>
-  <details class="fc-multiselect">
+  <details class="fc-multiselect" data-placeholder="All Applications" data-max-labels="2" data-many-label="{0} selected" data-on:change="const c = [...el.querySelectorAll(&#x27;.fc-multiselect-option input:checked&#x27;)].map(i =&gt; i.nextElementSibling.textContent); el.querySelector(&#x27;.fc-multiselect-summary&#x27;).textContent = c.length === 0 ? el.dataset.placeholder : c.length &lt;= +el.dataset.maxLabels ? c.join(&#x27;, &#x27;) : el.dataset.manyLabel.replace(&#x27;{0}&#x27;, c.length)">
     <summary class="fc-select fc-multiselect-trigger" aria-labelledby="filter-app-label filter-app-summary"><span id="filter-app-summary" class="fc-multiselect-summary">orders, billing</span></summary>
     <div class="fc-multiselect-panel" data-signals:filter-app-q="''">
       <input type="search" class="fc-input fc-multiselect-search" placeholder="Search" aria-label="Search Applications" autocomplete="off" data-bind:filter-app-q>
@@ -34,7 +34,7 @@ Without `search` the panel has no search input, no signal and no `data-show`/`da
 |---|---|---|---|
 | Root | `<div id="{id}-field" class="fc-form-field">` | as `filter-select.md` | |
 | Label | `<span id="{id}-label" class="fc-field-label">` | | names the trigger (with the summary) and the option group |
-| Disclosure | `<details class="fc-multiselect">` | `open` when rendered open | native open/close, Escape-free (a) |
+| Disclosure | `<details class="fc-multiselect" data-placeholder data-max-labels data-many-label data-on:change>` | `open` when rendered open | native open/close (a); recomputes the summary on every change (b) |
 | Trigger | `<summary class="fc-select fc-multiselect-trigger" aria-labelledby="{id}-label {id}-summary">` | the select's chevron look | |
 | Summary | `<span id="{id}-summary" class="fc-multiselect-summary">` | ellipsis | **part `multi-select-summary`**: the text of the selection; a live list patches it by id |
 | Panel | `<div class="fc-multiselect-panel">` | inline below the trigger (it grows the popover or form it sits in) | declares the search signal |
@@ -77,6 +77,8 @@ The summary text is computed by the template from `options`, `selected`, `placeh
 ## Behaviour
 
 **(a)** `<details>` opens inline (no positioning code, so it works inside the table toolbar's filters popover and at phone width). Checked boxes are submitted with the form.
+
+**(b)** Summary: a change of any checkbox recomputes the summary in the browser from the checked options' labels and the `data-placeholder`, `data-max-labels` and `data-many-label` attributes (the same rule as the server's; the props are data attributes, never code), so a form shows the choice at once. In a live list the server's patched summary then confirms it.
 
 **(b)** Search: the input binds `{signal}`; each option has `data-show="!${signal}.trim() || el.dataset.filterText.includes(${signal}.trim().toLowerCase())"` (user text is a signal value and a data attribute, never code).
 
