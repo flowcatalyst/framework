@@ -36,6 +36,26 @@ public final class Secret {
     return value;
   }
 
+  /**
+   * Whether a candidate equals this secret, in constant time: both are hashed with SHA-256 and the
+   * digests compared with {@link MessageDigest#isEqual}, so neither the content nor the length is
+   * revealed by timing. Use it to check credentials a caller presents.
+   *
+   * @param candidate the presented value
+   * @return true when it equals the secret
+   */
+  public boolean matches(String candidate) {
+    return MessageDigest.isEqual(sha256(value), sha256(candidate));
+  }
+
+  private static byte[] sha256(String text) {
+    try {
+      return MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is not available", e);
+    }
+  }
+
   @Override
   public String toString() {
     return "Secret[****]";

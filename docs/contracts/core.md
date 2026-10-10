@@ -67,7 +67,9 @@ lookup of `type` (other providers', `App.get`, `App.find`) returns `instance`. R
 
 **Services the core module provides (MA item 3, 2026-10-10):** `Metrics` and `Background`
 (background-and-metrics contract). `Health` joined the seeded framework types (`Config`, `Drivers`,
-`InstantSource`, `Ids`, `MonotonicClock`), which no module may provide or override. `App.close()`
+`InstantSource`, `Ids`, `MonotonicClock`), which no module may provide or override; so did
+`EnvironmentVariables` (MA item 5: reads one variable of the builder's environment by exact name,
+with no way to list them; the `env` secret driver uses it). `App.close()`
 stops background loops before any module's `shutdown` hook.
 
 **Lookup** is `get(Class<T>)`: a typed read from a map built in step 3, throwing when nobody

@@ -21,6 +21,7 @@
     - { title: The write path, path: guide/write-path.md }
     - { title: Checked SQL, path: guide/checked-sql.md }
     - { title: Background and metrics, path: guide/background-and-metrics.md }
+    - { title: Per-client secrets, path: guide/secrets.md }
 - group: Web
   items:
     - { title: HTTP, path: guide/http.md }
@@ -44,6 +45,7 @@
     - { title: FlowCatalyst contract, path: contracts/flowcatalyst.md }
     - { title: Build and publishing contract, path: contracts/build.md }
     - { title: Background and metrics contract, path: contracts/background-and-metrics.md }
+    - { title: Secrets contract, path: contracts/secrets.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }

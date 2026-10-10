@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit a8bfcf1 (2026-10-10). `verify.sh` fails if that commit is not an
+Last verified against commit 699afc3 (2026-10-10). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -25,7 +25,7 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | M4d | Admin skeleton under `/admin` with permission gating | Not started | |
 | M4e | Admin pages: users, invitations, event types, config, scoped events and dispatch jobs | Not started | |
 | M4f | Trial business service on these contracts | Not started | |
-| MA | Usability gaps raised by the first application (below) | **In progress.** Built: item 3 (`Background` loops with health and an optional `LockGate`; `Metrics` with memory and noop drivers, built-in HTTP, use-case and loop metrics, a Prometheus endpoint off by default; [guide](background-and-metrics.md)); item 4 (`DispatchJob`, `Plan.andDispatch`: `DISPATCH_JOB` outbox rows in the platform's batch-item shape; [write path](write-path.md#dispatch-jobs)); item 1 (`framework-bom`, publishing configuration and workflow, [contract](../contracts/build.md); nothing published); item 2 (`AppBuilder.override(Class, instance)`, only when `APP_ENV` is `test`; [testing](testing.md#replacing-a-service)); item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
+| MA | Usability gaps raised by the first application (below) | **In progress.** Built: item 5 (`SecretResolver` with `file` and `env` drivers, cache, threat model; `platform` driver blocked on the platform; [guide](secrets.md)); item 3 (`Background` loops with health and an optional `LockGate`; `Metrics` with memory and noop drivers, built-in HTTP, use-case and loop metrics, a Prometheus endpoint off by default; [guide](background-and-metrics.md)); item 4 (`DispatchJob`, `Plan.andDispatch`: `DISPATCH_JOB` outbox rows in the platform's batch-item shape; [write path](write-path.md#dispatch-jobs)); item 1 (`framework-bom`, publishing configuration and workflow, [contract](../contracts/build.md); nothing published); item 2 (`AppBuilder.override(Class, instance)`, only when `APP_ENV` is `test`; [testing](testing.md#replacing-a-service)); item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
 | M5 | Cache and storage, platform config driver, metering, messaging | Not started | |
 
 ## Known gaps
@@ -41,7 +41,7 @@ row of `implementation-plan.md`) or a milestone.
 | **Dispatch jobs cannot name a client by identifier** | `plan.andDispatch(DispatchJob)` writes `DISPATCH_JOB` outbox rows, but the platform's dispatch-jobs batch stores `clientId` unresolved, so a job is platform-scoped unless you pass the platform's own client id (`platformClientId`). See [Dispatch jobs](write-path.md#dispatch-jobs) | platform work: resolve `clientCode` in `/api/dispatch-jobs/batch` |
 | **No HTTP client library** | Calling a platform API (or any service) means taking `PlatformClient.accessToken()` and using `java.net.http` yourself; see [Calling a platform API yourself](flowcatalyst-module.md#calling-a-platform-api-yourself) | MA item 6 (blocking API on virtual threads, auth strategies, retries, Context propagation) |
 | **No rate limiting** | Nothing limits request rates on the HTTP layer; put a limiter in front or write a middleware | MA item 9 |
-| **No secret store** | Secrets come from the environment, or `config/secrets.local.yaml` in `local` and `test` only. No secret manager, no per-client credentials | MA-5 (`SecretResolver` with env, file and platform drivers); M5 (platform config and secret store) |
+| **Per-client secrets from files and environment only** | `SecretResolver` resolves a client's secret reference through `file` and `env` stores; the `platform` driver fails start-up because the platform has no endpoint for it. The platform-config read endpoint also returns SECRET values unmasked to any anchor-tier caller, which includes every application's service account (a platform gap, reported). See [Per-client secrets](secrets.md) | platform work ([contract](../contracts/secrets.md), section 4); M5 (platform config and secret store) |
 
 ## Other things to know
 

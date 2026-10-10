@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.core;
 
 import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.Declaration;
+import io.flowcatalyst.framework.config.EnvironmentVariables;
 import io.flowcatalyst.framework.config.Setting;
 import java.io.PrintStream;
 import java.nio.file.Path;
@@ -391,6 +392,7 @@ public final class AppBuilder {
     seeded.put(Ids.class, new Ids(instantSource));
     seeded.put(MonotonicClock.class, monotonicClock);
     seeded.put(Health.class, health);
+    seeded.put(EnvironmentVariables.class, EnvironmentVariables.of(environment));
     applyOverrides(seeded);
     ServiceGraph graph = new ServiceGraph(providers, seeded, contributions);
     graph.buildAll();
@@ -522,7 +524,8 @@ public final class AppBuilder {
         || type == InstantSource.class
         || type == Ids.class
         || type == MonotonicClock.class
-        || type == Health.class;
+        || type == Health.class
+        || type == EnvironmentVariables.class;
   }
 
   private String requireRegistering(String what) {

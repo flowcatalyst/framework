@@ -144,6 +144,7 @@ unknown):
 | `database.instances.<n>` | `url` (required), `username`, `password` (secret), `pool.max` (10), `pool.min-idle` (1), `pool.connect-timeout` (5s), `migrate` (true). No `driver` needed. |
 | `redis.instances.<n>` | `url` (required, `redis://` or `rediss://`, may carry user, password and database number), `timeout` (2s), `pool.max` (16), `password` (secret, wins over the URL's). No `driver` needed. |
 | `locks.instances.<n>` | `driver` (required: `memory`, `database` or `redis`); `database` (instance name, for `database`); `connection` (Redis instance name) and `prefix` (default `fw:lock:`), for `redis` |
+| `secrets.instances.<n>` | `driver` (required: `file`, `env`; `platform` fails start-up); `directory` and `max-bytes` (65536) for `file`; `prefix` for `env`; `cache-ttl` (5m), `cache-max` (10000) for both. See [Per-client secrets](secrets.md) |
 
 `<section>.default` names the default instance; with exactly one instance it may be omitted.
 
@@ -163,7 +164,9 @@ unknown):
 ## Secrets
 
 `Secret` is its own type: `toString()` prints `Secret[****]`, it is not serialisable, and the raw
-value is read with `reveal()`. A secret declaration never has a default (declaring one throws
+value is read with `reveal()`. `matches(candidate)` compares a presented value with it in constant
+time. Credentials that belong to a client rather than the application are
+[per-client secrets](secrets.md). A secret declaration never has a default (declaring one throws
 `IllegalArgumentException`).
 
 - **Local and tests:** put it in `config/secrets.local.yaml` (add the file to your `.gitignore`;

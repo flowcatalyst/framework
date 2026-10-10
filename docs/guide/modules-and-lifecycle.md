@@ -83,7 +83,8 @@ app.provide(
 - Providers run once, at start-up, in dependency order. A provider that asks for a type nobody
   provides fails start-up and names the asking module.
 - These types are provided by the framework and cannot be provided by a module: `Config`,
-  `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`, `Health`. The core module also provides
+  `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`, `Health`, `EnvironmentVariables` (reads one
+  variable by exact name; never lists them). The core module also provides
   `Metrics` and `Background` ([Background and metrics](background-and-metrics.md)). `Ids` generates TSIDs (`ids.generate("ord")`
   gives `ord_` plus 13 characters); `InstantSource` is the clock to use instead of
   `Instant.now()`.
