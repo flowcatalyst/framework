@@ -1,4 +1,4 @@
-# Handover (2026-10-09)
+# Handover (2026-10-10)
 
 The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; contracts in
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
@@ -20,3 +20,12 @@ rewritten at hand-off and can lag the code in between.
   transient error; a receiver without handlers answers 404 (reverses "routes stay and refuse");
   sessions have cookie/database/redis drivers; Opus for security-sensitive slices, Sonnet for
   wiring.
+- UI kit (`ui-kit/`) is now being dogfooded by the Go platform's templ port (`/ui` in
+  `flowcatalyst-go`). Since 2026-10-09 the kit gained: Props tables and 124+ fixtures with golden
+  HTML (the conformance authority), specs for row actions, flash stack, form dialog, autocomplete,
+  confirm dialog and server-loaded drawer, a 90-icon sprite built by `ui-kit/icons/build-sprite.sh`,
+  an error contract for Datastar actions (handled failures answer 200 plus patches; mutations send
+  `retryMaxCount: 0`), a phone-width shell and server-rendered theme cookies. Defects and gaps are
+  in `ui-kit/PORTING-NOTES.md`. JTE (`framework-ui`, M-UI) has not started; it reuses the same
+  fixtures. Plan: `ui-dogfood-plan.md`.
+
