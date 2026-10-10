@@ -1,0 +1,8 @@
+<div id="filter-created" class="fc-form-field" role="group" aria-labelledby="filter-created-label">
+  <span id="filter-created-label" class="fc-field-label">Created (UTC)</span>
+  <div class="flex items-center gap-2">
+    <input type="date" id="filter-created-from" name="from" class="fc-input min-w-0 flex-1" aria-label="From" value="2026-10-01" max="2026-10-06" data-on:focus="el.max = document.getElementById(&#39;filter-created-to&#39;).value">
+    <span class="text-muted-foreground" aria-hidden="true">–</span>
+    <input type="date" id="filter-created-to" name="to" class="fc-input min-w-0 flex-1" aria-label="To" value="2026-10-06" min="2026-10-01" data-on:focus="el.min = document.getElementById(&#39;filter-created-from&#39;).value">
+  </div>
+</div>

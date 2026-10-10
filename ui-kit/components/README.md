@@ -20,6 +20,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Confirm dialog (hand-built)](confirm-dialog.md) | hand-built | (b) Datastar opens/closes a native modal `<dialog>` |
 | [Cursor pager](cursor-pager.md) | hand-built | (a) native links |
 | [Data table / list page (composition)](data-table.md) | composition of `table`, `table-toolbar`, `paginator`, `empty-state`, `drawer`, `page-header` | (b) client-side filter/sort/drawer |
+| [Date range (two native date inputs)](date-range.md) | new (Go platform port) | (a) native; (b) bounds on focus |
 | [Detail field / detail value (FcDetailField)](detail-field.md) | hand-built | (a) native |
 | [Dialog](dialog.md) | fc-web themed copy | (b) Datastar attributes opening a native modal `<dialog>` |
 | [Dirty form (Save enabled on change)](dirty-form.md) | hand-built behaviour | (b) Datastar |

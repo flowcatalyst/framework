@@ -36,6 +36,7 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 |---|---|
 | neutral | `border-border text-foreground` |
 | destructive | `border-destructive/50 text-destructive` |
+| warn | `border-warning/50 text-warning` (new in the Go port: the SPA's `Message severity="warn"`) |
 
 ## Props
 
@@ -43,7 +44,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `variant` | enum(neutral\|destructive) | neutral |  |
+| `variant` | enum(neutral\|destructive\|warn) | neutral |  |
 | `role` | string | - | `alert` or `status`, only for messages inserted during the visit |
 | `icon` | string | - | first-child icon |
 | `title` | string | - |  |

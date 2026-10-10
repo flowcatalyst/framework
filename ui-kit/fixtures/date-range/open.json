@@ -1,0 +1,7 @@
+{
+  "props": {
+    "id": "filter-created",
+    "label": "Created (UTC)"
+  },
+  "source": "components/date-range.md: Structure, both ends empty (no value, no bounds)"
+}

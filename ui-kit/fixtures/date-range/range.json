@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "filter-created",
+    "label": "Created (UTC)",
+    "from": "2026-10-01",
+    "to": "2026-10-06"
+  },
+  "source": "gallery/index.html: element starting with '<div id=\"filter-created\"'"
+}

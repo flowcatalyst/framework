@@ -30,6 +30,16 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | date and time (default) | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleString()` |
 | date only | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString()` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/local-time`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `at` | string (RFC 3339 instant) | - | rendered in UTC to whole seconds: `datetime="2026-10-06T08:30:00Z"`, fallback text `2026-10-06 08:30:00 UTC` (date only: `2026-10-06`); empty renders `empty` instead of a `<time>` |
+| `dateOnly` | boolean | false | the `format` option "date only" |
+| `empty` | string | `-` | the text when `at` is empty (the SPA's `-`) |
+
 ## Accessibility
 
 `<time datetime>` is machine-readable; the visible text is a localisation of the same instant.

@@ -1,0 +1,8 @@
+{
+  "props": {
+    "at": "2026-10-06T08:30:00.123456+02:00",
+    "dateOnly": true
+  },
+  "source": "components/local-time.md: Structure, format option 'date only' (not in the gallery)",
+  "notes": "a non-UTC instant with sub-second precision is rendered in UTC to whole seconds"
+}

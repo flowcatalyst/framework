@@ -1,0 +1,8 @@
+<div id="dj-created" class="fc-form-field" role="group" aria-labelledby="dj-created-label">
+  <span id="dj-created-label" class="fc-field-label">Created</span>
+  <div class="flex items-center gap-2">
+    <input type="date" id="dj-created-from" name="since" class="fc-input min-w-0 flex-1" aria-label="Created from" value="2026-10-01" data-on:focus="el.max = document.getElementById(&#39;dj-created-to&#39;).value" data-on:change="@get(&#39;/ui/dispatch-jobs&#39;, {contentType: &#39;form&#39;})">
+    <span class="text-muted-foreground" aria-hidden="true">–</span>
+    <input type="date" id="dj-created-to" name="until" class="fc-input min-w-0 flex-1" aria-label="Created to" min="2026-10-01" data-on:focus="el.min = document.getElementById(&#39;dj-created-from&#39;).value" data-on:change="@get(&#39;/ui/dispatch-jobs&#39;, {contentType: &#39;form&#39;})">
+  </div>
+</div>

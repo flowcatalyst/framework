@@ -1,0 +1,15 @@
+{
+  "props": {
+    "id": "dj-created",
+    "label": "Created",
+    "fromName": "since",
+    "toName": "until",
+    "from": "2026-10-01",
+    "fromLabel": "Created from",
+    "toLabel": "Created to",
+    "attrs": {
+      "data-on:change": "@get('/ui/dispatch-jobs', {contentType: 'form'})"
+    }
+  },
+  "source": "components/date-range.md: Structure with Props fromName/toName/fromLabel/toLabel/attrs, open end"
+}

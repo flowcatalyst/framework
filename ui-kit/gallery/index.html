@@ -137,6 +137,7 @@
 <div class="flex flex-col gap-3">
 <div class="grid w-full grid-cols-[0_1fr] items-start gap-y-1 rounded-lg border bg-background px-4 py-3 text-sm has-[>svg]:grid-cols-[1rem_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-0.5 border-border text-foreground"><svg width="1em" height="1em" aria-hidden="true"><use href="../icons/lucide-sprite.svg#i-info"/></svg><p class="col-start-2 font-medium tracking-tight">Heads up</p><div class="col-start-2 text-sm text-muted-foreground">Your trial ends in 3 days.</div></div>
 <div class="grid w-full grid-cols-[0_1fr] items-start gap-y-1 rounded-lg border bg-background px-4 py-3 text-sm has-[>svg]:grid-cols-[1rem_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-0.5 border-destructive/50 text-destructive" role="alert"><svg width="1em" height="1em" aria-hidden="true"><use href="../icons/lucide-sprite.svg#i-triangle-alert"/></svg><p class="col-start-2 font-medium tracking-tight">Build failed</p><div class="col-start-2 text-sm text-muted-foreground">The last deploy did not finish.</div></div>
+<div class="grid w-full grid-cols-[0_1fr] items-start gap-y-1 rounded-lg border bg-background px-4 py-3 text-sm has-[>svg]:grid-cols-[1rem_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-0.5 border-warning/50 text-warning"><svg width="1em" height="1em" aria-hidden="true"><use href="../icons/lucide-sprite.svg#i-triangle-alert"/></svg><div class="col-start-2 text-sm text-muted-foreground">Requeue resets each job to PENDING and the scheduler delivers it again.</div></div>
 <div class="grid w-full grid-cols-[0_1fr] items-start gap-y-1 rounded-lg border bg-background px-4 py-3 text-sm has-[>svg]:grid-cols-[1rem_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-0.5 border-border text-foreground"><p class="col-start-2 font-medium tracking-tight">No icon</p><div class="col-start-2 text-sm text-muted-foreground">The icon column collapses when no svg is the first child.</div></div></div>
 </div>
 
@@ -843,6 +844,20 @@
 </div>
 </form>
 <p class="mt-3 rounded-md border border-dashed border-border bg-subtle p-2 text-xs text-subtle-foreground">The checkboxes share one <code class="font-mono text-[11px]">name</code>, so a GET form puts every chosen value in the URL. Live, each checkbox carries the form&#39;s <code class="font-mono text-[11px]">@get</code> on change and the server patches the summary (<code class="font-mono text-[11px]">#filter-app-summary</code>).</p>
+</div>
+<div class="rounded-xl border border-border bg-card p-4 text-card-foreground">
+<div class="mb-3 flex flex-wrap items-center gap-2"><h3 class="text-sm font-semibold">Date range</h3><span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-foreground/5 text-foreground [&]:text-[11px]">a · native</span> <span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-info text-info-foreground [&]:text-[11px]">b · Datastar client</span></div>
+<form class="" action="#" data-on:submit="void 0">
+<div id="filter-created" class="fc-form-field" role="group" aria-labelledby="filter-created-label">
+  <span id="filter-created-label" class="fc-field-label">Created (UTC)</span>
+  <div class="flex items-center gap-2">
+    <input type="date" id="filter-created-from" name="from" class="fc-input min-w-0 flex-1" aria-label="From" value="2026-10-01" max="2026-10-06" data-on:focus="el.max = document.getElementById(&#39;filter-created-to&#39;).value">
+    <span class="text-muted-foreground" aria-hidden="true">–</span>
+    <input type="date" id="filter-created-to" name="to" class="fc-input min-w-0 flex-1" aria-label="To" value="2026-10-06" min="2026-10-01" data-on:focus="el.min = document.getElementById(&#39;filter-created-from&#39;).value">
+  </div>
+</div>
+</form>
+<p class="mt-3 rounded-md border border-dashed border-border bg-subtle p-2 text-xs text-subtle-foreground">Native date inputs; on focus each takes the other&#39;s value as its bound, so the range cannot invert (also after Clear All empties both).</p>
 </div>
 <div class="rounded-xl border border-border bg-card p-4 text-card-foreground">
 <div class="mb-3 flex flex-wrap items-center gap-2"><h3 class="text-sm font-semibold">Local time</h3><span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-info text-info-foreground [&]:text-[11px]">b · Datastar client</span></div>
