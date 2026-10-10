@@ -34,13 +34,23 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | 3rd | aggregate | amber |
 | 4th+ | event | purple |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/code-chips`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `code` | string | - | split on `:`; each segment escaped |
+| `segmentAttrs` | list<attrs> | [] | attributes for the segment at the same position (a live preview binds `data-text`, below) |
+| `class` | string | - | on the root |
+
 ## Accessibility
 
 Plain text; the concatenated text equals the code. Colour is decoration.
 
 ## Behaviour
 
-None.
+None (a). **Live preview (b):** a form that builds a code from four inputs shows it as chips by giving each segment `data-text` bound to the input's signal, with the placeholder segment as fallback: `segmentAttrs: [{"data-text": "$etApp || 'app'"}, ...]`, `code` = `app:subdomain:aggregate:event` (the text before Datastar runs). The expressions are constants of the page; the typed values are signals, so they are text, never code.
 
 ## Notes for a template author
 

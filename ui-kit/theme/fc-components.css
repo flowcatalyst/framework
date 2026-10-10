@@ -521,6 +521,107 @@
     white-space: pre;
   }
 
+  /* --------------------------------------------- code block (code-block.md) */
+  .fc-code-block {
+    margin: 0;
+    padding: 16px;
+    min-height: 12rem;
+    max-height: 60vh;
+    overflow: auto;
+    border-radius: 6px;
+    background: #1e293b;
+    color: #e2e8f0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre;
+    tab-size: 2;
+  }
+  .fc-code-block:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .fc-code-block code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+  }
+  .fc-code-block .hl-key { color: #7dd3fc; }
+  .fc-code-block .hl-str { color: #86efac; }
+  .fc-code-block .hl-num { color: #fde68a; }
+  .fc-code-block .hl-kw { color: #c4b5fd; }
+  .fc-code-block .hl-type { color: #67e8f9; }
+  .fc-code-block .hl-var { color: #fca5a5; }
+  .fc-code-block .hl-comment { color: #94a3b8; font-style: italic; }
+
+  /* ------------------------------------------ multi-select (multi-select.md) */
+  .fc-multiselect {
+    display: block;
+  }
+  .fc-multiselect-trigger {
+    display: flex;
+    align-items: center;
+    min-height: 2.25rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  .fc-multiselect-trigger::-webkit-details-marker { display: none; }
+  .fc-multiselect-summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fc-multiselect-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--fc-surface);
+  }
+  .fc-multiselect-search {
+    font-size: 14px;
+  }
+  .fc-multiselect-options {
+    display: flex;
+    flex-direction: column;
+    max-height: 14rem;
+    overflow-y: auto;
+  }
+  .fc-multiselect-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--fc-text-strong);
+    cursor: pointer;
+  }
+  .fc-multiselect-option:hover { background: var(--fc-hover); }
+  .fc-multiselect-option:has(:checked) { background: var(--fc-primary-tint); }
+  .fc-multiselect-option input {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+  }
+  .fc-multiselect-option > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .fc-multiselect-empty {
+    margin: 0;
+    padding: 8px;
+    font-size: 13px;
+    color: var(--muted-foreground);
+  }
+
   /* ------------------------------------------------------- danger zone */
   .fc-danger-title {
     font-size: 18px;
@@ -1261,4 +1362,6 @@
   .dark .fc-form-section .fc-section-title { color: var(--fc-text-strong); }
   .dark .fc-danger-item { background: var(--subtle); }
   .dark .fc-login-divider { color: var(--muted-foreground); }
+  .dark .fc-multiselect-panel { background: var(--popover); }
+  .dark .fc-code-block { background: #0b1220; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06); }
 }

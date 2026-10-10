@@ -1,0 +1,27 @@
+{
+  "props": {
+    "signal": "schemaTab",
+    "tabs": [
+      {
+        "value": "schema",
+        "label": "Schema"
+      },
+      {
+        "value": "example",
+        "label": "Example"
+      },
+      {
+        "value": "typescript",
+        "label": "TypeScript"
+      }
+    ],
+    "selected": "example",
+    "listClass": "flex-wrap"
+  },
+  "slots": {
+    "schema": "<p>schema</p>",
+    "example": "<p>example</p>",
+    "typescript": "<p>ts</p>"
+  },
+  "source": "tabs.md Props: selected (not the first) and listClass"
+}

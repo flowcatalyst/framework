@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "f-agg",
+    "name": "agg",
+    "label": "Aggregates",
+    "placeholder": "All Aggregates",
+    "emptyText": "No aggregates",
+    "describedBy": "f-agg-help"
+  },
+  "source": "multi-select.md Props: no options (emptyText), describedBy"
+}

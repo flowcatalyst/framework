@@ -36,6 +36,25 @@ PrimeVue's paginator: first/previous/numbered/next/last links, a rows-per-page s
 | Rows select | `<select name="rows" form="{form_id}" class="fc-select ml-2" aria-label="Rows per page">` | `.fc-select` (width auto) | Associated with the toolbar GET form by `form`; options 50/100/250/500 |
 | Report | `<span class="fc-page-report">` |  |  |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/paginator`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | on the `<nav>` (the patch target of a live list) |
+| `page` | number | 1 | current page, 1-based (clamped to 1..pages) |
+| `pages` | number | 1 | page count (at least 1) |
+| `total` | number | 0 | records in the view |
+| `rows` | number | 50 | rows per page (selected in the select) |
+| `rowsOptions` | list<number> | [50, 100, 250, 500] | |
+| `noun` | string | - | the report's noun (`users`) |
+| `hrefPattern` | string | - | a page link's URL with the literal placeholder `{page}` (`/users?rows=50&page={page}`) |
+| `formId` | string | - | the rows select's `form`; without it there is no rows select |
+| `linkAttrs` | attrs | - | on every page link (live: `{"data-on:click__prevent": "@get(el.href)"}`) |
+
+Rendered: First and Previous (or disabled `<span aria-disabled="true">` on page 1), the five-number window, Next and Last (disabled on the last page), the rows select, the report `Showing {first} to {last} of {total} {noun}` (`Showing 0 to 0 of 0 {noun}` when empty).
+
 ## Accessibility
 
 `<nav aria-label="Pagination">`; icon-only links labelled; current page `aria-current="page"`; select labelled.

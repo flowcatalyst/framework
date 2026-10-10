@@ -1,0 +1,12 @@
+{
+  "props": {
+    "page": 1,
+    "pages": 1,
+    "total": 0,
+    "rows": 50,
+    "noun": "users",
+    "hrefPattern": "?page={page}",
+    "formId": "f"
+  },
+  "source": "paginator.md Props: no records"
+}

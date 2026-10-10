@@ -1,0 +1,10 @@
+{
+  "props": {
+    "id": "schema-code",
+    "label": "Schema"
+  },
+  "slots": {
+    "default": "{\n  <span class=\"hl-key\">&quot;type&quot;</span>: <span class=\"hl-str\">&quot;object&quot;</span>,\n  <span class=\"hl-key\">&quot;minimum&quot;</span>: <span class=\"hl-num\">0</span>\n}"
+  },
+  "source": "code-block.md Structure"
+}

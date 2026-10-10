@@ -1,0 +1,16 @@
+{
+  "props": {
+    "id": "et-pager",
+    "page": 1,
+    "pages": 12,
+    "total": 1150,
+    "rows": 100,
+    "noun": "event types",
+    "hrefPattern": "/ui/event-types?rows=100&page={page}",
+    "formId": "et-list",
+    "linkAttrs": {
+      "data-on:click__prevent": "@get(el.href)"
+    }
+  },
+  "source": "paginator.md Props: first page (First/Previous disabled), live links, window at the start"
+}

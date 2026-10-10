@@ -1,0 +1,22 @@
+{
+  "props": {
+    "id": "filter-sub",
+    "name": "sub",
+    "label": "Subdomains",
+    "options": [
+      {
+        "value": "execution",
+        "label": "execution"
+      },
+      {
+        "value": "iam",
+        "label": "iam"
+      }
+    ],
+    "placeholder": "All Subdomains",
+    "optionAttrs": {
+      "data-on:change": "@get('/ui/event-types', {contentType: 'form'})"
+    }
+  },
+  "source": "multi-select.md Props: nothing chosen (placeholder), no search, live optionAttrs"
+}

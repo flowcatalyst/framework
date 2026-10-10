@@ -67,8 +67,10 @@ Status key: **P** ported (markup and behaviour as the source), **PD** ported wit
 | flash_stack / flash_message | SPA `NotificationBannerStack.vue` | new | c + b | the SPA's banner stack (four kinds, lifetimes 3s/5s/persistent, dismiss), as `.fc-flash*`; plus a **new** fallback for failed Datastar requests (`flash-stack.md`); messages rendered with the page (slot) for a flash after a redirect, carried by a fixed key |
 | form_dialog | SPA create drawers / inline edit + `useDirtyForm` + discard confirmation | new | b + c (a) | composite of dialog, dirty form, field and the confirm-dialog look: server validation answered as field patches, form-level error region, busy/disabled submit, discard question (`form-dialog.md`) |
 | autocomplete | SPA `AutoComplete` (`ClientSelect`) | new | a + c | `<input list>` + `<datalist>` refreshed by a debounced server search; not a custom listbox (`autocomplete.md`) |
+| multi_select | SPA `MultiSelect` (filters popovers, forms) | new | a + b + c | `<details>` + native checkboxes sharing one `name` (every value in the URL), optional search (signal + `data-filter-text`), summary and options parts patched by the server; inline panel, not an overlay listbox (`multi-select.md`) |
+| code_block | SPA schema viewer (`pre.code-block` + `schema-highlight.ts` classes) | new | a (b copy) | the dark code panel with the `hl-*` classes; highlighting is the server's; copy is one expression (`code-block.md`) |
 
-**Counts:** 31 P, 22 PD, 2 NP (the two NP rows are server/page concerns, not components), 4 new. 57 component specs.
+**Counts:** 31 P, 22 PD, 2 NP (the two NP rows are server/page concerns, not components), 6 new. 59 component specs.
 
 Global differences (apply to every component):
 
@@ -157,3 +159,14 @@ Gaps (needed by the platform pilot; none invented silently). Status after Phase 
 8. **Done.** Flash after a native post/redirect/get: a fixed key in a short-lived cookie, mapped to text on the server, rendered in the flash stack's slot (`_conventions.md`, `flash-stack.md`); the Go platform implements it (`shell.SetFlash`).
 
 The gallery has the new pieces (row actions table, toolbar state, flash messages, the stack with two buttons that trigger the fallback); its screenshots were not retaken.
+
+## Phase 3, event types (2026-10-10)
+
+The Go platform's `/ui/event-types` (the SPA's event types list, drawer, create/edit, add-schema page and schema viewer) needed:
+- **Props and fixtures for existing specs:** `code-chips` (with `segmentAttrs` for the create form's live preview), `tabs` (`selected`, `listClass`, one slot per tab), `paginator` (`hrefPattern` with a `{page}` placeholder, `linkAttrs` for live links, disabled First/Previous/Next/Last as `<span aria-disabled>`, the rows select only with `formId`, the report for an empty list).
+- **New `multi-select.md`:** the SPA's `MultiSelect` (applications, subdomains and aggregates facets). Native checkboxes in a `<details>`, so the selection is the form's (and the URL's) without signals; the summary text is computed by the server and its part patched after each live request, which keeps the popover and the open disclosure untouched; cascading facets patch the dependent options part. Search is optional (the SPA's event-type facets have none; the dispatch-job and event filters will).
+- **New `code-block.md`:** the schema viewer's code panel; the platform highlights on the server (a Go port of the SPA's `schema-highlight.ts`, which escapes its input: the SPA's `highlightJson` does not).
+
+Gaps recorded, not fixed here:
+- `dialog.md` with `closable`: a long title runs under the close button (no right padding on the header when the X is shown); seen at phone width in the schema viewer.
+- `flash-message`: a detail with line breaks (the SPA's sync toast has two lines) renders as one line.

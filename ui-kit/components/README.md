@@ -15,6 +15,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Button](button.md) | fc-web themed copy | (a) native |
 | [Card](card.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
 | [Checkbox](checkbox.md) | fc-web themed copy | (a) native |
+| [Code block (highlighted code, copy)](code-block.md) | new (Go platform port) | (a) native; (b) copy |
 | [Code chips](code-chips.md) | hand-built | (a) native |
 | [Confirm dialog (hand-built)](confirm-dialog.md) | hand-built | (b) Datastar opens/closes a native modal `<dialog>` |
 | [Cursor pager](cursor-pager.md) | hand-built | (a) native links |
@@ -39,6 +40,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Label](label.md) | fc-web themed copy | (a) native |
 | [Legacy button (.fc-btn) and icon button (.fc-icon-btn)](legacy-fc-btn.md) | hand-built | (a) native |
 | [Local time](local-time.md) | hand-built | (b) Datastar `data-init` |
+| [Multi-select (checklist with search)](multi-select.md) | new (Go platform port) | (a) `<details>` + checkboxes; (b) search; (c) summary/options patched |
 | [Page header](page-header.md) | hand-built | (a) native |
 | [Pagination](pagination.md) | fc-web themed copy | (a) native (links) |
 | [Paginator](paginator.md) | hand-built | (a) native links |

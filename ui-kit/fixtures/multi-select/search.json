@@ -1,0 +1,29 @@
+{
+  "props": {
+    "id": "filter-app",
+    "name": "app",
+    "label": "Applications",
+    "options": [
+      {
+        "value": "billing",
+        "label": "billing"
+      },
+      {
+        "value": "orders",
+        "label": "orders"
+      },
+      {
+        "value": "platform",
+        "label": "platform"
+      }
+    ],
+    "selected": [
+      "orders",
+      "billing"
+    ],
+    "placeholder": "All Applications",
+    "search": true,
+    "signal": "filterAppQ"
+  },
+  "source": "multi-select.md Structure (search; two chosen, listed in option order)"
+}

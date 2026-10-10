@@ -54,6 +54,20 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | show/hide | `data-show="$sig === 'v'"` |
 | avoid flash before Datastar loads | `style="display: none"` on every panel except the first |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/tabs`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `signal` | string | - | required; camelCase, unique per page; panel ids are `{signal}-{value}` |
+| `tabs` | list<{value, label}> | [] | `value` is an id fragment (`[A-Za-z][A-Za-z0-9_-]*`, validated: it is inside an expression) |
+| `selected` | string | first value | the initial tab; every other panel starts `style="display: none"` |
+| `listClass` | string | - | appended to the tab list's classes |
+| `class` | string | - | on the root |
+
+Slots: one per tab, named by its `value` (the panel's content).
+
 ## Accessibility
 
 - Triggers are links with `aria-current` (as upstream), not the ARIA tab pattern: no arrow-key roving. If the ARIA pattern is required, add `role="tablist"`, `role="tab"` + `aria-selected`, `role="tabpanel"` + `aria-labelledby`, and a roving `tabindex` with `data-on:keydown`; that is not done here to stay faithful.

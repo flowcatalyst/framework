@@ -814,6 +814,37 @@
 
 </div>
 <div class="rounded-xl border border-border bg-card p-4 text-card-foreground">
+<div class="mb-3 flex flex-wrap items-center gap-2"><h3 class="text-sm font-semibold">Code block (server-highlighted, copy)</h3><span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-foreground/5 text-foreground [&]:text-[11px]">a · native</span> <span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-info text-info-foreground [&]:text-[11px]">b · Datastar client</span></div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-end"><button type="button" class="fc-icon-btn" aria-label="Copy" title="Copy" data-on:click="navigator.clipboard.writeText(document.getElementById('schema-code').textContent)"><svg width="1em" height="1em" class="size-[1rem]" aria-hidden="true"><use href="../icons/lucide-sprite.svg#i-copy"/></svg></button></div>
+<pre id="schema-code" class="fc-code-block" tabindex="0" aria-label="Schema"><code>{
+  <span class="hl-key">&quot;type&quot;</span>: <span class="hl-str">&quot;object&quot;</span>,
+  <span class="hl-key">&quot;minimum&quot;</span>: <span class="hl-num">0</span>
+}</code></pre>
+</div>
+
+</div>
+<div class="rounded-xl border border-border bg-card p-4 text-card-foreground">
+<div class="mb-3 flex flex-wrap items-center gap-2"><h3 class="text-sm font-semibold">Multi-select (checklist with search)</h3><span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-foreground/5 text-foreground [&]:text-[11px]">a · native</span> <span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-info text-info-foreground [&]:text-[11px]">b · Datastar client</span></div>
+<form class="" action="#" data-on:submit="void 0">
+<div id="filter-app-field" class="fc-form-field">
+<span id="filter-app-label" class="fc-field-label">Applications</span>
+<details class="fc-multiselect">
+<summary class="fc-select fc-multiselect-trigger" aria-labelledby="filter-app-label filter-app-summary"><span id="filter-app-summary" class="fc-multiselect-summary">billing, orders</span></summary>
+<div class="fc-multiselect-panel" data-signals:filter-app-q="&#39;&#39;">
+<input type="search" class="fc-input fc-multiselect-search" placeholder="Search" aria-label="Search Applications" autocomplete="off" data-bind:filter-app-q>
+<div id="filter-app-options" class="fc-multiselect-options" role="group" aria-labelledby="filter-app-label">
+<label class="fc-multiselect-option" data-filter-text="billing" data-show="!$filterAppQ.trim() || el.dataset.filterText.includes($filterAppQ.trim().toLowerCase())"><input type="checkbox" name="app" value="billing" checked><span>billing</span></label>
+<label class="fc-multiselect-option" data-filter-text="orders" data-show="!$filterAppQ.trim() || el.dataset.filterText.includes($filterAppQ.trim().toLowerCase())"><input type="checkbox" name="app" value="orders" checked><span>orders</span></label>
+<label class="fc-multiselect-option" data-filter-text="platform" data-show="!$filterAppQ.trim() || el.dataset.filterText.includes($filterAppQ.trim().toLowerCase())"><input type="checkbox" name="app" value="platform"><span>platform</span></label>
+</div>
+</div>
+</details>
+</div>
+</form>
+<p class="mt-3 rounded-md border border-dashed border-border bg-subtle p-2 text-xs text-subtle-foreground">The checkboxes share one <code class="font-mono text-[11px]">name</code>, so a GET form puts every chosen value in the URL. Live, each checkbox carries the form&#39;s <code class="font-mono text-[11px]">@get</code> on change and the server patches the summary (<code class="font-mono text-[11px]">#filter-app-summary</code>).</p>
+</div>
+<div class="rounded-xl border border-border bg-card p-4 text-card-foreground">
 <div class="mb-3 flex flex-wrap items-center gap-2"><h3 class="text-sm font-semibold">Local time</h3><span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-info text-info-foreground [&]:text-[11px]">b · Datastar client</span></div>
 <div class="">
 Rendered in UTC, shown in your locale: <time datetime="2026-10-06T08:30:00Z" data-init="el.textContent = new Date(el.getAttribute('datetime')).toLocaleString()">2026-10-06 08:30:00 UTC</time>

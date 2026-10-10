@@ -1,0 +1,21 @@
+{
+  "props": {
+    "code": "app:subdomain:aggregate:event",
+    "segmentAttrs": [
+      {
+        "data-text": "$etApp || 'app'"
+      },
+      {
+        "data-text": "$etSub || 'subdomain'"
+      },
+      {
+        "data-text": "$etAgg || 'aggregate'"
+      },
+      {
+        "data-text": "$etEvent || 'event'"
+      }
+    ],
+    "class": "text-sm"
+  },
+  "source": "code-chips.md Behaviour: live preview (segmentAttrs)"
+}

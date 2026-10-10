@@ -1,0 +1,12 @@
+{
+  "props": {
+    "page": 3,
+    "pages": 9,
+    "total": 412,
+    "rows": 50,
+    "noun": "users",
+    "hrefPattern": "#",
+    "formId": "list-form"
+  },
+  "source": "gallery/index.html: Paginator (hand-built, with rows-per-page and report); hrefPattern without {page} gives the gallery's href=\"#\""
+}

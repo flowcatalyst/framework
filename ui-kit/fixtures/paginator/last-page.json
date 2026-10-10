@@ -1,0 +1,11 @@
+{
+  "props": {
+    "page": 7,
+    "pages": 7,
+    "total": 330,
+    "rows": 50,
+    "noun": "jobs",
+    "hrefPattern": "?page={page}"
+  },
+  "source": "paginator.md Props: last page (Next/Last disabled), window at the end, no rows select (no formId)"
+}

@@ -1,0 +1,10 @@
+{
+  "props": {
+    "label": "Java",
+    "class": "[&]:min-h-0"
+  },
+  "slots": {
+    "default": "record A(String id) {}"
+  },
+  "source": "code-block.md Props: no id, class, plain text slot"
+}

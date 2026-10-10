@@ -1,0 +1,25 @@
+{
+  "props": {
+    "signal": "tabsDemo",
+    "tabs": [
+      {
+        "value": "overview",
+        "label": "Overview"
+      },
+      {
+        "value": "members",
+        "label": "Members"
+      },
+      {
+        "value": "settings",
+        "label": "Settings"
+      }
+    ]
+  },
+  "slots": {
+    "overview": "<p class=\"text-sm\">Overview panel.</p>",
+    "members": "<p class=\"text-sm\">Members panel.</p>",
+    "settings": "<p class=\"text-sm\">Settings panel.</p>"
+  },
+  "source": "gallery/index.html: Tabs, accordion, breadcrumb (Tabs)"
+}

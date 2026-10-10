@@ -1,0 +1,14 @@
+<div id="f-apps-field" class="fc-form-field min-w-0">
+<span id="f-apps-label" class="fc-field-label">Applications</span>
+<details class="fc-multiselect" open>
+<summary class="fc-select fc-multiselect-trigger" aria-labelledby="f-apps-label f-apps-summary"><span id="f-apps-summary" class="fc-multiselect-summary">3 apps selected</span></summary>
+<div class="fc-multiselect-panel" data-signals:f-apps-q="&#39;&#39;">
+<input type="search" class="fc-input fc-multiselect-search" placeholder="Search" aria-label="Search Applications" autocomplete="off" data-bind:f-apps-q>
+<div id="f-apps-options" class="fc-multiselect-options" role="group" aria-labelledby="f-apps-label">
+<label class="fc-multiselect-option" data-filter-text="billing billing" data-show="!$fAppsQ.trim() || el.dataset.filterText.includes($fAppsQ.trim().toLowerCase())"><input type="checkbox" name="app" value="billing" checked><span>Billing</span></label>
+<label class="fc-multiselect-option" data-filter-text="orders &lt;eu&gt; orders" data-show="!$fAppsQ.trim() || el.dataset.filterText.includes($fAppsQ.trim().toLowerCase())"><input type="checkbox" name="app" value="orders" checked><span>Orders &lt;EU&gt;</span></label>
+<label class="fc-multiselect-option" data-filter-text="platform platform" data-show="!$fAppsQ.trim() || el.dataset.filterText.includes($fAppsQ.trim().toLowerCase())"><input type="checkbox" name="app" value="platform" checked><span>Platform</span></label>
+</div>
+</div>
+</details>
+</div>

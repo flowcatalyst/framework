@@ -1,0 +1,33 @@
+{
+  "props": {
+    "id": "f-apps",
+    "name": "app",
+    "label": "Applications",
+    "options": [
+      {
+        "value": "billing",
+        "label": "Billing"
+      },
+      {
+        "value": "orders",
+        "label": "Orders <EU>"
+      },
+      {
+        "value": "platform",
+        "label": "Platform"
+      }
+    ],
+    "selected": [
+      "billing",
+      "orders",
+      "platform"
+    ],
+    "placeholder": "All Applications",
+    "manyLabel": "{0} apps selected",
+    "search": true,
+    "signal": "fAppsQ",
+    "open": true,
+    "class": "min-w-0"
+  },
+  "source": "multi-select.md Props: more than maxLabels chosen (manyLabel), labels that differ from values (filter text = label + value), escaping, open"
+}
