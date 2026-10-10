@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.http;
 
 import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.core.MonotonicClock;
+import io.flowcatalyst.framework.metrics.Metrics;
 import io.flowcatalyst.framework.pipeline.Middleware;
 import io.flowcatalyst.framework.pipeline.Pipeline;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public final class Dispatcher {
       List<Middleware<Request, Response>> global,
       @Nullable ContextResolver resolver,
       MonotonicClock clock,
+      Metrics metrics,
       List<String> routeLines) {
     this.router = router;
     this.resolver = resolver;
@@ -37,7 +39,7 @@ public final class Dispatcher {
     List<Middleware<Request, Response>> all = new ArrayList<>();
     all.add(FrameworkMiddleware.correlationId());
     all.add(FrameworkMiddleware.errorMapping());
-    all.add(FrameworkMiddleware.accessLog(clock));
+    all.add(FrameworkMiddleware.accessLog(clock, metrics));
     all.addAll(global);
     this.pipeline = Pipeline.of(all, this::route);
   }

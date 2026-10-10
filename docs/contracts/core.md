@@ -65,6 +65,11 @@ lookup of `type` (other providers', `App.get`, `App.find`) returns `instance`. R
   logged at WARN at start-up, naming the type and the module whose provider it replaced.
 - Commands (`launch`) see the overrides too.
 
+**Services the core module provides (MA item 3, 2026-10-10):** `Metrics` and `Background`
+(background-and-metrics contract). `Health` joined the seeded framework types (`Config`, `Drivers`,
+`InstantSource`, `Ids`, `MonotonicClock`), which no module may provide or override. `App.close()`
+stops background loops before any module's `shutdown` hook.
+
 **Lookup** is `get(Class<T>)`: a typed read from a map built in step 3, throwing when nobody
 provides the type. `find(Class<T>)` is the same read returning `Optional<T>` (no throw), for
 optional collaborators. No reflection. Only one

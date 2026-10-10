@@ -3,7 +3,9 @@ package io.flowcatalyst.framework.usecase;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Ids;
 import io.flowcatalyst.framework.core.Module;
+import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.database.Databases;
+import io.flowcatalyst.framework.metrics.Metrics;
 import java.time.InstantSource;
 
 /**
@@ -39,6 +41,9 @@ public final class UseCaseModule implements Module {
             new UseCases(
                 lookup.get(Databases.class).defaultInstance(),
                 lookup.get(OutboxWriter.class),
-                lookup.get(InstantSource.class)));
+                lookup.get(InstantSource.class),
+                d -> Thread.sleep(d),
+                lookup.get(Metrics.class),
+                lookup.get(MonotonicClock.class)));
   }
 }

@@ -440,4 +440,51 @@ class JettyHttpModuleTest {
       assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
     }
   }
+
+  @Test
+  void theMetricsEndpointIsOffByDefault() throws Exception {
+    try (App app = Apps.start(dir, Apps.env(), r -> {})) {
+      assertThat(get(app, "/metrics").statusCode()).isEqualTo(404);
+    }
+  }
+
+  @Test
+  void theMetricsEndpointServesRealRequestMetricsBehindItsToken() throws Exception {
+    try (App app =
+        Apps.start(
+            dir,
+            Apps.env(
+                "HTTP_METRICS_ENABLED", "true",
+                "HTTP_METRICS_PATH", "/internal/metrics",
+                "HTTP_METRICS_BEARER_TOKEN", "scrape-me"),
+            r -> r.get("/ping", req -> Response.text(200, "pong")))) {
+      assertThat(get(app, "/ping").statusCode()).isEqualTo(200);
+      assertThat(get(app, "/internal/metrics").statusCode()).isEqualTo(401);
+      HttpResponse<String> scraped =
+          client.send(
+              HttpRequest.newBuilder(URI.create(Apps.url(app, "/internal/metrics")))
+                  .header("Authorization", "Bearer scrape-me")
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertThat(scraped.statusCode()).isEqualTo(200);
+      assertThat(scraped.headers().firstValue("Content-Type"))
+          .hasValue("text/plain; version=0.0.4; charset=utf-8");
+      assertThat(scraped.body())
+          .contains("fw_http_server_requests_total{method=\"GET\",route=\"/ping\",status=\"200\"} 1\n");
+    }
+  }
+
+  @Test
+  void aMetricsPathThatIsNotLiteralFailsStartUp() {
+    Throwable t =
+        org.assertj.core.api.Assertions.catchThrowable(
+            () ->
+                Apps.start(
+                        dir,
+                        Apps.env("HTTP_METRICS_ENABLED", "true", "HTTP_METRICS_PATH", "/m/{x}"),
+                        r -> {})
+                    .close());
+    assertThat(t).isInstanceOf(io.flowcatalyst.framework.core.StartupException.class);
+    assertThat(t.getMessage()).contains("http.metrics.path");
+  }
 }

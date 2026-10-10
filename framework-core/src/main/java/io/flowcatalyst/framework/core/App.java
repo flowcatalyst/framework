@@ -141,7 +141,8 @@ public final class App implements AutoCloseable {
   }
 
   /**
-   * Shuts down: module {@code shutdown} hooks in reverse module order, then every built service
+   * Shuts down: background loops first (each gets the drain), then module {@code shutdown} hooks
+   * in reverse module order, then every built service
    * that is {@link AutoCloseable}, in reverse build order. A failure is logged and does not stop
    * the rest; a step that takes longer than {@code app.shutdown.drain} is logged as an overrun
    * and interrupted. Safe to call more than once.
@@ -161,6 +162,10 @@ public final class App implements AutoCloseable {
         } catch (IllegalStateException e) {
           LOG.debug("shutdown already in progress");
         }
+      }
+      // Background loops first, so none runs against a module that has shut down.
+      if (services.get(Background.class) instanceof Background background) {
+        background.stop(drain);
       }
       List<Module> reversed = new ArrayList<>(booted);
       Collections.reverse(reversed);

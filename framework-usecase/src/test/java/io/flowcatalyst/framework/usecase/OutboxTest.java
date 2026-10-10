@@ -425,4 +425,25 @@ class OutboxTest {
     assertThat(app.get(Ids.class)).isNotNull();
     assertThat(app.get(Events.class)).isNotNull();
   }
+
+  @Test
+  void runsAreCountedByUseCaseAndOutcome() {
+    useCases.run(create(), ctx(), new Create("t-m1", "C-1"));
+    useCases.run(create(), ctx(), new Create("t-m1", "C-1")); // unique violation: CONFLICT
+    io.flowcatalyst.framework.metrics.MetricsSnapshot snapshot =
+        app.get(io.flowcatalyst.framework.metrics.Metrics.class).snapshot();
+    Map<String, Double> runs = new LinkedHashMap<>();
+    for (var f : snapshot.families()) {
+      if (f.name().equals("fw_usecase_runs_total")) {
+        for (var sample : f.samples()) {
+          runs.put(String.join("/", sample.labelValues()), sample.value());
+        }
+      }
+      if (f.name().equals("fw_usecase_duration_seconds")) {
+        assertThat(f.samples()).singleElement().satisfies(x -> assertThat(x.count()).isEqualTo(2));
+      }
+    }
+    assertThat(runs)
+        .containsExactly(Map.entry("create-thing/committed", 1.0), Map.entry("create-thing/conflict", 1.0));
+  }
 }

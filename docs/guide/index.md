@@ -27,6 +27,7 @@ describes what is built and says plainly where something is not.
 | [Locks](locks.md) | Leases and fencing tokens, `withLock`, the three drivers |
 | [The write path](write-path.md) | Aggregates, repositories, use cases, plans, optimistic locking, the outbox |
 | [Checked SQL](checked-sql.md) | Queries in `.sql` files, checked at build time |
+| [Background and metrics](background-and-metrics.md) | Managed loops (lock-gated, health-visible), counters, gauges, timers, the Prometheus endpoint |
 | [HTTP](http.md) | Routes, validation, errors, middleware, Datastar, the Jetty module |
 | [The FlowCatalyst module](flowcatalyst-module.md) | The platform client, definition sync, how the outbox is delivered, health |
 | [Receivers](receivers.md) | Handling dispatch jobs and scheduled-job firings the platform delivers (and switching the routes off) |

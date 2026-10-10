@@ -1,4 +1,4 @@
-<!-- types: ServiceError, Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher -->
+<!-- types: MetricsEndpoint, ServiceError, Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher -->
 # HTTP
 
 Two artifacts:
@@ -7,6 +7,10 @@ Two artifacts:
   errors, Datastar) and the Jetty-free pieces (router, pipeline, `TestClient`). Nothing in it
   mentions Jetty.
 - `framework-http-jetty`: `JettyHttpModule`, the only code that imports `org.eclipse.jetty.*`.
+
+Every request is counted in `fw_http_server_requests_total` and timed in
+`fw_http_server_request_duration_seconds`, labelled by the route pattern
+([metrics](background-and-metrics.md#built-in-metrics)).
 
 Application code depends on `framework-http` types only. There is no Servlet API, no sessions, no
 static files, no TLS (terminate in front), no HTTP/2, no CORS, no compression, no rate limiting, and
@@ -294,6 +298,9 @@ request execution. The server header, version and stack traces are never sent.
 | `http.max-body-bytes` | long | `1048576` |
 | `http.request-timeout` | duration | `30s` (idle timeout of reads and writes) |
 | `http.shutdown-grace` | duration | falls back to `app.shutdown.drain` |
+| `http.metrics.enabled` | boolean | `false`; mounts the [Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) |
+| `http.metrics.path` | string | `/metrics` |
+| `http.metrics.bearer-token` | secret | none; when set, scrapes need it |
 
 A body over the limit (by `Content-Length` or while reading) is `413` and the connection is closed
 after the response. `started` fails with a `StartupException` if the port cannot be bound.

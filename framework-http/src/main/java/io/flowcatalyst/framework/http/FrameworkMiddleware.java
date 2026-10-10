@@ -1,6 +1,9 @@
 package io.flowcatalyst.framework.http;
 
 import io.flowcatalyst.framework.core.MonotonicClock;
+import io.flowcatalyst.framework.metrics.Counter;
+import io.flowcatalyst.framework.metrics.Metrics;
+import io.flowcatalyst.framework.metrics.Timer;
 import io.flowcatalyst.framework.pipeline.Middleware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +41,25 @@ final class FrameworkMiddleware {
     };
   }
 
-  /** Logs method, path template, status, duration and correlation id. Never query or body. */
-  static Middleware<Request, Response> accessLog(MonotonicClock clock) {
+  /**
+   * Logs method, path template, status, duration and correlation id, and records the request
+   * metrics with the same labels. Never query or body; the route label is the matched pattern or
+   * {@code <unmatched>}, so request paths never become label values.
+   */
+  static Middleware<Request, Response> accessLog(MonotonicClock clock, Metrics metrics) {
+    Counter requests =
+        metrics.counter(
+            "fw_http_server_requests_total",
+            "HTTP requests by method, route pattern and status.",
+            "method",
+            "route",
+            "status");
+    Timer durations =
+        metrics.timer(
+            "fw_http_server_request_duration_seconds",
+            "HTTP request duration by method and route pattern.",
+            "method",
+            "route");
     return (request, next) -> {
       long start = clock.nanos();
       int status = 500;
@@ -52,12 +72,17 @@ final class FrameworkMiddleware {
         throw e;
       } finally {
         String template = request.routePattern();
+        String route = template == null ? "<unmatched>" : template;
+        long took = clock.nanos() - start;
+        String method = request.method().name();
+        requests.labels(method, route, Integer.toString(status)).inc();
+        durations.labels(method, route).recordNanos(took);
         ACCESS.info(
             "{} {} {} {}ms cid={}",
             request.method(),
-            template == null ? "<unmatched>" : template,
+            route,
             status,
-            (clock.nanos() - start) / 1_000_000,
+            took / 1_000_000,
             request.correlationId());
       }
     };

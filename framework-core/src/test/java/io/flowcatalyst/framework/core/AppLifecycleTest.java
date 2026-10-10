@@ -96,8 +96,15 @@ class AppLifecycleTest {
             .boot(app -> log.add("boot b"));
     App app = builder().module(a).module(b).start();
     assertThat(log).containsExactly("register a", "register b", "boot a", "boot b");
-    // Gamma was asked first, so it needs Beta, which needs Alpha: Alpha finishes first.
-    assertThat(app.buildOrder()).containsExactly(Alpha.class, Beta.class, Gamma.class);
+    // The core module's services come first (it registers first). Then: Gamma was asked first, so
+    // it needs Beta, which needs Alpha: Alpha finishes first.
+    assertThat(app.buildOrder())
+        .containsExactly(
+            io.flowcatalyst.framework.metrics.Metrics.class,
+            Background.class,
+            Alpha.class,
+            Beta.class,
+            Gamma.class);
     assertThat(app.get(Gamma.class).beta().alpha().name()).isEqualTo("alpha");
     assertThat(app.moduleIds()).containsExactly("core", "a", "b");
   }

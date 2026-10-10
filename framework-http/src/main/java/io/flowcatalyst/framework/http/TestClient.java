@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.http;
 
 import io.flowcatalyst.framework.core.MonotonicClock;
+import io.flowcatalyst.framework.metrics.Metrics;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -54,6 +55,20 @@ public final class TestClient {
    */
   public static TestClient of(Routes routes, @Nullable ContextResolver resolver) {
     return new TestClient(routes.compile(resolver, MonotonicClock.system()), 1_048_576L);
+  }
+
+  /**
+   * A client for the routes that records the request metrics in {@code metrics}. Seals the routes.
+   *
+   * @param routes the routes
+   * @param resolver the context resolver, or null
+   * @param metrics where the request metrics go
+   * @return the client
+   * @throws io.flowcatalyst.framework.core.StartupException when the routes are invalid
+   */
+  public static TestClient of(
+      Routes routes, @Nullable ContextResolver resolver, Metrics metrics) {
+    return new TestClient(routes.compile(resolver, MonotonicClock.system(), metrics), 1_048_576L);
   }
 
   /**

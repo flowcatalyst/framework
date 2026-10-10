@@ -154,7 +154,10 @@ unknown):
 | `app.shutdown.drain` | duration | `10s` | core |
 | `app.health.timeout` | duration | `2s` | core |
 | `app.health.critical`, `app.health.informational` | string list | empty | core; check names whose criticality configuration decides ([health checks](modules-and-lifecycle.md#critical-and-informational-checks)) |
+| `app.metrics.driver` | enum `memory`, `noop` | `memory` | core ([metrics](background-and-metrics.md#drivers)) |
+| `app.metrics.max-series` | integer | `1000` | core |
 | `http.host`, `http.port`, `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace` | see [HTTP](http.md#the-jetty-module-and-its-settings) | | `http` |
+| `http.metrics.enabled`, `http.metrics.path`, `http.metrics.bearer-token` | see [the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) | `false`, `/metrics`, none | `http` |
 | `flowcatalyst.*` | see [The FlowCatalyst module](flowcatalyst-module.md#settings) | | `flowcatalyst` |
 
 ## Secrets

@@ -1,7 +1,11 @@
 package io.flowcatalyst.framework.usecase;
 
 import io.flowcatalyst.framework.context.Context;
+import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.database.Database;
+import io.flowcatalyst.framework.metrics.Counter;
+import io.flowcatalyst.framework.metrics.Metrics;
+import io.flowcatalyst.framework.metrics.Timer;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -9,6 +13,7 @@ import java.time.InstantSource;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
@@ -52,6 +57,9 @@ public final class UseCases {
   private final Sink sink;
   private final InstantSource clock;
   private final Sleeper sleeper;
+  private final MonotonicClock monotonic;
+  private final Counter runs;
+  private final Timer durations;
 
   /**
    * Creates a runner.
@@ -73,10 +81,43 @@ public final class UseCases {
    * @param sleeper waits between attempts
    */
   public UseCases(Database database, Sink sink, InstantSource clock, Sleeper sleeper) {
+    this(database, sink, clock, sleeper, Metrics.noop(), MonotonicClock.system());
+  }
+
+  /**
+   * Creates a runner that records {@code fw_usecase_runs_total} and
+   * {@code fw_usecase_duration_seconds} (background-and-metrics contract, section 2).
+   *
+   * @param database the database the writes go to
+   * @param sink where events and the audit row go
+   * @param clock the wall-clock source
+   * @param sleeper waits between attempts
+   * @param metrics where the metrics go
+   * @param monotonic measures durations
+   */
+  public UseCases(
+      Database database,
+      Sink sink,
+      InstantSource clock,
+      Sleeper sleeper,
+      Metrics metrics,
+      MonotonicClock monotonic) {
     this.database = database;
     this.sink = sink;
     this.clock = clock;
     this.sleeper = sleeper;
+    this.monotonic = monotonic;
+    this.runs =
+        metrics.counter(
+            "fw_usecase_runs_total",
+            "Use case runs by use case and outcome: committed, or the failure's kind.",
+            "usecase",
+            "outcome");
+    this.durations =
+        metrics.timer(
+            "fw_usecase_duration_seconds",
+            "Use case run duration, all attempts included.",
+            "usecase");
   }
 
   /**
@@ -90,6 +131,20 @@ public final class UseCases {
    * @return {@link UseCaseResult.Committed} with the result event, or {@link UseCaseResult.Failed}
    */
   public <C, E extends DomainEvent> UseCaseResult<E> run(
+      UseCase<C, E> useCase, Context context, C command) {
+    long start = monotonic.nanos();
+    UseCaseResult<E> result = runAttempts(useCase, context, command);
+    String outcome =
+        switch (result) {
+          case UseCaseResult.Committed<E> c -> "committed";
+          case UseCaseResult.Failed<E> f -> f.error().kind().name().toLowerCase(Locale.ROOT);
+        };
+    runs.labels(useCase.name(), outcome).inc();
+    durations.labels(useCase.name()).recordNanos(monotonic.nanos() - start);
+    return result;
+  }
+
+  private <C, E extends DomainEvent> UseCaseResult<E> runAttempts(
       UseCase<C, E> useCase, Context context, C command) {
     ConflictPolicy policy = useCase.conflict();
     for (int attempt = 1; ; attempt++) {

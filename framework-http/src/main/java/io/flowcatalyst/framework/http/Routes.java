@@ -1,8 +1,9 @@
 package io.flowcatalyst.framework.http;
 
+import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
-import io.flowcatalyst.framework.core.MonotonicClock;
+import io.flowcatalyst.framework.metrics.Metrics;
 import io.flowcatalyst.framework.pipeline.Middleware;
 import io.flowcatalyst.framework.pipeline.Pipeline;
 import java.util.ArrayList;
@@ -224,6 +225,22 @@ public final class Routes {
    *     context when there is no resolver
    */
   public Dispatcher compile(@Nullable ContextResolver resolver, MonotonicClock clock) {
+    return compile(resolver, clock, Metrics.noop());
+  }
+
+  /**
+   * Checks the table, seals it and builds the dispatcher, which records
+   * {@code fw_http_server_requests_total} and {@code fw_http_server_request_duration_seconds}.
+   *
+   * @param resolver the context resolver, or null when none is provided
+   * @param clock the clock for access log durations
+   * @param metrics where request metrics go
+   * @return the dispatcher
+   * @throws StartupException listing every duplicate route and every route that requires a
+   *     context when there is no resolver
+   */
+  public Dispatcher compile(
+      @Nullable ContextResolver resolver, MonotonicClock clock, Metrics metrics) {
     List<Registration> registrations;
     List<Middleware<Request, Response>> global;
     synchronized (state) {
@@ -277,6 +294,6 @@ public final class Routes {
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
-    return new Dispatcher(router, global, resolver, clock, lines);
+    return new Dispatcher(router, global, resolver, clock, metrics, lines);
   }
 }

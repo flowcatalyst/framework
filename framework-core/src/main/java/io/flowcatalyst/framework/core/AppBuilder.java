@@ -390,6 +390,7 @@ public final class AppBuilder {
     seeded.put(InstantSource.class, instantSource);
     seeded.put(Ids.class, new Ids(instantSource));
     seeded.put(MonotonicClock.class, monotonicClock);
+    seeded.put(Health.class, health);
     applyOverrides(seeded);
     ServiceGraph graph = new ServiceGraph(providers, seeded, contributions);
     graph.buildAll();
@@ -446,6 +447,8 @@ public final class AppBuilder {
           "app.health.critical / app.health.informational name checks that do not exist: {}",
           unmatched);
     }
+    // Loops registered during boot and started begin only now, with the application whole.
+    app.find(Background.class).ifPresent(Background::startAll);
     if (installShutdownHook) {
       app.installShutdownHook();
     }
@@ -518,7 +521,8 @@ public final class AppBuilder {
         || type == Drivers.class
         || type == InstantSource.class
         || type == Ids.class
-        || type == MonotonicClock.class;
+        || type == MonotonicClock.class
+        || type == Health.class;
   }
 
   private String requireRegistering(String what) {

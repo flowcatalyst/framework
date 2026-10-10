@@ -22,7 +22,7 @@ framework's own module, which is added for you.
 | Hook | Use it to | Do not |
 |---|---|---|
 | `register(AppBuilder)` | declare settings, provide services, register drivers, contribute migrations and definitions, claim commands | build services, read config values, start threads |
-| `boot(App)` | read config, look up services, add health checks, register routes, start background work | provide new services |
+| `boot(App)` | read config, look up services, add health checks, register routes, register background loops | provide new services |
 | `started(App)` | work that needs *every* module booted (the Jetty module compiles the route table and starts listening here) | provide new services |
 | `shutdown(App)` | stop what you started | |
 
@@ -47,7 +47,8 @@ thrown. `StartupException.problems()` lists them.
 
 `App.close()` is idempotent (it is `AutoCloseable`, so use try-with-resources in tests).
 `builder.shutdownHook(true)` also closes the app from a JVM shutdown hook; the default is off so
-tests leave no hooks behind. Closing runs each booted module's `shutdown` in reverse module order,
+tests leave no hooks behind. Closing first stops the [background loops](background-and-metrics.md),
+then runs each booted module's `shutdown` in reverse module order,
 then closes every built service that is `AutoCloseable`, in reverse build order. A failure in one
 step is logged and does not stop the rest. Each step runs on its own virtual thread and gets
 `app.shutdown.drain` (default `10s`). A step that is still running after that is logged as an
@@ -82,7 +83,8 @@ app.provide(
 - Providers run once, at start-up, in dependency order. A provider that asks for a type nobody
   provides fails start-up and names the asking module.
 - These types are provided by the framework and cannot be provided by a module: `Config`,
-  `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`. `Ids` generates TSIDs (`ids.generate("ord")`
+  `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`, `Health`. The core module also provides
+  `Metrics` and `Background` ([Background and metrics](background-and-metrics.md)). `Ids` generates TSIDs (`ids.generate("ord")`
   gives `ord_` plus 13 characters); `InstantSource` is the clock to use instead of
   `Instant.now()`.
 - A service that is `AutoCloseable` is closed at shutdown.

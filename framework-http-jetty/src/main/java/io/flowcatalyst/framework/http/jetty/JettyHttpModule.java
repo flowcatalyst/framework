@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.http.jetty;
 
 import io.flowcatalyst.framework.config.Config;
+import io.flowcatalyst.framework.config.Secret;
 import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
@@ -9,13 +10,19 @@ import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.core.MonotonicClock;
+import io.flowcatalyst.framework.core.Problem;
+import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.http.ContextResolver;
 import io.flowcatalyst.framework.http.Dispatcher;
+import io.flowcatalyst.framework.http.MetricsEndpoint;
 import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.Routes;
+import io.flowcatalyst.framework.metrics.Metrics;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +69,25 @@ public final class JettyHttpModule implements Module {
       Setting.duration("http.shutdown-grace")
           .describedAs("Time in-flight requests may take on shutdown; defaults to app.shutdown.drain.");
 
+  /** {@code http.metrics.enabled}: whether the Prometheus endpoint is mounted. */
+  public static final Setting<Boolean> METRICS_ENABLED =
+      Setting.bool("http.metrics.enabled")
+          .withDefault(false)
+          .describedAs("Mount the Prometheus metrics endpoint at http.metrics.path.");
+
+  /** {@code http.metrics.path}: where the Prometheus endpoint is mounted. */
+  public static final Setting<String> METRICS_PATH =
+      Setting.string("http.metrics.path")
+          .withDefault("/metrics")
+          .describedAs("Path of the Prometheus metrics endpoint: literal segments, no trailing slash.");
+
+  /** {@code http.metrics.bearer-token}: when set, scrapes must present it. */
+  public static final Setting<Secret> METRICS_BEARER_TOKEN =
+      Setting.secret("http.metrics.bearer-token")
+          .describedAs("When set, the metrics endpoint requires 'Authorization: Bearer <token>'.");
+
+  private static final Pattern LITERAL_PATH = Pattern.compile("(/[A-Za-z0-9._~-]+)+");
+
   @Override
   public String id() {
     return ID;
@@ -74,6 +100,9 @@ public final class JettyHttpModule implements Module {
     app.declare(MAX_BODY_BYTES);
     app.declare(REQUEST_TIMEOUT);
     app.declare(SHUTDOWN_GRACE);
+    app.declare(METRICS_ENABLED);
+    app.declare(METRICS_PATH);
+    app.declare(METRICS_BEARER_TOKEN);
     app.provide(Routes.class, lookup -> new Routes());
     app.provide(
         HttpServer.class,
@@ -104,6 +133,24 @@ public final class JettyHttpModule implements Module {
     Routes own = routes.forModule(ID);
     own.get("/health/live", r -> Response.json(200, Map.of("status", "UP")));
     own.get("/health/ready", r -> ready(app, server));
+    if (app.config().get(METRICS_ENABLED)) {
+      String path = app.config().get(METRICS_PATH);
+      if (!LITERAL_PATH.matcher(path).matches()) {
+        throw new StartupException(
+            List.of(
+                Problem.of(ID, METRICS_PATH.key(), "must be literal segments such as /metrics")));
+      }
+      Secret token =
+          app.config().find(METRICS_BEARER_TOKEN).filter(t -> !t.reveal().isBlank()).orElse(null);
+      if (token == null) {
+        LOG.warn("http: the metrics endpoint {} is enabled without http.metrics.bearer-token", path);
+      }
+      Metrics metrics = app.get(Metrics.class);
+      if (!metrics.readable()) {
+        LOG.warn("http: the metrics endpoint is enabled but app.metrics.driver records nothing");
+      }
+      own.get(path, MetricsEndpoint.handler(metrics, token));
+    }
   }
 
   @Override
@@ -111,7 +158,8 @@ public final class JettyHttpModule implements Module {
     Routes routes = app.get(Routes.class);
     HttpServer server = app.get(HttpServer.class);
     ContextResolver resolver = app.find(ContextResolver.class).orElse(null);
-    Dispatcher dispatcher = routes.compile(resolver, app.get(MonotonicClock.class));
+    Dispatcher dispatcher =
+        routes.compile(resolver, app.get(MonotonicClock.class), app.get(Metrics.class));
     for (String line : dispatcher.describeRoutes()) {
       LOG.info("route {}", line);
     }
