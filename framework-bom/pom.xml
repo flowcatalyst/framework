@@ -56,6 +56,7 @@
     <jackson.version>3.2.3</jackson.version>
     <jetty.version>12.1.12</jetty.version>
     <flowcatalyst-sdk.version>0.0.11</flowcatalyst-sdk.version>
+    <vertx.version>5.1.7</vertx.version>
 
     <!-- test stack the published test-jars (fixtures, contract suites) are compiled against -->
     <junit.version>6.1.3</junit.version>
@@ -139,6 +140,16 @@
       </dependency>
       <dependency>
         <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-httpclient</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-httpclient-module</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
         <artifactId>framework-flowcatalyst</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -190,6 +201,12 @@
         <groupId>tools.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+      <!-- The HTTP client's engine (contracts/http-client.md section 1). -->
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-core</artifactId>
+        <version>${vertx.version}</version>
       </dependency>
       <dependency>
         <groupId>org.eclipse.jetty</groupId>

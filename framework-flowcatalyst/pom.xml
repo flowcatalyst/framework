@@ -42,6 +42,12 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
+    <!-- Calling a platform API with the HTTP client and the platform token (guide example). -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-httpclient-module</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- The outbox table for the outbox health check's tests (framework-http no longer brings it). -->
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>

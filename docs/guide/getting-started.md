@@ -155,6 +155,8 @@ The modules, and what each is for:
 | `framework-usecase` | `OutboxModule`, `UseCaseModule` | [write path](write-path.md) |
 | `framework-http` | none; the HTTP types and `TestClient`, no server. Depends on `framework-core` and Jackson only ([what it pulls in](http.md#what-framework-http-pulls-in)) | [http](http.md) |
 | `framework-http-jetty` | `JettyHttpModule` | [http](http.md) |
+| `framework-httpclient` | none; the HTTP client library (Vert.x), usable without the framework | [HTTP client](http-client.md) |
+| `framework-httpclient-module` | `HttpClientModule` | [HTTP client](http-client.md) |
 | `framework-flowcatalyst` | `FlowCatalystModule` | [flowcatalyst module](flowcatalyst-module.md) |
 | `framework-sql`, `framework-sql-maven-plugin` | none; the checked-SQL generator and its Maven plugin | [checked SQL](checked-sql.md) |
 

@@ -46,6 +46,8 @@
     <module>framework-usecase</module>
     <module>framework-http</module>
     <module>framework-http-jetty</module>
+    <module>framework-httpclient</module>
+    <module>framework-httpclient-module</module>
     <module>framework-flowcatalyst</module>
     <module>framework-sql</module>
     <module>framework-sql-maven-plugin</module>

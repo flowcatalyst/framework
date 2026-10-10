@@ -14,7 +14,7 @@ Be clear about what it is *not*, today:
 | A framework call that creates a dispatch job outside a use case | see [Creating a dispatch job](#creating-a-dispatch-job) |
 | Per-client sync, principals sync, OpenAPI sync | not exposed |
 | Docs sync (`Definitions.docs(...)`) | accepted, skipped (the Java SDK cannot sync docs yet) |
-| Wrapper methods for platform APIs (events, dispatch jobs, users) | not built; `PlatformClient` gives you the token only, and [Calling a platform API yourself](#calling-a-platform-api-yourself) shows how to use it. The planned HTTP client library (MA item 6) will replace that recipe |
+| Wrapper methods for platform APIs (events, dispatch jobs, users) | not built; `PlatformClient` gives you the token, and [Calling a platform API yourself](#calling-a-platform-api-yourself) shows the HTTP client with it |
 
 See [STATUS](STATUS.md). The contract, with the as-built notes in section 4a, is
 [contracts/flowcatalyst.md](../contracts/flowcatalyst.md).
@@ -78,42 +78,23 @@ message)`, to report a scheduled-job instance. Failures are the unchecked `Platf
 ## Calling a platform API yourself
 
 `PlatformClient` has no wrapper for the platform's own APIs (events, dispatch jobs, users, ...).
-To call one, take its token and make the request with any HTTP client. The pieces:
-
-- **Base URL:** `app.config().get(FlowCatalystModule.BASE_URL)` (a `URI`, the same
-  `flowcatalyst.base-url`).
-- **Token:** `platform.accessToken()` (cached by the SDK; never log it). It is the application's
-  service account, so the platform authorises the call by that account's roles.
-- **Timeout:** `flowcatalyst.timeout` covers only the module's **own** calls (token, sync,
-  scheduled-job reports). A request you make is yours to bound: set a timeout on it.
-- **After a `401`:** the token was refused (revoked, or the platform restarted with new keys).
-  Call `platform.clearToken()` and retry once; the next `accessToken()` fetches a new one.
+Call them with the [HTTP client](http-client.md), authenticated with the application's token. From
+`PlatformApiCallTest`:
 
 ```java
-static HttpResponse<String> getFromPlatform(App app, HttpClient http, String path) throws Exception {
-  PlatformClient platform = app.get(PlatformClient.class);
-  String base = app.config().get(FlowCatalystModule.BASE_URL).toString().replaceAll("/+$", "");
-  HttpResponse<String> response = null;
-  for (int attempt = 0; attempt < 2; attempt++) {
-    HttpRequest request =
-        HttpRequest.newBuilder(URI.create(base + path))
-            .timeout(Duration.ofSeconds(10))
-            .header("Authorization", "Bearer " + platform.accessToken())
-            .GET()
-            .build();
-    response = http.send(request, HttpResponse.BodyHandlers.ofString());
-    if (response.statusCode() != 401) {
-      return response;
-    }
-    platform.clearToken();
-  }
-  return response;
-}
+ServiceClient api =
+    app.get(ServiceClients.class)
+        .register(
+            ServiceOptions.builder("platform", app.config().get(FlowCatalystModule.BASE_URL))
+                .auth(Auth.bearer(platformClient::accessToken, platformClient::clearToken))
+                .build());
 ```
 
-`accessToken()` throws `PlatformException` when the token cannot be fetched. This is a stop-gap: the
-planned HTTP client library (plan item MA-6) will take over token caching, refresh, timeouts and
-retries, and will replace this recipe.
+- **Token:** `platform.accessToken()` is the application's service account (cached by the SDK;
+  never log it), so the platform authorises the call by that account's roles. After a `401` the
+  client calls `clearToken()` and sends the request once more with a fresh token.
+- **Timeouts and retries** are the client's (`request-timeout`, retries for idempotent requests
+  only); `flowcatalyst.timeout` covers only the module's own calls.
 
 ## Creating a dispatch job
 
