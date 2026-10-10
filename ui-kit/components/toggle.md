@@ -49,6 +49,22 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 |---|
 | `inline-flex shrink-0 cursor-pointer items-center justify-center border border-transparent text-sm font-medium whitespace-nowrap transition-colors select-none text-muted-foreground hover:bg-foreground/5 hover:text-foreground has-[:checked]:bg-foreground/10 has-[:checked]:text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/toggle-group` (the group; a lone toggle is a group of one).
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `kind` | enum(independent\|exclusive) | independent | checkbox or radio inputs |
+| `size` | enum(sm\|md\|lg) | md | |
+| `name` | string | - | shared by the inputs |
+| `options` | list<{value, label}> | [] | |
+| `selected` | list<string> | [] | checked values |
+| `attrs` | attrs | - | on the group (a form names it: `role="radiogroup" aria-labelledby`) |
+| `inputAttrs` | attrs | - | on every input (`required`, a live handler) |
+
+The SPA's `SelectButton` is the exclusive group.
+
 ## Accessibility
 
 The input is `sr-only` (not hidden), so it keeps focus and is announced as a checkbox/radio named by the label text. Icon-only toggles need `aria-label` on the input.

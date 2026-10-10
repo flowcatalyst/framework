@@ -1,0 +1,27 @@
+{
+  "props": {
+    "kind": "exclusive",
+    "name": "type",
+    "options": [
+      {
+        "value": "APPLICATION",
+        "label": "Application"
+      },
+      {
+        "value": "INTEGRATION",
+        "label": "Integration"
+      }
+    ],
+    "selected": [
+      "APPLICATION"
+    ],
+    "attrs": {
+      "role": "radiogroup",
+      "aria-labelledby": "app-type-label"
+    },
+    "inputAttrs": {
+      "required": true
+    }
+  },
+  "source": "toggle.md Props: default size md, group attrs (radiogroup named by a label), input attrs"
+}

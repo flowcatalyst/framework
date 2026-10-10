@@ -1,0 +1,21 @@
+{
+  "props": {
+    "name": "days",
+    "options": [
+      {
+        "value": "mon",
+        "label": "Mon"
+      },
+      {
+        "value": "tue",
+        "label": "Tue"
+      }
+    ],
+    "selected": [
+      "mon",
+      "tue"
+    ],
+    "size": "lg"
+  },
+  "source": "toggle.md Options: kind independent (default), size lg"
+}

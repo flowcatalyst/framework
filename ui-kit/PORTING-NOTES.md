@@ -174,3 +174,7 @@ Gaps recorded, not fixed here:
 Subscriptions (2026-10-10):
 - `multi-select` in a **form** (no live request per change) showed a stale summary: the summary is now also recomputed in the browser on every change, from the checked labels and the same rule (`data-placeholder`, `data-max-labels`, `data-many-label` on the `<details>`); the server's patched summary in a live list confirms it.
 - Found in the browser: `@get(url, {contentType: 'form'})` **validates the form** before sending (as `_conventions.md` says for `@post`), so a GET that refreshes part of a half-filled create form (the subscription's event types when Client Scoped is toggled) is silently not sent while required fields are empty. Such a request carries its one value in the URL instead (`@get('/x?clientScoped=' + (el.checked ? 'true' : ''))`).
+
+Applications (2026-10-10):
+- `toggle.md` gets a Props table and `fixtures/toggle-group` (the SPA's `SelectButton` is the exclusive group; group attrs name it as a radiogroup in a form).
+- The SPA's chip list of redirect URIs (type, press +, remove chips) is a textarea with one URI per line in the Go port: a list the browser holds without a server round trip needs either templating Datastar does not have or custom JavaScript. Recorded as a gap: no `list-input` component yet.

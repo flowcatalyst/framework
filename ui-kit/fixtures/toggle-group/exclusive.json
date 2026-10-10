@@ -1,0 +1,25 @@
+{
+  "props": {
+    "kind": "exclusive",
+    "size": "sm",
+    "name": "range",
+    "options": [
+      {
+        "value": "day",
+        "label": "Day"
+      },
+      {
+        "value": "week",
+        "label": "Week"
+      },
+      {
+        "value": "month",
+        "label": "Month"
+      }
+    ],
+    "selected": [
+      "week"
+    ]
+  },
+  "source": "gallery/index.html: Toggle and toggle group (first group)"
+}
