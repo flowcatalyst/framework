@@ -296,6 +296,14 @@ Registered by the module, with no authentication and no context:
 - `GET /health/ready`: runs `App.health().check()` and returns `200
   {"status":"UP","checks":{name:{"status":"UP"}}}`, or `503` with `DOWN` / `TIMED_OUT` (and the
   reason for `Down`). It returns 503 from the moment shutdown begins.
+- Only **critical** checks decide the status code
+  ([criticality](modules-and-lifecycle.md#critical-and-informational-checks)). When only
+  informational checks are not up the answer is `200` with top-level `"status":"DEGRADED"`; each
+  informational check's entry carries `"informational": true`:
+
+```json
+{"status":"DEGRADED","checks":{"platform":{"status":"DOWN","reason":"IllegalStateException: platform unreachable","informational":true},"good":{"status":"UP"}}}
+```
 
 Add your own checks with `app.health().add(name, check)` (see
 [Modules and lifecycle](modules-and-lifecycle.md#health-checks)).

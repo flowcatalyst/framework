@@ -4,6 +4,7 @@ import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
+import io.flowcatalyst.framework.core.Criticality;
 import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Module;
@@ -138,11 +139,17 @@ public final class JettyHttpModule implements Module {
         }
         case HealthResult.TimedOut timedOut -> one.put("status", "TIMED_OUT");
       }
+      if (report.criticality(e.getKey()) == Criticality.INFORMATIONAL) {
+        one.put("informational", true);
+      }
       checks.put(e.getKey(), one);
     }
+    // UP: every check up. DEGRADED: only informational checks are not up (still ready, 200).
+    // DOWN: a critical check is not up (503).
+    String status = report.isUp() ? "UP" : report.isReady() ? "DEGRADED" : "DOWN";
     Map<String, Object> body = new LinkedHashMap<>();
-    body.put("status", report.isUp() ? "UP" : "DOWN");
+    body.put("status", status);
     body.put("checks", checks);
-    return Response.json(report.isUp() ? 200 : 503, body);
+    return Response.json(report.isReady() ? 200 : 503, body);
   }
 }

@@ -185,6 +185,12 @@ that register routes. `ContextResolver` is optional and found with `App.find`. S
   {"status":"UP"}`; `GET /health/ready` runs `App.health().check()` and returns `200
   {"status":"UP","checks":{name:{"status":"UP"}}}` or `503` with `DOWN` / `TIMED_OUT` and the
   reason for `Down`. Both without authentication; no context.
+  *Amended by MA item 7 (core contract section 1, criticality):* the status code follows
+  `HealthReport.isReady()`, so only **critical** checks can make it `503`. Top-level `status` is
+  `UP` (every check up, 200), `DEGRADED` (only informational checks are not up, 200) or `DOWN` (a
+  critical check is not up, 503). An informational check's entry carries `"informational": true`;
+  a critical one has no such key. A probe that reads only the status code sees no change for
+  critical checks; one that compares the body's `status` with `UP` must accept `DEGRADED`.
 - **Graceful shutdown** (`shutdown` hook): stop accepting (close connectors), let in-flight
   requests finish up to `http.shutdown-grace`, then interrupt the rest. New requests arriving
   during the drain on existing connections get 503 `UNAVAILABLE` with `Connection: close`.

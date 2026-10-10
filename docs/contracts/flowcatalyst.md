@@ -31,6 +31,12 @@ methods; the SDK types do not appear in framework contracts. Adds a health check
 Failure of the platform at start-up does not stop the application (the platform is not on the
 request path); it is logged and the health check reports it.
 
+*Amended by MA item 7 (2026-10-10):* the `flowcatalyst` check and the `outbox` check (section 3)
+are added as **informational** (core contract section 1): they are reported by `/health/ready` but
+do not make it answer `503`. Before, a platform outage that outlasted the cached token marked every
+replica not ready. `app.health.critical: [flowcatalyst, outbox]` makes either decide readiness
+again.
+
 ## 2. Definition sync (deploy time)
 
 Modules contribute definitions during `register` through `Definitions`:

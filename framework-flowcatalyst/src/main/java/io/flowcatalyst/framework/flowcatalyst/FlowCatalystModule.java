@@ -6,6 +6,7 @@ import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
+import io.flowcatalyst.framework.core.Criticality;
 import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
@@ -274,7 +275,9 @@ public final class FlowCatalystModule implements Module {
       LOG.info("flowcatalyst is disabled (flowcatalyst.enabled=false)");
       return;
     }
-    app.health().add(ID, client::verifyCredentials);
+    // Informational: the platform is not on the request path, so an outage must not take every
+    // replica out of rotation. app.health.critical can make it decide readiness again.
+    app.health().add(ID, client::verifyCredentials, Criticality.INFORMATIONAL);
     addOutboxCheck(app);
     runner = ReceiverMount.mount(app, client);
     purge = ReceiverMount.startOncePurge(app);
@@ -365,8 +368,13 @@ public final class FlowCatalystModule implements Module {
           OUTBOX_CHECK);
       return;
     }
+    // Informational, like the platform check: a stalled processor is an alert, not a reason to stop
+    // serving requests.
     app.health()
-        .add(OUTBOX_CHECK, new OutboxHealthCheck(db, staleAfter, app.get(InstantSource.class)));
+        .add(
+            OUTBOX_CHECK,
+            new OutboxHealthCheck(db, staleAfter, app.get(InstantSource.class)),
+            Criticality.INFORMATIONAL);
   }
 
   private static PlatformClient buildClient(Config config) {

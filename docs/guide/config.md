@@ -153,6 +153,7 @@ unknown):
 |---|---|---|---|
 | `app.shutdown.drain` | duration | `10s` | core |
 | `app.health.timeout` | duration | `2s` | core |
+| `app.health.critical`, `app.health.informational` | string list | empty | core; check names whose criticality configuration decides ([health checks](modules-and-lifecycle.md#critical-and-informational-checks)) |
 | `http.host`, `http.port`, `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace` | see [HTTP](http.md#the-jetty-module-and-its-settings) | | `http` |
 | `flowcatalyst.*` | see [The FlowCatalyst module](flowcatalyst-module.md#settings) | | `flowcatalyst` |
 

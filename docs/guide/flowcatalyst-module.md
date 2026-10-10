@@ -53,19 +53,19 @@ still starts; the failure is logged and the `flowcatalyst` health check reports 
 fetches a token with the service-account credentials; it uses the SDK's cached token, so it can
 stay `Up` briefly after the platform goes down.
 
-**But readiness does depend on it.** The `flowcatalyst` check is `Down` exactly when fetching a
-token fails: the platform refuses the credentials or cannot be reached, and the cached token (the
-SDK refreshes it about a minute before it expires) has run out. `/health/ready` answers `503` when
-*any* check is down ([HTTP](http.md#health-endpoints)), so a platform outage that outlasts the
-cached token marks **every replica not ready**. An orchestrator that takes not-ready instances out
-of rotation (a Kubernetes readiness probe, a load balancer health check) then stops sending an
-application traffic it could have served without the platform. The `outbox` check below can do the
-same when the platform's processor stops draining the table.
+**Readiness does not depend on it by default.** The `flowcatalyst` check is `Down` exactly when
+fetching a token fails: the platform refuses the credentials or cannot be reached, and the cached
+token (the SDK refreshes it about a minute before it expires) has run out. Both the `flowcatalyst`
+check and the `outbox` check below are **informational**
+([criticality](modules-and-lifecycle.md#critical-and-informational-checks)): `/health/ready`
+reports them (top-level `DEGRADED`, still `200`) but they do not make it answer `503`, so a
+platform outage does not take every replica out of rotation. To make either decide readiness:
 
-There is no setting that excludes a check from readiness. If a platform outage must not take the
-application out of rotation, point the readiness probe at `/health/live` (always `200`) and use
-`/health/ready` for dashboards and alerts; or set `flowcatalyst.enabled: false` where no platform
-exists. A per-check "informational" flag is planned (MA item 7).
+```yaml
+app:
+  health:
+    critical: [flowcatalyst, outbox]
+```
 
 ## `PlatformClient`
 
@@ -302,6 +302,8 @@ check, and an INFO line says why. It reports `Down` when the oldest undelivered 
 `PENDING` or `IN_PROGRESS`; terminal failures are not a backlog) is **strictly older** than
 `flowcatalyst.outbox.stale-after`, measured with the application's `InstantSource`. It runs two
 `min(created_at)` queries and writes nothing. A failing lookup reports the database error.
+The check is informational: a stale backlog is reported (`DEGRADED`) but does not make
+`/health/ready` answer `503` unless `app.health.critical` lists `outbox`.
 
 ## Receivers
 

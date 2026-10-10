@@ -280,6 +280,47 @@ class JettyHttpModuleTest {
   }
 
   @Test
+  void readyIs200AndDegradedWhenOnlyAnInformationalCheckIsDown() throws Exception {
+    io.flowcatalyst.framework.core.Module checks =
+        new io.flowcatalyst.framework.core.Module() {
+          @Override
+          public String id() {
+            return "checks";
+          }
+
+          @Override
+          public void boot(App app) {
+            app.health()
+                .add(
+                    "platform",
+                    () -> {
+                      throw new IllegalStateException("platform unreachable");
+                    },
+                    io.flowcatalyst.framework.core.Criticality.INFORMATIONAL);
+            app.health().add("good", () -> {});
+          }
+        };
+    try (App app = Apps.start(dir, Apps.env(), r -> {}, checks)) {
+      HttpResponse<String> r = get(app, "/health/ready");
+      assertThat(r.statusCode()).isEqualTo(200);
+      assertThat(r.body())
+          .isEqualTo(
+              "{\"status\":\"DEGRADED\",\"checks\":{\"platform\":{\"status\":\"DOWN\","
+                  + "\"reason\":\"IllegalStateException: platform unreachable\",\"informational\":true},"
+                  + "\"good\":{\"status\":\"UP\"}}}");
+    }
+    // The same check made critical by configuration takes the application out of rotation.
+    try (App app =
+        Apps.start(dir, Apps.env("APP_HEALTH_CRITICAL", "platform"), r -> {}, checks)) {
+      HttpResponse<String> r = get(app, "/health/ready");
+      assertThat(r.statusCode()).isEqualTo(503);
+      JsonNode body = json(r);
+      assertThat(body.get("status").asString()).isEqualTo("DOWN");
+      assertThat(body.get("checks").get("platform").has("informational")).isFalse();
+    }
+  }
+
+  @Test
   void healthNeedsNoAuthenticationEvenWhenAResolverThrows() throws Exception {
     io.flowcatalyst.framework.core.Module resolver =
         new io.flowcatalyst.framework.core.Module() {

@@ -56,6 +56,24 @@ before it is logged as overrun and the next one runs.
 a timeout (`app.health.timeout`, default `2s`), and returns a result per check: `Up`, `Down(reason)`
 or `TimedOut`.
 
+**Criticality (MA item 7, 2026-10-10).** Every check is `CRITICAL` or `INFORMATIONAL`
+(`Criticality`). `add(name, check)` adds a critical check; `add(name, check, criticality)` chooses.
+A critical check that is not `Up` makes the application not ready; an informational one is run and
+reported the same way but never decides readiness. The report (`HealthReport`) carries the names of
+the informational checks: `isUp()` is true when every check is up, `isReady()` when every critical
+check is up, `criticality(name)` says which a check ran with.
+
+- Configuration wins over what a module asked for, by check name: `app.health.critical` and
+  `app.health.informational` (string lists, default empty). A name in both fails start-up (problem
+  on `app.health.informational`). A name that matches no check after every `started` hook ran is a
+  WARN, not a failure: some checks are added conditionally (the `outbox` check exists only when the
+  table does), so one configuration must work for deployments with and without them.
+- Defaults: every check the framework adds is critical except `flowcatalyst` and `outbox`
+  (flowcatalyst contract section 1 and 3), which are informational because the platform is not on
+  the request path. A platform outage therefore no longer takes every replica out of rotation;
+  `app.health.critical: [flowcatalyst]` restores the old behaviour.
+- The HTTP side (http contract section 8) answers `/health/ready` from `isReady()`.
+
 ## 2. Named instances and drivers
 
 A capability with drivers (locks now; cache, storage, mail later) works the same way:

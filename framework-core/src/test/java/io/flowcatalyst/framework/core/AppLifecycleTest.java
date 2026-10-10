@@ -510,4 +510,83 @@ class AppLifecycleTest {
     assertThatThrownBy(() -> app.health().add("x", () -> {}))
         .isInstanceOf(IllegalArgumentException.class);
   }
+
+  @Test
+  void anInformationalCheckThatIsDownIsReportedButTheAppStaysReady() {
+    Mod m =
+        Mod.of("m")
+            .boot(
+                app -> {
+                  app.health().add("db", () -> {});
+                  app.health()
+                      .add(
+                          "platform",
+                          () -> { throw new IllegalStateException("unreachable"); },
+                          Criticality.INFORMATIONAL);
+                });
+    App app = builder().module(m).start();
+    HealthReport report = app.health().check();
+    assertThat(report.results().get("platform"))
+        .isEqualTo(new HealthResult.Down("IllegalStateException: unreachable"));
+    assertThat(report.isUp()).isFalse();
+    assertThat(report.isReady()).isTrue();
+    assertThat(report.informational()).containsExactly("platform");
+    assertThat(report.criticality("platform")).isEqualTo(Criticality.INFORMATIONAL);
+    assertThat(report.criticality("db")).isEqualTo(Criticality.CRITICAL);
+  }
+
+  @Test
+  void aCriticalCheckThatIsDownOrTimesOutMakesTheAppNotReady() {
+    Mod m =
+        Mod.of("m")
+            .boot(
+                app -> {
+                  app.health().add("info", () -> {}, Criticality.INFORMATIONAL);
+                  app.health().add("hang", () -> Thread.sleep(Duration.ofSeconds(30)));
+                });
+    App app = builder(Map.of("APP_HEALTH_TIMEOUT", "200ms")).module(m).start();
+    HealthReport report = app.health().check();
+    assertThat(report.results().get("hang")).isInstanceOf(HealthResult.TimedOut.class);
+    assertThat(report.isReady()).isFalse();
+  }
+
+  @Test
+  void configurationOverridesTheCriticalityAModuleAskedFor() {
+    Mod m =
+        Mod.of("m")
+            .boot(
+                app -> {
+                  app.health().add("platform", () -> {}, Criticality.INFORMATIONAL);
+                  app.health().add("cache", () -> {});
+                  app.health().add("other", () -> {});
+                });
+    App app =
+        builder(Map.of("APP_HEALTH_CRITICAL", "platform", "APP_HEALTH_INFORMATIONAL", "cache"))
+            .module(m)
+            .start();
+    assertThat(app.health().criticality("platform")).isEqualTo(Criticality.CRITICAL);
+    assertThat(app.health().criticality("cache")).isEqualTo(Criticality.INFORMATIONAL);
+    assertThat(app.health().criticality("other")).isEqualTo(Criticality.CRITICAL);
+    assertThat(app.health().criticality("missing")).isNull();
+    assertThat(app.health().check().informational()).containsExactly("cache");
+  }
+
+  @Test
+  void aCheckNamedInBothOverrideListsFailsStartUp() {
+    StartupException e =
+        failure(builder(Map.of("APP_HEALTH_CRITICAL", "a,b", "APP_HEALTH_INFORMATIONAL", "b")));
+    assertThat(e.problems()).hasSize(1);
+    assertThat(e.problems().get(0).key()).isEqualTo("app.health.informational");
+    assertThat(e.problems().get(0).message()).contains("'b'");
+  }
+
+  @Test
+  void overrideNamesThatMatchNoCheckAreReportedNotFatal() {
+    App app =
+        builder(Map.of("APP_HEALTH_INFORMATIONAL", "typo,x"))
+            .module(Mod.of("m").boot(a -> a.health().add("x", () -> {})))
+            .start();
+    assertThat(app.health().unmatchedOverrides()).containsExactly("typo");
+    assertThat(app.health().criticality("x")).isEqualTo(Criticality.INFORMATIONAL);
+  }
 }

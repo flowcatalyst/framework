@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
+import io.flowcatalyst.framework.core.Criticality;
+import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
@@ -138,6 +140,22 @@ class OutboxHealthCheckTest {
           .contains("301s")
           .contains("stale after 300s")
           .contains("outbox processor");
+    }
+  }
+
+  @Test
+  void aStaleBacklogIsInformationalByDefaultAndCriticalWhenConfigured() {
+    try (App app = start()) {
+      insert("old", 0, NOW.minus(Duration.ofHours(1)));
+      HealthReport report = app.health().check();
+      assertThat(report.criticality("outbox")).isEqualTo(Criticality.INFORMATIONAL);
+      assertThat(report.results().get("outbox")).isInstanceOf(HealthResult.Down.class);
+      assertThat(report.isReady()).isTrue();
+    }
+    try (App app = start(true, true, env("APP_HEALTH_CRITICAL", "outbox"))) {
+      HealthReport report = app.health().check();
+      assertThat(report.criticality("outbox")).isEqualTo(Criticality.CRITICAL);
+      assertThat(report.isReady()).isFalse();
     }
   }
 

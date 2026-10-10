@@ -321,7 +321,26 @@ public final class AppBuilder {
     }
 
     java.time.Duration drain = config.get(CoreModule.SHUTDOWN_DRAIN);
-    Health health = new Health(config.get(CoreModule.HEALTH_TIMEOUT), monotonicClock);
+    Set<String> forcedCritical = new HashSet<>(config.get(CoreModule.HEALTH_CRITICAL));
+    Set<String> forcedInformational = new HashSet<>(config.get(CoreModule.HEALTH_INFORMATIONAL));
+    for (String name : forcedCritical) {
+      if (forcedInformational.contains(name)) {
+        problems.add(
+            Problem.of(
+                CoreModule.ID,
+                CoreModule.HEALTH_INFORMATIONAL.key(),
+                "health check '" + name + "' is also listed in " + CoreModule.HEALTH_CRITICAL.key()));
+      }
+    }
+    if (!problems.isEmpty()) {
+      throw new StartupException(problems);
+    }
+    Health health =
+        new Health(
+            config.get(CoreModule.HEALTH_TIMEOUT),
+            monotonicClock,
+            forcedCritical,
+            forcedInformational);
 
     // 3. Build every provided service.
     Map<Class<?>, Object> seeded = new LinkedHashMap<>();
@@ -376,6 +395,14 @@ public final class AppBuilder {
     if (!startedProblems.isEmpty()) {
       app.close();
       throw new StartupException(startedProblems);
+    }
+    // Checks are added in boot (some only conditionally, such as the outbox check), so a name in
+    // the criticality overrides that matches nothing is a warning, not a failure.
+    List<String> unmatched = app.health().unmatchedOverrides();
+    if (!unmatched.isEmpty()) {
+      LOG.warn(
+          "app.health.critical / app.health.informational name checks that do not exist: {}",
+          unmatched);
     }
     if (installShutdownHook) {
       app.installShutdownHook();

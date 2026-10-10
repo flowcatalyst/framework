@@ -1,4 +1,4 @@
-<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceConfig, Command, Launch, Health, HealthCheck, HealthReport, HealthResult, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
+<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceConfig, Command, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
 # Modules and the application lifecycle
 
 An application is a list of **modules** given to a builder, in code. Everything the framework
@@ -196,8 +196,36 @@ app.health().add("mail", () -> {
 `HealthCheck.check()` returns normally for up and throws for down; the message becomes the reason.
 `app.health().check()` runs all checks in parallel on virtual threads, each limited by
 `app.health.timeout` (default `2s`), and returns a `HealthReport`: a map of name to `HealthResult`
-(`Up`, `Down(reason)`, `TimedOut`). `isUp()` is true when all are up. With the Jetty module,
-`/health/ready` serves this ([HTTP](http.md#health-endpoints)).
+(`Up`, `Down(reason)`, `TimedOut`). With the Jetty module, `/health/ready` serves this
+([HTTP](http.md#health-endpoints)).
+
+### Critical and informational checks
+
+A check is `Criticality.CRITICAL` (the default) or `Criticality.INFORMATIONAL`. A critical check
+that is not up makes the application **not ready**; an informational one is run and reported the
+same way but never does. Use informational for a dependency you can serve requests without:
+
+```java
+app.health().add("flowcatalyst", client::verifyCredentials, Criticality.INFORMATIONAL);
+```
+
+(from `FlowCatalystModule`, whose `flowcatalyst` and `outbox` checks are informational.) On the
+report, `isUp()` is true when every check is up, `isReady()` when every critical one is, and
+`criticality(name)` says which a check ran with. `app.health().criticality(name)` returns the same
+for a registered check (null for an unknown name).
+
+Configuration changes a check's criticality by name and wins over the module:
+
+```yaml
+app:
+  health:
+    critical: [flowcatalyst]          # the platform decides readiness again
+    informational: ["database:reporting"]
+```
+
+A name in both lists fails start-up. A name that matches no check is logged at WARN once start-up
+finishes, not refused, because some checks exist only in some deployments (the `outbox` check
+needs the table).
 
 ## Commands and `launch`
 

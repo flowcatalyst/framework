@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit 6685855 (2026-10-09). `verify.sh` fails if that commit is not an
+Last verified against commit 094de2e (2026-10-10). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -25,7 +25,7 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | M4d | Admin skeleton under `/admin` with permission gating | Not started | |
 | M4e | Admin pages: users, invitations, event types, config, scoped events and dispatch jobs | Not started | |
 | M4f | Trial business service on these contracts | Not started | |
-| MA | Usability gaps raised by the first application (below) | Not started | |
+| MA | Usability gaps raised by the first application (below) | **In progress.** Built: item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
 | M5 | Cache and storage, platform config driver, metering, messaging | Not started | |
 
 ## Known gaps
@@ -41,7 +41,6 @@ row of `implementation-plan.md`) or a milestone.
 | **Outbox writer: events and audit rows only** | No dispatch-job rows, and no direct framework call that creates a dispatch job either. The platform's outbox processor already delivers `DISPATCH_JOB` rows, but the framework cannot write them; the platform's `POST /api/dispatch-jobs/batch` (permission `platform:messaging:batch:dispatch-jobs-write`) can be called by hand, see [Creating a dispatch job](flowcatalyst-module.md#creating-a-dispatch-job) | MA-4 |
 | **No HTTP client library** | Calling a platform API (or any service) means taking `PlatformClient.accessToken()` and using `java.net.http` yourself; see [Calling a platform API yourself](flowcatalyst-module.md#calling-a-platform-api-yourself) | MA item 6 (blocking API on virtual threads, auth strategies, retries, Context propagation) |
 | **No rate limiting** | Nothing limits request rates on the HTTP layer; put a limiter in front or write a middleware | MA item 9 |
-| **Health checks cannot be excluded from readiness** | A platform outage that outlasts the cached token marks every replica not ready (the `flowcatalyst` check is `Down`); only `/health/live` is unaffected. See [the module page](flowcatalyst-module.md) | MA item 7 |
 | **`framework-http` depends on `framework-usecase`** | An HTTP-only application also gets `framework-database`, HikariCP and the PostgreSQL driver on its classpath, because `HttpErrors.of(UseCaseError)` needs the use case error types | MA item 8 |
 | **No secret store** | Secrets come from the environment, or `config/secrets.local.yaml` in `local` and `test` only. No secret manager, no per-client credentials | MA-5 (`SecretResolver` with env, file and platform drivers); M5 (platform config and secret store) |
 | **No background-work or metrics primitive** | Start your own threads in `boot` and stop them in `shutdown`; no managed loop, no counters or timers, no Prometheus endpoint | MA-3: `Background` and `Metrics` |

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.core.App;
+import io.flowcatalyst.framework.core.Criticality;
+import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
@@ -124,8 +126,26 @@ class FlowCatalystModuleTest {
       closedPort = s.getLocalPort();
     }
     try (App app = start(env("http://127.0.0.1:" + closedPort))) {
-      assertThat(app.health().check().results().get("flowcatalyst"))
-          .isInstanceOf(HealthResult.Down.class);
+      HealthReport report = app.health().check();
+      assertThat(report.results().get("flowcatalyst")).isInstanceOf(HealthResult.Down.class);
+      // Informational by default: the platform being down does not make the application not ready.
+      assertThat(report.criticality("flowcatalyst")).isEqualTo(Criticality.INFORMATIONAL);
+      assertThat(report.isReady()).isTrue();
+    }
+  }
+
+  @Test
+  void thePlatformCheckCanBeMadeCriticalByConfiguration() throws IOException {
+    int closedPort;
+    try (ServerSocket s = new ServerSocket(0)) {
+      closedPort = s.getLocalPort();
+    }
+    Map<String, String> env = env("http://127.0.0.1:" + closedPort);
+    env.put("APP_HEALTH_CRITICAL", "flowcatalyst");
+    try (App app = start(env)) {
+      HealthReport report = app.health().check();
+      assertThat(report.criticality("flowcatalyst")).isEqualTo(Criticality.CRITICAL);
+      assertThat(report.isReady()).isFalse();
     }
   }
 

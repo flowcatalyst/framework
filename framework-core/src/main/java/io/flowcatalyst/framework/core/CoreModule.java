@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.core;
 
 import io.flowcatalyst.framework.config.Setting;
 import java.time.Duration;
+import java.util.List;
 
 /** The built-in module: declares the settings of the lifecycle itself. Always first. */
 final class CoreModule implements Module {
@@ -18,6 +19,18 @@ final class CoreModule implements Module {
           .withDefault(Duration.ofSeconds(2))
           .describedAs("Time each health check may take before it reports TimedOut.");
 
+  static final Setting<List<String>> HEALTH_CRITICAL =
+      Setting.stringList("app.health.critical")
+          .withDefault(List.of())
+          .describedAs(
+              "Names of health checks that decide readiness, whatever their module asked for.");
+
+  static final Setting<List<String>> HEALTH_INFORMATIONAL =
+      Setting.stringList("app.health.informational")
+          .withDefault(List.of())
+          .describedAs(
+              "Names of health checks that are reported but never make the application not ready.");
+
   @Override
   public String id() {
     return ID;
@@ -27,5 +40,7 @@ final class CoreModule implements Module {
   public void register(AppBuilder app) {
     app.declare(SHUTDOWN_DRAIN);
     app.declare(HEALTH_TIMEOUT);
+    app.declare(HEALTH_CRITICAL);
+    app.declare(HEALTH_INFORMATIONAL);
   }
 }
