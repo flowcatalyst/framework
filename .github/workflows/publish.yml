@@ -1,0 +1,81 @@
+# Publishes the framework's artifacts to GitHub Packages when a version tag is pushed (MA item 1).
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The tag sets the version (v0.1.0 -> 0.1.0) of every module, framework-bom included, then the full
+# build runs (tests need Docker, which GitHub's Ubuntu runners have) and deploys with -Prelease
+# (sources jars). Credentials: the workflow's own GITHUB_TOKEN, scoped to packages:write below; no
+# secret is stored in the repository. Contract: docs/contracts/build.md.
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out the framework
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 with a 'github' server entry for GitHub Packages
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Work out the version from the tag
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "tag '$tag' is not v<major>.<minor>.<patch>[-qualifier]" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          sdk=$(./mvnw -B -q -f framework-bom/pom.xml help:evaluate -Dexpression=flowcatalyst-sdk.version -DforceStdout)
+          echo "sdk=$sdk" >> "$GITHUB_OUTPUT"
+
+      # framework-flowcatalyst depends on io.flowcatalyst:flowcatalyst-sdk, which no remote
+      # repository serves. Build it from the platform repository's tag into the runner's local
+      # repository so the framework compiles. It is NOT published here (owner ruling pending,
+      # docs/contracts/build.md section 4). PLATFORM_REPO_TOKEN is only needed if that repository
+      # is private.
+      - name: Check out the FlowCatalyst Java SDK
+        uses: actions/checkout@v4
+        with:
+          repository: flowcatalyst/flowcatalyst
+          ref: java-sdk/v${{ steps.version.outputs.sdk }}
+          path: platform
+          token: ${{ secrets.PLATFORM_REPO_TOKEN || github.token }}
+
+      - name: Install the SDK into the local repository
+        run: ./mvnw -B -f platform/clients/java-sdk/pom.xml install -DskipTests
+
+      - name: Set the version of every module
+        run: >
+          ./mvnw -B org.codehaus.mojo:versions-maven-plugin:2.19.1:set
+          -DnewVersion=${{ steps.version.outputs.version }}
+          -DprocessAllModules=true
+          -DgenerateBackupPoms=false
+
+      - name: Build, test and deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./mvnw -B -Prelease deploy

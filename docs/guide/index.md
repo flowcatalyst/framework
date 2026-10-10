@@ -115,7 +115,7 @@ it does not move the outbox rows.
   are for programming errors and infrastructure failure.
 - **Nullness is checked at build time in the framework** (JSpecify `@NullMarked`, Error Prone and
   NullAway), and the annotations are there for your tools. Your own build checks it only if you
-  add the same compiler setup, which is optional ([Getting started](getting-started.md#3-compiler-setup-error-prone-and-nullaway-stop-gap)).
+  add the same compiler setup, which is optional ([Getting started](getting-started.md#optional-error-prone-and-nullaway)).
 - **No reflection, no annotation scanning, no classpath scanning** for wiring.
 - **Blocking code on virtual threads.** No reactive APIs.
 - **Time comes from an injected `InstantSource`**, never `Instant.now()` in library code.

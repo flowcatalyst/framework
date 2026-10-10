@@ -12,6 +12,11 @@
   <name>orders-demo</name>
   <description>An order with lines: the write path end to end (use cases, optimistic locking, outbox).</description>
 
+  <properties>
+    <!-- An example: never published. -->
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>

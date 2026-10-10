@@ -20,7 +20,7 @@ the rest are published as test-jars.
 | `LockStoreContract`, `AdjustableClock` | test-jar of `framework-locks` | the lock driver contract suite; a movable monotonic clock |
 
 Dependencies for a test-jar (the BOM import manages the version; see
-[Getting started](getting-started.md#2-import-framework-parent-as-a-bom)):
+[Getting started](getting-started.md#2-import-framework-bom)):
 
 ```xml
 <dependency>

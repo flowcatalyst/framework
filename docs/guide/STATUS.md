@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit 9cde933 (2026-10-10). `verify.sh` fails if that commit is not an
+Last verified against commit 21704e4 (2026-10-10). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -25,7 +25,7 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | M4d | Admin skeleton under `/admin` with permission gating | Not started | |
 | M4e | Admin pages: users, invitations, event types, config, scoped events and dispatch jobs | Not started | |
 | M4f | Trial business service on these contracts | Not started | |
-| MA | Usability gaps raised by the first application (below) | **In progress.** Built: item 2 (`AppBuilder.override(Class, instance)`, only when `APP_ENV` is `test`; [testing](testing.md#replacing-a-service)); item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
+| MA | Usability gaps raised by the first application (below) | **In progress.** Built: item 1 (`framework-bom`, publishing configuration and workflow, [contract](../contracts/build.md); nothing published); item 2 (`AppBuilder.override(Class, instance)`, only when `APP_ENV` is `test`; [testing](testing.md#replacing-a-service)); item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
 | M5 | Cache and storage, platform config driver, metering, messaging | Not started | |
 
 ## Known gaps
@@ -35,7 +35,7 @@ row of `implementation-plan.md`) or a milestone.
 
 | Gap | What it means today | Plan |
 |---|---|---|
-| **No published artifacts, no BOM** | Build the repo with `./mvnw install`; import `framework-parent` as a BOM; copy the Error Prone / NullAway setup and `.mvn/jvm.config`. See [Getting started](getting-started.md) | MA-1: a `framework-bom` and published artifacts (GitHub Packages first) |
+| **Nothing published yet** | `framework-bom` exists and is all an application imports (no framework parent, no Error Prone setup); the GitHub Packages configuration and the tag-triggered publish workflow are ready, but no version has been tagged. Until then build the repo with `./mvnw install`. See [Getting started](getting-started.md#3-getting-the-artifacts-from-github-packages) | first `v*` tag (owner) |
 | **No authentication, login or sessions** | `Request.context()` needs a `ContextResolver` you write. No login, no token validation, no permission model for `authorize` steps | M4c (needs M-UI); admin and permissions M4d |
 | **No UI module** | HTML is hand-built strings; Datastar works at the wire level only | M-UI |
 | **Outbox writer: events and audit rows only** | No dispatch-job rows, and no direct framework call that creates a dispatch job either. The platform's outbox processor already delivers `DISPATCH_JOB` rows, but the framework cannot write them; the platform's `POST /api/dispatch-jobs/batch` (permission `platform:messaging:batch:dispatch-jobs-write`) can be called by hand, see [Creating a dispatch job](flowcatalyst-module.md#creating-a-dispatch-job) | MA-4 |

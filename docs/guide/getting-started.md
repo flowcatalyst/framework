@@ -1,10 +1,10 @@
 <!-- types: AppBuilder, App, Module, Launch -->
 # Getting started
 
-> **Status: no published artifacts, no BOM.** Today you build the framework from source into your
-> local Maven repository and depend on it from there. The `framework-parent` import and the
-> compiler setup below are a **stop-gap** until a `framework-bom` and published artifacts exist
-> (plan item MA-1, see [STATUS](STATUS.md)). Expect these steps to change.
+> **Status: a BOM, publishing ready, nothing published yet.** An application imports
+> `framework-bom` and needs no framework parent and no special compiler setup. The artifacts will be
+> served by GitHub Packages from the first `v*` tag (the workflow is in the repository); until then,
+> build the framework into your local Maven repository (step 1). See [STATUS](STATUS.md).
 
 ## Prerequisites
 
@@ -52,35 +52,50 @@ mvn install -DskipTests
 This installs `io.flowcatalyst:flowcatalyst-sdk:0.0.11` into `~/.m2/repository`. (Checked by
 extracting that tag and running `mvn package -DskipTests` against an empty local repository, which
 produced `flowcatalyst-sdk-0.0.11.jar`; `install` is the same build plus the copy.) The version has
-to match `flowcatalyst-sdk.version` in the framework's root `pom.xml`. Drop `-DskipTests` to run
+to match `flowcatalyst-sdk.version` in `framework-bom/pom.xml`. Drop `-DskipTests` to run
 its tests too. A repository (GitHub Packages, an internal Nexus) that serves the SDK works equally:
 the framework does not care where the artifact comes from.
 
-## 2. Import `framework-parent` as a BOM
+## 2. Import `framework-bom`
 
-`framework-parent` carries a `dependencyManagement` section with the versions of every framework
-module and of every library they use (Jackson 3, Jetty, HikariCP, JUnit, Testcontainers, and so
-on). Importing it gives your application those versions. This snippet was compiled against the
-installed artifacts:
+`framework-bom` manages the version of every framework module and of every library they are built
+and tested with (Jackson 3, Jetty, HikariCP, the PostgreSQL driver, JUnit, Testcontainers, and so
+on). This is `examples/locks-demo`'s `pom.xml`, which the framework's build compiles and tests
+**without** any framework parent, so this is all an application needs (also checked outside the
+repository: a copy of `locks-demo` with no `.mvn/jvm.config`, built offline against `./mvnw install`ed
+artifacts, compiled and passed its tests):
 
 ```xml
 <properties>
   <maven.compiler.release>25</maven.compiler.release>
-  <framework.version>0.1.0-SNAPSHOT</framework.version>
+  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 </properties>
 
 <dependencyManagement>
   <dependencies>
-    <!-- Stop-gap BOM: framework-parent's dependencyManagement, imported. -->
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
-      <artifactId>framework-parent</artifactId>
-      <version>${framework.version}</version>
+      <artifactId>framework-bom</artifactId>
+      <version>0.1.0-SNAPSHOT</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
   </dependencies>
 </dependencyManagement>
+
+<!-- The plugin snippet: Java 25 and a surefire that runs JUnit 6. Nothing else is required. -->
+<build>
+  <plugins>
+    <plugin>
+      <artifactId>maven-compiler-plugin</artifactId>
+      <version>3.16.0</version>
+    </plugin>
+    <plugin>
+      <artifactId>maven-surefire-plugin</artifactId>
+      <version>3.6.0</version>
+    </plugin>
+  </plugins>
+</build>
 ```
 
 Then list the modules you use, without versions:
@@ -109,8 +124,23 @@ Then list the modules you use, without versions:
     <artifactId>slf4j-simple</artifactId>
     <scope>runtime</scope>
   </dependency>
+  <!-- Tests: versions from the BOM too. -->
+  <dependency>
+    <groupId>org.junit.jupiter</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <scope>test</scope>
+  </dependency>
+  <dependency>
+    <groupId>org.assertj</groupId>
+    <artifactId>assertj-core</artifactId>
+    <scope>test</scope>
+  </dependency>
 </dependencies>
 ```
+
+The checked-SQL Maven plugin is a plugin, which a BOM cannot manage: give it the framework's version
+yourself (`<version>0.1.0-SNAPSHOT</version>`, or a `framework.version` property you also use for the
+BOM); see [Checked SQL](checked-sql.md).
 
 The modules, and what each is for:
 
@@ -130,16 +160,72 @@ The modules, and what each is for:
 
 Test support: `TestClient` is in `framework-http`'s ordinary jar; the fixtures are published as
 test-jars (`<type>test-jar</type>`, `<scope>test</scope>`) of `framework-database`,
-`framework-redis`, `framework-locks` and `framework-flowcatalyst`; the parent already manages them.
+`framework-redis`, `framework-locks` and `framework-flowcatalyst`; the BOM manages them.
 See [Testing](testing.md).
 
-## 3. Compiler setup: Error Prone and NullAway (stop-gap)
+## 3. Getting the artifacts from GitHub Packages
+
+Once a version is tagged (`v0.1.0`), the publish workflow (`.github/workflows/publish.yml`) deploys
+every framework artifact, the BOM, the parent and the checked-SQL plugin to
+`https://maven.pkg.github.com/flowcatalyst/framework`. **Nothing has been published yet.** To read
+from it, add the repository to your `pom.xml`:
+
+```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/flowcatalyst/framework</url>
+  </repository>
+</repositories>
+<pluginRepositories>
+  <pluginRepository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/flowcatalyst/framework</url>
+  </pluginRepository>
+</pluginRepositories>
+```
+
+GitHub Packages needs a token for Maven reads, even for public packages. In `~/.m2/settings.xml`
+(never in the project):
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>github</id>
+      <username>YOUR_GITHUB_USER</username>
+      <password>${env.GITHUB_TOKEN}</password>   <!-- a token with read:packages -->
+    </server>
+  </servers>
+</settings>
+```
+
+In GitHub Actions, `actions/setup-java` writes that entry for you (`server-id: github`,
+`server-username: GITHUB_ACTOR`, `server-password: GITHUB_TOKEN`); the job needs
+`permissions: packages: read` and access to the package.
+
+`framework-flowcatalyst` still needs the FlowCatalyst Java SDK in your repository (step 1): the
+publish workflow builds it to compile the framework but does not publish it (an owner decision,
+[contracts/build.md](../contracts/build.md)).
+
+**Releasing** (maintainers): push a tag `v<major>.<minor>.<patch>`. The workflow sets every
+module's version from the tag (`versions-maven-plugin:2.19.1:set -DprocessAllModules=true`), runs
+the full build with tests, and deploys with `-Prelease` (adds sources jars). The same by hand, with a
+`github` server entry in your settings:
+
+```
+./mvnw -B org.codehaus.mojo:versions-maven-plugin:2.19.1:set -DnewVersion=0.1.0 -DprocessAllModules=true -DgenerateBackupPoms=false
+./mvnw -B -Prelease deploy
+git checkout -- '*pom.xml'      # main stays on -SNAPSHOT
+```
+
+### Optional: Error Prone and NullAway
 
 The framework's own build runs Error Prone with NullAway as an error, and every framework package
-is `@NullMarked`. A consuming application is not forced to do the same, but the first application
-copied this setup, so it is recorded here as it appears in the framework's root `pom.xml`. Put
-`@NullMarked` (from `org.jspecify.annotations`) in a `package-info.java` for each of your packages,
-and change `AnnotatedPackages` to your own package root.
+is `@NullMarked`. **An application does not need either.** If you want the same checks on your
+code, this is the setup from the framework's root `pom.xml`: put `@NullMarked` (from
+`org.jspecify.annotations`) in a `package-info.java` for each of your packages, and change
+`AnnotatedPackages` to your own package root.
 
 ```xml
 <properties>
@@ -218,8 +304,7 @@ project root (this is the framework's own file, verbatim):
 --add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED
 ```
 
-You may leave Error Prone and NullAway out of your own build; nothing in the framework requires
-them. What that costs: the framework's own build checks nullness at compile time, and its
+Without them, what you give up: the framework's own build checks nullness at compile time, and its
 `@NullMarked` annotations tell your IDE and any checker you run what can be null, but without
 NullAway in *your* build nothing stops you passing a `null` to a method that says it never takes
 one, and a mistake there surfaces at run time.
