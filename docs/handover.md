@@ -33,6 +33,13 @@ rewritten at hand-off and can lag the code in between.
   transient error; a receiver without handlers answers 404 (reverses "routes stay and refuse");
   sessions have cookie/database/redis drivers; Opus for security-sensitive slices, Sonnet for
   wiring.
+- Rust framework: designed 2026-10-11, nothing built. `rust/design.md` (principles, crate layout,
+  the ordered owner decisions), `rust/capabilities.md`, `rust/orders-showcase.md`,
+  `rust/milestones.md`. Findings: a Rust SDK exists after all, `flowcatalyst-rust/crates/fc-sdk`
+  (Apache-2.0, unpublished), but its outbox DDL and dispatch-job shape diverge from the Java SDK and
+  the batch endpoint; recommendation is a new `flowcatalyst-sdk` in `flowcatalyst-go/clients/rust-sdk`
+  seeded from it. `contracts/flowcatalyst.md` 4a's "Unix seconds must be ASCII digits" should say
+  the millisecond ISO-8601 form is accepted too (the code does).
 - UI kit (`ui-kit/`) is now being dogfooded by the Go platform's templ port (`/ui` in
   `flowcatalyst-go`). Since 2026-10-09 the kit gained: Props tables and 124+ fixtures with golden
   HTML (the conformance authority), specs for row actions, flash stack, form dialog, autocomplete,
