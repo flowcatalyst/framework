@@ -54,3 +54,9 @@
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }
     - { title: Laravel capability inventory, path: laravel-capability-inventory.md }
+- group: Rust design
+  items:
+    - { title: Rust design, path: rust/design.md }
+    - { title: Rust capabilities, path: rust/capabilities.md }
+    - { title: Rust orders example, path: rust/orders-showcase.md }
+    - { title: Rust milestones, path: rust/milestones.md }
