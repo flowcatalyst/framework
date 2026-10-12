@@ -282,12 +282,11 @@ the fields never written, `metadata` as an array); section 8 (TSIDs). Metrics
 | `Ids.generate("ord")` returning a string | `ids.next::<Order>() -> Id<Order>` (prefix from the kind) and `ids.generate(prefix) -> String` | typed ids |
 
 A use case loads through its repositories with `&Db` (a pool, no transaction), as in Java. Load-once
-stays a rule, not a type: debug and test builds count `find` calls per (type, id) in one attempt and
-fail the attempt as `INTERNAL / RELOADED` on a second, so a test catches it.
+stays a rule, not a type. A debug-build check (`INTERNAL / RELOADED`) was proposed and **dropped**
+(owner ruling 2026-10-12): nothing enforces it, as in Java.
 
 ### Open rulings
 
-- `INTERNAL / RELOADED` in debug and test builds only (above): a new code, not in the contract.
 - Whether `Context` gains the principal's permissions in M4c, which `Context::require` needs; until
   then `authorize` checks what `Context` has (principal present, application).
 
@@ -772,6 +771,17 @@ work; `flowcatalyst.receivers.enabled: false` mounts nothing; the start-up check
   (Java's `GET` is a 405); the conformance vectors record it as an allowed difference unless the
   owner prefers identical behaviour.
 - The `sync` command is a `Command`; `my-app sync --dry-run` runs it after build.
+
+### Ruling for R4: the receiver's principal (owner, 2026-10-12)
+
+A use case run by a dispatch receiver **always has a principal**: the application's service
+principal (kind Service; the principal types arrive with M4c, so there is no Rust type for the kind yet), the one the application's own credentials identify. The
+dispatch job's id is recorded as the **cause** (`Context::with_causation`, so it reaches
+the events' `causationId` and the audit row's causation) in the audit and outbox rows the use case
+writes. There is no principal-less execution path: the receiver builds the `Context` with that
+principal before running the handler, and `authorize` never sees an absent principal from a
+receiver. The Java receiver's behaviour for this is to be checked when R4 is built; if it differs,
+the difference is reported, not copied.
 
 ### Open rulings
 

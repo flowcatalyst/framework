@@ -16,6 +16,10 @@ deviations from this plan and from [`design.md`](design.md) are recorded here.
 | R1 | **Built** (2026-10-12), commits `0598015`, `60361b3` | see below |
 | R2 | **Built** (2026-10-12) | see below |
 
+Standing rulings (owner, 2026-10-12): the crates are **not published** and their names stay as they
+are (`fw-*`); `.github/workflows/rust.yml` exists but is not to be run yet. The dispatch receiver's
+principal is a design note for R4 in [`capabilities.md`](capabilities.md) section 11.
+
 **R0 as built.** `rust/` workspace (edition 2024, toolchain 1.98.1, the platform's lint table plus
 `missing_docs`, `unreachable_pub`, `rust_2018_idioms`), `deny.toml` (permissive licences only, MPL
 not allowed either; duplicate versions warn while the workspace is young), `.cargo/config.toml`
@@ -142,7 +146,8 @@ database holding the Java runner's history rows for `outbox` and `orders`
   against it (`OutboxConformanceTest`, `conformance/tests/outbox.rs`), and the Rust writer numbers
   the `?` placeholders when it is built (`fw_db::number_placeholders`, also used by the lock driver).
   The Java text lost its trailing newline to match the file.
-- The load-once check (`INTERNAL`/`RELOADED` in debug builds) is not built (open ruling).
+- The load-once check (`INTERNAL`/`RELOADED` in debug builds) is **dropped** (owner ruling
+  2026-10-12), not deferred: load-once stays a rule, as in Java.
 - `cargo-fw` runs as `cargo run -p cargo-fw -- sql prepare|check` (`cargo fw ...` once installed),
   prepares with `--all-targets --all-features`, and needs `sqlx-cli` 0.8.6.
 - The orders demo has no HTTP handler yet (R3); the showcase's 100-character customer limit is not
