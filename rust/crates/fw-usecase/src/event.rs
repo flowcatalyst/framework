@@ -354,4 +354,26 @@ mod tests {
         strip_nulls(&mut v);
         assert_eq!(v.to_string(), r#"{"b":{"d":1},"e":[{}]}"#);
     }
+
+    /// The known divergence from Jackson (milestones section 0): a null **map value** is left
+    /// out here and kept there. A null **array element** is kept by both.
+    #[test]
+    fn a_null_map_value_is_dropped_and_a_null_array_element_kept() {
+        use std::collections::BTreeMap;
+
+        #[derive(serde::Serialize)]
+        struct Data {
+            labels: BTreeMap<&'static str, Option<&'static str>>,
+            items: Vec<Option<&'static str>>,
+            note: Option<&'static str>,
+        }
+        let data = Data {
+            labels: [("k", None), ("j", Some("v"))].into(),
+            items: vec![None, Some("z")],
+            note: None,
+        };
+        let mut v = serde_json::to_value(&data).unwrap();
+        strip_nulls(&mut v);
+        assert_eq!(v.to_string(), r#"{"labels":{"j":"v"},"items":[null,"z"]}"#);
+    }
 }

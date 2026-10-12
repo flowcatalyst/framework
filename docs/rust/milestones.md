@@ -116,9 +116,27 @@ database holding the Java runner's history rows for `outbox` and `orders`
 - An unexpected failure inside a phase is `UseCaseError::failure(cause)` (`?` on a `sqlx::Error`
   does it); a panic in a phase is caught (`catch_unwind`) and is `INTERNAL` with the step's code.
 - A `Sink` trait, as in Java, so tests substitute failing sinks; `UseCases::build(boot, &dbs)`.
-- Event data leaves out null fields, as Jackson's `NON_NULL` does for record components; Jackson
-  keeps a null **map value**, the Rust writer drops it. An `f64` outside 10^-3..10^7 prints as
-  `10000000000.0` where Jackson prints `1.0E10`. Neither is in the vectors.
+- Event data leaves out null fields and null map values (owner ruling 2026-10-12: avoid nulls).
+  **Known divergence from the Java framework**, which is not changed: the Java mapper
+  (`Json.newMapper()`) sets `NON_NULL` for property inclusion only, so Jackson 3 keeps nulls in
+  these cases, checked by serialising a record with the Java mapper:
+  a null **`Map` value** (`{"k":null}`; Rust leaves the key out), a null entry of a free-form
+  `Map<String, Object>` (`"deep":{"x":null}`; Rust leaves it out) and `Optional.empty()` (`"o":null`;
+  Rust has no counterpart, an `Option` that is `None` is left out). Both keep a null **array
+  element** (`[null,"z"]`) and both leave out a null record component, also inside a nested record
+  or a record in a list. Evidence that the platform does not need the nulls (read-only, Go platform
+  `internal/platform/event`, `internal/stream/fan_out.go`, `docs/wire-contract.md`): the event's
+  `data` is an opaque `json.RawMessage`, stored as JSONB and delivered as `string(e.Data)` (and
+  byte for byte for `dataOnly` subscriptions); the outbox payload carries it as a JSON string, so
+  the platform never looks inside; the only check is that `data` is present and not the JSON `null`
+  itself (`validateBatchItem`, single create); there is no JSON Schema validation of event data on
+  ingest or dispatch (the schema is only served to callers, `mcp get_schema`); the other payload
+  fields are `*string`, where absent and null decode the same. So absent against null changes
+  nothing in the platform; it can matter to a subscriber that validates the delivered body against
+  an event type's schema (a property typed `string` accepts absence, not null), which is the reason
+  to prefer absence. An `f64` outside 10^-3..10^7 prints as `10000000000.0` where Jackson prints
+  `1.0E10`. Neither divergence is in the vectors (they are Java-written; Rust's test is
+  `a_null_map_value_is_dropped_and_a_null_array_element_kept`).
 - The outbox `INSERT` is a shared file, `conformance/sql/outbox/insert.sql` (owner ruling 2026-10-12),
   like the lock statements: the Java `OutboxWriter.INSERT_SQL` and the Rust `INSERT_SQL` are checked
   against it (`OutboxConformanceTest`, `conformance/tests/outbox.rs`), and the Rust writer numbers
