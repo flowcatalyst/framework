@@ -34,6 +34,8 @@
 - group: Rust
   items:
     - { title: Rust overview, path: guide/rust/index.md }
+    - { title: "Rust: application and config", path: guide/rust/core.md }
+    - { title: "Rust: database", path: guide/rust/database.md }
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }

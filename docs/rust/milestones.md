@@ -12,8 +12,8 @@ deviations from this plan and from [`design.md`](design.md) are recorded here.
 
 | # | State | Notes |
 |---|---|---|
-| R0 | **Built** (2026-10-12) | see below |
-| R1 | Not started | |
+| R0 | **Built** (2026-10-12), commit `e116b5c` | see below |
+| R1 | In progress: `fw-core`, `fw-db` and the config vectors built | see below |
 | R2 | Not started | |
 
 **R0 as built.** `rust/` workspace (edition 2024, toolchain 1.98.1, the platform's lint table plus
@@ -34,6 +34,28 @@ is written by the Java `IdsConformanceTest` and read by the Rust `tsid` test. De
   service containers, or a throwaway local server), else Testcontainers. A container shared by a
   test binary lives in a static that is never dropped, so it is removed by an `atexit` hook (the
   workspace's one `unsafe`, with a reasoned `#[expect]`); testcontainers-rs has no reaper.
+
+**R1 as built so far.** `fw-core`: `AppBuilder` → `Configured` → `Built` → `Running` (the design's
+typestate as four types), `Module::declare` returning typed handles, `Boot` with `on_started`,
+`on_shutdown`, `command`, health, background loops, metrics and ids; `launch` for `main`. Config:
+`const Setting<T, Optional | Present>` read through `SettingHandle`s (`get` for `Present` cannot
+fail), every Java rule and message (vectors `conformance/config/config.json`: environment names,
+value parsing, sources in order, problems, collisions), and instance sections checked **at
+configure** against each driver's declared keys. `fw-db`: named pools, `Databases::connect` (ping,
+health `database:<name>`, close at shutdown), `Databases::migrate`, the runner on
+`fw_schema_history`, `Db`, `Tx`. Deviations:
+
+- No generic `DriverFactory` trait: a capability declares its drivers' key schemas
+  (`InstanceSection`, `DriverSpec`, `KeySpec`) so `configure` validates every instance, and its own
+  `build` function constructs the driver named in each instance (it knows which dependencies each
+  needs). Problems found per instance are all reported, where Java stops at an instance's first bad
+  key.
+- `configure` is `async` from R1, as capabilities section 1 recommends.
+- `Context::fresh` is not on `Context` (it belongs to `fw-usecase`, R2).
+- `sqlx::raw_sql` makes a future that is not `Send` under `tokio::spawn` (an `Executor` lifetime
+  that is "not general enough"); the runner executes each file with `Executor::execute(&str)`, which
+  also uses the simple-query protocol, so a file may hold several statements.
+- A YAML mapping with a duplicate key is refused by `serde_norway`; the Java reader keeps the last.
 
 ## 1. Milestones
 

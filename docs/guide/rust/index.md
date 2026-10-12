@@ -7,7 +7,8 @@ interchangeable to the FlowCatalyst platform: the same outbox rows, ids, config 
 framework tables. The design is in [`docs/rust/`](../../rust/design.md); the plan and its state in
 [Rust milestones](../../rust/milestones.md).
 
-**State:** milestone R0 (the workspace) is built. Nothing is published; crate names are the
+**State:** milestone R0 (the workspace) is built; R1 (foundation and locks) is in progress:
+[application and config](core.md) and [database](database.md) are built. Nothing is published; crate names are the
 design's working names (`fw-*`). The Java pages of this guide describe the Java framework only.
 
 ## The workspace
@@ -19,7 +20,8 @@ rust/
   deny.toml             licences (permissive only), advisories, crates.io only
   clippy.toml           tests may unwrap, expect and panic
   .cargo/config.toml    SQLX_OFFLINE=true
-  crates/fw-core        the core (R0: the TSID codec only)
+  crates/fw-core        lifecycle, modules, config, Context and ids, health, background loops, metrics
+  crates/fw-db          PostgreSQL instances, the migration runner, Db and Tx
   crates/fw-test        PostgreSQL 18 and Redis for tests, a fresh database per test
   conformance/          the conformance runner: checks the shared vectors in ../conformance/
 ```

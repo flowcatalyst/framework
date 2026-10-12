@@ -1,4 +1,5 @@
 //! `conformance/tsid/tsid.json`, written by the Java `IdsConformanceTest`.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)] // helpers of a test crate, as tests (clippy.toml)
 
 use fw_conformance::json;
 use fw_core::tsid;

@@ -1,0 +1,398 @@
+{
+  "description" : "Config (core contract section 4). envNames: a key and the environment variable that overrides it. values: a setting type and a text, and the parsed value or the error ('expected ...' text). Normalised values: integer and long as JSON numbers, boolean as true/false, duration as a decimal string of nanoseconds, stringList as an array, secret as its revealed text, enum (members FAST and SLOW_START) as the member name. scenarios: config files, environment and declarations (type, optional typed default, required), and the resolved values (null when a setting has no value) or every start-up problem as the Java ConfigProblem text, with the config directory written as config/. Defaults are typed: durations as defaultMillis.",
+  "envNames" : [ {
+    "key" : "http.port",
+    "env" : "HTTP_PORT"
+  }, {
+    "key" : "database.instances.main.url",
+    "env" : "DATABASE_INSTANCES_MAIN_URL"
+  }, {
+    "key" : "mail.host-name",
+    "env" : "MAIL_HOST_NAME"
+  }, {
+    "key" : "mail.host_name",
+    "env" : "MAIL_HOST_NAME"
+  }, {
+    "key" : "a",
+    "env" : "A"
+  }, {
+    "key" : "app.metrics.max-series",
+    "env" : "APP_METRICS_MAX_SERIES"
+  } ],
+  "values" : [ {
+    "type" : "duration",
+    "text" : "500ms",
+    "value" : "500000000"
+  }, {
+    "type" : "duration",
+    "text" : "30s",
+    "value" : "30000000000"
+  }, {
+    "type" : "duration",
+    "text" : "5m",
+    "value" : "300000000000"
+  }, {
+    "type" : "duration",
+    "text" : "2h",
+    "value" : "7200000000000"
+  }, {
+    "type" : "duration",
+    "text" : "1d",
+    "value" : "86400000000000"
+  }, {
+    "type" : "duration",
+    "text" : " 10s ",
+    "value" : "10000000000"
+  }, {
+    "type" : "duration",
+    "text" : "PT30S",
+    "value" : "30000000000"
+  }, {
+    "type" : "duration",
+    "text" : "pt0.5s",
+    "value" : "500000000"
+  }, {
+    "type" : "duration",
+    "text" : "P1DT2H3M4.000000005S",
+    "value" : "93784000000005"
+  }, {
+    "type" : "duration",
+    "text" : "PT1H-30M",
+    "value" : "1800000000000"
+  }, {
+    "type" : "duration",
+    "text" : "-PT1S",
+    "error" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S"
+  }, {
+    "type" : "duration",
+    "text" : "PT",
+    "error" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S"
+  }, {
+    "type" : "duration",
+    "text" : "1.5s",
+    "error" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S"
+  }, {
+    "type" : "duration",
+    "text" : "10",
+    "error" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S"
+  }, {
+    "type" : "duration",
+    "text" : "1w",
+    "error" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S"
+  }, {
+    "type" : "duration",
+    "text" : "",
+    "error" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S"
+  }, {
+    "type" : "boolean",
+    "text" : "true",
+    "value" : true
+  }, {
+    "type" : "boolean",
+    "text" : "false",
+    "value" : false
+  }, {
+    "type" : "boolean",
+    "text" : " true ",
+    "value" : true
+  }, {
+    "type" : "boolean",
+    "text" : "TRUE",
+    "error" : "true or false"
+  }, {
+    "type" : "boolean",
+    "text" : "yes",
+    "error" : "true or false"
+  }, {
+    "type" : "boolean",
+    "text" : "1",
+    "error" : "true or false"
+  }, {
+    "type" : "integer",
+    "text" : "42",
+    "value" : 42
+  }, {
+    "type" : "integer",
+    "text" : "-7",
+    "value" : -7
+  }, {
+    "type" : "integer",
+    "text" : "+7",
+    "value" : 7
+  }, {
+    "type" : "integer",
+    "text" : " 8 ",
+    "value" : 8
+  }, {
+    "type" : "integer",
+    "text" : "2147483648",
+    "error" : "an integer"
+  }, {
+    "type" : "integer",
+    "text" : "4.0",
+    "error" : "an integer"
+  }, {
+    "type" : "integer",
+    "text" : "x",
+    "error" : "an integer"
+  }, {
+    "type" : "long",
+    "text" : "2147483648",
+    "value" : 2147483648
+  }, {
+    "type" : "long",
+    "text" : "9223372036854775808",
+    "error" : "a long integer"
+  }, {
+    "type" : "string",
+    "text" : "  as written  ",
+    "value" : "  as written  "
+  }, {
+    "type" : "stringList",
+    "text" : "a, b ,c",
+    "value" : [ "a", "b", "c" ]
+  }, {
+    "type" : "stringList",
+    "text" : "",
+    "value" : [ ]
+  }, {
+    "type" : "stringList",
+    "text" : "a,,b",
+    "value" : [ "a", "", "b" ]
+  }, {
+    "type" : "secret",
+    "text" : "hunter2",
+    "value" : "hunter2"
+  }, {
+    "type" : "enum",
+    "text" : "fast",
+    "value" : "FAST"
+  }, {
+    "type" : "enum",
+    "text" : "slow-start",
+    "value" : "SLOW_START"
+  }, {
+    "type" : "enum",
+    "text" : "SLOW_START",
+    "value" : "SLOW_START"
+  }, {
+    "type" : "enum",
+    "text" : "medium",
+    "error" : "one of FAST, SLOW_START"
+  } ],
+  "scenarios" : [ {
+    "name" : "sources in order: default, application.yaml, application-test.yaml, secrets.local.yaml, environment",
+    "env" : {
+      "APP_ENV" : "test",
+      "SVC_C" : "from-env"
+    },
+    "files" : {
+      "application.yaml" : "svc:\n  a: from-app\n  b: from-app\n  c: from-app\n  d: from-app\n",
+      "application-test.yaml" : "svc:\n  b: from-env-file\n  c: from-env-file\n  d: from-env-file\n",
+      "secrets.local.yaml" : "svc:\n  d: from-secrets\n"
+    },
+    "declarations" : [ {
+      "module" : "svc",
+      "key" : "svc.a",
+      "type" : "string"
+    }, {
+      "module" : "svc",
+      "key" : "svc.b",
+      "type" : "string"
+    }, {
+      "module" : "svc",
+      "key" : "svc.c",
+      "type" : "string"
+    }, {
+      "module" : "svc",
+      "key" : "svc.d",
+      "type" : "string"
+    }, {
+      "module" : "svc",
+      "key" : "svc.e",
+      "type" : "string",
+      "default" : "from-default"
+    }, {
+      "module" : "svc",
+      "key" : "svc.f",
+      "type" : "string"
+    } ],
+    "values" : {
+      "svc.a" : "from-app",
+      "svc.b" : "from-env-file",
+      "svc.c" : "from-env",
+      "svc.d" : "from-secrets",
+      "svc.e" : "from-default",
+      "svc.f" : null
+    }
+  }, {
+    "name" : "secrets.local.yaml is ignored outside local and test",
+    "env" : {
+      "APP_ENV" : "prod"
+    },
+    "files" : {
+      "secrets.local.yaml" : "svc:\n  password: hunter2\n"
+    },
+    "declarations" : [ {
+      "module" : "svc",
+      "key" : "svc.password",
+      "type" : "secret"
+    } ],
+    "values" : {
+      "svc.password" : null
+    }
+  }, {
+    "name" : "YAML scalars become text",
+    "env" : { },
+    "files" : {
+      "application.yaml" : "svc:\n  port: 8080\n  on: true\n  list: [a, 1, false]\n  csv: x, y\n  timeout: 30s\n  nothing:\n  empty: {}\n"
+    },
+    "declarations" : [ {
+      "module" : "svc",
+      "key" : "svc.port",
+      "type" : "integer"
+    }, {
+      "module" : "svc",
+      "key" : "svc.on",
+      "type" : "boolean"
+    }, {
+      "module" : "svc",
+      "key" : "svc.list",
+      "type" : "stringList"
+    }, {
+      "module" : "svc",
+      "key" : "svc.csv",
+      "type" : "stringList"
+    }, {
+      "module" : "svc",
+      "key" : "svc.timeout",
+      "type" : "duration"
+    }, {
+      "module" : "svc",
+      "key" : "svc.nothing",
+      "type" : "string",
+      "default" : "kept"
+    }, {
+      "module" : "svc",
+      "key" : "svc.empty",
+      "type" : "string"
+    } ],
+    "values" : {
+      "svc.port" : 8080,
+      "svc.on" : true,
+      "svc.list" : [ "a", "1", "false" ],
+      "svc.csv" : [ "x", "y" ],
+      "svc.timeout" : "30000000000",
+      "svc.nothing" : "kept",
+      "svc.empty" : null
+    }
+  }, {
+    "name" : "every problem at once; a secret's text is never quoted",
+    "env" : {
+      "SVC_PASSWORD" : "",
+      "SVC_RETRIES" : "many"
+    },
+    "files" : {
+      "application.yaml" : "svc:\n  port: eighty\n  timeout: 5 minutes\n  tags: { a: 1 }\n  mode: medium\n"
+    },
+    "declarations" : [ {
+      "module" : "svc",
+      "key" : "svc.port",
+      "type" : "integer",
+      "default" : 8080
+    }, {
+      "module" : "svc",
+      "key" : "svc.timeout",
+      "type" : "duration",
+      "defaultMillis" : 1000
+    }, {
+      "module" : "svc",
+      "key" : "svc.name",
+      "type" : "string",
+      "required" : true
+    }, {
+      "module" : "svc",
+      "key" : "svc.token",
+      "type" : "secret",
+      "required" : true
+    }, {
+      "module" : "svc",
+      "key" : "svc.retries",
+      "type" : "long"
+    }, {
+      "module" : "svc",
+      "key" : "svc.tags",
+      "type" : "stringList"
+    }, {
+      "module" : "svc",
+      "key" : "svc.mode",
+      "type" : "enum"
+    }, {
+      "module" : "svc",
+      "key" : "svc.password",
+      "type" : "string"
+    } ],
+    "problems" : [ "module 'svc': key 'svc.port' (from config/application.yaml): expected an integer, found 'eighty'", "module 'svc': key 'svc.timeout' (from config/application.yaml): expected a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S, found '5 minutes'", "module 'svc': key 'svc.name': missing required setting; set it in config/application.yaml or as environment variable SVC_NAME", "module 'svc': key 'svc.token': missing required setting; set it in config/application.yaml, config/secrets.local.yaml (local and test only) or as environment variable SVC_TOKEN", "module 'svc': key 'svc.retries' (from environment variable SVC_RETRIES): expected a long integer, found 'many'", "module 'svc': key 'svc.mode' (from config/application.yaml): expected one of FAST, SLOW_START, found 'medium'" ]
+  }, {
+    "name" : "a required secret's hint names secrets.local.yaml",
+    "env" : { },
+    "files" : { },
+    "declarations" : [ {
+      "module" : "fc",
+      "key" : "flowcatalyst.client-secret",
+      "type" : "secret",
+      "required" : true
+    } ],
+    "problems" : [ "module 'fc': key 'flowcatalyst.client-secret': missing required setting; set it in config/application.yaml, config/secrets.local.yaml (local and test only) or as environment variable FLOWCATALYST_CLIENT_SECRET" ]
+  }, {
+    "name" : "duplicate declarations and environment-name collisions",
+    "env" : { },
+    "files" : {
+      "application.yaml" : "locks:\n  instances:\n    a-b: { driver: memory }\n    a_b: { driver: memory }\nother:\n  instances:\n    x: { url: u }\n"
+    },
+    "declarations" : [ {
+      "module" : "mail",
+      "key" : "mail.host-name",
+      "type" : "string"
+    }, {
+      "module" : "mail",
+      "key" : "mail.host_name",
+      "type" : "string"
+    }, {
+      "module" : "other",
+      "key" : "mail.host-name",
+      "type" : "string"
+    }, {
+      "module" : "other",
+      "key" : "other.instances.x.url",
+      "type" : "string"
+    }, {
+      "module" : "web",
+      "key" : "mail.host.name",
+      "type" : "string"
+    } ],
+    "problems" : [ "module 'other': key 'mail.host-name': declared twice (first by module 'mail')", "module 'mail': key 'mail.host_name': reads environment variable MAIL_HOST_NAME, which key 'mail.host-name' (declared by module 'mail') reads too; keys may contain '_' and both '.' and '-' become '_', so rename one of them", "module 'web': key 'mail.host.name': reads environment variable MAIL_HOST_NAME, which key 'mail.host-name' (declared by module 'mail') reads too; keys may contain '_' and both '.' and '-' become '_', so rename one of them", "key 'locks.instances.a_b.driver': reads environment variable LOCKS_INSTANCES_A_B_DRIVER, which key 'locks.instances.a-b.driver' (an instance setting in config/application.yaml) reads too; keys may contain '_' and both '.' and '-' become '_', so rename one of them" ]
+  }, {
+    "name" : "APP_ENV blank means local",
+    "env" : {
+      "APP_ENV" : " "
+    },
+    "files" : {
+      "application-local.yaml" : "svc:\n  a: local-file\n",
+      "secrets.local.yaml" : "svc:\n  b: secret-file\n"
+    },
+    "declarations" : [ {
+      "module" : "svc",
+      "key" : "svc.a",
+      "type" : "string"
+    }, {
+      "module" : "svc",
+      "key" : "svc.b",
+      "type" : "string"
+    } ],
+    "values" : {
+      "svc.a" : "local-file",
+      "svc.b" : "secret-file"
+    }
+  } ]
+}

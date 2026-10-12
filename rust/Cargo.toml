@@ -60,7 +60,9 @@ serde_norway = "0.9"
 thiserror = "2.0"
 tracing = "0.1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
-rand = "0.9"
+rand = { version = "0.9", features = ["std_rng"] }
+indexmap = "2"
+tempfile = "3"
 sha2 = "0.10"
 hex = "0.4"
 subtle = "2.6"
@@ -73,4 +75,5 @@ testcontainers-modules = { version = "0.15", default-features = false, features 
 
 # Workspace crates.
 fw-core = { path = "crates/fw-core" }
+fw-db = { path = "crates/fw-db" }
 fw-test = { path = "crates/fw-test" }

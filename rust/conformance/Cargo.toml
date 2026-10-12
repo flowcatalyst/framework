@@ -12,6 +12,8 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 fw-core = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [lints]
 workspace = true
