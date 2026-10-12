@@ -10,16 +10,29 @@ database:
   default: main
   instances:
     main:
-      url: jdbc:postgresql://localhost:5432/app   # or postgres://...
+      url: jdbc:postgresql://localhost:5432/app   # or postgres://localhost:5432/app
       username: app
       password: ""                               # a secret
       pool: { max: 10, min-idle: 1, connect-timeout: 5s }
       migrate: true
 ```
 
-A `jdbc:` prefix is stripped (pending ruling, [capabilities](../../rust/capabilities.md) section 2);
-`pool.max` and `pool.min-idle` set the sqlx pool's maximum and minimum connections, and
-`pool.connect-timeout` its acquire timeout (at least 250 ms).
+The `url` is read in these forms (`fw_db::parse_url`):
+
+- `postgres://` or `postgresql://`: Rust's own form, `postgres://[user[:password]@]host[:port]/db[?params]`
+  (percent-encode special characters in the credentials);
+- `jdbc:postgresql://...`: the form a Java service writes, accepted so a Rust service can take over
+  its configuration unchanged. The `jdbc:` prefix is dropped and the rest is read as above.
+  Parameters sqlx knows (`user`, `password`, `sslmode`, `application_name`, ...) work; JDBC-only
+  ones (`ssl`, `currentSchema`, ...) are ignored with a warning in the log.
+
+Plain `key=value` pairs (`host=... dbname=...`) are **not** accepted, because sqlx has no parser for
+them; the start-up error says which forms are. Anything else fails start-up naming the instance.
+
+Precedence for the credentials: the separate `username` and `password` keys, when set and not
+empty, replace whatever the URL carries (userinfo or `user=`/`password=` parameters); otherwise the
+URL's values are used. `pool.max` and `pool.min-idle` set the sqlx pool's maximum and minimum
+connections, and `pool.connect-timeout` its acquire timeout (at least 250 ms).
 
 ## Using it
 

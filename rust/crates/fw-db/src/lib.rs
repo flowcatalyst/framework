@@ -8,7 +8,7 @@
 //!   default: main
 //!   instances:
 //!     main:
-//!       url: postgres://localhost:5432/app      # a jdbc:postgresql:// URL is accepted too
+//!       url: postgres://localhost:5432/app      # postgres://, postgresql:// or jdbc:postgresql://
 //!       username: app
 //!       password: ""                            # a secret
 //!       pool: { max: 10, min-idle: 1, connect-timeout: 5s }
@@ -17,5 +17,7 @@
 
 mod database;
 pub mod migrations;
+mod url;
 
 pub use database::{DatabaseDeclared, DatabaseModule, Databases, Db, DbError, Tx};
+pub use url::parse_url;

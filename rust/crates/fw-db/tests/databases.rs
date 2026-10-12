@@ -152,3 +152,58 @@ async fn a_table_on_a_non_default_instance_is_checked() {
             .contains("needs table 'fw_lock' in database instance 'b', but it does not exist")
     );
 }
+
+#[tokio::test]
+async fn the_native_url_form_connects_with_credentials_in_the_url() {
+    let db = fw_test::postgres()
+        .await
+        .unwrap()
+        .fresh_database()
+        .await
+        .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    // Rust's own form, no separate username/password keys.
+    let yaml = format!(
+        "database:\n  instances:\n    main:\n      url: \"{}\"\n      pool: {{ max: 2, min-idle: 0, connect-timeout: 2s }}\n",
+        db.url
+    );
+    let mut app = config(&dir, &yaml);
+    let database = app.module(DatabaseModule);
+    let built = app
+        .configure()
+        .await
+        .unwrap()
+        .build(async |boot: &mut Boot| {
+            let dbs = Databases::connect(boot, &database).await?;
+            dbs.require_default("test")?.ping().await.unwrap();
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let running = built.start().await.unwrap();
+    let report = running.health().check().await;
+    assert_eq!(report.result("database:main"), Some(&CheckResult::Up));
+    running.shutdown().await;
+}
+
+#[tokio::test]
+async fn a_url_in_no_accepted_form_fails_start_up_naming_the_forms() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut app = config(
+        &dir,
+        "database:\n  instances:\n    main: { url: \"host=localhost dbname=app\" }\n",
+    );
+    let database = app.module(DatabaseModule);
+    let e = app
+        .configure()
+        .await
+        .unwrap()
+        .build(async |boot: &mut Boot| Databases::connect(boot, &database).await.map(|_| ()))
+        .await
+        .unwrap_err();
+    let line = e.problems()[0].to_string();
+    assert!(
+        line.starts_with("module 'database': key 'database.instances.main': url must be a postgres:// or postgresql:// URL, or a jdbc:postgresql:// URL"),
+        "{line}"
+    );
+}

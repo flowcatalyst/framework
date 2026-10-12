@@ -55,6 +55,10 @@ health `database:<name>`, close at shutdown), `Databases::migrate`, the runner o
 - `sqlx::raw_sql` makes a future that is not `Send` under `tokio::spawn` (an `Executor` lifetime
   that is "not general enough"); the runner executes each file with `Executor::execute(&str)`, which
   also uses the simple-query protocol, so a file may hold several statements.
+- Database `url` (owner ruling 2026-10-12): `jdbc:postgresql://` (a Java service's value) and
+  `postgres://` / `postgresql://` are both accepted (`fw_db::parse_url`, tests `fw-db/tests/url.rs`
+  and `databases.rs`); plain `key=value` pairs are not, sqlx cannot parse them. The `username` /
+  `password` keys win over credentials in the URL. The Java-written config vectors are unaffected.
 - A YAML mapping with a duplicate key is refused by `serde_norway`; the Java reader keeps the last.
 
 `fw-redis` (named `ConnectionManager`s, ping, health `redis:<name>`) and `fw-locks` (memory,

@@ -2,7 +2,6 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,10 +10,11 @@ use fw_core::config::{
 };
 use fw_core::health::{CheckResult, Criticality};
 use fw_core::{Boot, Declarations, Module, ModuleId, Problem, StartupError};
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 use sqlx::{Executor, PgConnection, PgPool, Postgres, Transaction};
 
 use crate::migrations;
+use crate::url::parse_url;
 
 /// A database failure, as the driver reports it.
 pub type DbError = sqlx::Error;
@@ -356,14 +356,7 @@ impl Databases {
 async fn open(instance: &InstanceConfig) -> Result<Db, Problem> {
     let name = instance.name();
     let url = instance.string("url").unwrap_or_default();
-    // One configuration file serves both implementations: a JDBC URL is accepted.
-    let url = url.strip_prefix("jdbc:").unwrap_or(url);
-    let mut options = PgConnectOptions::from_str(url).map_err(|e| {
-        problem(
-            name,
-            format!("url is not a postgres:// (or jdbc:postgresql://) URL: {e}"),
-        )
-    })?;
+    let mut options = parse_url(url).map_err(|e| problem(name, e))?;
     if let Some(user) = instance.string("username").filter(|u| !u.is_empty()) {
         options = options.username(user);
     }

@@ -165,8 +165,10 @@ standalone only, the health check, start-up ping.
 
 - The pool is sqlx's `PgPool`, not HikariCP; settings `pool.max`, `pool.min-idle`,
   `pool.connect-timeout` map to `PgPoolOptions`. The `url` is a `postgres://` URL, not
-  `jdbc:postgresql://`; a `jdbc:` prefix is accepted and stripped so one configuration file serves
-  both implementations (ruling to confirm).
+  `jdbc:postgresql://`; both are accepted (owner ruling 2026-10-12): a `jdbc:` prefix is dropped so a
+  Rust service can take over a Java service's configuration, and `postgres://` / `postgresql://` is
+  Rust's own form. Plain `key=value` pairs are not accepted (sqlx cannot parse them). The separate
+  `username` / `password` keys win over credentials in the URL.
 - **The migration runner is the framework's own, not `sqlx::migrate!`.** sqlx's runner keeps its own
   table (`_sqlx_migrations`) with different columns and rules; using it would break decision 8 (a
   Rust service taking over a Java service's database) and the per-module sets.
@@ -174,7 +176,7 @@ standalone only, the health check, start-up ping.
 
 ### Open rulings
 
-- Accepting `jdbc:` URLs (above).
+None for this section.
 
 ## 3. The write path
 
