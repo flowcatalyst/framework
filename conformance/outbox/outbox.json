@@ -1,0 +1,499 @@
+{
+  "description" : "Outbox rows (write-path contract sections 6, 7 and 7a) as the Java OutboxWriter writes them into outbox_messages: for each case the context, the clock, the events (with fixed ids), the dispatch jobs and the audit entry, and every row read back in insertion order. Row columns are as stored (created_at and updated_at as UTC text with microseconds); payload is the payload parsed, with data and operationData parsed too; payloadText is the stored text. The audit row's id is generated (a 13-character TSID), so it is given as <tsid>. Event kinds: placed = { orderId, customer, lines: [ { sku, quantity } ], totalCents, note (null is left out), placedAt }, cancelled = { orderId, reason }. invalidDispatchJobs: builder inputs and the error the builder raises.",
+  "cases" : [ {
+    "name" : "one event and its audit row, every context field",
+    "now" : "2026-10-08T10:15:30.123Z",
+    "context" : {
+      "client" : "acme",
+      "principal" : "user-1",
+      "application" : "shop",
+      "correlation" : "corr-1",
+      "causation" : "evt-0",
+      "execution" : "run-7"
+    },
+    "events" : [ {
+      "kind" : "placed",
+      "eventId" : "0ABCDEFGHJKMN",
+      "type" : "shop:sales:order:placed",
+      "subjectId" : "ord_0ABCDEFGHJKMN",
+      "fields" : {
+        "orderId" : "ord_0ABCDEFGHJKMN",
+        "customer" : "Acme \"Ltd\" / ünïcode",
+        "lines" : [ {
+          "sku" : "A-1",
+          "quantity" : 2
+        }, {
+          "sku" : "B-2",
+          "quantity" : 1
+        } ],
+        "totalCents" : 4250,
+        "note" : null,
+        "placedAt" : "2026-10-08T10:15:30.123Z"
+      }
+    } ],
+    "dispatchJobs" : [ ],
+    "audit" : {
+      "entityType" : "Order",
+      "entityId" : "ord_0ABCDEFGHJKMN",
+      "operation" : "place-order",
+      "data" : {
+        "customer" : "Acme",
+        "lines" : 2
+      },
+      "source" : "shop:sales"
+    },
+    "rows" : [ {
+      "id" : "0ABCDEFGHJKMN",
+      "type" : "EVENT",
+      "message_group" : "sales:order:ord_0ABCDEFGHJKMN",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 590,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:30.123000Z",
+      "updated_at" : "2026-10-08T10:15:30.123000Z",
+      "payload" : {
+        "specVersion" : "1.0",
+        "type" : "shop:sales:order:placed",
+        "source" : "shop:sales",
+        "subject" : "sales.order.ord_0ABCDEFGHJKMN",
+        "data" : {
+          "orderId" : "ord_0ABCDEFGHJKMN",
+          "customer" : "Acme \"Ltd\" / ünïcode",
+          "lines" : [ {
+            "sku" : "A-1",
+            "quantity" : 2
+          }, {
+            "sku" : "B-2",
+            "quantity" : 1
+          } ],
+          "totalCents" : 4250,
+          "placedAt" : "2026-10-08T10:15:30.123Z"
+        },
+        "correlationId" : "corr-1",
+        "causationId" : "evt-0",
+        "deduplicationId" : "0ABCDEFGHJKMN",
+        "messageGroup" : "sales:order:ord_0ABCDEFGHJKMN",
+        "clientCode" : "acme",
+        "contextData" : [ {
+          "key" : "principalId",
+          "value" : "user-1"
+        }, {
+          "key" : "executionId",
+          "value" : "run-7"
+        } ]
+      },
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:sales:order:placed\",\"source\":\"shop:sales\",\"subject\":\"sales.order.ord_0ABCDEFGHJKMN\",\"data\":\"{\\\"orderId\\\":\\\"ord_0ABCDEFGHJKMN\\\",\\\"customer\\\":\\\"Acme \\\\\\\"Ltd\\\\\\\" / ünïcode\\\",\\\"lines\\\":[{\\\"sku\\\":\\\"A-1\\\",\\\"quantity\\\":2},{\\\"sku\\\":\\\"B-2\\\",\\\"quantity\\\":1}],\\\"totalCents\\\":4250,\\\"placedAt\\\":\\\"2026-10-08T10:15:30.123Z\\\"}\",\"correlationId\":\"corr-1\",\"causationId\":\"evt-0\",\"deduplicationId\":\"0ABCDEFGHJKMN\",\"messageGroup\":\"sales:order:ord_0ABCDEFGHJKMN\",\"clientCode\":\"acme\",\"contextData\":[{\"key\":\"principalId\",\"value\":\"user-1\"},{\"key\":\"executionId\",\"value\":\"run-7\"}]}"
+    }, {
+      "id" : "<tsid>",
+      "type" : "AUDIT_LOG",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 289,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:30.123000Z",
+      "updated_at" : "2026-10-08T10:15:30.123000Z",
+      "payload" : {
+        "entityType" : "Order",
+        "entityId" : "ord_0ABCDEFGHJKMN",
+        "operation" : "place-order",
+        "operationData" : {
+          "customer" : "Acme",
+          "lines" : 2
+        },
+        "principalId" : "user-1",
+        "performedAt" : "2026-10-08T10:15:30.123Z",
+        "source" : "shop:sales",
+        "correlationId" : "corr-1",
+        "applicationCode" : "shop",
+        "clientCode" : "acme"
+      },
+      "payloadText" : "{\"entityType\":\"Order\",\"entityId\":\"ord_0ABCDEFGHJKMN\",\"operation\":\"place-order\",\"operationData\":\"{\\\"customer\\\":\\\"Acme\\\",\\\"lines\\\":2}\",\"principalId\":\"user-1\",\"performedAt\":\"2026-10-08T10:15:30.123Z\",\"source\":\"shop:sales\",\"correlationId\":\"corr-1\",\"applicationCode\":\"shop\",\"clientCode\":\"acme\"}"
+    } ]
+  }, {
+    "name" : "the smallest context, two events in step order, a message group override, no audit data",
+    "now" : "2026-10-08T10:15:30Z",
+    "context" : {
+      "client" : "client.with-dots_1",
+      "correlation" : "corr-2"
+    },
+    "events" : [ {
+      "kind" : "placed",
+      "eventId" : "0ABCDEFGHJKMP",
+      "type" : "shop:sales:order:placed",
+      "subjectId" : "ord_1",
+      "fields" : {
+        "orderId" : "ord_1",
+        "customer" : "Beta",
+        "lines" : [ ],
+        "totalCents" : 0,
+        "note" : "rush",
+        "placedAt" : "2026-10-08T10:15:30.000123Z"
+      }
+    }, {
+      "kind" : "cancelled",
+      "eventId" : "0ABCDEFGHJKMQ",
+      "type" : "shop:sales:order:cancelled",
+      "subjectId" : "ord_1",
+      "messageGroup" : "orders:all",
+      "fields" : {
+        "orderId" : "ord_1",
+        "reason" : "changed mind"
+      }
+    } ],
+    "dispatchJobs" : [ ],
+    "audit" : {
+      "entityType" : "Order",
+      "entityId" : "ord_1",
+      "operation" : "cancel-order",
+      "source" : "shop:sales"
+    },
+    "rows" : [ {
+      "id" : "0ABCDEFGHJKMP",
+      "type" : "EVENT",
+      "message_group" : "sales:order:ord_1",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "client.with-dots_1",
+      "payload_size" : 382,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:30.000000Z",
+      "updated_at" : "2026-10-08T10:15:30.000000Z",
+      "payload" : {
+        "specVersion" : "1.0",
+        "type" : "shop:sales:order:placed",
+        "source" : "shop:sales",
+        "subject" : "sales.order.ord_1",
+        "data" : {
+          "orderId" : "ord_1",
+          "customer" : "Beta",
+          "lines" : [ ],
+          "totalCents" : 0,
+          "note" : "rush",
+          "placedAt" : "2026-10-08T10:15:30.000123Z"
+        },
+        "correlationId" : "corr-2",
+        "deduplicationId" : "0ABCDEFGHJKMP",
+        "messageGroup" : "sales:order:ord_1",
+        "clientCode" : "client.with-dots_1"
+      },
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:sales:order:placed\",\"source\":\"shop:sales\",\"subject\":\"sales.order.ord_1\",\"data\":\"{\\\"orderId\\\":\\\"ord_1\\\",\\\"customer\\\":\\\"Beta\\\",\\\"lines\\\":[],\\\"totalCents\\\":0,\\\"note\\\":\\\"rush\\\",\\\"placedAt\\\":\\\"2026-10-08T10:15:30.000123Z\\\"}\",\"correlationId\":\"corr-2\",\"deduplicationId\":\"0ABCDEFGHJKMP\",\"messageGroup\":\"sales:order:ord_1\",\"clientCode\":\"client.with-dots_1\"}"
+    }, {
+      "id" : "0ABCDEFGHJKMQ",
+      "type" : "EVENT",
+      "message_group" : "orders:all",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "client.with-dots_1",
+      "payload_size" : 291,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:30.000000Z",
+      "updated_at" : "2026-10-08T10:15:30.000000Z",
+      "payload" : {
+        "specVersion" : "1.0",
+        "type" : "shop:sales:order:cancelled",
+        "source" : "shop:sales",
+        "subject" : "sales.order.ord_1",
+        "data" : {
+          "orderId" : "ord_1",
+          "reason" : "changed mind"
+        },
+        "correlationId" : "corr-2",
+        "deduplicationId" : "0ABCDEFGHJKMQ",
+        "messageGroup" : "orders:all",
+        "clientCode" : "client.with-dots_1"
+      },
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:sales:order:cancelled\",\"source\":\"shop:sales\",\"subject\":\"sales.order.ord_1\",\"data\":\"{\\\"orderId\\\":\\\"ord_1\\\",\\\"reason\\\":\\\"changed mind\\\"}\",\"correlationId\":\"corr-2\",\"deduplicationId\":\"0ABCDEFGHJKMQ\",\"messageGroup\":\"orders:all\",\"clientCode\":\"client.with-dots_1\"}"
+    }, {
+      "id" : "<tsid>",
+      "type" : "AUDIT_LOG",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "client.with-dots_1",
+      "payload_size" : 186,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:30.000000Z",
+      "updated_at" : "2026-10-08T10:15:30.000000Z",
+      "payload" : {
+        "entityType" : "Order",
+        "entityId" : "ord_1",
+        "operation" : "cancel-order",
+        "performedAt" : "2026-10-08T10:15:30Z",
+        "source" : "shop:sales",
+        "correlationId" : "corr-2",
+        "clientCode" : "client.with-dots_1"
+      },
+      "payloadText" : "{\"entityType\":\"Order\",\"entityId\":\"ord_1\",\"operation\":\"cancel-order\",\"performedAt\":\"2026-10-08T10:15:30Z\",\"source\":\"shop:sales\",\"correlationId\":\"corr-2\",\"clientCode\":\"client.with-dots_1\"}"
+    } ]
+  }, {
+    "name" : "dispatch jobs: defaults, then every optional field",
+    "now" : "2026-10-08T10:15:31.5Z",
+    "context" : {
+      "client" : "acme",
+      "principal" : "user-1",
+      "correlation" : "corr-3"
+    },
+    "events" : [ {
+      "kind" : "cancelled",
+      "eventId" : "0ABCDEFGHJKMR",
+      "type" : "shop:billing:invoice:cancelled",
+      "subjectId" : "inv_9",
+      "fields" : {
+        "orderId" : "ord_9",
+        "reason" : "duplicate"
+      }
+    } ],
+    "dispatchJobs" : [ {
+      "id" : "job-defaults",
+      "code" : "shop:billing:export-invoice",
+      "targetUrl" : "https://billing.example.com/export"
+    }, {
+      "id" : "job-full",
+      "code" : "shop:billing:export-invoice",
+      "targetUrl" : "https://billing.example.com/export?x=1",
+      "kind" : "EVENT",
+      "source" : "shop:billing",
+      "subject" : "billing.invoice.inv_9",
+      "jsonPayload" : {
+        "invoiceId" : "inv_9",
+        "amounts" : [ 1, 2 ]
+      },
+      "dataOnly" : true,
+      "externalId" : "ext-1",
+      "eventId" : "0ABCDEFGHJKMR",
+      "platformClientId" : "0CLIENT0000001",
+      "subscriptionId" : "sub_1",
+      "serviceAccountId" : "sa_1",
+      "dispatchPoolId" : "pool_1",
+      "messageGroup" : "invoice:inv_9",
+      "mode" : "BLOCK_ON_ERROR",
+      "sequence" : 2,
+      "timeoutSeconds" : 15,
+      "maxRetries" : 4,
+      "metadata" : [ [ "tenant", "acme" ], [ "attempt", "1" ] ],
+      "queue" : "HIGH_PRIORITY",
+      "descriptor" : "export one invoice"
+    }, {
+      "id" : "job-text",
+      "code" : "shop:notify",
+      "targetUrl" : "http://hooks.example.com:8080/n",
+      "payloadText" : "hello",
+      "contentType" : "text/plain"
+    } ],
+    "audit" : {
+      "entityType" : "Invoice",
+      "entityId" : "inv_9",
+      "operation" : "cancel-invoice",
+      "source" : "shop:billing"
+    },
+    "rows" : [ {
+      "id" : "0ABCDEFGHJKMR",
+      "type" : "EVENT",
+      "message_group" : "billing:invoice:inv_9",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 350,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:31.500000Z",
+      "updated_at" : "2026-10-08T10:15:31.500000Z",
+      "payload" : {
+        "specVersion" : "1.0",
+        "type" : "shop:billing:invoice:cancelled",
+        "source" : "shop:billing",
+        "subject" : "billing.invoice.inv_9",
+        "data" : {
+          "orderId" : "ord_9",
+          "reason" : "duplicate"
+        },
+        "correlationId" : "corr-3",
+        "deduplicationId" : "0ABCDEFGHJKMR",
+        "messageGroup" : "billing:invoice:inv_9",
+        "clientCode" : "acme",
+        "contextData" : [ {
+          "key" : "principalId",
+          "value" : "user-1"
+        } ]
+      },
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:billing:invoice:cancelled\",\"source\":\"shop:billing\",\"subject\":\"billing.invoice.inv_9\",\"data\":\"{\\\"orderId\\\":\\\"ord_9\\\",\\\"reason\\\":\\\"duplicate\\\"}\",\"correlationId\":\"corr-3\",\"deduplicationId\":\"0ABCDEFGHJKMR\",\"messageGroup\":\"billing:invoice:inv_9\",\"clientCode\":\"acme\",\"contextData\":[{\"key\":\"principalId\",\"value\":\"user-1\"}]}"
+    }, {
+      "id" : "job-defaults",
+      "type" : "DISPATCH_JOB",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 234,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:31.500000Z",
+      "updated_at" : "2026-10-08T10:15:31.500000Z",
+      "payload" : {
+        "id" : "job-defaults",
+        "kind" : "TASK",
+        "code" : "shop:billing:export-invoice",
+        "source" : "shop",
+        "targetUrl" : "https://billing.example.com/export",
+        "payload" : "{}",
+        "payloadContentType" : "application/json",
+        "dataOnly" : false,
+        "correlationId" : "corr-3"
+      },
+      "payloadText" : "{\"id\":\"job-defaults\",\"kind\":\"TASK\",\"code\":\"shop:billing:export-invoice\",\"source\":\"shop\",\"targetUrl\":\"https://billing.example.com/export\",\"payload\":\"{}\",\"payloadContentType\":\"application/json\",\"dataOnly\":false,\"correlationId\":\"corr-3\"}"
+    }, {
+      "id" : "job-full",
+      "type" : "DISPATCH_JOB",
+      "message_group" : "invoice:inv_9",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 705,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:31.500000Z",
+      "updated_at" : "2026-10-08T10:15:31.500000Z",
+      "payload" : {
+        "id" : "job-full",
+        "kind" : "EVENT",
+        "code" : "shop:billing:export-invoice",
+        "source" : "shop:billing",
+        "subject" : "billing.invoice.inv_9",
+        "targetUrl" : "https://billing.example.com/export?x=1",
+        "payload" : "{\"invoiceId\":\"inv_9\",\"amounts\":[1,2]}",
+        "payloadContentType" : "application/json",
+        "dataOnly" : true,
+        "externalId" : "ext-1",
+        "eventId" : "0ABCDEFGHJKMR",
+        "correlationId" : "corr-3",
+        "clientId" : "0CLIENT0000001",
+        "subscriptionId" : "sub_1",
+        "serviceAccountId" : "sa_1",
+        "dispatchPoolId" : "pool_1",
+        "messageGroup" : "invoice:inv_9",
+        "mode" : "BLOCK_ON_ERROR",
+        "sequence" : 2,
+        "timeoutSeconds" : 15,
+        "maxRetries" : 4,
+        "metadata" : [ {
+          "key" : "tenant",
+          "value" : "acme"
+        }, {
+          "key" : "attempt",
+          "value" : "1"
+        } ],
+        "queue" : "HIGH_PRIORITY",
+        "descriptor" : "export one invoice"
+      },
+      "payloadText" : "{\"id\":\"job-full\",\"kind\":\"EVENT\",\"code\":\"shop:billing:export-invoice\",\"source\":\"shop:billing\",\"subject\":\"billing.invoice.inv_9\",\"targetUrl\":\"https://billing.example.com/export?x=1\",\"payload\":\"{\\\"invoiceId\\\":\\\"inv_9\\\",\\\"amounts\\\":[1,2]}\",\"payloadContentType\":\"application/json\",\"dataOnly\":true,\"externalId\":\"ext-1\",\"eventId\":\"0ABCDEFGHJKMR\",\"correlationId\":\"corr-3\",\"clientId\":\"0CLIENT0000001\",\"subscriptionId\":\"sub_1\",\"serviceAccountId\":\"sa_1\",\"dispatchPoolId\":\"pool_1\",\"messageGroup\":\"invoice:inv_9\",\"mode\":\"BLOCK_ON_ERROR\",\"sequence\":2,\"timeoutSeconds\":15,\"maxRetries\":4,\"metadata\":[{\"key\":\"tenant\",\"value\":\"acme\"},{\"key\":\"attempt\",\"value\":\"1\"}],\"queue\":\"HIGH_PRIORITY\",\"descriptor\":\"export one invoice\"}"
+    }, {
+      "id" : "job-text",
+      "type" : "DISPATCH_JOB",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 208,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:31.500000Z",
+      "updated_at" : "2026-10-08T10:15:31.500000Z",
+      "payload" : {
+        "id" : "job-text",
+        "kind" : "TASK",
+        "code" : "shop:notify",
+        "source" : "shop",
+        "targetUrl" : "http://hooks.example.com:8080/n",
+        "payload" : "hello",
+        "payloadContentType" : "text/plain",
+        "dataOnly" : false,
+        "correlationId" : "corr-3"
+      },
+      "payloadText" : "{\"id\":\"job-text\",\"kind\":\"TASK\",\"code\":\"shop:notify\",\"source\":\"shop\",\"targetUrl\":\"http://hooks.example.com:8080/n\",\"payload\":\"hello\",\"payloadContentType\":\"text/plain\",\"dataOnly\":false,\"correlationId\":\"corr-3\"}"
+    }, {
+      "id" : "<tsid>",
+      "type" : "AUDIT_LOG",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 205,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:31.500000Z",
+      "updated_at" : "2026-10-08T10:15:31.500000Z",
+      "payload" : {
+        "entityType" : "Invoice",
+        "entityId" : "inv_9",
+        "operation" : "cancel-invoice",
+        "principalId" : "user-1",
+        "performedAt" : "2026-10-08T10:15:31.500Z",
+        "source" : "shop:billing",
+        "correlationId" : "corr-3",
+        "clientCode" : "acme"
+      },
+      "payloadText" : "{\"entityType\":\"Invoice\",\"entityId\":\"inv_9\",\"operation\":\"cancel-invoice\",\"principalId\":\"user-1\",\"performedAt\":\"2026-10-08T10:15:31.500Z\",\"source\":\"shop:billing\",\"correlationId\":\"corr-3\",\"clientCode\":\"acme\"}"
+    } ]
+  } ],
+  "invalidDispatchJobs" : [ {
+    "code" : "Shop:x",
+    "targetUrl" : "https://a.example.com",
+    "error" : "dispatch job code must be {application}:{rest} (application [a-z][a-z0-9-]*), at most 255 characters: Shop:x"
+  }, {
+    "code" : "shop",
+    "targetUrl" : "https://a.example.com",
+    "error" : "dispatch job code must be {application}:{rest} (application [a-z][a-z0-9-]*), at most 255 characters: shop"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "ftp://a.example.com",
+    "error" : "dispatch job targetUrl must be an absolute http(s) URL with a host and no user info"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "/relative",
+    "error" : "dispatch job targetUrl must be an absolute http(s) URL with a host and no user info"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://user:pw@a.example.com",
+    "error" : "dispatch job targetUrl must be an absolute http(s) URL with a host and no user info"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "id" : "has space",
+    "error" : "id must match [0-9A-Za-z_-]{1,17}"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "id" : "123456789012345678",
+    "error" : "id must match [0-9A-Za-z_-]{1,17}"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "sequence" : 0,
+    "error" : "sequence must be at least 1 (the platform turns 0 into its default)"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "source" : " ",
+    "error" : "source must be 1 to 255 characters"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "metadata" : [ [ " ", "v" ] ],
+    "error" : "metadata keys must not be blank"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "payloadText" : "x",
+    "contentType" : "",
+    "error" : "payloadContentType must be 1 to 100 characters"
+  } ]
+}

@@ -1,0 +1,13 @@
+{
+  "description" : "The fw_schema_history rows the Java migration runner writes for the set of module outbox (applied_at left out). A Rust run of the same set writes the same rows, and the Rust runner accepts a database holding them.",
+  "module" : "outbox",
+  "rows" : [ {
+    "version" : 1,
+    "description" : "create outbox messages",
+    "checksum" : "9c9fc89076341f85b74579816fb4de5de037054f0271572d1644b47f845b1253"
+  }, {
+    "version" : 2,
+    "description" : "widen outbox client id",
+    "checksum" : "1b37ac2c574dfeeaa3e765ab89979c6d71779b4d3ff135abda2a5e3617a47b88"
+  } ]
+}

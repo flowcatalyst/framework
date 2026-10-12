@@ -15,6 +15,9 @@ fw-core = { workspace = true }
 fw-db = { workspace = true }
 fw-locks = { workspace = true, features = ["postgres", "redis"] }
 fw-test = { workspace = true }
+fw-usecase = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
 sqlx = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

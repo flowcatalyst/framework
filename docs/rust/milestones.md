@@ -13,8 +13,8 @@ deviations from this plan and from [`design.md`](design.md) are recorded here.
 | # | State | Notes |
 |---|---|---|
 | R0 | **Built** (2026-10-12), commit `e116b5c` | see below |
-| R1 | **Built** (2026-10-12) | see below |
-| R2 | Not started | |
+| R1 | **Built** (2026-10-12), commits `0598015`, `60361b3` | see below |
+| R2 | **Built** (2026-10-12) | see below |
 
 **R0 as built.** `rust/` workspace (edition 2024, toolchain 1.98.1, the platform's lint table plus
 `missing_docs`, `unreachable_pub`, `rust_2018_idioms`), `deny.toml` (permissive licences only, MPL
@@ -81,6 +81,48 @@ them (`conformance/migrations/locks-database.json`). Deviations and notes:
   are now package-private, so `LockConformanceTest` and `LockScriptConformanceTest` (new) can check
   them against the shared files; both modules' tests depend on the `framework-core` test-jar.
 - `with_lock` on loss: cancels `lease.lost()`, polls the action once more, then drops it.
+
+**R2 as built.** `fw-usecase`: the `UseCase` trait (`authorize` required), the runner `UseCases`
+(validate, authorize, execute, the client check, then in one `READ COMMITTED` transaction the writes,
+the events in step order, the dispatch jobs, one audit row, commit), the contract's failure table
+with the step codes, conflicts (`STALE_AGGREGATE`, `40001`, `40P01`) under `ConflictPolicy::Fail`
+or `retry(n, backoff)` with jitter, `UNIQUE_VIOLATION` with the constraint, `Fresh`/`Loaded`/`Write`,
+`Repository`, `Plan`, `DomainEvent` with const-checked `EventType`, `Events`, `OutboxWriter` (the SDK
+table and payloads), `OutboxModule` (the SDK's `V0001` byte for byte, then `V0002`), `AuditData`,
+`DispatchJob` with the Java rules and messages, the use-case metrics. Checked SQL: sqlx macros, one
+`rust/.sqlx/` at the workspace root, `fw-sql.toml`, `tools/cargo-fw` (`sql prepare`, `sql check`),
+a CI job running the check. `examples/orders-demo`: the Java demo's migration and use cases, one
+type per order state, a read model with `!` overrides on a `LEFT JOIN`, a `demo` command.
+Exit criteria: the outbox, audit and dispatch-job rows match the Java output **byte for byte**
+(`conformance/outbox/outbox.json`: every column, the payload text and size), stronger than the
+parsed-JSON rule; every failure row of write-path section 4 has a runner test (`VALIDATE`,
+`AUTHORIZE`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`, `CROSS_CLIENT_WRITE`,
+`UNIQUE_VIOLATION`, stale, serialization failure, deadlock, row count above 1); conflict retry with
+jitter; `.sqlx/` checked by `cargo fw sql check` (fails when stale) in CI; orders-demo runs against a
+database holding the Java runner's history rows for `outbox` and `orders`
+(`conformance/migrations/outbox.json`, `orders.json`). Deviations and notes:
+
+- `Valid<'a, C>` and `Authorized<'a, C>` borrow the command, so one command serves every retry
+  attempt; `authorize` takes `Valid` by value.
+- `and_save` and `and_delete` take an event per step, as the Java `Plan` does (the design sketch
+  had none).
+- `Grant::public()` and `Grant::allowed()`; no `Context::require` until principals carry
+  permissions (M4c/R6). `Fresh::new(ctx, value)` instead of `ctx.fresh(value)` (`Context` is in
+  `fw-core`). `Tx` has no lifetime parameter.
+- An unexpected failure inside a phase is `UseCaseError::failure(cause)` (`?` on a `sqlx::Error`
+  does it); a panic in a phase is caught (`catch_unwind`) and is `INTERNAL` with the step's code.
+- A `Sink` trait, as in Java, so tests substitute failing sinks; `UseCases::build(boot, &dbs)`.
+- Event data leaves out null fields, as Jackson's `NON_NULL` does for record components; Jackson
+  keeps a null **map value**, the Rust writer drops it. An `f64` outside 10^-3..10^7 prints as
+  `10000000000.0` where Jackson prints `1.0E10`. Neither is in the vectors.
+- The outbox `INSERT` is the Java statement with numbered placeholders, not a shared file.
+- The load-once check (`INTERNAL`/`RELOADED` in debug builds) is not built (open ruling).
+- `cargo-fw` runs as `cargo run -p cargo-fw -- sql prepare|check` (`cargo fw ...` once installed),
+  prepares with `--all-targets --all-features`, and needs `sqlx-cli` 0.8.6.
+- The orders demo has no HTTP handler yet (R3); the showcase's 100-character customer limit is not
+  applied, so the Rust demo accepts what the Java demo accepts.
+- Java side: `framework-usecase` and `examples/orders-demo` tests depend on the `framework-core`
+  test-jar; new `OutboxConformanceTest` and `OrdersConformanceTest` write the vectors.
 
 ## 1. Milestones
 

@@ -3,7 +3,7 @@
 # ../conformance/ with the Java build. Not a Maven module; the Java build ignores this directory.
 [workspace]
 resolver = "3"
-members = ["crates/*", "conformance", "examples/*"]
+members = ["crates/*", "conformance", "examples/*", "tools/*"]
 
 [workspace.package]
 version = "0.0.0"
@@ -61,10 +61,11 @@ thiserror = "2.0"
 tracing = "0.1"
 # Binaries and examples only: library crates bring no subscriber.
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
-chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 rand = { version = "0.9", features = ["std_rng"] }
 indexmap = "2"
 tempfile = "3"
+toml = { version = "0.8", default-features = false, features = ["parse"] }
 sha2 = "0.10"
 hex = "0.4"
 subtle = "2.6"
@@ -80,4 +81,5 @@ fw-core = { path = "crates/fw-core" }
 fw-db = { path = "crates/fw-db" }
 fw-redis = { path = "crates/fw-redis" }
 fw-locks = { path = "crates/fw-locks" }
+fw-usecase = { path = "crates/fw-usecase" }
 fw-test = { path = "crates/fw-test" }

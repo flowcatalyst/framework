@@ -37,6 +37,8 @@
     - { title: "Rust: application and config", path: guide/rust/core.md }
     - { title: "Rust: database and Redis", path: guide/rust/database.md }
     - { title: "Rust: locks", path: guide/rust/locks.md }
+    - { title: "Rust: write path", path: guide/rust/write-path.md }
+    - { title: "Rust: checked SQL", path: guide/rust/checked-sql.md }
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }

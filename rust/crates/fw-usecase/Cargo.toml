@@ -1,0 +1,29 @@
+[package]
+name = "fw-usecase"
+description = "The write path: use cases, the runner, plans, Fresh/Loaded aggregates, repositories, events, the SDK-compatible outbox, audit rows and dispatch jobs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+futures = { workspace = true }
+fw-core = { workspace = true, features = ["sqlx"] }
+fw-db = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+fw-test = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+
+[lints]
+workspace = true

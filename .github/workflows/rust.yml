@@ -71,6 +71,29 @@ jobs:
           workspaces: rust
       - run: cargo test --workspace --all-features
 
+  # The committed .sqlx/ must describe every checked query against the migrated schema.
+  sqlx:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s
+          --health-retries 20
+    env:
+      FW_SQL_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - run: cargo install sqlx-cli --version 0.8.6 --locked --no-default-features --features rustls,postgres
+      - run: cargo run -p cargo-fw -- sql check
+
   deny:
     runs-on: ubuntu-latest
     steps:

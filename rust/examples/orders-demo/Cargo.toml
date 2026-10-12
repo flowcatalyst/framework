@@ -1,0 +1,24 @@
+[package]
+name = "orders-demo"
+description = "The Java examples/orders-demo on the Rust framework: one order aggregate, three use cases, checked SQL, the same table and outbox rows."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fw-core = { workspace = true, features = ["sqlx"] }
+fw-db = { workspace = true }
+fw-usecase = { workspace = true }
+serde = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+fw-test = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

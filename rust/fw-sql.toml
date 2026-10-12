@@ -1,0 +1,11 @@
+# The migration sets `cargo fw sql prepare|check` applies, in this order, to a throwaway PostgreSQL
+# before sqlx describes every checked query of the workspace (docs/guide/rust/checked-sql.md).
+# Each set is recorded under its module id, as the application's runner records it.
+
+[[migrations]]
+module = "outbox"
+dir = "crates/fw-usecase/migrations/outbox"
+
+[[migrations]]
+module = "orders"
+dir = "examples/orders-demo/migrations/orders"

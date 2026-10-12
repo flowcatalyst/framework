@@ -1,0 +1,9 @@
+{
+  "description" : "The fw_schema_history rows the Java migration runner writes for the set of module orders (applied_at left out). A Rust run of the same set writes the same rows, and the Rust runner accepts a database holding them.",
+  "module" : "orders",
+  "rows" : [ {
+    "version" : 1,
+    "description" : "create orders",
+    "checksum" : "69f3a4f117fb1ceaba717c9799f12f57a4a72eaec14bfada93f26f2ea6479f33"
+  } ]
+}

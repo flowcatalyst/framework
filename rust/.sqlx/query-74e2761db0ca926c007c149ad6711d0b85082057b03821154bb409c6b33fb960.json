@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT o.id AS \"id!: OrderId\", o.customer AS \"customer!: CustomerName\", o.status AS \"status!: OrderStatus\",\n                  o.version AS \"version!\",\n                  count(l.position) AS \"line_count!\",\n                  coalesce(sum(l.quantity * l.unit_price_cents), 0)::bigint AS \"total_cents!\",\n                  min(l.sku) AS first_sku\n             FROM orders o LEFT JOIN order_lines l ON l.order_id = o.id\n            WHERE o.client_id = $1\n            GROUP BY o.id\n            ORDER BY o.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: OrderId",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "customer!: CustomerName",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "status!: OrderStatus",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "version!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "line_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_cents!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "first_sku",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "74e2761db0ca926c007c149ad6711d0b85082057b03821154bb409c6b33fb960"
+}

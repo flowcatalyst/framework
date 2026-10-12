@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT client_id AS \"client_id: ClientId\", version, customer AS \"customer: CustomerName\",\n                      status AS \"status: OrderStatus\"\n                 FROM orders\n                WHERE id = $1 AND client_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_id: ClientId",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "version",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "customer: CustomerName",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status: OrderStatus",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d6026ba716e323ef08efe3877ec6dfafd060357c5813c46462becc88f5393e61"
+}

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT line_id AS \"id: LineId\", sku AS \"sku: Sku\", quantity AS \"quantity: Quantity\",\n                      unit_price_cents AS \"unit_price: Cents\"\n                 FROM order_lines WHERE order_id = $1 ORDER BY position",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: LineId",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "sku: Sku",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "quantity: Quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "unit_price: Cents",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "991f93b5d1abd8fc1aa80ff4277332e3c7b3a016f22a6ea719da10838d29faf6"
+}

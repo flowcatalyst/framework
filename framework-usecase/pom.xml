@@ -31,6 +31,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers-postgresql</artifactId>
       <scope>test</scope>

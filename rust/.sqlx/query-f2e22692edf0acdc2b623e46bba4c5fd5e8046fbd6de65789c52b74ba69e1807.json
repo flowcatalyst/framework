@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO orders (id, client_id, version, customer, status) VALUES ($1, $2, 1, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f2e22692edf0acdc2b623e46bba4c5fd5e8046fbd6de65789c52b74ba69e1807"
+}

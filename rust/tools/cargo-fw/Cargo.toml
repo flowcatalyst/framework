@@ -1,0 +1,20 @@
+[package]
+name = "cargo-fw"
+description = "cargo fw sql prepare|check: regenerate or check the committed sqlx query data against the migrated schema."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fw-core = { workspace = true }
+fw-db = { workspace = true }
+fw-test = { workspace = true }
+serde = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+toml = { workspace = true }
+
+[lints]
+workspace = true
