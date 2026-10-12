@@ -119,7 +119,11 @@ database holding the Java runner's history rows for `outbox` and `orders`
 - Event data leaves out null fields, as Jackson's `NON_NULL` does for record components; Jackson
   keeps a null **map value**, the Rust writer drops it. An `f64` outside 10^-3..10^7 prints as
   `10000000000.0` where Jackson prints `1.0E10`. Neither is in the vectors.
-- The outbox `INSERT` is the Java statement with numbered placeholders, not a shared file.
+- The outbox `INSERT` is a shared file, `conformance/sql/outbox/insert.sql` (owner ruling 2026-10-12),
+  like the lock statements: the Java `OutboxWriter.INSERT_SQL` and the Rust `INSERT_SQL` are checked
+  against it (`OutboxConformanceTest`, `conformance/tests/outbox.rs`), and the Rust writer numbers
+  the `?` placeholders when it is built (`fw_db::number_placeholders`, also used by the lock driver).
+  The Java text lost its trailing newline to match the file.
 - The load-once check (`INTERNAL`/`RELOADED` in debug builds) is not built (open ruling).
 - `cargo-fw` runs as `cargo run -p cargo-fw -- sql prepare|check` (`cargo fw ...` once installed),
   prepares with `--all-targets --all-features`, and needs `sqlx-cli` 0.8.6.

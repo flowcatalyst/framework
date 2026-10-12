@@ -17,21 +17,7 @@ pub const REFRESH_SQL: &str = include_str!("sql/refresh.sql");
 /// The release statement, as shared.
 pub const RELEASE_SQL: &str = include_str!("sql/release.sql");
 
-/// Replaces each `?` with `$1`, `$2`, ... in order (the statements hold no `?` in literals).
-fn numbered(sql: &str) -> String {
-    let mut out = String::with_capacity(sql.len() + 8);
-    let mut n = 0;
-    for c in sql.chars() {
-        if c == '?' {
-            n += 1;
-            out.push('$');
-            out.push_str(&n.to_string());
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
+use fw_db::number_placeholders as numbered;
 
 /// Locks in a PostgreSQL database (table `fw_lock`, sequence `fw_lock_fence`).
 pub struct PostgresLockStore {

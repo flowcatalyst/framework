@@ -328,6 +328,14 @@ async fn rows_match_java_byte_for_byte() {
 }
 
 #[test]
+fn the_insert_statement_is_the_shared_bytes() {
+    assert_eq!(
+        fw_usecase::INSERT_SQL,
+        fw_conformance::text("sql/outbox/insert.sql")
+    );
+}
+
+#[test]
 fn invalid_dispatch_jobs_are_refused_with_the_java_messages() {
     for case in json("outbox/outbox.json")["invalidDispatchJobs"]
         .as_array()

@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, SecondsFormat, Utc};
 use fw_core::{BoxFuture, ClientId, Clock, Context, Ids, MigrationFile, MigrationSet, ModuleId};
-use fw_db::Tx;
+use fw_db::{Tx, number_placeholders};
 use serde::Serialize;
 use serde_json::Value;
 use sqlx::types::JsonValue;
@@ -19,14 +19,10 @@ use crate::event::ErasedEvent;
 /// What a sink failure carries (logged by the runner, never shown to a caller).
 pub type SinkError = Box<dyn Error + Send + Sync>;
 
-/// The SDK's insert, so a row from here and a row from the SDK have the same shape (JDBC `?`
-/// placeholders numbered, as the PostgreSQL JDBC driver sends them).
-pub const INSERT_SQL: &str = "INSERT INTO outbox_messages (
-  id, type, message_group, payload, status, created_at, updated_at,
-  client_id, payload_size, headers
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-";
+/// The SDK's insert as shared with the Java writer (`conformance/sql/outbox/insert.sql`, JDBC `?`
+/// placeholders), so a row from here and a row from the SDK have the same shape. The writer numbers
+/// the placeholders (`$1`, `$2`, ...) when it is built.
+pub const INSERT_SQL: &str = include_str!("sql/insert.sql");
 
 const TYPE_EVENT: &str = "EVENT";
 const TYPE_AUDIT_LOG: &str = "AUDIT_LOG";
@@ -142,6 +138,7 @@ pub fn instant_text(t: DateTime<Utc>) -> String {
 pub struct OutboxWriter {
     ids: Ids,
     clock: Arc<dyn Clock>,
+    insert: String,
 }
 
 impl fmt::Debug for OutboxWriter {
@@ -207,7 +204,11 @@ impl OutboxWriter {
     /// A writer: ids for audit rows and jobs without one, the clock for `created_at`.
     #[must_use]
     pub fn new(ids: Ids, clock: Arc<dyn Clock>) -> Self {
-        Self { ids, clock }
+        Self {
+            ids,
+            clock,
+            insert: number_placeholders(INSERT_SQL),
+        }
     }
 
     fn event_row(ctx: &Context, event: &dyn ErasedEvent) -> Result<Row, serde_json::Error> {
@@ -266,7 +267,7 @@ impl OutboxWriter {
         let now = self.clock.now();
         for row in rows {
             let size = i32::try_from(row.payload.len())?;
-            sqlx::query(INSERT_SQL)
+            sqlx::query(&self.insert)
                 .bind(&row.id)
                 .bind(row.kind)
                 .bind(row.group.as_deref())

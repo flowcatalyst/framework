@@ -17,7 +17,9 @@
 
 mod database;
 pub mod migrations;
+mod sql;
 mod url;
 
 pub use database::{DatabaseDeclared, DatabaseModule, Databases, Db, DbError, Tx};
+pub use sql::number_placeholders;
 pub use url::parse_url;

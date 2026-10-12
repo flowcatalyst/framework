@@ -38,15 +38,18 @@ import tools.jackson.databind.node.ObjectNode;
  */
 public final class OutboxWriter implements Sink {
 
-  /** The SDK's insert, so a row from here and a row from the SDK are the same shape. */
-  private static final String INSERT_SQL =
+  /**
+   * The SDK's insert, so a row from here and a row from the SDK are the same shape. The text is the
+   * shared file {@code conformance/sql/outbox/insert.sql}, which the Rust writer sends too
+   * ({@code OutboxConformanceTest} checks it); it has no trailing newline.
+   */
+  static final String INSERT_SQL =
       """
       INSERT INTO outbox_messages (
         id, type, message_group, payload, status, created_at, updated_at,
         client_id, payload_size, headers
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      """;
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
 
   private static final String TYPE_EVENT = "EVENT";
   private static final String TYPE_AUDIT_LOG = "AUDIT_LOG";

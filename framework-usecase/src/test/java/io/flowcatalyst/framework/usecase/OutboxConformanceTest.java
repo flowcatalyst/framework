@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.usecase;
 
+import io.flowcatalyst.framework.conformance.Conformance;
 import io.flowcatalyst.framework.conformance.JsonVectors;
 import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.context.ClientId;
@@ -53,6 +54,11 @@ class OutboxConformanceTest {
   record Cancelled(EventMetadata metadata, String orderId, String reason) implements DomainEvent {}
 
   record Subject(String value) implements AggregateId {}
+
+  @Test
+  void insertStatementIsTheSharedFile() {
+    Conformance.check("sql/outbox/insert.sql", OutboxWriter.INSERT_SQL);
+  }
 
   @Test
   void outboxVectors() throws Exception {
