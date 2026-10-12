@@ -1,0 +1,9 @@
+{
+  "description" : "The fw_schema_history rows the Java migration runner writes for the set of module locks-database (applied_at left out). A Rust run of the same set writes the same rows, and the Rust runner accepts a database holding them.",
+  "module" : "locks-database",
+  "rows" : [ {
+    "version" : 1,
+    "description" : "create lock table",
+    "checksum" : "e6f93ae6fed3021b7ff834a0ee8cd58712a53980cee5f156de2083e420d05896"
+  } ]
+}

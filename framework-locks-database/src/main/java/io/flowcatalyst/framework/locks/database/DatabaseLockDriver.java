@@ -18,7 +18,10 @@ import javax.sql.DataSource;
  */
 public final class DatabaseLockDriver implements LockDriver {
 
-  private static final String ACQUIRE =
+  // The three statements are shared with the Rust framework byte for byte: conformance/sql/locks/
+  // holds them, and LockConformanceTest checks these constants against those files.
+
+  static final String ACQUIRE =
       """
       INSERT INTO fw_lock (lock_key, owner_token, fencing_token, expires_at)
       VALUES (?, ?, nextval('fw_lock_fence'), clock_timestamp() + ? * interval '1 millisecond')
@@ -29,12 +32,12 @@ public final class DatabaseLockDriver implements LockDriver {
        WHERE fw_lock.expires_at <= clock_timestamp()
       RETURNING fencing_token""";
 
-  private static final String REFRESH =
+  static final String REFRESH =
       """
       UPDATE fw_lock SET expires_at = clock_timestamp() + ? * interval '1 millisecond'
        WHERE lock_key = ? AND owner_token = ? AND fencing_token = ? AND expires_at > clock_timestamp()""";
 
-  private static final String RELEASE =
+  static final String RELEASE =
       """
       UPDATE fw_lock SET owner_token = NULL, expires_at = clock_timestamp()
        WHERE lock_key = ? AND owner_token = ? AND fencing_token = ? AND expires_at > clock_timestamp()""";

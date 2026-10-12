@@ -23,14 +23,17 @@ import redis.clients.jedis.exceptions.JedisNoScriptException;
  */
 public final class RedisLockDriver implements LockDriver {
 
-  private static final String ACQUIRE_LUA =
+  // The three scripts are shared with the Rust framework byte for byte (so both load the same
+  // SHA-1): conformance/lua/locks/ holds them, and LockScriptConformanceTest checks these constants.
+
+  static final String ACQUIRE_LUA =
       """
       if redis.call('EXISTS', KEYS[1]) == 1 then return nil end
       local fence = redis.call('INCR', KEYS[2])
       redis.call('SET', KEYS[1], ARGV[1] .. ':' .. fence, 'PX', ARGV[2])
       return fence""";
 
-  private static final String REFRESH_LUA =
+  static final String REFRESH_LUA =
       """
       if redis.call('GET', KEYS[1]) == ARGV[1] then
         redis.call('PEXPIRE', KEYS[1], ARGV[2])
@@ -38,7 +41,7 @@ public final class RedisLockDriver implements LockDriver {
       end
       return 0""";
 
-  private static final String RELEASE_LUA =
+  static final String RELEASE_LUA =
       """
       if redis.call('GET', KEYS[1]) == ARGV[1] then
         redis.call('DEL', KEYS[1])

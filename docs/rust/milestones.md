@@ -13,7 +13,7 @@ deviations from this plan and from [`design.md`](design.md) are recorded here.
 | # | State | Notes |
 |---|---|---|
 | R0 | **Built** (2026-10-12), commit `e116b5c` | see below |
-| R1 | In progress: `fw-core`, `fw-db` and the config vectors built | see below |
+| R1 | **Built** (2026-10-12) | see below |
 | R2 | Not started | |
 
 **R0 as built.** `rust/` workspace (edition 2024, toolchain 1.98.1, the platform's lint table plus
@@ -35,7 +35,7 @@ is written by the Java `IdsConformanceTest` and read by the Rust `tsid` test. De
   test binary lives in a static that is never dropped, so it is removed by an `atexit` hook (the
   workspace's one `unsafe`, with a reasoned `#[expect]`); testcontainers-rs has no reaper.
 
-**R1 as built so far.** `fw-core`: `AppBuilder` → `Configured` → `Built` → `Running` (the design's
+**R1 as built.** `fw-core`: `AppBuilder` → `Configured` → `Built` → `Running` (the design's
 typestate as four types), `Module::declare` returning typed handles, `Boot` with `on_started`,
 `on_shutdown`, `command`, health, background loops, metrics and ids; `launch` for `main`. Config:
 `const Setting<T, Optional | Present>` read through `SettingHandle`s (`get` for `Present` cannot
@@ -56,6 +56,31 @@ health `database:<name>`, close at shutdown), `Databases::migrate`, the runner o
   that is "not general enough"); the runner executes each file with `Executor::execute(&str)`, which
   also uses the simple-query protocol, so a file may hold several statements.
 - A YAML mapping with a duplicate key is refused by `serde_norway`; the Java reader keeps the last.
+
+`fw-redis` (named `ConnectionManager`s, ping, health `redis:<name>`) and `fw-locks` (memory,
+`database` with feature `postgres`, `redis` with feature `redis`; `with_lock`; `LockGate`;
+`testing::suite!`, which all three drivers pass: 18 cases each), and `examples/locks-demo` (the Java
+demo's configuration unchanged; its test checks three instances, the report and the shutdown order).
+Exit criteria: the suite is green on all three drivers; locks-demo starts with three instances and
+shuts down loops first, then actions in reverse; the config and TSID vectors match; the lock
+statements and scripts are the Java bytes (`conformance/sql/locks/`, `conformance/lua/locks/`), and
+the Rust runner writes the Java history rows for `locks-database` and accepts a database holding
+them (`conformance/migrations/locks-database.json`). Deviations and notes:
+
+- The driver trait `LockStore` works on the stored key, owner token and fencing token (the Java
+  `LockDriver` level) rather than on `LockKey`/`Lease` as the design sketched; `Lock` builds leases
+  over it, as Java's `LockStore` does. It also carries the test hook `expire_now`.
+- `Locks::builder(boot, &declared).databases(&dbs).redis(&redis).build()` instead of
+  `Locks::build(boot, &locks, &dbs)`: the builder's methods exist only with the matching feature.
+- `LocksModule` registers every driver compiled in (Java lists a module per driver); with
+  `postgres` it always contributes the `locks-database` migration set, as listing
+  `LocksDatabaseModule` does in Java.
+- The shared statement files hold the Java text with JDBC `?` placeholders; the Rust driver numbers
+  them `$1`, `$2`, ... at construction, which is what the PostgreSQL JDBC driver sends.
+- Java side: the lock statement and script constants of `DatabaseLockDriver` and `RedisLockDriver`
+  are now package-private, so `LockConformanceTest` and `LockScriptConformanceTest` (new) can check
+  them against the shared files; both modules' tests depend on the `framework-core` test-jar.
+- `with_lock` on loss: cancels `lease.lost()`, polls the action once more, then drops it.
 
 ## 1. Milestones
 

@@ -1,0 +1,41 @@
+[package]
+name = "fw-locks"
+description = "Leases with fencing tokens and with_lock (locks contract); drivers memory (default), database (feature postgres) and redis (feature redis)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# The `database` driver: PostgreSQL, table fw_lock (migration set `locks-database`).
+postgres = ["dep:fw-db", "dep:sqlx"]
+# The `redis` driver: one standalone Redis or Valkey server.
+redis = ["dep:fw-redis", "dep:redis"]
+# The contract test suite (`testing::suite!`) every driver passes.
+testing = []
+
+[dependencies]
+fw-core = { workspace = true }
+fw-db = { workspace = true, optional = true }
+fw-redis = { workspace = true, optional = true }
+hex = { workspace = true }
+rand = { workspace = true }
+redis = { workspace = true, optional = true }
+sqlx = { workspace = true, optional = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["time", "sync", "macros", "rt"] }
+tokio-util = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+
+[dev-dependencies]
+fw-locks = { path = ".", features = ["testing", "postgres", "redis"] }
+fw-test = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+
+[lints]
+workspace = true

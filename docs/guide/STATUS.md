@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit e116b5c (2026-10-12). `verify.sh` fails if that commit is not an
+Last verified against commit 0598015 (2026-10-12). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -38,7 +38,7 @@ compare. Nothing is published.
 | # | Scope | State | Guide page |
 |---|---|---|---|
 | R0 | Workspace: toolchain pin, lints, `deny.toml`, CI workflow, `fw-test` (PostgreSQL 18 and Redis, a database per test), the conformance runner, the Java vector helper (`Conformance` in the `framework-core` test-jar), the TSID vector | **Built** | [Rust overview](rust/index.md) |
-| R1 | Foundation and locks | **In progress**: `fw-core` (lifecycle, modules and handles, config with instance sections checked at configure, `Context` and ids, TSIDs, health with criticality, background loops, metrics and the Prometheus writer, commands) and `fw-db` (pools, the migration runner on `fw_schema_history`) are built, with the config vectors; Redis, locks and `locks-demo` are next | [application and config](rust/core.md), [database](rust/database.md) |
+| R1 | Foundation and locks: `fw-core` (lifecycle, modules and handles, config with instance sections checked at configure, `Context` and ids, TSIDs, health with criticality, background loops, metrics and the Prometheus writer, commands), `fw-db` (pools, the migration runner on `fw_schema_history`), `fw-redis`, `fw-locks` (memory, database, redis; the contract suite; the lock gate), `examples/locks-demo`; vectors for config, the lock SQL and Lua, and the `locks-database` migration history | **Built** | [application and config](rust/core.md), [database and Redis](rust/database.md), [locks](rust/locks.md) |
 | R2 | Write path and checked SQL | Not started | |
 
 ## Known gaps

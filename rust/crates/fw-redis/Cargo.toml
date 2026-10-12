@@ -1,0 +1,22 @@
+[package]
+name = "fw-redis"
+description = "Named Redis or Valkey connections (redis crate, ConnectionManager) for the framework's drivers."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+fw-core = { workspace = true }
+redis = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+fw-test = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true

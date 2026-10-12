@@ -1,5 +1,5 @@
-<!-- types: DatabaseModule, DatabaseDeclared, Databases, Db, Tx, Migration, MigrationSet, MigrationFile -->
-# Rust: database and migrations
+<!-- types: DatabaseModule, DatabaseDeclared, Databases, Db, Tx, Migration, MigrationSet, MigrationFile, RedisModule, RedisDeclared, RedisConnections, RedisConnection -->
+# Rust: database, migrations and Redis
 
 `fw-db` is the Rust counterpart of `framework-database` ([contract](../../contracts/database-and-redis.md)):
 named PostgreSQL instances on sqlx pools, a start-up ping and a health check per instance, and the
@@ -55,7 +55,23 @@ the framework's own, **not** `sqlx::migrate!`: the history table `fw_schema_hist
 version, description, checksum = SHA-256 of the file bytes, applied_at), the advisory lock, the
 per-module sets and every refusal (a changed or missing file, an unapplied version below the highest
 applied one, two files with one version) are the Java runner's, so a database migrated by one
-implementation is accepted by the other.
+implementation is accepted by the other. The vectors in `conformance/migrations/` are the history
+rows the Java runner writes for the framework's own sets; the Rust tests check that the Rust runner
+writes the same rows and accepts a database that holds them.
 
 Each file runs in its own transaction with its history row; a failing file is rolled back and
 fails start-up naming the module, the file and the database error.
+
+## Redis
+
+`fw-redis` is the counterpart of `framework-redis`: one standalone Redis or Valkey server per named
+instance, configured as in Java (`url`, `password` as a secret that wins over the URL's, `timeout`
+default 2 s, applied to connecting and to each response). `RedisConnections::connect(boot, &declared)`
+pings each instance (start-up fails naming it when it does not answer) and adds the health check
+`redis:<name>`. Each `RedisConnection` wraps the `redis` crate's `ConnectionManager`
+(multiplexed, reconnecting); `manager()` hands out a clone for commands and scripts.
+
+```rust
+let conns = RedisConnections::connect(boot, &redis).await?;
+conns.default_connection().unwrap().ping().await.unwrap();
+```

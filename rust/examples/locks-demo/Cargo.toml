@@ -1,0 +1,22 @@
+[package]
+name = "locks-demo"
+description = "Three lock instances, one per driver, through the Rust framework's lifecycle (the Java examples/locks-demo)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+fw-core = { workspace = true }
+fw-db = { workspace = true }
+fw-locks = { workspace = true, features = ["postgres", "redis"] }
+fw-redis = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+fw-test = { workspace = true }
+
+[lints]
+workspace = true
