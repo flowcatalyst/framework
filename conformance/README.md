@@ -1,0 +1,41 @@
+# Conformance vectors
+
+Inputs and expected outputs, as files, that the Java and the Rust implementations of the framework
+both read ([Rust milestones](../docs/rust/milestones.md), section 3). They are what "the same rows,
+the same ids, the same config semantics" means in practice.
+
+## Who writes them
+
+The **Java framework is the reference** (design decision 18). Each Java module has a vector test
+that runs the Java code on every input of its files and compares the result with the committed
+expected output; run with `-Dconformance.update=true` it writes the file instead:
+
+```
+./mvnw -q verify -Dconformance.update=true        # rewrite every vector
+git diff conformance/                              # review, then commit
+```
+
+The Rust tests (`rust/conformance`) only compare. A Rust mismatch therefore means Rust is wrong,
+or the vector exposes a Java bug, which is fixed in Java first.
+
+To add a vector: add the input to the file (or a new file, with a Java test that fills it), run the
+Java module's tests in update mode, review the output, commit both, then make the Rust test pass.
+
+## Comparison rules
+
+- JSON values (payloads, rows) are compared as parsed values: key order and whitespace are free,
+  values exact. A JSON document carried inside a string (an event's `data`, an audit row's
+  `operationData`) is parsed and compared the same way.
+- Text files under `sql/` and `lua/` are compared as **exact bytes**: they are the statements and
+  scripts both implementations send to the server. They have no trailing newline, because the
+  statements do not.
+- Generated values are pinned: vectors use fixed clocks and fixed ids. Where a value cannot be
+  pinned (a random TSID the Java code generates internally), the vector says how it is checked.
+- An allowed difference is recorded in the vector as `"rust": {...}` with a reason, so a
+  difference is always deliberate and visible.
+
+## Areas
+
+| Directory | Written by (Java test) | What |
+|---|---|---|
+| `tsid/` | `framework-core` `IdsConformanceTest` | TSID decoding, canonical encoding, prefixes, the millisecond layout |

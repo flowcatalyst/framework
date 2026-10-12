@@ -1,0 +1,122 @@
+{
+  "description" : "TSIDs (write-path contract section 8, Ids in framework-core). decode: a 13-character text and its 64-bit value as an unsigned decimal string, or null when the text is not a TSID; canonical texts are what encoding the value gives back. Decoding is case-insensitive, accepts only the Crockford alphabet 0-9 A-Z without I L O U, and does not reject a first character above 7 (the value wraps, as in the Java code). prefixes: whether Ids.generate(prefix) accepts the prefix. layout: an id generated with the clock at millis has those milliseconds in bits 63..22.",
+  "decode" : [ {
+    "text" : "0000000000000",
+    "value" : "0",
+    "canonical" : true
+  }, {
+    "text" : "0000000000001",
+    "value" : "1",
+    "canonical" : true
+  }, {
+    "text" : "000000000000Z",
+    "value" : "31",
+    "canonical" : true
+  }, {
+    "text" : "0000000000010",
+    "value" : "32",
+    "canonical" : true
+  }, {
+    "text" : "7ZZZZZZZZZZZZ",
+    "value" : "9223372036854775807",
+    "canonical" : true
+  }, {
+    "text" : "0ABCDEFGHJKMN",
+    "value" : "373109872978906773",
+    "canonical" : true
+  }, {
+    "text" : "0abcdefghjkmn",
+    "value" : "373109872978906773",
+    "canonical" : false
+  }, {
+    "text" : "0PQRSTVWXYZ01",
+    "value" : "819402068310588417",
+    "canonical" : true
+  }, {
+    "text" : "06MK2QSKWGG2Z",
+    "value" : "239362300128542815",
+    "canonical" : true
+  }, {
+    "text" : "8000000000000",
+    "value" : "9223372036854775808",
+    "canonical" : false
+  }, {
+    "text" : "ZZZZZZZZZZZZZ",
+    "value" : "18446744073709551615",
+    "canonical" : false
+  }, {
+    "text" : "",
+    "value" : null
+  }, {
+    "text" : "000000000000",
+    "value" : null
+  }, {
+    "text" : "00000000000000",
+    "value" : null
+  }, {
+    "text" : "000000000000I",
+    "value" : null
+  }, {
+    "text" : "000000000000L",
+    "value" : null
+  }, {
+    "text" : "000000000000O",
+    "value" : null
+  }, {
+    "text" : "000000000000U",
+    "value" : null
+  }, {
+    "text" : "000000000000-",
+    "value" : null
+  }, {
+    "text" : "ord_06MK2QSKW",
+    "value" : null
+  }, {
+    "text" : "00000000000é0",
+    "value" : null
+  } ],
+  "prefixes" : [ {
+    "prefix" : "ord",
+    "valid" : true
+  }, {
+    "prefix" : "a",
+    "valid" : true
+  }, {
+    "prefix" : "a1",
+    "valid" : true
+  }, {
+    "prefix" : "lin2b",
+    "valid" : true
+  }, {
+    "prefix" : "",
+    "valid" : false
+  }, {
+    "prefix" : "1a",
+    "valid" : false
+  }, {
+    "prefix" : "Ord",
+    "valid" : false
+  }, {
+    "prefix" : "or_d",
+    "valid" : false
+  }, {
+    "prefix" : "or-d",
+    "valid" : false
+  } ],
+  "layout" : [ {
+    "millis" : 0,
+    "millisBits" : "0"
+  }, {
+    "millis" : 1,
+    "millisBits" : "1"
+  }, {
+    "millis" : 1760000000000,
+    "millisBits" : "1760000000000"
+  }, {
+    "millis" : 1792018530123,
+    "millisBits" : "1792018530123"
+  }, {
+    "millis" : 4398046511103,
+    "millisBits" : "4398046511103"
+  } ]
+}

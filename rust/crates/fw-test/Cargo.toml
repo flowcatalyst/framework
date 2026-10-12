@@ -1,0 +1,23 @@
+[package]
+name = "fw-test"
+description = "Test support for the framework: PostgreSQL 18 and Redis servers, a fresh database per test."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["sync", "rt", "macros", "net", "time"] }
+sqlx = { workspace = true }
+rand = { workspace = true }
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+redis = { workspace = true }
+
+[lints]
+workspace = true

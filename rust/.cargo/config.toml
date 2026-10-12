@@ -1,0 +1,5 @@
+[env]
+# The `sqlx::query!` family reads the committed `.sqlx/` instead of asking a database, so an
+# ordinary build never needs one. `cargo run -p cargo-fw -- sql prepare` overrides it to regenerate
+# `.sqlx/` (docs/guide/rust/checked-sql.md).
+SQLX_OFFLINE = "true"

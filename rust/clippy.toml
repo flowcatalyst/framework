@@ -1,0 +1,8 @@
+# `clippy::absolute_paths`: a path that starts at a crate root may have at most two segments;
+# import the item, or its module, instead.
+absolute-paths-max-segments = 2
+
+# Tests may unwrap, expect and panic: a failed assertion is the point.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true

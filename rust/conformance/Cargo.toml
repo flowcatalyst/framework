@@ -1,0 +1,17 @@
+[package]
+name = "fw-conformance"
+description = "Runs the shared conformance vectors (../../conformance) against the Rust implementation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde_json = { workspace = true }
+
+[dev-dependencies]
+fw-core = { workspace = true }
+
+[lints]
+workspace = true

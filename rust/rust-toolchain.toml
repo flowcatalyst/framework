@@ -1,0 +1,6 @@
+# The platform's pin (flowcatalyst-rust/rust-toolchain.toml), so a developer working on both has one
+# compiler. Bump deliberately: this channel and `rust-version` in Cargo.toml, in one commit.
+[toolchain]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

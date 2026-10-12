@@ -1,9 +1,39 @@
-# Rust framework: milestones, testing and conformance (draft 1, 2026-10-11)
+# Rust framework: milestones, testing and conformance (draft 1, 2026-10-11; status kept current)
 
 Companion to [`design.md`](design.md). The Java order (M1, M2a, M2b, M3, M4a, M4b, then the MA
 usability items, then M-UI, M4c, M4d to M4f, M5) is kept where a dependency is real. The MA items
 were gaps found after the fact; in Rust they are built in the milestone where they belong instead of
 after it.
+
+## 0. Status
+
+Built so far (owner ruling 2026-10-12: build R0 to R2, hold R4 onwards). Each milestone's
+deviations from this plan and from [`design.md`](design.md) are recorded here.
+
+| # | State | Notes |
+|---|---|---|
+| R0 | **Built** (2026-10-12) | see below |
+| R1 | Not started | |
+| R2 | Not started | |
+
+**R0 as built.** `rust/` workspace (edition 2024, toolchain 1.98.1, the platform's lint table plus
+`missing_docs`, `unreachable_pub`, `rust_2018_idioms`), `deny.toml` (permissive licences only, MPL
+not allowed either; duplicate versions warn while the workspace is young), `.cargo/config.toml`
+(`SQLX_OFFLINE=true`), `.github/workflows/rust.yml` (fmt, clippy, test against service containers,
+deny), `fw-test`, the `fw-conformance` runner, the Rust build contract
+([`rust-build.md`](../contracts/rust-build.md)). Exit criterion met: `conformance/tsid/tsid.json`
+is written by the Java `IdsConformanceTest` and read by the Rust `tsid` test. Deviations:
+
+- `fw-core` exists from R0, holding only the TSID codec, so that the first vector has Rust code to
+  check; the rest of `fw-core` is R1.
+- Vector inputs are in the vector files; the Java test fills in the expected outputs and, in compare
+  mode, requires the file to be exactly what it would write. The helper (`Conformance`,
+  `JsonVectors`) is in the `framework-core` test-jar, which `framework-core` now publishes (with
+  Jackson in its test scope; `framework-bom` manages the test-jar).
+- `fw-test` uses an existing server when `FW_TEST_DATABASE_URL` / `FW_TEST_REDIS_URL` are set (CI's
+  service containers, or a throwaway local server), else Testcontainers. A container shared by a
+  test binary lives in a static that is never dropped, so it is removed by an `atexit` hook (the
+  workspace's one `unsafe`, with a reasoned `#[expect]`); testcontainers-rs has no reaper.
 
 ## 1. Milestones
 

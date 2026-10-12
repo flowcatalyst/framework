@@ -7,6 +7,8 @@
 #   1. the page has a "<!-- types: A, B, C -->" comment;
 #   2. every type named there is declared (class, interface, record or enum) somewhere under
 #      framework-*/src (main and test, because the test-jars publish helpers such as PostgresFixture);
+#      for the Rust pages under docs/guide/rust/, declared (struct, enum, trait, type or union) in a
+#      .rs file under rust/;
 #   3. every relative link to a .md file resolves to a file, and when it carries an #anchor (or is a
 #      bare #anchor within the page), the target page has a heading whose GitHub-style slug is that
 #      anchor (lowercase, punctuation other than - and _ removed, spaces to hyphens, a repeated
@@ -68,6 +70,15 @@ declared() {
     "(class|interface|record|enum)[[:space:]]+$1([^A-Za-z0-9_]|\$)" $src_dirs 2>/dev/null
 }
 
+# The Rust pages (docs/guide/rust/) name Rust types: a struct, enum, trait, type alias or union
+# declared under rust/ (crates, conformance, examples, tools; tests included, as for Java).
+rust_dirs=$(find rust -maxdepth 1 -type d \( -name crates -o -name conformance -o -name examples -o -name tools \) 2>/dev/null | sort)
+declared_rust() {
+  # shellcheck disable=SC2086
+  [ -n "$rust_dirs" ] && grep -rqE --include='*.rs' \
+    "(struct|enum|trait|type|union)[[:space:]]+$1([^A-Za-z0-9_]|\$)" $rust_dirs 2>/dev/null
+}
+
 checked_pages=0
 checked_types=0
 
@@ -91,9 +102,18 @@ for page in $pages; do
           continue
           ;;
       esac
-      if ! declared "$name"; then
-        fail "$page: type '$name' is not declared under framework-*/src (renamed or removed? update the page)"
-      fi
+      case $page in
+        docs/guide/rust/*)
+          if ! declared_rust "$name"; then
+            fail "$page: Rust type '$name' is not declared under rust/ (renamed or removed? update the page)"
+          fi
+          ;;
+        *)
+          if ! declared "$name"; then
+            fail "$page: type '$name' is not declared under framework-*/src (renamed or removed? update the page)"
+          fi
+          ;;
+      esac
     done
   fi
 

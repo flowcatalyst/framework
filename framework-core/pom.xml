@@ -16,5 +16,28 @@
       <groupId>org.snakeyaml</groupId>
       <artifactId>snakeyaml-engine</artifactId>
     </dependency>
+    <!-- Conformance vectors (conformance/ at the repository root) are JSON. -->
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Publishes the conformance helper (io.flowcatalyst.framework.conformance.Conformance) for
+           the other modules' vector tests. -->
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

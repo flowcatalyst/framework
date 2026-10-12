@@ -1,0 +1,76 @@
+# The Rust implementation of the framework (docs/rust/design.md). A second implementation of the
+# contracts in docs/contracts/, sharing them, the ui-kit fixtures and the conformance vectors in
+# ../conformance/ with the Java build. Not a Maven module; the Java build ignores this directory.
+[workspace]
+resolver = "3"
+members = ["crates/*", "conformance"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+# The pinned toolchain (rust-toolchain.toml); raised only deliberately, in one commit.
+rust-version = "1.98"
+license = "Apache-2.0"
+repository = "https://github.com/flowcatalyst/framework"
+# Nothing is published until the owner settles the crate names (design decision 19).
+publish = false
+
+[workspace.lints.rust]
+# `unsafe` needs a visible, reasoned exemption: `#[expect(unsafe_code, reason = "...")]`.
+unsafe_code = "deny"
+# Public library crates: every public item is documented, nothing is `pub` that is not reachable.
+missing_docs = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+# The platform's table (flowcatalyst-rust/Cargo.toml), verbatim.
+# Imports, not inline paths: `use std::sync::Arc;` and `Arc`, not `std::sync::Arc`.
+absolute_paths = "warn"
+# A `_ =>` arm over one of our own enums hides a new variant from every match that should decide
+# what it means. `#[expect(clippy::wildcard_enum_match_arm, reason = "...")]` is for foreign or
+# `#[non_exhaustive]` enums only.
+wildcard_enum_match_arm = "warn"
+# A discarded `Result` hides a failure.
+let_underscore_must_use = "warn"
+# A panic is a decision to crash the process. Keep an `expect` only for start-up invariants and
+# statically valid constants, with `#[expect(clippy::expect_used, reason = "...")]`. Tests may
+# unwrap (clippy.toml).
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+# Never hold a lock guard across an `.await`.
+await_holding_lock = "warn"
+await_holding_refcell_ref = "warn"
+# No leftovers.
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+
+[workspace.dependencies]
+# Declared once, defaults off where a crate has heavy defaults; crates enable what they use.
+tokio = { version = "1.47", default-features = false }
+tokio-util = { version = "0.7", default-features = false }
+futures = { version = "0.3", default-features = false, features = ["std"] }
+serde = { version = "1.0", features = ["derive"] }
+# `preserve_order`: payload JSON keeps the insertion order the Java writer uses.
+serde_json = { version = "1.0", features = ["preserve_order"] }
+# serde_yaml is unmaintained; serde_norway is the maintained fork the platform uses.
+serde_norway = "0.9"
+thiserror = "2.0"
+tracing = "0.1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+rand = "0.9"
+sha2 = "0.10"
+hex = "0.4"
+subtle = "2.6"
+zeroize = "1.8"
+uuid = { version = "1", default-features = false, features = ["v4", "std"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json"] }
+redis = { version = "0.29", default-features = false, features = ["tokio-comp", "connection-manager", "script"] }
+testcontainers = "0.27"
+testcontainers-modules = { version = "0.15", default-features = false, features = ["postgres", "redis"] }
+
+# Workspace crates.
+fw-core = { path = "crates/fw-core" }
+fw-test = { path = "crates/fw-test" }

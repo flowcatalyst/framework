@@ -1,0 +1,55 @@
+# cargo deny check: supply-chain policy for the Rust framework (design section 2.4, decision 3).
+# The framework is Apache-2.0 and open source: permissive licences only, no copyleft (no AGPL, GPL,
+# LGPL, nor the file-level MPL), crates.io only.
+
+[graph]
+all-features = true
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "aarch64-apple-darwin",
+]
+
+[advisories]
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+ignore = []
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "CC0-1.0",
+    "BSL-1.0",
+    "Unlicense",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
+]
+
+[licenses.private]
+ignore = false
+
+[bans]
+# Duplicate versions are reported, not refused, while the workspace is young.
+multiple-versions = "warn"
+wildcards = "allow"
+deny = [
+    { crate = "native-tls", reason = "TLS is rustls" },
+    { crate = "openssl", reason = "TLS is rustls" },
+    { crate = "serde_yaml", reason = "unmaintained; use serde_norway" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit ea72549 (2026-10-10). `verify.sh` fails if that commit is not an
+Last verified against commit ea0700a (2026-10-12). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -27,6 +27,19 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | M4f | Trial business service on these contracts | Not started | |
 | MA | Usability gaps raised by the first application | **Built** (2026-10-10), nothing published. Item 9 (rate limiting: `RateLimit` middleware, `memory` and `redis` limiters, key resolvers; [guide](rate-limiting.md)); item 6 (`framework-httpclient` on Vert.x and `HttpClientModule`: a client per service, auth with token caching, idempotent-only retries, `Context` propagation, metrics; [guide](http-client.md)); item 5 (`SecretResolver` with `file` and `env` drivers, cache, threat model; `platform` driver blocked on the platform; [guide](secrets.md)); item 3 (`Background` loops with health and an optional `LockGate`; `Metrics` with memory and noop drivers, built-in HTTP, use-case and loop metrics, a Prometheus endpoint off by default; [guide](background-and-metrics.md)); item 4 (`DispatchJob`, `Plan.andDispatch`: `DISPATCH_JOB` outbox rows in the platform's batch-item shape; [write path](write-path.md#dispatch-jobs)); item 1 (`framework-bom`, publishing configuration and workflow, [contract](../contracts/build.md); nothing published); item 2 (`AppBuilder.override(Class, instance)`, only when `APP_ENV` is `test`; [testing](testing.md#replacing-a-service)); item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
 | M5 | Cache and storage, platform config driver, metering, messaging | Not started | |
+
+## The Rust implementation
+
+A second implementation of the contracts, in `rust/` ([overview](rust/index.md), design in
+[`docs/rust/`](../rust/design.md)). It shares the contracts, `ui-kit/` and the conformance vectors
+in `conformance/`, which the Java tests write (`-Dconformance.update=true`) and the Rust tests
+compare. Nothing is published.
+
+| # | Scope | State | Guide page |
+|---|---|---|---|
+| R0 | Workspace: toolchain pin, lints, `deny.toml`, CI workflow, `fw-test` (PostgreSQL 18 and Redis, a database per test), the conformance runner, the Java vector helper (`Conformance` in the `framework-core` test-jar), the TSID vector | **Built** | [Rust overview](rust/index.md) |
+| R1 | Foundation and locks | Not started | |
+| R2 | Write path and checked SQL | Not started | |
 
 ## Known gaps
 
