@@ -30,6 +30,15 @@ shared with the Java tests. Nothing is built; it waits on the owner decisions li
 `rust/design.md` section 6 (the first: whether to start before a second Java service has used the
 contracts, plumbing section 10 step 6).
 
+**TypeScript implementation (design only, 2026-10-13):** [`typescript/design.md`](typescript/design.md)
+with [`typescript/capabilities.md`](typescript/capabilities.md),
+[`typescript/orders-showcase.md`](typescript/orders-showcase.md),
+[`typescript/spike.md`](typescript/spike.md) and [`typescript/milestones.md`](typescript/milestones.md).
+The owner intends TypeScript as the default for new business applications; a `ts/` workspace in this
+repository honouring the same wire and storage contracts, milestones T0 to T9, conformance vectors
+shared with the Java tests. Nothing is built; the T0 spike (approved) informs decision 0, TypeScript or
+Go, and the other decisions in `typescript/design.md` section 8.
+
 Order changed 2026-10-08: HTTP comes before the FlowCatalyst module, because login and both job
 receivers are HTTP endpoints. The survey behind M4 (what the SDKs and the platform provide today)
 found the Java SDK has no login, token validation or job receivers; those are new framework code.

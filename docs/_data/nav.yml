@@ -69,3 +69,10 @@
     - { title: Rust orders example, path: rust/orders-showcase.md }
     - { title: Rust milestones, path: rust/milestones.md }
     - { title: Rust build contract, path: contracts/rust-build.md }
+- group: TypeScript design
+  items:
+    - { title: TypeScript design, path: typescript/design.md }
+    - { title: TypeScript capabilities, path: typescript/capabilities.md }
+    - { title: TypeScript orders example, path: typescript/orders-showcase.md }
+    - { title: TypeScript spike (T0), path: typescript/spike.md }
+    - { title: TypeScript milestones, path: typescript/milestones.md }

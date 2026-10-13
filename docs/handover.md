@@ -40,6 +40,16 @@ rewritten at hand-off and can lag the code in between.
   the batch endpoint; recommendation is a new `flowcatalyst-sdk` in `flowcatalyst-go/clients/rust-sdk`
   seeded from it. `contracts/flowcatalyst.md` 4a's "Unix seconds must be ASCII digits" should say
   the millisecond ISO-8601 form is accepted too (the code does).
+- TypeScript framework: designed 2026-10-13, nothing built. Owner: TypeScript becomes the default
+  for new business applications (Java stays for existing ones; Rust paused after R2), pending
+  decision 0 (TypeScript or Go), which the approved T0 spike informs. `typescript/design.md`
+  (principles, scriptc readiness, Bun now with Node green, the TypeBox/domain schema split, routes as
+  values on an own trie, framework-written middleware and auth, worker-ready rules and the
+  `RequestDispatcher` port, Nuxt UI without Nuxt, the dependency policy, 29 ordered owner decisions
+  0 to 28), `typescript/capabilities.md`, `typescript/orders-showcase.md`, `typescript/spike.md` (the
+  runnable T0 plan, TypeScript slice against a Go slice), `typescript/milestones.md` (T0 to T9 with
+  T4a auth, T4b workers, T4c worker-pool dispatcher). Contract amendments proposed: http routing
+  syntax and wildcard, opt-in CORS, static assets; an M4c auth contract written once for all three.
 - UI kit (`ui-kit/`) is now being dogfooded by the Go platform's templ port (`/ui` in
   `flowcatalyst-go`). Since 2026-10-09 the kit gained: Props tables and 124+ fixtures with golden
   HTML (the conformance authority), specs for row actions, flash stack, form dialog, autocomplete,
