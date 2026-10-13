@@ -249,10 +249,14 @@ A route declared `RouteOptions.requiresContext()` gets `request.context()` from 
 which throws `HttpException(401, "UNAUTHENTICATED", ...)` when it cannot. **Start-up fails** if any
 route requires a context and no resolver is provided, naming the route.
 
-> **There is no authentication in the framework yet.** No login, sessions, token validation or
-> default resolver exist (milestone M4c, see [STATUS](STATUS.md)). Until then an application writes
-> its own `ContextResolver` and its own authorization checks, for example from a bearer token. The
-> placeholder in [Context](context.md#building-one) accepts everyone.
+The framework's resolver is in `framework-auth` (M4c): list `AuthModule` and every context route
+is authenticated by the session cookie or a platform bearer token, with the CSRF rules for cookie
+requests and a `302` to `/auth/login` for HTML navigations. See
+[Sessions and login](sessions-and-login.md). A placeholder resolver of your own (as in
+[Context](context.md#building-one)) is still fine in tests.
+
+*Added by M4c:* `request.rawQuery()` (the query as sent), `request.contentLength()` (the declared
+body length, `-1` when none) and `Response.redirect(location)` (a `302` with no body).
 
 ## Datastar
 

@@ -1,4 +1,4 @@
-<!-- types: TestClient, TestResponse, PostgresFixture, RedisFixture, FakePlatform, LockStoreContract, AdjustableClock, MemoryLockDriver, AppBuilder, App, MonotonicClock -->
+<!-- types: TestClient, TestResponse, PostgresFixture, RedisFixture, FakePlatform, LockStoreContract, AdjustableClock, MemoryLockDriver, AppBuilder, App, MonotonicClock, AuthTesting, TestOidcProvider -->
 # Testing
 
 The framework tests itself with JUnit 5 and AssertJ against **real PostgreSQL 18 and Redis**
@@ -132,6 +132,11 @@ Calls: `get`, `post`, `put`, `patch`, `delete`, `request(Method, target)`, then 
 `.body(text)`, `.jsonBody(json-or-object)`, `.send()`. `TestResponse` has `status()`,
 `header(name)`, `body()`, `json(Class)` and `tree()`. `TestClient.of` compiles the routes, so
 duplicate routes and routes needing a missing `ContextResolver` fail there as `StartupException`.
+
+**Signed-in requests:** with `AuthModule` listed, `AuthTesting.of(app).cookie(principal)` gives a
+real session cookie in the configured store, and `TestOidcProvider` (the `framework-auth` test-jar)
+mints platform access tokens and plays the platform for the login flow. See
+[Sessions and login: testing](sessions-and-login.md#testing).
 
 For a real socket on a free port (virtual-thread behaviour, body limits, health endpoints,
 graceful shutdown) start the app with `JettyHttpModule` and `HTTP_PORT=0`, and read the port from

@@ -91,11 +91,10 @@ app.provide(
     lookup -> request -> Context.of(new ClientId("demo")).withPrincipal(new PrincipalId("usr_demo")));
 ```
 
-> **No real resolver exists yet.** The framework ships none: login, sessions and token validation
-> are milestone M4c (see [STATUS](STATUS.md)). The snippet above is a placeholder that treats every
-> request as one fixed user. A real application must write its own resolver (for example from a
-> bearer token) and throw `HttpException(401, "UNAUTHENTICATED", ...)` when it cannot resolve.
-> See [HTTP](http.md#context-and-authentication).
+> The snippet above is a placeholder that treats every request as one fixed user; use it in tests.
+> The real resolver is `AuthModule`'s ([Sessions and login](sessions-and-login.md)): it fills the
+> principal, the client (an identifier, as above) and the permissions from the session cookie or a
+> platform bearer token, and answers `401 UNAUTHENTICATED` when it cannot.
 
 After the resolver returns, the framework replaces the context's correlation id with the
 request's `X-Correlation-Id` (or the one it generated), so logs, events and the audit row agree.

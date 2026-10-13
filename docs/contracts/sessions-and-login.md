@@ -1,6 +1,7 @@
 # Contract: sessions and login (M4c)
 
-Status: M4c, written 2026-10-13 before the Java code. **Language-neutral and JSON-first**: Java,
+Status: M4c, written 2026-10-13 before the Java code; Java built the same day (`framework-auth`,
+`framework-auth-database`, `framework-auth-redis`). Amendments found by the build are marked. **Language-neutral and JSON-first**: Java,
 Go, Rust and TypeScript implement the same endpoints, cookies, JSON shapes, error codes and
 verification rules. Java names appear only where the Java shape is described.
 
@@ -171,7 +172,8 @@ browser session only.
 ### 4.4 `POST /auth/logout`
 
 - A cookie-authenticated unsafe request: the CSRF rules of section 7.2 apply (a cross-site logout
-  is refused). A body is optional; if there is one it must be JSON.
+  is refused). A body is optional; if there is one it must be JSON. Without a session cookie there
+  is nothing to protect and no check runs.
 - Deletes the session from the store (revocation; for the `cookie` driver nothing is stored, see
   6.5), clears the session cookie, answers `200`:
 
@@ -202,8 +204,11 @@ elsewhere; `code_challenge_methods_supported` is present and lacks `S256`.
 - Read from `jwks_uri`. Only keys with `kty` `RSA`, `use` absent or `sig`, `alg` absent or `RS256`,
   a non-empty `kid` and a modulus of at least 2048 bits are kept; others are ignored.
 - Kept for **1 hour**; then read again on next use, keeping the old keys if the read fails.
-- A token naming a `kid` not held triggers one read, **at most once a minute** (made-up `kid`s
-  cannot turn every request into a platform call); still unknown after that: refused (`unknown_kid`).
+- A token naming a `kid` not held triggers one read, **at most once a minute** counting every
+  read, the first included (made-up `kid`s cannot turn every request into a platform call); still
+  unknown after that: refused (`unknown_kid`).
+- When no key has ever been read and a read fails, the platform is not called again for 5 seconds
+  (the token is "unavailable", not invalid). *Added by the build.*
 - The keys and the discovery document are read by the server only; nothing a token says (`jku`,
   `x5u`, `jwk` header parameters) is ever fetched or used.
 
@@ -225,7 +230,9 @@ is logged at WARN at start-up ("sessions over plain http: development only"). An
 follows the same rule.
 
 A request's cookies are read from every `Cookie` header; a cookie name that appears twice is
-treated as absent (a sibling host cannot shadow ours with a second value).
+treated as absent (a sibling host cannot shadow ours with a second value). A value in double quotes
+is the value without them (RFC 6265 allows it, and the JDK's cookie manager sends it so; found by
+the end-to-end test).
 
 ### 5.4 Code exchange
 
@@ -241,7 +248,9 @@ the platform sent one, is discarded.
 
 In this order; the name in brackets is the `details.reason` of `INVALID_ID_TOKEN`:
 
-1. At most 16 384 characters, three base64url parts [`malformed`].
+1. At most 16 384 characters, three base64url parts without padding, the first two non-empty
+   [`malformed`]. (An empty signature part, as `alg: none` produces, gets as far as step 2 and is
+   refused there; an empty signature with `RS256` fails step 3.) *Amended by the build.*
 2. The header is a JSON object; `alg` is exactly `RS256` [`alg`] (so `none`, `HS256` and every other
    value are refused before any key is looked at: no algorithm confusion); `crit` is absent
    [`crit`]; `kid` is a non-empty string [`kid`].
@@ -284,7 +293,9 @@ below), invalid (a reason from the list above), unavailable.
 | `clients` | `["*"]`, or `"{id}:{identifier}"` / `"{id}"` entries |
 | `roles`, `applications` | as in the id_token |
 | `azp` | the OAuth client the token was issued to |
-| `client_id` | the principal's home client, when it has one |
+
+The platform's access tokens carry no `client_id` (home client) claim, unlike its id_tokens
+(corrected by the build: the first draft listed one).
 
 ## 6. Sessions
 
@@ -341,8 +352,8 @@ usable cookies. A store failure is an error (500), never "no session".
 | Driver | Storage |
 |---|---|
 | `database` (default) | table `fw_session` in the default database (DDL below); reads compare `expires_at` with the application's clock; a background loop `auth-session-purge` deletes expired rows every 10 minutes, 1000 at a time |
-| `redis` | key `fw:sess:{kind}:{hash}`, value the JSON, `PX` = time to `expiresAt`; `take` is `GETDEL` (Redis 6.2 or later); `update` is `SET ... PX ... XX` |
-| `memory` | one process only; for tests and single-process development |
+| `redis` | key `fw:sess:{kind}:{hash}`, value `{expiresAt in epoch milliseconds}\n{json}` so the application's clock decides as in the other stores, `PX` = time to `expiresAt` so Redis drops it too; `take` is `GETDEL` (Redis 6.2 or later); `update` is `SET ... PX ... XX` (a deleted record is not brought back) |
+| `memory` | one process only; for tests and single-process development; an expired record is removed when read, and all expired records every 1024 creations |
 | `cookie` | no server state; the handle is the sealed record (6.5) |
 
 ```sql
@@ -424,8 +435,8 @@ session cookie:
    tokens).
 4. Refused by 1 to 3: `403 CROSS_ORIGIN_REQUEST`, logged at INFO with the method, path and the two
    header values.
-5. Then, if the request has a body (`Content-Length` greater than 0, or `Transfer-Encoding`
-   present), its media type must be `application/json` or `application/*+json`: otherwise `415
+5. Then, if the request has a body (a declared length greater than 0, from the server or the
+   `Content-Length` header, or `Transfer-Encoding` present), its media type must be `application/json` or `application/*+json`: otherwise `415
    UNSUPPORTED_MEDIA_TYPE`. A request without a body needs no `Content-Type`.
 
 No synchronizer token: Fetch Metadata, the Origin check, `SameSite=Lax` and JSON-only bodies leave
@@ -448,11 +459,22 @@ body must be JSON for every caller (Java: `CsrfGuard.publicForm()`).
 | `permissions` | the permission mapping (below) | the permission mapping |
 | correlation id | the request's | the request's |
 
-**Client selection** is code. The default takes the principal's home client (`client_id` in the
-token or `homeClient` in the session), else `_platform` (the same value as the receivers' platform
-client: "no particular client"). Whatever an application's selector returns, the framework then
-checks that the principal may act for it, unless it is `_platform`: an entry of `clients` equal to
-`*`, to the id, or starting with `{id}:`. Otherwise `403 CLIENT_NOT_PERMITTED`.
+**Client selection** is code. The `Context`'s client holds the client's **identifier** (its code,
+`acme`), never the platform id (`clt_...`): the framework writes it into outbox rows as the
+`clientCode` (core contract section 3, the guide's "What goes in a ClientId"). The default
+selection, amended by the build:
+
+1. the home client (`client_id` in an id_token, `homeClient` in the session) translated through the
+   `clients` entry `{homeClient}:{identifier}`;
+2. else, when `clients` holds exactly one entry and it has the form `{id}:{identifier}`, that
+   identifier (a CLIENT-tier service token: the platform's access tokens carry no `client_id`);
+3. else `_platform` (the same value as the receivers' platform client: "no particular client").
+
+Whatever an application's selector returns, the framework then checks that the principal may act
+for it, unless it is `_platform`: an entry of `clients` that is `*`, equals the value, starts with
+`{value}:` (the value is an id) or ends with `:{value}` (the value is an identifier; identifiers
+never contain `_`, ids always start with `clt_`, so the two cannot be confused). Otherwise `403
+CLIENT_NOT_PERMITTED`.
 
 **Permission mapping** is code: a function from the principal (kind, tier, roles, applications,
 clients, and for a bearer token its `scope` list) to a set of permission strings. The default

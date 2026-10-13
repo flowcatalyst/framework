@@ -12,8 +12,8 @@ It is for a developer, or an AI agent, building one service on top of it. You do
 read the framework's code. The pages here say how to use it; the specifications are the
 [contracts](reference/contracts.md), which are written before the code.
 
-**Read [STATUS.md](STATUS.md) first.** The framework is pre-release: there are no published
-artifacts and no BOM, no login or sessions, no UI module, and several smaller gaps. This guide
+**Read [STATUS.md](STATUS.md) first.** The framework is pre-release: nothing is published yet,
+there is no UI module, and there are several smaller gaps. This guide
 describes what is built and says plainly where something is not.
 
 ## Pages
@@ -81,9 +81,9 @@ UseCaseResult<OrderEvents.OrderPlaced> placed =
 The run validates, authorizes, loads, decides, and then writes the aggregate, the domain event and
 an audit row in **one transaction**. The result is `Committed` or `Failed`; expected outcomes never
 throw. An HTTP route calls it like this. `request.context()` only works if your application
-provides a [`ContextResolver`](http.md#context-and-authentication); the framework ships none (login
-is not built), so the module that owns the route supplies one. The one below is a placeholder that
-treats every request as one fixed user, and its route is registered in `boot`:
+provides a [`ContextResolver`](http.md#context-and-authentication): list `AuthModule` for the real
+one ([Sessions and login](sessions-and-login.md)), or, as here in a first example, provide a
+placeholder that treats every request as one fixed user. The route is registered in `boot`:
 
 ```java
 // in register(AppBuilder app):

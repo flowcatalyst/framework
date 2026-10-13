@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit cdba2e8 (2026-10-13). `verify.sh` fails if that commit is not an
+Last verified against commit e6e0e43 (2026-10-13). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -20,8 +20,8 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | M3 | HTTP: Jetty 12 on virtual threads, routing, middleware, typed validation, error envelope, correlation id, health endpoints, graceful shutdown, Datastar adapter | **Built** | [http](http.md) |
 | M4a | FlowCatalyst module, client side | **Built**, except the generated docs page for the platform's outbox processor. `PlatformClient`, the `flowcatalyst` and `outbox` health checks, definitions, validation, `DefinitionSync` and the `sync` command, `Command` and `launch` in core | [flowcatalyst module](flowcatalyst-module.md) |
 | M4b | Receivers: dispatch-job and scheduled-job endpoints, signature checks, ack / defer / reject, the overlap lock | **Built.** `Receivers`, `DispatchHandler` and `DispatchResult`, `DispatchDelivery.once` with its retention purge, `ScheduledJobHandler`, `JobOptions`, `JobResult` and `ScheduledJobFiring`, per-receiver signing secrets; a receiver without a handler answers 404, and `flowcatalyst.receivers.enabled: false` removes both routes | [receivers](receivers.md) |
-| M4c | Sessions and login: session capability, OIDC relying-party flow, the real `ContextResolver`, login pages | Not started (depends on M-UI) | |
-| M-UI | `framework-ui`: JTE templates for the `ui-kit/` components, view response helper | Not started | |
+| M4c | Sessions and login, written once for every language ([contract](../contracts/sessions-and-login.md), JSON-first): the application as its own backend-for-frontend (`/auth/login`, `/auth/callback`, `/auth/session`, `/auth/logout`), an OIDC relying party of the platform (PKCE S256, `state`, `nonce`, RS256-only id_token checks, JWKS cache), platform bearer tokens (`PlatformTokens`, usable on its own), `__Host-fw_session` with `database` (default), `redis`, `cookie` and `memory` stores, idle and absolute expiry, rotation, revocation, the platform's F16 CSRF rules and login-state binding, `401` versus `302`, client selection and permission mapping in code, `Context.permissions`, `AuthTesting` and `TestOidcProvider` | **Built** (2026-10-13), nothing published. Not built, by design: login pages (the platform hosts login; no dependency on M-UI), refresh (sessions keep no platform token), portal logins | [sessions and login](sessions-and-login.md), [migrating from flowcatalyst-token](migrating-from-flowcatalyst-token.md) |
+| M-UI | `framework-ui`: JTE templates for the `ui-kit/` components, view response helper | Not started. **Open owner decision:** JTE + Datastar (the plan) or sharing the Go framework's Nuxt UI SPA package (Go design decision 31); M4c's JSON endpoints serve either | |
 | M4d | Admin skeleton under `/admin` with permission gating | Not started | |
 | M4e | Admin pages: users, invitations, event types, config, scoped events and dispatch jobs | Not started | |
 | M4f | Trial business service on these contracts | Not started | |
@@ -68,7 +68,8 @@ row of `implementation-plan.md`) or a milestone.
 | Gap | What it means today | Plan |
 |---|---|---|
 | **Nothing published yet** | `framework-bom` exists and is all an application imports (no framework parent, no Error Prone setup); the GitHub Packages configuration and the tag-triggered publish workflow are ready, but no version has been tagged. Until then build the repo with `./mvnw install`. See [Getting started](getting-started.md#3-getting-the-artifacts-from-github-packages) | first `v*` tag (owner) |
-| **No authentication, login or sessions** | `Request.context()` needs a `ContextResolver` you write. No login, no token validation, no permission model for `authorize` steps | M4c (needs M-UI); admin and permissions M4d |
+| **Sessions keep no platform token** | A signed-in person's roles and permissions are those of the sign-in: a role change or a deactivation at the platform takes effect at the next sign-in, at most the absolute timeout (default 8 hours) later. No refresh. See [Sessions and login](sessions-and-login.md#sessions-stores-and-timeouts) | a later revalidation option (contract section 6.4 says what it needs) |
+| **The platform must be reachable at the issuer URL** | `auth.issuer` is both the browser-facing URL and the one the application calls; a separate internal URL (container networking) is not supported | open |
 | **No UI module** | HTML is hand-built strings; Datastar works at the wire level only | M-UI |
 | **Dispatch jobs cannot name a client by identifier** | `plan.andDispatch(DispatchJob)` writes `DISPATCH_JOB` outbox rows, but the platform's dispatch-jobs batch stores `clientId` unresolved, so a job is platform-scoped unless you pass the platform's own client id (`platformClientId`). See [Dispatch jobs](write-path.md#dispatch-jobs) | platform work: resolve `clientCode` in `/api/dispatch-jobs/batch` |
 | **Per-client secrets from files and environment only** | `SecretResolver` resolves a client's secret reference through `file` and `env` stores; the `platform` driver fails start-up because the platform has no endpoint for it. The platform-config read endpoint also returns SECRET values unmasked to any anchor-tier caller, which includes every application's service account (a platform gap, reported). See [Per-client secrets](secrets.md) | platform work ([contract](../contracts/secrets.md), section 4); M5 (platform config and secret store) |
@@ -90,7 +91,12 @@ row of `implementation-plan.md`) or a milestone.
   published to any remote repository** that was found; it must be built from the tag `java-sdk/v0.0.11`
   of `github.com/flowcatalyst/flowcatalyst` into the local repository first. Exact commands in
   [Getting started](getting-started.md#1-install-the-framework-into-your-local-repository).
-- **No TLS, HTTP/2, CORS, WebSockets, multipart or compression** in the HTTP layer.
+- **No TLS, HTTP/2, CORS, WebSockets, multipart or compression** in the HTTP layer. No CORS is
+  deliberate for sessions: no credentialed cross-origin request is ever allowed.
+- **Sessions over plain http** only when `APP_ENV` is `local` or `test` (start-up fails otherwise).
+- **Not verified against a real platform or a real browser.** The login flow is tested against a
+  test identity provider over real HTTP, and one test runs it over Jetty with the JDK's client and
+  cookie manager; no run against the FlowCatalyst platform or a browser has been made.
 - **Checked SQL needs Docker** (or an empty database) to generate and, as the example binds it, to
   check; `-Dfw.sql.skip=true` also disables `add-source`.
 - **Definition validation is stricter than the platform's** (lowercase segments, six-field cron);
