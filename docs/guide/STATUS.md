@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit 60361b3 (2026-10-12). `verify.sh` fails if that commit is not an
+Last verified against commit 49ba4b4 (2026-10-13). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -40,6 +40,13 @@ compare. Nothing is published.
 | R0 | Workspace: toolchain pin, lints, `deny.toml`, CI workflow, `fw-test` (PostgreSQL 18 and Redis, a database per test), the conformance runner, the Java vector helper (`Conformance` in the `framework-core` test-jar), the TSID vector | **Built** | [Rust overview](rust/index.md) |
 | R1 | Foundation and locks: `fw-core` (lifecycle, modules and handles, config with instance sections checked at configure, `Context` and ids, TSIDs, health with criticality, background loops, metrics and the Prometheus writer, commands), `fw-db` (pools, the migration runner on `fw_schema_history`), `fw-redis`, `fw-locks` (memory, database, redis; the contract suite; the lock gate), `examples/locks-demo`; vectors for config, the lock SQL and Lua, and the `locks-database` migration history | **Built** | [application and config](rust/core.md), [database and Redis](rust/database.md), [locks](rust/locks.md) |
 | R2 | Write path and checked SQL: `fw-usecase` (use cases, the runner with the contract's failure table, conflict retry with jitter, `Fresh`/`Loaded`, repositories, events, the outbox writer and its migrations, audit rows, dispatch jobs), sqlx macros with committed `.sqlx/` and `cargo fw sql prepare|check`, `examples/orders-demo`; vectors for the outbox rows (byte for byte) and the outbox and orders migration history | **Built** | [write path](rust/write-path.md), [checked SQL](rust/checked-sql.md) |
+
+## The Go implementation
+
+Designed 2026-10-13, nothing built: [`docs/go/`](../go/design.md) (gap analysis against the Go SDK
+and platform, design, capabilities, the orders example, milestones G0 to G7). It will live in `go/`
+and share the contracts, `ui-kit/` and `conformance/`, as Rust does. The Rust and TypeScript
+implementations are parked (owner, 2026-10-13).
 
 ## Known gaps
 

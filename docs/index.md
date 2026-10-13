@@ -35,7 +35,9 @@ How to build an application with it. Start at the [guide index](guide/index.md).
   [FlowCatalyst module](contracts/flowcatalyst.md).
 - [Framework plumbing](framework-plumbing.md): the design rules and owner rulings.
 - [Implementation plan](implementation-plan.md): milestones, order of work, platform work needed.
-- Other implementations of the same contracts: [Rust](rust/design.md) (R0 to R2 built, paused) and
-  [TypeScript](typescript/design.md) (designed; the [T0 spike plan](typescript/spike.md) comes first).
+- Other implementations of the same contracts: [Go](go/design.md) (designed 2026-10-13, nothing
+  built; start with the [gap analysis](go/gap-analysis.md) against the Go SDK and platform, then the
+  [milestones](go/milestones.md)). Parked (owner, 2026-10-13): [Rust](rust/design.md) (R0 to R2
+  built) and [TypeScript](typescript/design.md) (designed only).
 - [Laravel capability inventory](laravel-capability-inventory.md): the capability survey the design
   started from.

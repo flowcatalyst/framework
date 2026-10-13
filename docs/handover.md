@@ -58,4 +58,16 @@ rewritten at hand-off and can lag the code in between.
   `retryMaxCount: 0`), a phone-width shell and server-rendered theme cookies. Defects and gaps are
   in `ui-kit/PORTING-NOTES.md`. JTE (`framework-ui`, M-UI) has not started; it reuses the same
   fixtures. Plan: `ui-dogfood-plan.md`.
+- Rust and TypeScript are **parked** (owner, 2026-10-13): no further work on either until resumed.
+- Go framework: designed 2026-10-13, nothing built (owner decision: Go alongside Java; a part of a
+  business application will later be built on both and compared). `go/gap-analysis.md` (fcsdk
+  covers 2 of the 41 built Java capabilities, 14 partly, 25 not at all; none of the partly ones
+  passes the shared vectors as is; the platform's templ UI kit is the big reuse), `go/design.md`
+  (stdlib-first one-way rules, explicit build function and typed handles, three Go modules under
+  `go/`, sqlc plus go-jet/`Filter`, embedded PostgreSQL tests, 27 ordered owner decisions),
+  `go/capabilities.md`, `go/orders-showcase.md`, `go/milestones.md` (G0 to G7). Findings: the Java
+  dispatch receiver does not follow the 2026-10-12 receiver-principal ruling (no principal, no
+  causation); fcsdk is MPL-2.0, has no module of its own and writes a snake_case outbox payload;
+  the Java tests still have to write the HTTP, Datastar, metrics, rate-limit, secrets and receiver
+  vectors the other implementations need.
 

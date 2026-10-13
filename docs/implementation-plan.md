@@ -39,6 +39,18 @@ repository honouring the same wire and storage contracts, milestones T0 to T9, c
 shared with the Java tests. Nothing is built; the T0 spike (approved) informs decision 0, TypeScript or
 Go, and the other decisions in `typescript/design.md` section 8.
 
+**Parked (owner, 2026-10-13):** the Rust and TypeScript implementations; nothing more is built or
+designed for them until the owner resumes them.
+
+**Go implementation (design only, 2026-10-13):** owner decision 2026-10-13 to build a Go framework
+alongside the Java one; later a part of a business application is built on both and compared.
+[`go/gap-analysis.md`](go/gap-analysis.md) (every Java capability against the Go SDK `pkg/fcsdk`
+and the Go platform), [`go/design.md`](go/design.md), [`go/capabilities.md`](go/capabilities.md),
+[`go/orders-showcase.md`](go/orders-showcase.md) and [`go/milestones.md`](go/milestones.md). A `go/`
+directory in this repository with three Go modules (core, the FlowCatalyst module, the UI kit shared
+with the platform), milestones G0 to G7 in the Java order, conformance vectors shared with the Java
+tests. Nothing is built; it waits on the owner decisions in `go/design.md` section 9.
+
 Order changed 2026-10-08: HTTP comes before the FlowCatalyst module, because login and both job
 receivers are HTTP endpoints. The survey behind M4 (what the SDKs and the platform provide today)
 found the Java SDK has no login, token validation or job receivers; those are new framework code.
