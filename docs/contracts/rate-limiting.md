@@ -25,14 +25,16 @@ application that wants its numbers tunable declares its own settings and passes 
   namespaces the keys (section 2) and labels the metrics; give each limiter its own.
 
 - **Policy** (`RateLimitPolicy`): `limit` requests per `period`, with up to `burst` at once (default
-  `burst` = `limit`). Ranges: `limit` and `burst` 1 to 1 000 000, `period` 1 ms to 1 day, and
-  `period / limit` at least 1 µs.
+  `burst` = `limit`). Ranges: `limit` and `burst` 1 to 1 000 000, `period` 1 ms to 1 day,
+  `period / limit` at least 1 µs, and the window `burst * period / limit` at most `Long.MAX_VALUE / 4`
+  nanoseconds (about 73 years).
 - **Algorithm:** GCRA (the generic cell rate algorithm), which is a token bucket of size `burst`
   refilled at `limit / period`, stored as one number per key (the theoretical arrival time, TAT).
   For a request of cost `c` at time `now`: `tat = max(stored, now)`, `next = tat + c * T` with
   `T = period / limit`; allowed when `now >= next - burst * T`, then `next` is stored; otherwise
   limited, nothing stored, retry after `next - burst * T - now`. Before that, `tat` is capped at
-  `now + burst * T` (an empty bucket); with one fixed policy the cap never applies (section 3a).
+  `now + burst * T` (an empty bucket), and a limited request whose stored TAT was beyond the cap
+  stores the capped value; with one fixed policy the cap never applies (section 3a).
 - The policy given when the limiter is built is its **default**. A middleware may decide each request with a
   policy of its own (section 3a); the stored state is the same either way.
 - `RateLimiter.acquire(key, cost)` returns `Decision`: `Allowed(remaining, resetAfter)` or
@@ -137,8 +139,11 @@ cap: `tat = min(max(stored, now), now + B * T)`. Call `debt = stored - now` (tim
   burst hold. Example: 100 per 10 s, burst 100 (window 10 s), 50 used, debt 5 s. Lowered to 1 per
   1 s, burst 2 (window 2 s): retry after 1 s, not 4 s. Lowered instead to 1 per 1 s, burst 10
   (window 10 s): allowed at once with 4 remaining (5 of 10 used, as 50 of 100 were).
-- The cap is applied when deciding and written back only by an allowed request (a limited one
-  stores nothing). With one fixed policy it never applies: an allowed request stores at most
+- The cap is **written back**: an allowed request stores `next` as always, and a limited request
+  whose stored TAT was beyond the cap stores the capped value (otherwise a limited request stores
+  nothing, as in section 1). Without the write-back the debt would stay beyond the window and the
+  `retryAfter` a limited request reports would not hold; with it, a request of cost `c` at
+  `now + retryAfter` is allowed. With one fixed policy the cap never applies: an allowed request stores at most
   `now + B*T`, and a stored value only ages. The `redis` key's TTL is the time until the stored TAT
   passes, which does not depend on the policy. The `memory` purge (`stored <= now`) does not either.
 - The `memory` overflow bucket (section 2) is decided with each request's own policy.
@@ -213,10 +218,11 @@ runs one script that takes the interval and burst as arguments, and there is no 
   `RateLimitRedisModule` (`rate-limit-redis`), `RateLimitModule.policy(InstanceConfig)` and the
   `rate-limits.instances` section. A `rate-limits` key left in a file is no longer read. The
   constructors of both limiters are private; the `create` methods are the only way to build one.
-- The window `burst * T` is computed with saturation (at `Long.MAX_VALUE / 4` nanoseconds, about
-  73 years) in the `memory` driver: before, a valid policy such as 1 per day with a burst of
-  1 000 000 overflowed `long` and refused every request. The `redis` script works in doubles and
-  was not affected.
+- `RateLimitPolicy` refuses a window `burst * period / limit` beyond `Long.MAX_VALUE / 4`
+  nanoseconds (about 73 years). Before, a policy such as 1 per day with a burst of 1 000 000 was
+  accepted and the `memory` driver's `burst * T` overflowed `long`, refusing every request (the
+  `redis` script works in doubles and was not affected). The bound leaves room for `now + window`
+  plus a cost without overflow.
 
 ## 5. Abuse cases and rulings
 

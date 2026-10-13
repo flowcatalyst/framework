@@ -8,11 +8,15 @@ import java.time.Duration;
  *
  * @param limit requests per period, 1 to 1 000 000
  * @param period the period, 1 ms to 1 day
- * @param burst requests allowed at once, 1 to 1 000 000
+ * @param burst requests allowed at once, 1 to 1 000 000; {@code burst * period / limit} at most
+ *     about 73 years
  */
 public record RateLimitPolicy(int limit, Duration period, int burst) {
 
   static final int MAX = 1_000_000;
+
+  /** The largest window {@code burst * period / limit}, in nanoseconds (about 73 years). */
+  static final long MAX_WINDOW_NANOS = Long.MAX_VALUE / 4;
 
   /** Checks the ranges. */
   public RateLimitPolicy {
@@ -27,6 +31,9 @@ public record RateLimitPolicy(int limit, Duration period, int burst) {
     }
     if (period.toNanos() / limit < 1_000) {
       throw new IllegalArgumentException("period / limit must be at least 1 microsecond");
+    }
+    if (burst > MAX_WINDOW_NANOS / (period.toNanos() / limit)) {
+      throw new IllegalArgumentException("burst * period / limit must be at most 73 years");
     }
   }
 

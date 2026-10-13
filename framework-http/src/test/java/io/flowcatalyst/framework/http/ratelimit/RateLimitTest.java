@@ -2,13 +2,16 @@ package io.flowcatalyst.framework.http.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.config.Config;
+import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.core.App;
-import io.flowcatalyst.framework.core.StartupException;
+import io.flowcatalyst.framework.core.AppBuilder;
+import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.http.Request;
 import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.RouteOptions;
@@ -25,6 +28,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,7 +44,7 @@ class RateLimitTest {
   final AtomicInteger handled = new AtomicInteger();
 
   MemoryRateLimiter limiter(int limit, Duration period, int burst) {
-    return new MemoryRateLimiter("api", new RateLimitPolicy(limit, period, burst), 100_000, nanos::get);
+    return MemoryRateLimiter.create("api", new RateLimitPolicy(limit, period, burst), 100_000, nanos::get);
   }
 
   void advance(Duration d) {
@@ -123,7 +127,7 @@ class RateLimitTest {
 
   @Test
   void aFloodOfKeysNeitherGrowsTheMapNorResetsExistingKeys() {
-    MemoryRateLimiter l = new MemoryRateLimiter("api", new RateLimitPolicy(1, Duration.ofMinutes(1), 1), 3, nanos::get);
+    MemoryRateLimiter l = MemoryRateLimiter.create("api", new RateLimitPolicy(1, Duration.ofMinutes(1), 1), 3, nanos::get);
     assertThat(l.acquire("victim", 1)).isInstanceOf(Decision.Allowed.class);
     assertThat(l.acquire("a", 1)).isInstanceOf(Decision.Allowed.class);
     assertThat(l.acquire("b", 1)).isInstanceOf(Decision.Allowed.class);
@@ -296,31 +300,249 @@ class RateLimitTest {
     assertThat(seen).containsExactly(null, null);
   }
 
-  // ---- configuration -----------------------------------------------------------------------
+  // ---- per-request policies (contract section 3a) -------------------------------------------
 
   @Test
-  void limitersComeFromConfiguration() throws IOException {
-    Files.writeString(
-        dir.resolve("application.yaml"),
-        """
-        rate-limits:
-          instances:
-            api: { driver: memory, limit: 100, period: 1m, burst: 20, max-keys: 500 }
-        """);
-    try (App app = App.builder().configDirectory(dir).environment(Map.of()).module(new RateLimitModule()).start()) {
-      RateLimiter api = app.get(RateLimiters.class).get("api");
-      assertThat(api.policy()).isEqualTo(new RateLimitPolicy(100, Duration.ofMinutes(1), 20));
-      assertThat(app.get(RateLimiters.class).names()).containsExactly("api");
+  void aRaisedPolicyAppliesFromTheKeysNextRequest() {
+    MemoryRateLimiter l = limiter(10, Duration.ofSeconds(10), 3); // T 1 s, window 3 s
+    for (int i = 0; i < 3; i++) {
+      assertThat(l.acquire("k", 1)).isInstanceOf(Decision.Allowed.class);
     }
-    for (String bad :
-        new String[] {
-          "{ driver: memory, period: 1m }", "{ driver: memory, limit: 5 }", "{ driver: memory, limit: 5, period: 1m, typo: 1 }",
-          "{ driver: memory, limit: 0, period: 1m }", "{ driver: memory, limit: 5, period: 1m, max-keys: 0 }"
-        }) {
-      Files.writeString(dir.resolve("application.yaml"), "rate-limits:\n  instances:\n    api: " + bad + "\n");
-      Throwable t =
-          catchThrowable(() -> App.builder().configDirectory(dir).environment(Map.of()).module(new RateLimitModule()).start().close());
-      assertThat(t).as(bad).isInstanceOf(StartupException.class);
+    // the default policy would make the caller wait 1 s; 10 per second, burst 30 (T 100 ms, window 3 s)
+    RateLimitPolicy raised = new RateLimitPolicy(10, Duration.ofSeconds(1), 30);
+    assertThat(l.acquire("k", 1, raised)).isEqualTo(new Decision.Limited(Duration.ofMillis(100), Duration.ofSeconds(3)));
+    advance(Duration.ofMillis(100));
+    assertThat(l.acquire("k", 1, raised)).isEqualTo(new Decision.Allowed(0, Duration.ofSeconds(3)));
+    advance(Duration.ofSeconds(1));
+    assertThat(l.acquire("k", 1, raised)).isEqualTo(new Decision.Allowed(9, Duration.ofMillis(2100)));
+    // back on the default policy, the same stored state decides
+    assertThat(l.acquire("k", 1)).isEqualTo(new Decision.Limited(Duration.ofMillis(100), Duration.ofMillis(2100)));
+  }
+
+  @Test
+  void aRaisedRateWithASmallerWindowCapsTheDebtAtAnEmptyBucket() {
+    MemoryRateLimiter l = limiter(10, Duration.ofSeconds(10), 3);
+    for (int i = 0; i < 3; i++) {
+      l.acquire("k", 1);
     }
+    // 10 per second, burst 10: window 1 s; the 3 s debt is capped, retry after one new interval
+    // (without the cap: 2.1 s)
+    RateLimitPolicy faster = new RateLimitPolicy(10, Duration.ofSeconds(1), 10);
+    assertThat(l.acquire("k", 1, faster)).isEqualTo(new Decision.Limited(Duration.ofMillis(100), Duration.ofSeconds(1)));
+  }
+
+  @Test
+  void aLoweredPolicyCarriesUsageOverInProportionAndCapsItAtAnEmptyBucket() {
+    MemoryRateLimiter l = limiter(100, Duration.ofSeconds(10), 100); // T 100 ms, window 10 s
+    assertThat(l.acquire("within", 50)).isInstanceOf(Decision.Allowed.class); // debt 5 s
+    assertThat(l.acquire("beyond", 50)).isInstanceOf(Decision.Allowed.class);
+    // 1 per second, burst 10 (window 10 s): half the window was used, so 5 of 10, 4 left after this
+    assertThat(l.acquire("within", 1, new RateLimitPolicy(1, Duration.ofSeconds(1), 10)))
+        .isEqualTo(new Decision.Allowed(4, Duration.ofSeconds(6)));
+    // 1 per second, burst 2 (window 2 s): the 5 s debt is beyond it, capped to empty; the wait is
+    // one new interval, not the 4 s the old debt would impose
+    RateLimitPolicy lower = new RateLimitPolicy(1, Duration.ofSeconds(1), 2);
+    assertThat(l.acquire("beyond", 1, lower)).isEqualTo(new Decision.Limited(Duration.ofSeconds(1), Duration.ofSeconds(2)));
+    // the capped value was written back, so the reported retry holds
+    advance(Duration.ofSeconds(1));
+    assertThat(l.acquire("beyond", 1, lower)).isEqualTo(new Decision.Allowed(0, Duration.ofSeconds(2)));
+    // from here the new policy holds
+    assertThat(l.acquire("beyond", 1, lower)).isEqualTo(new Decision.Limited(Duration.ofSeconds(1), Duration.ofSeconds(2)));
+    assertThatIllegalArgumentException().isThrownBy(() -> l.acquire("beyond", 3, lower));
+  }
+
+  @Test
+  void aWindowBeyondSeventyThreeYearsIsRefusedNotOverflowed() {
+    // 1 per day with a burst of 1 000 000: burst * T is beyond a long in nanoseconds
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> new RateLimitPolicy(1, Duration.ofDays(1), 1_000_000))
+        .withMessageContaining("73 years");
+    MemoryRateLimiter l = limiter(1, Duration.ofDays(1), 26_000); // 71 years
+    assertThat(l.acquire("k", 1)).isEqualTo(new Decision.Allowed(25_999, Duration.ofDays(1)));
+  }
+
+  final Map<String, RateLimitPolicy> plane = new ConcurrentHashMap<>();
+
+  /** A control plane: the policy per ingestion, read from memory on every request. */
+  PolicyResolver fromPlane() {
+    return r -> {
+      String ingestion = r.header("X-Ingestion");
+      if ("boom".equals(ingestion)) {
+        throw new IllegalStateException("control plane cache not loaded");
+      }
+      return ingestion == null ? null : plane.get(ingestion);
+    };
+  }
+
+  TestResponse send(TestClient c, String ingestion) {
+    return c.get("/x").header("X-Ingestion", ingestion).send();
+  }
+
+  double counter(Metrics metrics, String name) {
+    return metrics.snapshot().families().stream()
+        .filter(f -> f.name().equals(name))
+        .flatMap(f -> f.samples().stream())
+        .mapToDouble(MetricsSnapshot.Sample::value)
+        .sum();
+  }
+
+  @Test
+  void theResolversPolicyDecidesEachRequestAndTheHeadersReportIt() {
+    Metrics metrics = Metrics.memory(100, nanos::get);
+    plane.put("a", new RateLimitPolicy(10, Duration.ofMinutes(1), 3));
+    TestClient c =
+        client(
+            RateLimit.by(limiter(1, Duration.ofMinutes(1), 1), KeyResolvers.header("X-Ingestion"))
+                .policy(fromPlane())
+                .metrics(metrics)
+                .build());
+    for (int remaining = 2; remaining >= 0; remaining--) {
+      TestResponse r = send(c, "a");
+      assertThat(r.status()).isEqualTo(200);
+      assertThat(r.header("RateLimit-Limit")).isEqualTo("3");
+      assertThat(r.header("RateLimit-Remaining")).isEqualTo(Integer.toString(remaining));
+    }
+    TestResponse limited = send(c, "a");
+    assertThat(limited.status()).isEqualTo(429);
+    assertThat(limited.header("RateLimit-Limit")).isEqualTo("3");
+    // the control plane raises the ingestion's burst while the application runs
+    plane.put("a", new RateLimitPolicy(10, Duration.ofMinutes(1), 5));
+    TestResponse raised = send(c, "a");
+    assertThat(raised.status()).isEqualTo(200);
+    assertThat(raised.header("RateLimit-Limit")).isEqualTo("5");
+    assertThat(raised.header("RateLimit-Remaining")).isEqualTo("1");
+    // an ingestion the plane does not know (null): the limiter's default policy, never unlimited
+    TestResponse unknown = send(c, "b");
+    assertThat(unknown.status()).isEqualTo(200);
+    assertThat(unknown.header("RateLimit-Limit")).isEqualTo("1");
+    assertThat(send(c, "b").status()).isEqualTo(429);
+    assertThat(counter(metrics, "fw_http_rate_limit_policy_failures_total")).isZero();
+  }
+
+  @Test
+  void aResolverThatThrowsIsCountedAndDecidedWithTheDefaultPolicy() {
+    Metrics metrics = Metrics.memory(100, nanos::get);
+    TestClient c =
+        client(
+            RateLimit.by(limiter(1, Duration.ofMinutes(1), 1), KeyResolvers.header("X-Ingestion"))
+                .policy(fromPlane())
+                .metrics(metrics)
+                .build());
+    TestResponse first = send(c, "boom");
+    assertThat(first.status()).isEqualTo(200);
+    assertThat(first.header("RateLimit-Limit")).isEqualTo("1");
+    assertThat(send(c, "boom").status()).isEqualTo(429);
+    assertThat(counter(metrics, "fw_http_rate_limit_policy_failures_total")).isEqualTo(2.0);
+    assertThat(handled).hasValue(1);
+  }
+
+  @Test
+  void aResolverFailureIs503WhenTheMiddlewareDenies() {
+    Metrics metrics = Metrics.memory(100, nanos::get);
+    TestClient c =
+        client(
+            RateLimit.by(limiter(1, Duration.ofMinutes(1), 1), KeyResolvers.header("X-Ingestion"))
+                .policy(fromPlane())
+                .onStoreFailure(RateLimit.OnStoreFailure.DENY)
+                .metrics(metrics)
+                .build());
+    TestResponse denied = send(c, "boom");
+    assertThat(denied.status()).isEqualTo(503);
+    assertThat(denied.body()).contains("UNAVAILABLE");
+    assertThat(handled).hasValue(0);
+    assertThat(counter(metrics, "fw_http_rate_limit_policy_failures_total")).isEqualTo(1.0);
+  }
+
+  @Test
+  void aPolicyWhoseBurstIsBelowTheCostIsAPolicyFailure() {
+    Metrics metrics = Metrics.memory(100, nanos::get);
+    plane.put("tiny", new RateLimitPolicy(10, Duration.ofMinutes(1), 1));
+    TestClient c =
+        client(
+            RateLimit.by(limiter(10, Duration.ofMinutes(1), 5), KeyResolvers.header("X-Ingestion"))
+                .cost(2)
+                .policy(fromPlane())
+                .metrics(metrics)
+                .build());
+    TestResponse r = send(c, "tiny");
+    assertThat(r.status()).isEqualTo(200);
+    assertThat(r.header("RateLimit-Limit")).isEqualTo("5");
+    assertThat(counter(metrics, "fw_http_rate_limit_policy_failures_total")).isEqualTo(1.0);
+  }
+
+  @Test
+  void aLimiterWithoutPerRequestPoliciesIsRefusedWhenTheMiddlewareIsBuilt() {
+    RateLimitPolicy own = RateLimitPolicy.of(5, Duration.ofSeconds(1));
+    RateLimiter legacy =
+        new RateLimiter() {
+          @Override
+          public String name() {
+            return "legacy";
+          }
+
+          @Override
+          public RateLimitPolicy policy() {
+            return own;
+          }
+
+          @Override
+          public Decision acquire(String key, int cost) {
+            return new Decision.Allowed(4, Duration.ofSeconds(1));
+          }
+        };
+    assertThat(legacy.supportsPerRequestPolicy()).isFalse();
+    assertThat(legacy.acquire("k", 1, own)).isEqualTo(new Decision.Allowed(4, Duration.ofSeconds(1)));
+    assertThatThrownBy(() -> legacy.acquire("k", 1, RateLimitPolicy.of(6, Duration.ofSeconds(1))))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> RateLimit.by(legacy, KeyResolvers.clientAddress()).policy(r -> null))
+        .withMessageContaining("legacy");
+    assertThat(limiter(1, Duration.ofSeconds(1), 1).supportsPerRequestPolicy()).isTrue();
+  }
+
+  // ---- building limiters in code -----------------------------------------------------------
+
+  /** The application's own module: its settings, and its limiters built from them. */
+  static final class IngestModule implements Module {
+    static final Setting<Integer> LIMIT = Setting.integer("ingest.rate-limit").withDefault(100);
+    static final Setting<Duration> PERIOD = Setting.duration("ingest.rate-period").withDefault(Duration.ofMinutes(1));
+
+    /** The application's limiters, held in its own wiring. */
+    record Limiters(RateLimiter api) {}
+
+    @Override
+    public String id() {
+      return "ingest";
+    }
+
+    @Override
+    public void register(AppBuilder app) {
+      app.declare(LIMIT);
+      app.declare(PERIOD);
+      app.provide(
+          Limiters.class,
+          lookup -> {
+            Config config = lookup.get(Config.class);
+            return new Limiters(
+                MemoryRateLimiter.create("api", RateLimitPolicy.of(config.get(LIMIT), config.get(PERIOD))));
+          });
+    }
+  }
+
+  @Test
+  void limitersAreBuiltInCodeFromTheApplicationsOwnSettings() throws IOException {
+    Files.writeString(dir.resolve("application.yaml"), "ingest:\n  rate-limit: 20\n  rate-period: 10s\n");
+    try (App app = App.builder().configDirectory(dir).environment(Map.of()).module(new IngestModule()).start()) {
+      RateLimiter api = app.get(IngestModule.Limiters.class).api();
+      assertThat(api.name()).isEqualTo("api");
+      assertThat(api.policy()).isEqualTo(new RateLimitPolicy(20, Duration.ofSeconds(10), 20));
+    }
+    RateLimitPolicy p = RateLimitPolicy.of(5, Duration.ofSeconds(1));
+    assertThat(MemoryRateLimiter.create("login_v2-x", p).name()).isEqualTo("login_v2-x");
+    for (String bad : new String[] {"", "Api", "a:b", "1api", "a".repeat(64)}) {
+      assertThatIllegalArgumentException().as(bad).isThrownBy(() -> MemoryRateLimiter.create(bad, p));
+    }
+    assertThatIllegalArgumentException().isThrownBy(() -> MemoryRateLimiter.create("api", p, 0));
+    assertThatIllegalArgumentException().isThrownBy(() -> MemoryRateLimiter.create("api", p, 10_000_001));
   }
 }

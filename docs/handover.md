@@ -18,6 +18,26 @@ rewritten at hand-off and can lag the code in between.
   published); (4) `DISPATCH_JOB` outbox rows `1b6510e`; (3) `Background` + `Metrics` `661080f`; (5)
   `SecretResolver` (env, file; platform driver blocked on the platform) `91a1cc6`; (6)
   `framework-httpclient` on Vert.x + adapter `ea72549`; (9) rate limiting `3e1a771`.
+- MA item 10 (2026-10-13): per-request rate-limit policies (`RateLimit.by(...).policy(resolver)`)
+  and, by owner ruling ("limiters in code, not YAML"), limiters built in code.
+  **BREAKING for the first application:** the `rate-limits.instances` section, `RateLimiters`,
+  `RateLimitModule` and `RateLimitRedisModule` are gone. Migration:
+
+  ```java
+  // before: rate-limits: { instances: { api: { driver: memory, limit: 100, period: 1m, burst: 20 } } }
+  //         .module(new RateLimitModule())          and  app.get(RateLimiters.class).get("api")
+  // after: drop the YAML section and the module(s); build the limiter in your own wiring
+  RateLimiter api = MemoryRateLimiter.create("api", new RateLimitPolicy(100, Duration.ofMinutes(1), 20));
+  // redis driver: keep RedisModule and redis.instances; drop RateLimitRedisModule
+  RateLimiter login = RedisRateLimiter.create("login", app.get(RedisConnections.class).defaultInstance(), RateLimitPolicy.of(5, Duration.ofMinutes(1)));
+  RateLimit.by(api, KeyResolvers.clientAddress()).build(); // unchanged
+  ```
+
+  `max-keys` is the third argument of `MemoryRateLimiter.create`; `prefix` the fourth of
+  `RedisRateLimiter.create`. Names must match `[a-z][a-z0-9_-]*`. Numbers that should stay tunable
+  become the application's own `Setting`s (guide: rate-limiting, "Numbers from your own settings").
+  Rulings pending owner: `contracts/rate-limiting.md` section 5, item 4 (cap at an empty bucket
+  after a policy change; null = default policy; a resolver failure follows `onStoreFailure`).
 - Owner decisions waiting (each recorded in its contract under "Rulings pending owner"): publishing
   the Java SDK and the group id before the first tag (`contracts/build.md`); rate-limit store
   failure default ALLOW, IPv6 /64, the memory overflow bucket (`contracts/rate-limiting.md`);

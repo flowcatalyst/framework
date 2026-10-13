@@ -157,7 +157,7 @@ The modules, and what each is for:
 | `framework-http-jetty` | `JettyHttpModule` | [http](http.md) |
 | `framework-httpclient` | none; the HTTP client library (Vert.x), usable without the framework | [HTTP client](http-client.md) |
 | `framework-httpclient-module` | `HttpClientModule` | [HTTP client](http-client.md) |
-| `framework-ratelimit-redis` | `RateLimitRedisModule` (the `redis` rate-limit driver; `RateLimitModule` is in `framework-http`) | [rate limiting](rate-limiting.md) |
+| `framework-ratelimit-redis` | none; `RedisRateLimiter`, built in code on a connection from `RedisModule` (`MemoryRateLimiter` is in `framework-http`) | [rate limiting](rate-limiting.md) |
 | `framework-flowcatalyst` | `FlowCatalystModule` | [flowcatalyst module](flowcatalyst-module.md) |
 | `framework-sql`, `framework-sql-maven-plugin` | none; the checked-SQL generator and its Maven plugin | [checked SQL](checked-sql.md) |
 

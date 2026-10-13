@@ -8,6 +8,7 @@ import io.flowcatalyst.framework.metrics.Metrics;
 import io.flowcatalyst.framework.pipeline.Middleware;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,8 +16,8 @@ import org.slf4j.LoggerFactory;
  * The rate-limiting middleware (rate-limiting contract, section 3).
  *
  * <pre>{@code
- * Middleware<Request, Response> limit =
- *     RateLimit.by(limiters.get("api"), KeyResolvers.clientAddress()).build();
+ * RateLimiter api = MemoryRateLimiter.create("api", RateLimitPolicy.of(100, Duration.ofMinutes(1)));
+ * Middleware<Request, Response> limit = RateLimit.by(api, KeyResolvers.clientAddress()).build();
  * routes.post("/login", handler, RouteOptions.none().with(limit));
  * }</pre>
  */
@@ -56,6 +57,7 @@ public final class RateLimit {
     private boolean headers = true;
     private OnStoreFailure onStoreFailure = OnStoreFailure.ALLOW;
     private Metrics metrics = Metrics.noop();
+    private @Nullable PolicyResolver policies;
 
     private Builder(RateLimiter limiter, KeyResolver keys) {
       this.limiter = limiter;
@@ -98,7 +100,23 @@ public final class RateLimit {
     }
 
     /**
-     * Records {@code fw_http_rate_limited_total} and {@code fw_http_rate_limit_store_failures_total}.
+     * Decides each request with the policy {@code resolver} returns for it (contract section 3a).
+     *
+     * @param resolver the policy per request; null from it means the limiter's default policy
+     * @return this builder
+     */
+    public Builder policy(PolicyResolver resolver) {
+      if (!limiter.supportsPerRequestPolicy()) {
+        throw new IllegalArgumentException(
+            "rate limiter " + limiter.name() + " does not support per-request policies");
+      }
+      this.policies = resolver;
+      return this;
+    }
+
+    /**
+     * Records {@code fw_http_rate_limited_total}, {@code fw_http_rate_limit_store_failures_total} and,
+     * with a policy resolver, {@code fw_http_rate_limit_policy_failures_total}.
      *
      * @param value the registry, normally {@code app.get(Metrics.class)}
      * @return this builder
@@ -131,16 +149,51 @@ public final class RateLimit {
                   "limiter")
               .labels(l.name());
       AtomicLong lastWarn = new AtomicLong(Long.MIN_VALUE);
+      PolicyResolver resolver = policies;
+      Counter.@Nullable Series policyFailures =
+          resolver == null
+              ? null
+              : metrics
+                  .counter(
+                      "fw_http_rate_limit_policy_failures_total",
+                      "Requests whose rate limit policy could not be resolved.",
+                      "limiter")
+                  .labels(l.name());
+      AtomicLong lastPolicyWarn = new AtomicLong(Long.MIN_VALUE);
       return (request, next) -> {
         String key = key(k, request);
+        RateLimitPolicy policy = l.policy();
+        if (resolver != null && policyFailures != null) {
+          RateLimitPolicy resolved = null;
+          String problem = null;
+          try {
+            resolved = resolver.policy(request);
+          } catch (RuntimeException e) {
+            problem = "the policy resolver threw " + e;
+          }
+          if (resolved != null && resolved.burst() < c) {
+            problem = "the resolved burst " + resolved.burst() + " is below the cost " + c;
+            resolved = null;
+          }
+          if (problem != null) {
+            policyFailures.inc();
+            if (due(lastPolicyWarn)) {
+              LOG.warn("rate limiter {}: {}; requests are {}", l.name(), problem,
+                  failure == OnStoreFailure.ALLOW ? "decided with the default policy" : "refused");
+            }
+            if (failure == OnStoreFailure.DENY) {
+              return HttpErrors.error(503, "UNAVAILABLE", "rate limiting is unavailable");
+            }
+          } else if (resolved != null) {
+            policy = resolved;
+          }
+        }
         Decision decision;
         try {
-          decision = l.acquire(key, c);
+          decision = resolver == null ? l.acquire(key, c) : l.acquire(key, c, policy);
         } catch (RateLimitStoreException e) {
           storeFailures.inc();
-          long now = System.nanoTime();
-          long last = lastWarn.get();
-          if ((last == Long.MIN_VALUE || now - last >= WARN_EVERY) && lastWarn.compareAndSet(last, now)) {
+          if (due(lastWarn)) {
             LOG.warn("rate limiter {}: the store failed ({}); requests are {}", l.name(), e.getMessage(),
                 failure == OnStoreFailure.ALLOW ? "let through" : "refused");
           }
@@ -149,17 +202,18 @@ public final class RateLimit {
           }
           return next.handle(request);
         }
+        int burst = policy.burst();
         return switch (decision) {
           case Decision.Allowed allowed -> {
             Response response = next.handle(request);
-            yield h ? withHeaders(response, l, allowed.remaining(), allowed.resetAfter()) : response;
+            yield h ? withHeaders(response, burst, allowed.remaining(), allowed.resetAfter()) : response;
           }
           case Decision.Limited limit -> {
             limited.inc();
             Response response =
                 HttpErrors.error(429, "RATE_LIMITED", "too many requests")
                     .header("Retry-After", Long.toString(seconds(limit.retryAfter())));
-            yield h ? withHeaders(response, l, 0, limit.resetAfter()) : response;
+            yield h ? withHeaders(response, burst, 0, limit.resetAfter()) : response;
           }
         };
       };
@@ -174,9 +228,16 @@ public final class RateLimit {
     return key.length() > KEY_MAX ? "sha256:" + KeyResolvers.sha256(key) : key;
   }
 
-  private static Response withHeaders(Response response, RateLimiter limiter, long remaining, Duration reset) {
+  /** True at most once a minute per {@code last}. */
+  private static boolean due(AtomicLong last) {
+    long now = System.nanoTime();
+    long seen = last.get();
+    return (seen == Long.MIN_VALUE || now - seen >= WARN_EVERY) && last.compareAndSet(seen, now);
+  }
+
+  private static Response withHeaders(Response response, int burst, long remaining, Duration reset) {
     return response
-        .header("RateLimit-Limit", Integer.toString(limiter.policy().burst()))
+        .header("RateLimit-Limit", Integer.toString(burst))
         .header("RateLimit-Remaining", Long.toString(remaining))
         .header("RateLimit-Reset", Long.toString(seconds(reset)));
   }

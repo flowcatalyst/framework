@@ -145,7 +145,6 @@ unknown):
 | `redis.instances.<n>` | `url` (required, `redis://` or `rediss://`, may carry user, password and database number), `timeout` (2s), `pool.max` (16), `password` (secret, wins over the URL's). No `driver` needed. |
 | `locks.instances.<n>` | `driver` (required: `memory`, `database` or `redis`); `database` (instance name, for `database`); `connection` (Redis instance name) and `prefix` (default `fw:lock:`), for `redis` |
 | `secrets.instances.<n>` | `driver` (required: `file`, `env`; `platform` fails start-up); `directory` and `max-bytes` (65536) for `file`; `prefix` for `env`; `cache-ttl` (5m), `cache-max` (10000) for both. See [Per-client secrets](secrets.md) |
-| `rate-limits.instances.<n>` | `driver` (`memory`, or `redis` with `RateLimitRedisModule`); `limit` and `period` (required), `burst` (= limit); `max-keys` (100000) for `memory`; `connection`, `prefix` (`fw:rl:`) for `redis`. See [Rate limiting](rate-limiting.md) |
 | `http-clients.instances.<n>` | see [HTTP client](http-client.md#configured-clients) |
 
 `<section>.default` names the default instance; with exactly one instance it may be omitted.
