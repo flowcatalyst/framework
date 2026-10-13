@@ -12,7 +12,8 @@ public record Context(
     @Nullable ApplicationCode application,
     CorrelationId correlationId,
     @Nullable String causationId,
-    @Nullable String executionId) { ... }
+    @Nullable String executionId,
+    Set<String> permissions) { ... }
 ```
 
 | Field | Required | Meaning |
@@ -23,6 +24,7 @@ public record Context(
 | `correlationId` | always | follows a request into logs, events and jobs; generated when absent |
 | `causationId` | no | the event or message that caused this work |
 | `executionId` | no | the job or run this work belongs to |
+| `permissions` | no (empty) | what the principal may do, in the platform's form (`ingestor:ingestion:manage`); check with `hasPermission` (below) |
 
 ## The id types
 
@@ -61,7 +63,24 @@ Context context = Context.of(new ClientId("acme")).withPrincipal(new PrincipalId
 
 `Context.of(client)` generates a correlation id and leaves the rest empty. The `with...` methods
 return a copy: `withPrincipal`, `withApplication`, `withCorrelationId`, `withCausationId`,
-`withExecutionId`. `findPrincipal()` and `findApplication()` return `Optional`s.
+`withExecutionId`, `withPermissions`. `findPrincipal()` and `findApplication()` return
+`Optional`s. The six- and four-argument constructors still exist and give an empty permission set.
+
+### Permissions
+
+`hasPermission(required)` is true when a held permission **matches**: the same number of
+`:`-separated segments, and each held segment is `*` or equal to the required one. That is the
+platform's rule, so a permission the platform grants (`billing:*:view`) means the same here.
+
+```java
+Context c = Context.of(new ClientId("acme")).withPermissions(Set.of("billing:*:view"));
+c.hasPermission("billing:invoice:view");      // true
+c.hasPermission("billing:invoice:edit");      // false
+c.hasPermission("billing:invoice:line:view"); // false: a wildcard is one segment, never more
+```
+
+A wildcard in the *required* permission grants nothing, and a blank one never matches. Use it in a
+use case's `authorize` step, which sees only the `Context`.
 
 In a **test or a command**, build the context as above. In an **HTTP request** the context comes
 from a `ContextResolver`, a service your application provides:
