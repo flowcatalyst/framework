@@ -294,9 +294,9 @@ go/
 **Apache-2.0** for both modules and the UI packages, like the Java framework, the platform
 repository and the Rust framework. The dependencies are permissive (pgx MIT, go-redis BSD-2,
 embedded-postgres MIT, go-yaml Apache-2.0 and MIT, go-jet Apache-2.0, sqlc MIT as a tool; in the
-browser Vue, Nuxt UI, Reka UI, Tailwind CSS, TanStack Table, hey-api and Zod, all MIT). The
-exception is **fcsdk, which is MPL-2.0** ([gap analysis](gap-analysis.md) 4.3): legal to import from
-Apache-2.0 code, but against the Rust framework's no-MPL rule. Decision 3.
+browser Vue, Nuxt UI, Reka UI, Tailwind CSS, TanStack Table, hey-api and Zod, all MIT). fcsdk was
+the exception (MPL-2.0, [gap analysis](gap-analysis.md) 4.3); it was relicensed to **Apache-2.0**
+on 2026-10-13 (decision 3, done), so no module of the Go framework depends on MPL code.
 
 ### 2.4 Toolchain, lint, formatting
 
@@ -358,18 +358,22 @@ The [gap analysis](gap-analysis.md) is the detail; the decisions are:
 | fcsdk package | Used by the framework? | How |
 |---|---|---|
 | `client`, `auth` (client credentials) | **yes** | wrapped by `go/flowcatalyst`'s `PlatformClient`; fcsdk types never appear in framework signatures |
-| `sync` | **yes**, extended | the framework's `Definitions` map onto `sync.DefinitionSet`; the missing categories (connections, scheduled jobs, docs) are added to fcsdk in the platform repository first |
+| `sync` | **yes** | the framework's `Definitions` map onto `sync.DefinitionSet`; the categories that were missing (connections, scheduled jobs, docs, the OpenAPI document) were added to fcsdk on 2026-10-13 |
 | `auth` (`OAuthClient`, `TokenValidator`) | **yes**, in G5b | the OIDC relying party for sessions and login |
 | `cache` | later | when the cache contract exists (M5) |
 | `scheduledjobs`, `webhook` | **no**, ported | the contract's rules differ (section 4 of the gap analysis); the framework ports them, taking the envelope type and the HMAC from them as a reference |
 | `usecase`, `usecaseop`, `usecasepgx`, `outboxpgx`, `lock`, `tsid` | **no** | the framework owns its write path, outbox and locks (they must pass the shared vectors); `usecaseop`'s envelope is the model for the framework's use-case shape |
 
-How the framework module gets fcsdk (decision 4): fcsdk is today a package tree in the platform's
-module, MPL-2.0, untagged, at a module path that does not match its Git remote. Recommended: make
-`pkg/fcsdk` (or a move to `clients/go-sdk`, beside the other SDKs) **its own Go module** in the
-platform repository, tagged by the platform's release tooling like the other SDKs. Until then,
-development uses a `go.work` file (not committed) pointing at the sibling checkout, which is how the
-TypeScript spike plan wired its Go slice.
+How the framework module gets fcsdk (decision 4, done 2026-10-13): `pkg/fcsdk` is **its own Go
+module**, `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` (the path follows the platform's GitHub
+repository, as `clients/fn-go` does), released by the platform's tooling as tags
+`pkg/fcsdk/vX.Y.Z` (`make release-go-sdk`; unreleased so far, `pkg/fcsdk/VERSION` 0.0.0, first
+release `BUMP=0.1.0`). `go/flowcatalyst` requires it by that path; until the first tag,
+development uses a `go.work` file (not committed) or a `replace` pointing at the sibling checkout.
+The module imports nothing from the platform, its `go` directive is 1.26.0, and the platform itself
+consumes it through `replace ... => ./pkg/fcsdk`. Its outbox rows now follow this repository's
+`conformance/outbox` vector (camelCase batch items, with `data`/`operationData` written as the
+value itself rather than encoded), pinned by a copy of the vector in `pkg/fcsdk/outbox/testdata`.
 
 ### 4.2 The UI: the platform's patterns, not its code
 
@@ -510,8 +514,7 @@ slice can judge them on real code. Decision 13.
 **Not verified** (each is checked in the milestone named): sqlc's outer-join nullability and its
 handling of a type alias of a generic id as an override (G2); which go-jet runtime packages import
 `lib/pq` (G2); whether `ServeMux`'s 405 response can be replaced without wrapping every handler (G3,
-the design wraps); the platform's acceptance of fcsdk's snake_case outbox payload (reported only);
-`go get` of fcsdk through the repository-name mismatch (G4); NilAway's noise on this code (G1);
+the design wraps); NilAway's noise on this code (G1);
 `exactOptionalPropertyTypes` with hey-api's output and Nuxt UI's types, and a style CSP without
 `'unsafe-inline'` for every Nuxt UI component (G5a, U0; [`ui.md`](ui.md) section 18).
 
@@ -524,8 +527,8 @@ decision (old 25) are replaced by decisions 7, 18, 19 and 27 to 32.
 |---|---|---|---|
 | 1 | **Start now, and how far.** | Start G0 to G4 now: those Java contracts are built and stable. The UI package's first steps (U0 to U2 of G5a: workspace, gallery, components, partials) may start at once, in parallel, because they need no server and Java is not their authority ([`ui.md`](ui.md) section 17); U3 needs G3's typed operations. Hold G5b (sessions, login) for the M4c contract (decision 29). | everything |
 | 2 | **Where the code lives and the module split.** | `go/` in this repository with two modules: core `github.com/flowcatalyst/framework/go` and `.../go/flowcatalyst` (the only fcsdk importer) (section 2.2). The UI in a pnpm workspace rooted at the repository root: shared packages in `ui/`, example SPAs in `go/examples/*/web` ([`ui.md`](ui.md) section 4). | G0 |
-| 3 | **Licence.** | Apache-2.0 for both modules and the UI packages; browser dependencies permissive only (a licence check over the pnpm lockfile). fcsdk is MPL-2.0: relicense it to Apache-2.0 when it becomes its own module (the owner holds the copyright), so the framework and the Rust policy stay consistent. Otherwise accept MPL in `go/flowcatalyst` only, and say so in its README. | G0, G4 |
-| 4 | **How the framework consumes fcsdk.** | Make `pkg/fcsdk` its own module in the platform repository (or move it to `clients/go-sdk`), tagged like the other SDKs; add the missing sync categories (connections, scheduled jobs, docs) there. Until it is tagged, a local `go.work`. Not: depending on the whole platform module (pseudo-versions, the platform's dependencies in the module graph, the path/remote mismatch); not copying. | G4 |
+| 3 | **Licence.** | **Done (2026-10-13).** Apache-2.0 for both modules and the UI packages; browser dependencies permissive only (a licence check over the pnpm lockfile). fcsdk was relicensed from MPL-2.0 to Apache-2.0 (owner-approved; no third-party MPL code in it) and ships its own `LICENSE` and `NOTICE`, so no MPL exception is needed in `go/flowcatalyst`. | G0, G4 |
+| 4 | **How the framework consumes fcsdk.** | **Done (2026-10-13).** `pkg/fcsdk` is its own module, `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` (path matches the repository; `go get` through a `pkg/fcsdk/vX.Y.Z` git tag verified), released with `make release-go-sdk` (dry run verified, not yet released); the missing sync categories (connections, scheduled jobs, docs, OpenAPI) were added. Until the first tag, a local `go.work` or `replace`. Not: depending on the whole platform module; not copying. Section 4.1. | G4 |
 | 5 | **Test infrastructure.** | Embedded PostgreSQL 18 per test binary, a database per test from a migrated template, never 15432 or 8080; no `integration` build tag; Redis tests on a real `redis-server`/`valkey-server` from `PATH` (fail with instructions when absent), miniredis only above the driver. | G0 |
 | 6 | **Toolchain and lint (Go).** | Go 1.27; the platform's golangci-lint v2 profile plus `gochecksumtype`, `forbidigo` (clock, env, global logger, background contexts) and revive `exported`; gofumpt and goimports; NilAway pinned by pseudo-version as its own CI step; `fwvet`; `-race` always. | G0 |
 | 7 | **UI toolchain** (the stack itself is the owner's ruling). | Nuxt UI v4 through its Vite and Vue plugins, no Nuxt or Nitro; Vue 3.5+, vue-router, Vite; pnpm with exact versions, a catalog, `minimumReleaseAge` and a build-script allow-list; TypeScript pinned to what vue-tsc supports; the platform's tsconfig plus `exactOptionalPropertyTypes` and `verbatimModuleSyntax`, `erasableSyntaxOnly` kept, `strictTemplates`; typescript-eslint `strictTypeChecked` with type information and `eslint-plugin-vue`, no `any`, no casts, no non-null assertions; oxfmt; explicit imports (Nuxt UI's auto-imports off); Lucide icons bundled, never fetched; no Pinia in `@fw/ui` ([`ui.md`](ui.md) sections 2, 3, 5). | G5a (U0) |
