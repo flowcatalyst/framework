@@ -1,4 +1,4 @@
-# Handover (2026-10-10)
+# Handover (2026-10-13)
 
 The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; contracts in
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
@@ -46,9 +46,25 @@ rewritten at hand-off and can lag the code in between.
   dispatch-job `metadata` fails the whole batch (`contracts/write-path.md` 7a); no secret-resolution
   endpoint, and the platform-config read returns SECRET values unmasked to any anchor-tier caller,
   application service accounts included (`contracts/secrets.md` section 5).
-- Next: contracts for M-UI (JTE) and M4c (sessions and OIDC login; the HTTP client is ready for
-  it), then the `/admin` area. Platform work for scoped event/dispatch-job reads is listed in
-  `contracts/flowcatalyst.md` section 5.
+- **M4c built 2026-10-13** (sessions and login). Contract `contracts/sessions-and-login.md`, written
+  once, language-neutral and JSON-first, for Java, Go, Rust and TypeScript (Go capabilities section
+  12 now points at it). Java: `framework-auth` (the module, the relying party, `PlatformTokens`, the
+  `memory` and `cookie` stores, the `ContextResolver`, CSRF, `AuthTesting`, `TestOidcProvider` in its
+  test-jar), `framework-auth-database` (the default store), `framework-auth-redis`. Core: `Context`
+  gained `permissions` with the platform's wildcard matching. http: `Request.rawQuery()`,
+  `Request.contentLength()` public, `Response.redirect`. Guide: `guide/sessions-and-login.md`,
+  `guide/migrating-from-flowcatalyst-token.md` (the first application's app-side steps). Rulings
+  taken, for the owner to confirm or reverse, are in the contract's section 12 (no platform tokens in
+  the session and no refresh; JDK HTTP client rather than `framework-httpclient`; `/auth/session`
+  answers 200; http only in local/test; CSRF on logout; sessions get no permissions until roles are
+  mapped; `Context.permissions`). Not verified against a real platform or a real browser.
+- The first application is `inhance/mono-repo` (not under `flowcatalyst-apps`): `apps/ingest-runtime`
+  (Camel) and `apps/ingest-control-plane`, with `libs/java/flowcatalyst-token` to be retired by the
+  migration page's steps (not done; app-side work).
+- **Open owner decision for M-UI:** JTE + Datastar (the plan) or sharing the Go framework's Nuxt UI
+  SPA package (Go design decision 31). M4c's endpoints are JSON and serve either. Not decided here.
+- Next: the M-UI decision, then M-UI and the `/admin` area (M4d). Platform work for scoped
+  event/dispatch-job reads is listed in `contracts/flowcatalyst.md` section 5.
 - Rulings: the platform delivers the outbox; handler failure/timeout in a receiver is a
   transient error; a receiver without handlers answers 404 (reverses "routes stay and refuse");
   sessions have cookie/database/redis drivers; Opus for security-sensitive slices, Sonnet for
