@@ -58,7 +58,8 @@ rewritten at hand-off and can lag the code in between.
   `retryMaxCount: 0`), a phone-width shell and server-rendered theme cookies. Defects and gaps are
   in `ui-kit/PORTING-NOTES.md`. JTE (`framework-ui`, M-UI) has not started; it reuses the same
   fixtures. Plan: `ui-dogfood-plan.md`.
-- Rust and TypeScript are **parked** (owner, 2026-10-13): no further work on either until resumed.
+- Rust and TypeScript are **parked** (owner, 2026-10-13): no further work on either until resumed. Rust: R0 to R2 built, R3 onward not started (banner in `rust/design.md`). TypeScript: design only, drafted and parked the same day in favour of Go, spike not run (banner in `typescript/design.md`).
+- Java follow-ups found while designing the others: (1) the dispatch receiver builds its `Context` with no principal and no causation, against the 2026-10-12 receiver-principal ruling (service principal of kind Service, dispatch job id as cause); (2) the Java tests have not yet written the HTTP, Datastar, metrics, rate-limit, secrets, receiver and htmlnorm conformance vectors the other implementations compare against; (3) the contracts need the principal kind and the source of the service principal's id spelled out; (4) the platform findings (dispatch-jobs `clientCode`, object-shaped `metadata`) are listed under 'Platform work found' above.
 - Go framework: designed 2026-10-13, nothing built (owner decision: Go alongside Java; a part of a
   business application will later be built on both and compared). `go/gap-analysis.md` (fcsdk
   covers 2 of the 41 built Java capabilities, 14 partly, 25 not at all; none of the partly ones

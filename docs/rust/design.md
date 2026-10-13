@@ -1,6 +1,8 @@
 # Rust framework: design (draft 1, 2026-10-11)
 
-Status: a design. Nothing is built. Names are placeholders (implementation plan, open question 6);
+**PARKED (owner, 2026-10-13).** R0 to R2 are built (workspace, core, config, database, locks, Redis, the use-case write path with checked SQL; outbox rows byte for byte with Java). R3 onward is not started and nothing more is built until the owner resumes. To resume: read [`milestones.md`](milestones.md) section 0, re-run the Rust CI locally (`CARGO_INCREMENTAL=0`, see the notes there), and re-check the conformance vectors still pass against the Java writer. Nothing is published.
+
+Status (original draft): a design. Nothing is built. Names are placeholders (implementation plan, open question 6);
 crate names below use the prefix `fw-` for readability only.
 
 The Rust framework is a second implementation of the contracts in [`../contracts/`](../contracts/),

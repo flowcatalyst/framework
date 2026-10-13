@@ -1,10 +1,13 @@
 # TypeScript framework: design (draft 1, 2026-10-13)
 
-Status: a design. Nothing is built. Package names below use the scope `@fw/` for readability only
+**PARKED (owner, 2026-10-13), the same day it was drafted.** The owner chose to build the Go framework alongside Java instead (see [`../go/design.md`](../go/design.md)); the TypeScript framework is kept as a record of the option. Nothing was built and the T0 spike was not run. It would be reconsidered if a TypeScript compiler such as scriptc stabilises.
+
+Status (original draft): a design. Nothing is built. Package names below use the scope `@fw/` for readability only
 (implementation plan, open question 6); every package is private and none is published to npmjs.
 
-TypeScript becomes the **default framework for new business applications** (owner, 2026-10-13).
-Java stays for the applications already on it; the Rust implementation is paused after R2. The
+Drafted on the premise that TypeScript becomes the default framework for new business
+applications; the owner has since parked it in favour of Go (banner above). Java stays for the
+applications already on it; the Rust implementation is paused after R2. The
 TypeScript framework is a third implementation of the contracts in [`../contracts/`](../contracts/),
 written for TypeScript and for a future native compiler rather than translated from Java.
 Applications built on any implementation must be interchangeable to the FlowCatalyst platform: the
