@@ -18,6 +18,7 @@ end of [STATUS](../STATUS.md#where-the-guide-and-the-contracts-can-differ).
 | [HTTP](../../contracts/http.md) | routing, middleware, validation, errors, Jetty, Datastar | [HTTP](../http.md) |
 | [background and metrics](../../contracts/background-and-metrics.md) | `Background` loops, the lock gate, `Metrics`, built-in metrics, the Prometheus endpoint | [Background and metrics](../background-and-metrics.md) |
 | [rate limiting](../../contracts/rate-limiting.md) | GCRA limiters built in code, `memory` and `redis` drivers, the 429 middleware, key resolvers, per-request policies, abuse cases | [Rate limiting](../rate-limiting.md) |
+| [sessions and login](../../contracts/sessions-and-login.md) | the application as its own backend-for-frontend: `/auth/*` endpoints, the OIDC relying party, bearer tokens, session cookies and drivers, CSRF, the `ContextResolver` | (M4c, being built) |
 | [HTTP client](../../contracts/http-client.md) | the client library on Vert.x, retries, auth, the framework adapter | [HTTP client](../http-client.md) |
 | [secrets](../../contracts/secrets.md) | per-client secret references, the `env` and `file` drivers, the threat model, the blocked platform driver | [Per-client secrets](../secrets.md) |
 | [build and publishing](../../contracts/build.md) | `framework-bom`, what an application needs, GitHub Packages, the publish workflow | [Getting started](../getting-started.md) |

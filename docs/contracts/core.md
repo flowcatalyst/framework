@@ -153,10 +153,18 @@ or a thread-local by the framework.
 | correlation id | `CorrelationId` | always; generated when absent |
 | causation id | text | no (added in M2a: the event or message that caused this work) |
 | execution id | text | no (added in M2a: the job or run this work belongs to) |
+| permissions | set of text | no; empty when absent (added in M4c: what the principal may do, from the sessions-and-login contract section 7.3) |
 
 Id types are records wrapping a validated non-blank string. `ClientId` matches
 `[A-Za-z0-9._-]{1,100}`: it never contains `:`, so it can be embedded in composite keys (locks,
 cache) without two clients producing the same key. `ApplicationCode` matches `[a-z][a-z0-9-]*`. M1 provides the types; building a `Context` from a request is M3.
+
+*Amended by M4c (2026-10-13):* `permissions` is a set of permission strings. `hasPermission(required)`
+is true when some held permission **matches** the required one: both have the same number of
+`:`-separated segments and each held segment is `*` or equal to the required segment (the
+platform's rule, `shared/auth/auth.go`). A blank required permission never matches. Constructors
+without permissions keep working (empty set). The real resolver that fills it is the
+[sessions-and-login contract](sessions-and-login.md).
 
 ## 4. Config
 

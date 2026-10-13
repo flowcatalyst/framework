@@ -763,26 +763,31 @@ firing's fields.
 
 ## 12. Sessions and login (M4c)
 
-No contract yet. Recommended (decision 29): the M4c contract written once and JSON-first, for an
-SPA served by the application ([`ui.md`](ui.md) section 8). What can be said now:
+**The contract is written:** [`contracts/sessions-and-login.md`](../contracts/sessions-and-login.md)
+(2026-10-13, Java built against it), language-neutral and JSON-first as decision 29 recommended. Go
+implements it like any other contract. It settles what this section used to sketch:
 
-- **The application is the backend-for-frontend.** Endpoints `GET /auth/login?returnTo=`,
-  `GET /auth/callback`, `GET /auth/session` (principal, kind, client, permissions, expiry, or 401),
-  `POST /auth/logout`; the session endpoint is a typed operation, so the SPA's client is generated.
-- **Sessions:** an opaque `__Host-fw_session` cookie (`HttpOnly; Secure; SameSite=Lax; Path=/`);
-  drivers `database` (the default), `redis` and `cookie` (AES-256-GCM, `crypto/cipher`), as ruled
-  for Java; rotation on login, idle and absolute expiry; a middleware and a typed accessor. Tokens
-  stay on the server.
-- **OIDC relying party:** fcsdk's `auth.OAuthClient` (PKCE, code exchange, refresh, revoke, logout
-  URL) and `auth.TokenValidator` (JWKS through `lestrrat-go/jwx/v2`), id_token verified with RS256
-  always; a public client, because the platform refuses a secret from one (flowcatalyst contract
-  5.3).
-- **CSRF** for cookie-authenticated unsafe methods: `SameSite=Lax`, `httpfw.CSRF` (section 5),
-  JSON-only bodies; no token.
-- **401 versus redirect:** API calls get 401 and the envelope; the SPA navigates to
-  `/auth/login?returnTo=` itself. `index.html` and the assets are public.
-- The real `ContextResolver` builds `fw.Context` from the session; the principal's permissions and
-  kind arrive here. Platform calls stay on the application's service account.
+- **The application is the backend-for-frontend**: `GET /auth/login?returnTo=`, `GET
+  /auth/callback`, `GET /auth/session`, `POST /auth/logout` (contract section 4). Difference from the
+  earlier sketch: `/auth/session` always answers `200`, with `authenticated: false` when there is no
+  session (contract ruling 3). In Go the session endpoint is still a typed operation, so the SPA's
+  client is generated.
+- **Sessions**: `__Host-fw_session`, drivers `database` (default), `redis`, `cookie` (AES-256-GCM
+  with the contract's exact sealed format and key list, so a Go and a Java replica can share keys),
+  idle and absolute expiry, rotation on login, revocation on logout; the session JSON and the
+  `fw_session` DDL are in the contract (section 6).
+- **Relying party**: discovery, JWKS with refresh on an unknown `kid` at most once a minute, the
+  ordered id_token checks (RS256 only, `token_use` absent, `nonce`, `azp`) and the access-token
+  checks (contract section 5). A public client by default, confidential when `auth.client-secret`
+  is set. fcsdk's `auth.OAuthClient` and `auth.TokenValidator` can be reused if they pass the
+  contract's checks; `lestrrat-go/jwx/v2` must be pinned to RS256 (no algorithm from the header).
+- **No platform tokens in the session, no refresh** (contract ruling 1).
+- **CSRF**: the platform's F16 rules as the contract states them (`Sec-Fetch-Site`, else `Origin`,
+  neither refused, `403 CROSS_ORIGIN_REQUEST`; `415` for non-JSON bodies). `http.CrossOriginProtection`
+  alone is not enough: it lets a request with neither header through.
+- **401 versus 302**: contract section 7.4 (a `302` only for an HTML navigation).
+- The real `ContextResolver` builds `fw.Context` with the principal, the selected client and the
+  permissions (the core contract's `Context` gained `permissions` in M4c).
 
 ## 13. UI: Nuxt UI on Vue, strict TypeScript
 

@@ -139,6 +139,12 @@ resolver in M3 (M4 brings login); a test resolver is used in tests.
 **Start-up fails** if any route requires a context and no `ContextResolver` is provided; the
 problem names the route.
 
+*Amended by M4c (2026-10-13):* the real resolver is `framework-auth`'s
+([sessions-and-login contract](sessions-and-login.md) section 7): bearer tokens and the session
+cookie, the CSRF rules, and the rule that turns a `401` into a `302` to `/auth/login` for an HTML
+navigation. Cookies are plain `Set-Cookie` headers added with `Response.addHeader`; the http layer
+itself still has no cookie or session support.
+
 **Correlation id:** the `X-Correlation-Id` request header is used when present and valid
 (`[A-Za-z0-9._-]{1,100}`), else one is generated; an invalid supplied value is replaced, not
 rejected. It is echoed in the response header on every response including errors and 404s, put

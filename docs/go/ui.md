@@ -378,6 +378,10 @@ var AddLine = httpfw.Operation[AddLineBody, LineAddedView]{
 
 ### 8.1 Shape: the application server is the backend-for-frontend
 
+*Superseded 2026-10-13 by [`contracts/sessions-and-login.md`](../contracts/sessions-and-login.md),
+which is authoritative where it differs from this section (notably: `/auth/session` answers 200
+with `authenticated: false`, and the CSRF rules are the platform's F16 rules exactly).*
+
 Tokens never reach the browser. The application is an OIDC relying party of FlowCatalyst (code
 flow with PKCE as a **public client**: the platform refuses a secret from a public client,
 flowcatalyst contract 5.3), keeps the tokens in a server-side session, and gives the browser one
