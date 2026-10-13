@@ -63,7 +63,7 @@ rewritten at hand-off and can lag the code in between.
 - Go framework: designed 2026-10-13, nothing built (owner decision: Go alongside Java; a part of a
   business application will later be built on both and compared). `go/gap-analysis.md` (fcsdk
   covers 2 of the 41 built Java capabilities, 14 partly, 25 not at all; none of the partly ones
-  passes the shared vectors as is; the platform's templ UI kit is the big reuse), `go/design.md`
+  passes the shared vectors as is; the platform's templ UI kit was the big reuse until the 2026-10-13 ruling that the Go UI is Nuxt UI on Vue with strict TypeScript; see `go/ui.md`), `go/design.md`
   (stdlib-first one-way rules, explicit build function and typed handles, three Go modules under
   `go/`, sqlc plus go-jet/`Filter`, embedded PostgreSQL tests, 27 ordered owner decisions),
   `go/capabilities.md`, `go/orders-showcase.md`, `go/milestones.md` (G0 to G7). Findings: the Java
