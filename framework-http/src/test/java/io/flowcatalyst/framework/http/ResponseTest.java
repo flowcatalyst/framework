@@ -152,4 +152,24 @@ class ResponseTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(req::bodyBytes)
         .isInstanceOfSatisfying(HttpException.class, e -> assertThat(e.status()).isEqualTo(413));
   }
+
+  @Test
+  void aRedirectIsA302WithALocationAndNoBody() {
+    Response r = Response.redirect("/auth/login?returnTo=%2Fx");
+    assertThat(r.status()).isEqualTo(302);
+    assertThat(r.header("Location")).isEqualTo("/auth/login?returnTo=%2Fx");
+    assertThat(r.body()).isInstanceOf(Response.Body.Empty.class);
+    assertThat(r.contentType()).isNull();
+    assertThatIllegalArgumentException().isThrownBy(() -> Response.redirect("/x\r\nSet-Cookie: a=b"));
+  }
+
+  @Test
+  void theRawQueryIsTheQueryAsSent() {
+    Request with =
+        Request.of(new RawRequest(Method.GET, "/a", "b=%2F&c", Map.of(), new java.io.ByteArrayInputStream(new byte[0]), 0, 10, "HTTP/1.1"));
+    Request without =
+        Request.of(new RawRequest(Method.GET, "/a", null, Map.of(), new java.io.ByteArrayInputStream(new byte[0]), 0, 10, "HTTP/1.1"));
+    assertThat(with.rawQuery()).isEqualTo("b=%2F&c");
+    assertThat(without.rawQuery()).isNull();
+  }
 }

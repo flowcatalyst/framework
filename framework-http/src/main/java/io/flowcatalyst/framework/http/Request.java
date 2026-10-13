@@ -113,6 +113,15 @@ public final class Request {
   }
 
   /**
+   * The query string as sent, still percent-encoded, without the {@code ?}.
+   *
+   * @return the raw query, or null when the target had none
+   */
+  public @Nullable String rawQuery() {
+    return raw.rawQuery();
+  }
+
+  /**
    * The protocol.
    *
    * @return for example {@code HTTP/1.1}
@@ -385,11 +394,12 @@ public final class Request {
   // ---- body --------------------------------------------------------------------------------
 
   /**
-   * The declared body length.
+   * The declared body length, as the server adapter read it.
    *
-   * @return the length from {@code Content-Length}, or -1
+   * @return the length from {@code Content-Length}, or -1 when none was declared (for example a
+   *     chunked body)
    */
-  long contentLength() {
+  public long contentLength() {
     return raw.contentLength();
   }
 

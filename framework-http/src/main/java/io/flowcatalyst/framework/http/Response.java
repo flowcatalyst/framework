@@ -129,6 +129,17 @@ public final class Response {
   }
 
   /**
+   * A {@code 302 Found} with a {@code Location} header and no body.
+   *
+   * @param location the target, for example {@code /auth/login?returnTo=%2F} or an absolute URL
+   * @return the response
+   * @throws IllegalArgumentException when the location contains CR or LF
+   */
+  public static Response redirect(String location) {
+    return of(302, null, new Body.Empty()).header("Location", location);
+  }
+
+  /**
    * A 204 response with no body.
    *
    * @return the response

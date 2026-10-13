@@ -70,6 +70,11 @@ values on).
 *Added by MA item 9:* `remoteAddress()` (`@Nullable`), the IP literal of the connection's peer as
 the server adapter saw it (a proxy's address behind one); never taken from a header.
 
+*Added by M4c:* `rawQuery()` (`@Nullable`), the query string as sent, so a redirect can carry the
+request's own target; `contentLength()` is public (the declared body length, `-1` when none was
+declared), so a check can tell whether a body was sent; `Response.redirect(location)`, a `302` with
+`Location` and no body.
+
 `Response` is a value built with static factories and fluent `header(name, value)`:
 `Response.ok(body)`, `Response.json(status, object)` (Jackson 3, records and maps only),
 `Response.text(status, string)`, `Response.noContent()`, `Response.html(status, string), Response.bytes(status, contentType,
