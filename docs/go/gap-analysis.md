@@ -7,7 +7,9 @@ contracts and [`../guide/STATUS.md`](../guide/STATUS.md)), what already exists i
   `outboxpgx`, `outboxsql`, `scheduledjobs`, `sync`, `tsid`, `usecase`, `usecaseop`, `usecasepgx`,
   `webhook`; read 2026-10-13 at `flowcatalyst-go` commit `4f1ecbb`);
 - **platform**: the Go platform's own code, chiefly `internal/ui` (the templ port of the UI kit) and
-  `internal/platform/shared`, plus its tooling (sqlc, `internal/testpg`, `tools/analyzer`).
+  `internal/platform/shared`, plus its tooling (sqlc, `internal/testpg`, `tools/analyzer`); since
+  the Nuxt UI ruling (2026-10-13) also its Vue SPA (`frontend/`) and its OpenAPI pipeline
+  (`apiroute`, `tools/dump-spec`), read for rows 47 to 50.
 
 Status words: **covered** (usable as is, possibly behind a thin wrapper), **partly** (some of the
 contract, or the right idea with different bytes or rules), **missing**, **n/a** (Go does not need
@@ -19,9 +21,9 @@ pattern to copy or a package to extract", never "a dependency". Only `pkg/fcsdk`
 
 ## 1. Headline
 
-Of the **41** capabilities the Java framework has built (M1 to MA, not counting the five rows that
-are n/a in Go), `pkg/fcsdk` covers **2 (5%)**, covers **14 (34%) partly**, and has nothing for
-**25 (61%)**. Weighted by work, fcsdk saves roughly **15 to 20%** of what the Java framework took,
+Of the **40** capabilities the Java framework has built (M1 to MA, not counting the six rows that
+are n/a in Go), `pkg/fcsdk` covers **2 (5%)**, covers **14 (35%) partly**, and has nothing for
+**24 (60%)**. Weighted by work, fcsdk saves roughly **15 to 20%** of what the Java framework took,
 almost all of it in the FlowCatalyst module (the platform client, client credentials, the sync
 endpoints, the scheduled-job runner's shape) and in the use-case envelope's shape.
 
@@ -31,11 +33,11 @@ differ from what the Java framework writes (section 4). The framework therefore 
 and its locks, as the Java and Rust frameworks do, and uses fcsdk where the Java framework uses the
 Java SDK: in the FlowCatalyst module only.
 
-The platform contributes more than fcsdk for the later milestones: the **UI kit is already ported
-to templ and passes the kit's golden fixtures** (`internal/ui/kit`, with the HTML normaliser
-`internal/ui/htmlnorm` and the Datastar wrapper `internal/ui/ds`), which makes the Go UI milestone
-an extraction rather than a build. sqlc, the embedded-PostgreSQL test fixture and the dynamic-query
-`Filter` are proven patterns to copy.
+The platform contributes proven patterns rather than code: sqlc, the embedded-PostgreSQL test
+fixture, the dynamic-query `Filter`, and for the UI its PrimeVue SPA's embedding, dev loop,
+composables and OpenAPI-to-TypeScript pipeline. (The first draft counted on extracting the
+platform's templ port of the UI kit; the owner's 2026-10-13 ruling makes the Go framework's UI a
+Nuxt UI SPA instead, see [`ui.md`](ui.md), so that reuse is gone and the UI is new work.)
 
 ## 2. Capability table
 
@@ -103,7 +105,7 @@ an extraction rather than a build. sqlc, the embedded-PostgreSQL test fixture an
 | 33 | JSON strictness and validation that collects every error (http 7) | missing | `shared/validate` (code rules, internal) | new, on `encoding/json/v2` |
 | 34 | Health endpoints, body limit 413, graceful drain and 503 (http 8) | missing | not reusable | new |
 | 35 | Test client (http 9) | n/a | n/a | `net/http/httptest` |
-| 36 | Datastar adapter: exact SSE bytes (http 10) | missing | `internal/ui/ds` over `starfederation/datastar-go` v1.2.2 | extract; bytes to be checked against Java vectors |
+| 36 | Datastar adapter: exact SSE bytes (http 10) | n/a | `internal/ui/ds` over `starfederation/datastar-go` v1.2.2 | **n/a**: not implemented in Go (Nuxt UI ruling 2026-10-13; design decision 27) |
 | 37 | Rate limiting: GCRA, `memory` and `redis` with the shared Lua ([rate limiting](../contracts/rate-limiting.md)) | missing | `shared/ratelimit`: token bucket (`x/time/rate`) plus Redis and PostgreSQL stores, not GCRA | new |
 
 ### HTTP client and secrets (MA 5, 6)
@@ -131,10 +133,10 @@ These rows are not counted in the headline.
 
 | # | Capability | fcsdk | Platform | Go framework |
 |---|---|---|---|---|
-| 47 | UI kit components, conformance over `ui-kit/fixtures` | n/a | **covered**: `internal/ui/kit` (templ; imports only templ), fixtures vendored by `scripts/ui-kit-sync.sh` from kit commit `5b625f5` | extract into a shared module ([design](design.md) 2.2) |
-| 48 | HTML normaliser for the fixtures | n/a | **covered**: `internal/ui/htmlnorm` (imports only `x/net/html`) | extract |
-| 49 | Assets: kit CSS, Datastar JS (pinned sha256), icon sprite, compression | n/a | **covered**: `internal/ui/assets`, `internal/ui/compress` (Brotli and gzip) | extract |
-| 50 | View helper: a page or a Datastar patch from one template | n/a | **partly**: `internal/ui/shell` and the pages show the pattern; `shell` and `guard` import platform auth and `fcsdk/usecase` | new, small |
+| 47 | UI components (Java plan: JTE over `ui-kit/`; Go: Nuxt UI, [`ui.md`](ui.md)) | n/a | the templ kit (`internal/ui/kit`) is **not used** by the Go framework; the PrimeVue SPA's composables (`useListState`, `useDrawerRoute`, `useCursorPagination`, `useDirtyForm`) and partials are the model | new: `@fw/ui` on Nuxt UI |
+| 48 | A typed JSON API description (OpenAPI) and a generated browser client | n/a | huma (`apiroute`, `tools/dump-spec`, `api/openapi.lock.json`, `make api-diff`) and hey-api **types only** with a hand-written transport; no enums, `Time` patched, `/bff` and `/auth` outside the spec | new: the framework's own emitter (design decision 18), the full hey-api client (decision 19) |
+| 49 | Serving the built SPA from the binary | n/a | **pattern**: `frontend/embed.go` and `handler.go` (a missing hashed asset and unknown paths answer `index.html`; `no-store` on `index.html`) | new, `httpfw/spa`, with those two points corrected |
+| 50 | CSRF for cookie-authenticated requests | n/a | **pattern**: `internal/ui/guard.CSRF` (`http.CrossOriginProtection` plus refusing no-provenance requests), applied to `/ui` only, not to the `/api` routes the SPA calls | new, `httpfw.CSRF` |
 | 51 | Sessions (`cookie`, `database`, `redis` drivers) | missing | the platform's own login sessions (internal, not read for this analysis) | new, after the M4c contract |
 | 52 | OIDC relying party: PKCE, discovery, JWKS, id_token, refresh, logout | **partly**: `auth.OAuthClient` (PKCE, code exchange, refresh, revoke, introspect, userinfo, logout URL), `auth.TokenValidator` (RS256, JWKS via `lestrrat-go/jwx/v2`) | `coreos/go-oidc` in the platform | reuse fcsdk `auth` |
 | 53 | Admin area | missing | the platform's own admin UI (not reusable) | later |
@@ -143,13 +145,13 @@ These rows are not counted in the headline.
 ## 3. Counting
 
 Rows 1 to 46 are the built Java capabilities. Rows 10, 27, 28, 29 and 35 are n/a for fcsdk (a
-design choice or a tool), which leaves 41:
+design choice or a tool) and row 36 is n/a for Go since the Nuxt UI ruling, which leaves 40:
 
 | fcsdk status | Rows | Count |
 |---|---|---|
 | covered | 17 (shape only), 40 | 2 |
 | partly | 3, 14, 15, 18, 21, 22, 23, 24, 26, 32, 38, 41, 43, 46 | 14 |
-| missing | 1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 16, 19, 20, 25, 30, 31, 33, 34, 36, 37, 39, 42, 44, 45 | 25 |
+| missing | 1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 16, 19, 20, 25, 30, 31, 33, 34, 37, 39, 42, 44, 45 | 24 |
 
 The count treats every row as equal; they are not. Rows 1 to 4 and 18 to 23 are the largest pieces
 of the Java build and fcsdk gives little there beyond the envelope's shape.
@@ -191,8 +193,8 @@ of the Java build and fcsdk gives little there beyond the envelope's shape.
 - **FlowCatalyst module: depend on fcsdk**, in one module only (`go/flowcatalyst`), as the Java
   framework depends on the Java SDK in `framework-flowcatalyst` alone. The missing sync categories
   (connections, scheduled jobs, docs) are added to fcsdk in the platform repository.
-- **UI: extract**, do not rewrite: `internal/ui/kit`, `htmlnorm`, `ds`, `assets` and `compress`
-  move to a shared module that the platform and the framework both import
-  ([design](design.md) 2.2).
+- **UI: build**, in TypeScript on Nuxt UI ([`ui.md`](ui.md)), taking the platform SPA's patterns;
+  nothing of the platform's templ kit is imported. The HTTP layer gains typed operations with an
+  OpenAPI emitter, static serving and CSRF (rows 48 to 50).
 - **Tooling: copy** sqlc's configuration style, the `testpg` fixture, the `Filter` accumulator, the
   lint profile and the `uowseal`/`idconv` analyzer approach.

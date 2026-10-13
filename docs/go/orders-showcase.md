@@ -5,11 +5,12 @@ Companion to [`design.md`](design.md) and [`capabilities.md`](capabilities.md). 
 `V0001__create_orders.sql`, unchanged), the same three use cases (`place-order`, `add-line`,
 `cancel-order`), the same events (`orders:sales:order:placed`, `line-added`, `cancelled`) and so the
 same outbox rows. Like the Rust showcase it adds a permission, HTTP handlers and the wiring; it also
-adds a dynamic list query written both ways (go-jet and `Filter`) and a dispatch receiver that runs
-a use case with the service principal. Section 8 is the point: what Go checks, and where.
+adds a dynamic list query written both ways (go-jet and `Filter`), a dispatch receiver that runs
+a use case with the service principal, and two Nuxt UI screens on a client generated from the
+service's OpenAPI document (section 7a). Section 8 is the point: what Go checks, and where.
 
 The code is a sketch of the intended API, not compiled. A Go build of this service runs against the
-Java demo's database (design decision 9).
+Java demo's database (design decision 10).
 
 ## 1. Values and ids
 
@@ -145,15 +146,15 @@ type AddLine struct {
 	UnitPrice Cents
 }
 
-// The HTTP body. Unknown members, duplicate names and wrong-case names are refused by httpfw.DecodeJSON.
-type addLineBody struct {
+// The HTTP body (a wire DTO: it becomes a schema in the OpenAPI document). Unknown members, duplicate names and wrong-case names are refused by httpfw.DecodeJSON.
+type AddLineBody struct {
 	SKU            string `json:"sku"`
 	Quantity       int64  `json:"quantity"`
 	UnitPriceCents int64  `json:"unitPriceCents"`
 }
 
 // Every field error at once (400 VALIDATION with one detail per field), as Java's Validator collects them.
-func (b addLineBody) command(order OrderID) (AddLine, error) {
+func (b AddLineBody) command(order OrderID) (AddLine, error) {
 	var v validate.Violations
 	cmd := AddLine{
 		Order:     order,
@@ -320,42 +321,60 @@ addLine, err := usecase.Define(runner, AddLineUseCase{Orders: repo, Ids: b.Ids()
 	usecase.WithConflictPolicy(retry))
 ```
 
-### Handler and routes
+### Operations, handler and routes
+
+The routes are typed operations (capabilities section 5, decision 18), so the same declarations
+produce the OpenAPI document the SPA's client is generated from (section 7a).
 
 ```go
+// api.go: immutable descriptors, declared by orders.Declare; `orders-demo openapi` needs nothing else
+var (
+	PlaceOrderOp  = httpfw.Operation[PlaceOrderBody, OrderView]{ID: "placeOrder", Pattern: "POST /orders",
+		Status: http.StatusCreated, Tags: tags, Errors: writeErrors}
+	AddLineOp     = httpfw.Operation[AddLineBody, LineAddedView]{ID: "addLine", Pattern: "POST /orders/{id}/lines",
+		Status: http.StatusOK, Tags: tags, Path: orderPath, Errors: writeErrors}
+	CancelOrderOp = httpfw.Operation[httpfw.NoBody, OrderView]{ID: "cancelOrder", Pattern: "POST /orders/{id}/cancel",
+		Status: http.StatusOK, Tags: tags, Path: orderPath, Errors: writeErrors}
+	ListOrdersOp  = httpfw.Operation[httpfw.NoBody, OrderList]{ID: "listOrders", Pattern: "GET /orders",
+		Status: http.StatusOK, Tags: tags, Errors: readErrors,            // section 6's query; OrderStatus lists its EnumValues
+		Query: httpfw.Params{httpfw.QueryParam[OrderStatus]("status"), httpfw.QueryParam[string]("search"), httpfw.QueryParam[int]("page")}}
+
+	tags        = []string{"orders"}
+	orderPath   = httpfw.Params{httpfw.PathParam[OrderID]("id")}
+	writeErrors = []int{400, 401, 403, 404, 409}
+	readErrors  = []int{400, 401, 403}
+)
+
 func (s *Service) Routes() *httpfw.Routes {
 	rt := httpfw.NewRoutes("orders")
-	rt.HandleContext("POST /orders", s.placeOrder)
-	rt.HandleContext("POST /orders/{id}/lines", s.addLine)
-	rt.HandleContext("POST /orders/{id}/cancel", s.cancelOrder)
-	rt.HandleContext("GET /orders", s.listOrders)
+	rt.Bind(httpfw.Handle(PlaceOrderOp, s.placeOrder))
+	rt.Bind(httpfw.Handle(AddLineOp, s.addLine))     // start-up fails if a declared operation is unbound
+	rt.Bind(httpfw.Handle(CancelOrderOp, s.cancelOrder))
+	rt.Bind(httpfw.Handle(ListOrdersOp, s.listOrders))
 	return rt
 }
 
-func (s *Service) addLine(w http.ResponseWriter, r *http.Request, cx fw.Context) error {
-	order, err := id.Parse[OrderKind](r.PathValue("id"))         // malformed: 400 VALIDATION before the use case
+func (s *Service) addLine(ctx context.Context, cx fw.Context, in httpfw.In[AddLineBody]) (LineAddedView, error) {
+	order := httpfw.PathValue[OrderID](in, "id")      // parsed before the handler: malformed is 400 VALIDATION
+	cmd, err := in.Body.command(order)                // 400 VALIDATION, every field (decision 17)
 	if err != nil {
-		return validate.PathError("id", err)
+		return LineAddedView{}, err
 	}
-	body, err := httpfw.DecodeJSON[addLineBody](r)              // 415, INVALID_JSON with a JSON Pointer
+	done, err := s.addLineUC.Run(ctx, cx, cmd)        // *usecase.Error -> the envelope
 	if err != nil {
-		return err
+		return LineAddedView{}, err
 	}
-	cmd, err := body.command(order)                              // 400 VALIDATION, every field
-	if err != nil {
-		return err
-	}
-	done, err := s.addLineUC.Run(r.Context(), cx, cmd)           // *usecase.Error -> the envelope
-	if err != nil {
-		return err
-	}
-	return httpfw.WriteJSON(w, http.StatusOK, lineAddedView(done.Event()))
+	return lineAddedView(done.Event()), nil            // written with AddLineOp.Status
 }
 ```
 
+How a typed path value is read back (`httpfw.PathValue` above) is not settled: Go cannot give `In`
+a field per declared parameter, so the sketch looks it up by name and type; a generated accessor or
+a params struct per operation are the alternatives (G3).
+
 The wiring is the `main` of [`design.md`](design.md) section 1.2, with `orders.Declare` contributing
-the migration set `orders` (the Java file, embedded), the event types and the `orders:orders:write`
-permission for definition sync.
+the migration set `orders` (the Java file, embedded), the event types, the operations above and the
+`orders:orders:write` permission for definition sync.
 
 ## 6. The dynamic list query, both ways
 
@@ -438,6 +457,55 @@ flowcatalyst.OnDispatch(rcv, func(ctx context.Context, cx fw.Context, d flowcata
 open point: the Java `once` hands the work a connection, and the use-case runner owns its own
 transaction. Both implementations need the same answer (section 10).
 
+## 7a. The orders screens in Nuxt UI
+
+`go/examples/orders-demo/web/` is the example SPA ([`ui.md`](ui.md)): Vue, Nuxt UI and `@fw/ui`,
+built into `web/dist` and embedded by `web/embed.go`. `make ui-gen` runs `orders-demo openapi`
+(declare phase only) into `web/openapi.json` and generates `web/src/api/` from it: `types.gen.ts`
+(`AddLineBody`, `LineAddedView`, `OrderList`, `OrderStatus` as a literal union),
+`sdk.gen.ts` (`placeOrder`, `addLine`, `cancelOrder`, `listOrders`, plus the framework's session
+operations) and `zod.gen.ts` (`zAddLineBody`, ...).
+
+Two screens:
+
+- **Orders** (`/orders`): `FwListPage` with `FwTableToolbar` (search, a status filter whose options
+  come from the generated `OrderStatus` values), `UTable`, `FwPaginator`; the filters live in the
+  URL (`useListState`) and are passed to `listOrders({ query })`. A row opens `/orders/:id` as a
+  child route in `FwRecordDrawer` (Back closes it, the list keeps its filters).
+- **Add line**: `FwFormDialog` over the drawer, `UForm` with `zAddLineBody`; submit calls
+  `addLine({ path: { id }, body })`; a `400 VALIDATION` envelope lands on the fields
+  (`applyServiceError`), a `409` (the order is no longer open) as a toast; on success the drawer
+  refreshes.
+
+```ts
+// web/src/pages/orders/useOrders.ts (sketch)
+import { listOrders } from "@/api/sdk.gen";
+import type { OrderList, OrderStatus } from "@/api/types.gen";
+import { useListState } from "@fw/ui";
+
+export function useOrders() {
+  const state = useListState({
+    filters: {
+      search: { type: "string", key: "search" },
+      status: { type: "string", key: "status" },
+    },
+  });
+  async function load(): Promise<OrderList | undefined> {
+    const status: OrderStatus | undefined = parseStatus(state.filters.status.value);
+    const { data } = await listOrders({
+      query: { search: state.filters.search.value, page: state.page.value, ...(status ? { status } : {}) },
+    });
+    return data;
+  }
+  return { state, load };
+}
+```
+
+The spread for `status` is what `exactOptionalPropertyTypes` asks for: an absent filter is left
+out, not sent as `undefined`. Renaming `quantity` in `AddLineBody`, adding a required field or
+changing a status value breaks `vue-tsc` in this folder after `make ui-gen`; CI's drift check makes
+sure `make ui-gen` ran.
+
 ## 8. What Go checks, and where
 
 | Guarantee | Java | Rust design | Go design |
@@ -457,6 +525,9 @@ transaction. Both implementations need the same answer (section 10).
 | no data race | review | `Send`/`Sync` | `go test -race` (dynamic) and review |
 | nil dereference | NullAway | `Option` | **NilAway** (lint), conventions |
 | an added outcome is handled everywhere | sealed `switch` | exhaustive `match` | **`exhaustive`** and **`gochecksumtype`** (lint) |
+| every typed route is declared, bound once and in the API document | n/a (no OpenAPI) | n/a | **start-up** (`Bind` against the declared operations); the document by the `openapi` command, drift by CI |
+| the browser sends what the API accepts and reads what it returns | n/a (server-rendered) | n/a | **`vue-tsc`** over the generated client (paths, query, body, response, error envelope), after the drift check |
+| a form checks the API's shape before submitting | server only | server only | the generated Zod schema in `UForm` (types, required fields, enums); the Go parse stays the authority |
 
 ## 9. What stays a run-time check
 
@@ -478,3 +549,10 @@ names (tests).
 - `usecase.Entity` repeats the aggregate's type and id for the audit row; Java takes them from the
   first aggregate. A small `Audited` interface on the aggregate (`AuditEntity() (string, string)`)
   would remove the repetition; decide in G2.
+- Reading a typed path parameter back in the handler (`httpfw.PathValue`): a lookup by name and
+  type, a params struct per operation, or a generated accessor; decide in G3 (section 5).
+- `OrderStatus` must list its values for the document (`EnumValues()`); nothing yet checks that the
+  list matches the constants. An `fwvet` check comparing a type's constants with its `EnumValues`
+  would; decide in G3.
+- The status filter's options come from the generated union; their labels do not (the document has
+  no display names). Labels stay in the SPA.

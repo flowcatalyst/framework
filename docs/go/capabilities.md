@@ -302,7 +302,7 @@ payload. A platform developer reads a framework use case without surprise.
 
 ### Open rulings
 
-- Decision 11 (interface versus `usecaseop`'s struct of functions).
+- Decision 12 (interface versus `usecaseop`'s struct of functions).
 - `Context` gains the principal's permissions and kind in M4c; until then `Authorize` checks what
   `Context` has, as the Java demo does.
 
@@ -376,7 +376,7 @@ rows, err := db.Pool().Query(ctx, sql, f.Args()...)
 
 ### Open rulings
 
-- Decisions 12 and 13.
+- Decisions 13 and 14.
 
 ## 5. HTTP
 
@@ -426,14 +426,67 @@ always `OPTIONS`, `OPTIONS` 204, `HEAD` from `GET`, routes logged at INFO, no CO
 outermost order **correlation id, error mapping, access log**, then application middleware, then
 context resolution on the routes that need it; section 5 in full; section 6 (correlation-id rules);
 section 7's outcomes; section 8 (settings, health endpoints and JSON, 413 with the connection
-closed, drain and 503, no `Server` header, no stack traces); section 10's Datastar bytes.
+closed, drain and 503, no `Server` header, no stack traces). Not implemented: section 10, the
+Datastar adapter (decision 27).
+
+### Typed operations and OpenAPI (decision 18)
+
+The UI's typed spine needs an OpenAPI document ([`ui.md`](ui.md) sections 6 and 7); the Java
+contract leaves OpenAPI out of scope, so this is Go's own API, on top of the routes above.
+
+```go
+type Operation[Body, Resp any] struct {     // an immutable descriptor; package-level var allowed
+	ID, Pattern, Summary string               // Pattern as for Routes.Handle: "POST /orders/{id}/lines"
+	Status                int
+	Tags                  []string
+	Path, Query           Params               // typed parameters: PathParam[T]("id"), QueryParam[T]("status")
+	Errors                []int                // statuses documented with the shared envelope
+}
+type NoBody struct{}                          // Body or Resp of an operation without one
+
+type In[Body any] struct{ /* Body, typed path and query values, the *http.Request */ }
+type OperationHandler[Body, Resp any] func(ctx context.Context, cx fw.Context, in In[Body]) (Resp, error)
+
+func DeclareOperations(d *Declared, ops ...Described)                  // at declare time: the document needs no build
+func Handle[Body, Resp any](op Operation[Body, Resp], h OperationHandler[Body, Resp]) Binding
+func (rt *Routes) Bind(b Binding)                                     // start-up fails: undeclared, unbound or bound twice
+
+// schema hooks, read by the emitter through interfaces (never struct tags beyond json names)
+type EnumValuer interface{ EnumValues() []string }                    // string types with a closed set
+type SchemaProvider interface{ JSONSchema() Schema }                  // value types: ids, Instant, Money
+type Nullable[T any] struct{ /* explicit null in the document and on the wire */ }
+type CursorPage[T any] struct{ Items []T; HasMore bool; NextCursor *string }
+```
+
+- The body is decoded by the same `DecodeJSON` (415, `INVALID_JSON`, closed objects), the response
+  written with `Status` and the envelope on error, exactly as a plain route.
+- The emitter walks the json/v2 types once, at the JSON edge (reflection allowed there): names from
+  `json` tags, required unless `omitzero` or a pointer, enums from `EnumValuer`, `Instant` as
+  `date-time`, arrays never nullable, `Nullable[T]` as `[T, null]`, generic types named by their
+  arguments, each named type one component; a name collision is a start-up problem.
+- The `openapi` command (registered by `httpfw.Declare`) runs the declare phase only and prints the
+  OpenAPI 3.1 document; applications commit it and CI diffs it, as the platform's `make api-diff`.
+- Routes that are not JSON (receivers, the SPA, health, metrics) stay plain routes and are not in
+  the document, except the session endpoints of section 12, which are operations.
+
+### Static assets, CSRF, security headers
+
+- `httpfw/spa.Handler(fs.FS, Options)`: the embedded SPA with [`ui.md`](ui.md) section 9's rules
+  (immutable hashed assets, 404 for a missing asset, `index.html` with `no-cache` for HTML
+  navigations outside the API prefixes, the JSON 404 inside them). Needs the http contract
+  amendment of decision 28 (one trailing-wildcard static mount).
+- `httpfw.CSRF`: for cookie-authenticated unsafe methods, `http.CrossOriginProtection` plus refusing
+  a request with neither `Sec-Fetch-Site` nor `Origin` (the platform's `/ui` guard); bearer-token
+  requests skip it ([`ui.md`](ui.md) section 8.2).
+- `httpfw.SecurityHeaders`: the CSP and the other headers of [`ui.md`](ui.md) section 9 on the SPA's
+  responses; `X-Content-Type-Options: nosniff` everywhere.
 
 ### Changes
 
 | Java | Go | Why |
 |---|---|---|
 | the framework's own router | `ServeMux`, wrapped; the framework's own table checks duplicates and conflicts (the mux would panic) and answers 404, 405 and `OPTIONS` (the mux's answers are plain text) | stdlib first (ruling a), contract errors kept |
-| first difference decides between overlapping patterns | the mux refuses two patterns that overlap with neither more specific (`/a/{x}/c`, `/a/b/{y}`): a start-up problem in Go | `ServeMux`'s conflict rule; a recorded difference (decision 15) |
+| first difference decides between overlapping patterns | the mux refuses two patterns that overlap with neither more specific (`/a/{x}/c`, `/a/b/{y}`): a start-up problem in Go | `ServeMux`'s conflict rule; a recorded difference (decision 16) |
 | the router never redirects | the mux redirects `.`, `..` and `//` paths; the framework answers 404 for a non-canonical path before the mux sees it | contract: no redirects |
 | `Handler` returns a `Response` or throws `HttpException` | `HandlerFunc` returns `error`; a `ServiceError` becomes its envelope, any other error 500; a panic 500 | errors are values |
 | `request.context()` throws without `requiresContext` | `HandleContext`; a missing resolver is a start-up problem | Go cannot make it a compile error without a generic router |
@@ -454,7 +507,7 @@ nothing imported (internal, and chi-based).
 
 ### Open rulings
 
-- Decisions 14, 15, 16.
+- Decisions 15, 16, 17 and 18 (the typed operations and OpenAPI).
 
 ## 6. Locks
 
@@ -596,7 +649,7 @@ Java's `Error` (recovered, the loop ends, health down). A loop that ignores `ctx
 abandoned and logged. Number formatting follows Java's output, checked by vectors (Go's
 `strconv.FormatFloat(v, 'g', -1, 64)` differs in exponent style for very large and small values).
 Not `prometheus/client_golang`: its default registry is global and its output bytes are its own
-(decision 18). Logging is `slog`; library packages log only through the logger `Boot` gives them.
+(decision 20). Logging is `slog`; library packages log only through the logger `Boot` gives them.
 
 ## 10. HTTP client
 
@@ -682,7 +735,7 @@ nothing; the start-up checks).
 
 - **Typed dispatch handlers.** `OnDispatch[OrderPlaced]` takes its pattern from the event type and
   decodes `data` before the handler runs; a payload that does not decode answers `Reject` (decision
-  21, as Rust decision 14). Untyped handlers for `prefix:*` and `*` get `json.RawMessage`.
+  23, as Rust decision 14). Untyped handlers for `prefix:*` and `*` get `json.RawMessage`.
 - **Timeouts.** The handler runs with `context.WithTimeout`; on expiry the response is 503 at once
   and the goroutine is left to finish, tracked so shutdown waits for it within the drain. A
   scheduled job's overlap lock is held until the handler really returns (the Java rule).
@@ -700,7 +753,7 @@ that principal, the client from `X-FlowCatalyst-Client` (or `_platform`), the ap
 envelope's correlation id, **causation = the dispatch job id** and execution id = the job id. So the
 job id reaches the events' `causationId` and the audit row. The Java receiver currently sets no
 principal and no causation (design section 7): reported, not copied. Needs `fw.PrincipalKind` on
-`Context` and a source for the service principal's id (decision 20).
+`Context` and a source for the service principal's id (decision 22).
 
 ### Reuse
 
@@ -710,40 +763,44 @@ firing's fields.
 
 ## 12. Sessions and login (M4c)
 
-No contract yet; the Java M4c contract comes first (the TypeScript design proposed one auth contract
-written once for every implementation). What can be said now:
+No contract yet. Recommended (decision 29): the M4c contract written once and JSON-first, for an
+SPA served by the application ([`ui.md`](ui.md) section 8). What can be said now:
 
-- Sessions: `cookie` (AES-256-GCM, `crypto/cipher`), `database` and `redis` drivers, as ruled for
-  Java; a middleware and a typed accessor.
-- OIDC relying party: fcsdk's `auth.OAuthClient` (PKCE, code exchange, refresh, revoke, logout URL)
-  and `auth.TokenValidator` (JWKS through `lestrrat-go/jwx/v2`); the platform refuses a secret from
-  a public client (flowcatalyst contract 5.3), which the flow must respect.
+- **The application is the backend-for-frontend.** Endpoints `GET /auth/login?returnTo=`,
+  `GET /auth/callback`, `GET /auth/session` (principal, kind, client, permissions, expiry, or 401),
+  `POST /auth/logout`; the session endpoint is a typed operation, so the SPA's client is generated.
+- **Sessions:** an opaque `__Host-fw_session` cookie (`HttpOnly; Secure; SameSite=Lax; Path=/`);
+  drivers `database` (the default), `redis` and `cookie` (AES-256-GCM, `crypto/cipher`), as ruled
+  for Java; rotation on login, idle and absolute expiry; a middleware and a typed accessor. Tokens
+  stay on the server.
+- **OIDC relying party:** fcsdk's `auth.OAuthClient` (PKCE, code exchange, refresh, revoke, logout
+  URL) and `auth.TokenValidator` (JWKS through `lestrrat-go/jwx/v2`), id_token verified with RS256
+  always; a public client, because the platform refuses a secret from one (flowcatalyst contract
+  5.3).
+- **CSRF** for cookie-authenticated unsafe methods: `SameSite=Lax`, `httpfw.CSRF` (section 5),
+  JSON-only bodies; no token.
+- **401 versus redirect:** API calls get 401 and the envelope; the SPA navigates to
+  `/auth/login?returnTo=` itself. `index.html` and the assets are public.
 - The real `ContextResolver` builds `fw.Context` from the session; the principal's permissions and
-  kind arrive here.
+  kind arrive here. Platform calls stay on the application's service account.
 
-## 13. UI: templ, the kit's fixtures, Datastar
+## 13. UI: Nuxt UI on Vue, strict TypeScript
 
-Inputs: [`../../ui-kit/README.md`](../../ui-kit/README.md),
-[`../ui-dogfood-plan.md`](../ui-dogfood-plan.md), the platform's `internal/ui`.
+Owner ruling 2026-10-13; the whole design is [`ui.md`](ui.md). In short:
 
-- **Components**: the platform's `internal/ui/kit` moves to `go/ui/kit` (design 4.2). One templ
-  function per spec, a `Props` struct whose JSON tags are the spec's prop names, so the fixtures
-  decode straight into it; ids and signal names validated (they end up inside Datastar
-  expressions). Nothing is rewritten.
-- **Conformance**: the kit's test renders every fixture and compares it, after the HTML normaliser
-  (`go/ui/htmlnorm`), with the golden; it reads `../../ui-kit/fixtures` in place. A component is
-  done when every fixture in its Props table passes. The Java JTE port (M-UI) uses the same fixtures;
-  `conformance/htmlnorm/` (planned in the Rust milestones) would check that the normalisers agree.
-- **Datastar**: `go/ui/ds` over datastar-go (signals from the `datastar` query parameter or the
-  body; `patch-elements`, `patch-signals`; the kit's error contract: handled failures answer 200
-  with patches, mutations send `retryMaxCount: 0`). Compression by `go/ui/compress`, which flushes
-  its encoder per event (the SDK's own compression never closes its encoder, the platform found).
-  Decision 17 for the exact bytes.
-- **View helper**: `view.Respond(w, r, component)` renders the full page for an ordinary request
-  and an element patch for a Datastar request (`Datastar-Request: true`), from one component, as
-  planned for JTE.
-- Templates are shown as files in the guide, never inline in a page, so the site does not read their
-  syntax as Liquid.
+- **Stack:** Nuxt UI v4 through its Vite and Vue plugins (no Nuxt, no Nitro), Vue 3, vue-router,
+  Vite, pnpm, TypeScript with the platform's strict settings plus `exactOptionalPropertyTypes` and
+  `verbatimModuleSyntax`, vue-tsc, typescript-eslint type-aware, no `any` (decision 7).
+- **Packages:** `@fw/ui` (components, partials and pages that extend Nuxt UI, the app shell,
+  composables ported from the platform SPA, the theme preset mapping `ui-kit/theme/tokens.css`),
+  `@fw/api-runtime`, `@fw/gallery`; an application's SPA in its Go module's `web/`, embedded.
+- **Typed spine:** operations (section 5) → OpenAPI 3.1 → hey-api types, SDK and Zod schemas →
+  `UForm` (decision 19). The Go parse function stays the authority.
+- **Not implemented in Go:** the Datastar adapter and the `ui-kit/fixtures` goldens (decision 27).
+  The kit's specs and tokens remain the reference; conformance is a gallery with Playwright, axe,
+  approved screenshots and a CSP check (decision 30).
+- Vue files are shown as files in the guide, never inline in a page: Vue's double-brace
+  interpolation is Liquid syntax to the site.
 
 ## 14. Cache (M5)
 

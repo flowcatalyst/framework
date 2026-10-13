@@ -68,6 +68,7 @@
     - { title: Go gap analysis, path: go/gap-analysis.md }
     - { title: Go capabilities, path: go/capabilities.md }
     - { title: Go orders example, path: go/orders-showcase.md }
+    - { title: Go UI (Nuxt UI), path: go/ui.md }
     - { title: Go milestones, path: go/milestones.md }
 - group: Rust design (parked)
   items:

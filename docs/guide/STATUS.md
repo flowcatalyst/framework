@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
 # Status
 
-Last verified against commit 49ba4b4 (2026-10-13). `verify.sh` fails if that commit is not an
+Last verified against commit 5500a17 (2026-10-13). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -44,9 +44,21 @@ compare. Nothing is published.
 ## The Go implementation
 
 Designed 2026-10-13, nothing built: [`docs/go/`](../go/design.md) (gap analysis against the Go SDK
-and platform, design, capabilities, the orders example, milestones G0 to G7). It will live in `go/`
-and share the contracts, `ui-kit/` and `conformance/`, as Rust does. The Rust and TypeScript
+and platform, design, capabilities, the orders example, the UI, milestones G0 to G7). It will live
+in `go/` and share the contracts and `conformance/`, as Rust does. The Rust and TypeScript
 implementations are parked (owner, 2026-10-13).
+
+**UI (owner ruling, 2026-10-13):** the Go framework's UI is **Nuxt UI v4 on plain Vue and Vite,
+without Nuxt or Nitro, in strict TypeScript**, replacing the Datastar + templ kit for Go
+([`go/ui.md`](../go/ui.md)). Consequences recorded in the design: Go does not implement the
+Datastar adapter (http contract section 10) or the `ui-kit/fixtures` goldens (the kit's specs and
+tokens stay the reference; conformance is a gallery with Playwright, axe, approved screenshots and
+a CSP check); the Go HTTP layer adds typed operations that emit OpenAPI 3.1, from which a
+TypeScript client and Zod schemas are generated; the built SPA is embedded and served by the
+application, which needs an http contract amendment for static assets; sessions and login become a
+backend-for-frontend surface, and the M4c contract is recommended to be written once and JSON-first
+for all implementations. Whether the Java framework shares the same UI package (instead of JTE +
+Datastar in M-UI) is an open owner decision (design decision 31).
 
 ## Known gaps
 

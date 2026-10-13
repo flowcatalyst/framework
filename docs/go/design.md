@@ -18,7 +18,14 @@ envelope), and a Go service must be able to take over a Java service's database.
 | this page | principles, where Go differs from Java, module layout, toolchain, reuse of fcsdk and the platform, SQL, testing, the owner decisions |
 | [`capabilities.md`](capabilities.md) | capability by capability: the Go types, what is shared verbatim with the Java contract, what changes, open rulings |
 | [`orders-showcase.md`](orders-showcase.md) | the orders example end to end, and what Go checks where |
+| [`ui.md`](ui.md) | the UI: Nuxt UI v4 on Vue and Vite in strict TypeScript, the typed spine from Go handlers through OpenAPI to forms, sessions and CSRF for the SPA, serving, the kit-to-Nuxt-UI mapping, testing |
 | [`milestones.md`](milestones.md) | G0 to G7, testing and conformance against the Java framework, effort and risk |
+
+**Owner ruling, 2026-10-13 (later the same day):** the Go framework's UI is **Nuxt UI v4 on plain
+Vue 3 and Vite, without Nuxt or Nitro, in strict TypeScript**, replacing the Datastar + templ kit
+for the Go framework. This page was revised for it: the `go/ui` module, the Datastar decision and
+the kit-extraction decision are gone; the HTTP layer gains typed operations that emit OpenAPI,
+static asset serving, CSRF protection and a session surface for the SPA ([`ui.md`](ui.md)).
 
 Inputs read: [`framework-plumbing.md`](../framework-plumbing.md) (rules, rulings, and section 3a, the
 owner's 2026-10-08 rules for a Go implementation), [`implementation-plan.md`](../implementation-plan.md),
@@ -52,11 +59,13 @@ Go's strength is that most problems have one obvious solution. The framework kee
 | static SQL | sqlc over pgx (section 5) | an ORM |
 | dynamic SQL | go-jet as the typed builder, the `Filter` accumulator as fallback (section 5) | string concatenation with values |
 | JSON | `encoding/json/v2` | third-party JSON libraries |
-| templates | templ | `html/template` for kit components |
+| a JSON API's description | typed operation descriptors in `httpfw`, from which the framework emits OpenAPI 3.1 (decision 18) | hand-written YAML, huma |
+| browser UI | a Nuxt UI v4 SPA in strict TypeScript, calling a client generated from that document, embedded in the binary ([`ui.md`](ui.md)) | templ, Datastar, server-rendered HTML |
 
 The standard library comes first. A dependency is added when it is the platform's existing choice
-(pgx, go-redis, templ, datastar-go, sqlc, embedded-postgres) or when writing it ourselves would be
-worse (YAML). `golang.org/x/sync` (errgroup) and `golang.org/x/net/html` count as standard.
+(pgx, go-redis, sqlc, embedded-postgres) or when writing it ourselves would be worse (YAML).
+`golang.org/x/sync` (errgroup) counts as standard. The browser code has its own stack and rules
+([`ui.md`](ui.md) sections 2 and 3).
 
 ### 1.2 No container: an explicit build function and typed handles (owner ruling a)
 
@@ -219,7 +228,7 @@ interface case). The framework's rules:
 ### 1.8 What does not move
 
 `Context` is a value passed explicitly as a parameter, never stored in `context.Context` and never
-in a package variable (decision 8). The `slog` attributes of the context (correlation id, client,
+in a package variable (decision 9). The `slog` attributes of the context (correlation id, client,
 principal, application, execution id) are added by `cx.LogAttrs()` and by the framework's request,
 job, loop and use-case loggers, so every log line in them carries them. No global metrics registry,
 no global HTTP client, no global configuration, no `slog.SetDefault` in library code.
@@ -228,17 +237,24 @@ no global HTTP client, no global configuration, no `slog.SetDefault` in library 
 
 ### 2.1 Where it lives: `go/` in this repository
 
-As for Rust (Rust design 2.1): one copy of the contracts, the `ui-kit/` fixtures and `conformance/`
-read in place by the tests, one documentation site. The Java and Rust builds are unaffected: `go/`
-is neither a Maven module nor a Cargo crate, and the Maven and Cargo builds ignore it.
+As for Rust (Rust design 2.1): one copy of the contracts and `conformance/` read in place by the
+tests, one documentation site. The Java and Rust builds are unaffected: `go/` is neither a Maven
+module nor a Cargo crate, and the Maven and Cargo builds ignore it. The UI is TypeScript in a pnpm
+workspace rooted at the repository root (`ui/` for the shared packages, `go/examples/*/web` for the
+example SPAs; [`ui.md`](ui.md) section 4), which Maven and Cargo ignore as well.
 
-### 2.2 Three Go modules
+### 2.2 Two Go modules, and the UI workspace
 
 | Module | Path in the repository | Imports | Why separate |
 |---|---|---|---|
-| `github.com/flowcatalyst/framework/go` | `go/` | stdlib, `x/sync`, `x/net`, pgx v5, go-redis v9, `go.yaml.in/yaml/v3`, embedded-postgres (test helper package only) | the framework; an application that never uses FlowCatalyst or the UI kit does not get them in its module graph (plumbing 9a: the framework does not depend on FlowCatalyst) |
+| `github.com/flowcatalyst/framework/go` | `go/` | stdlib, `x/sync`, pgx v5, go-redis v9, `go.yaml.in/yaml/v3`, embedded-postgres (test helper package only) | the framework; an application that never uses FlowCatalyst does not get fcsdk in its module graph (plumbing 9a: the framework does not depend on FlowCatalyst) |
 | `github.com/flowcatalyst/framework/go/flowcatalyst` | `go/flowcatalyst/` | the core module, **fcsdk** | the only module that imports the platform SDK, as `framework-flowcatalyst` is the only Java module that imports the Java SDK |
-| `github.com/flowcatalyst/framework/go/ui` | `go/ui/` | templ, datastar-go, `x/net/html`, brotli | **the UI kit as a shared Go module**, imported by both the framework and the platform (section 4.2); kept free of the framework so the platform can import it without a module cycle |
+
+The UI is not a Go module: `@fw/ui` (components, partials and pages extending Nuxt UI, the app
+shell, composables, the theme preset), `@fw/api-runtime` (the generated client's transport and error
+handling) and `@fw/gallery` live in `ui/`; an application's SPA is built to `web/dist` inside its
+own Go module and embedded with `//go:embed`. The earlier plan of a third module, `go/ui`, holding
+the platform's templ kit, is withdrawn by the 2026-10-13 ruling.
 
 Inside the core module, packages give what Java's module split gives: a Go build compiles only the
 packages it imports, so an HTTP-only application compiles no pgx even though pgx is in `go.sum`.
@@ -258,7 +274,10 @@ go/
   locks/  locks/dblock/  locks/redislock/      Lock, Store, With, Gate; drivers
   usecase/                   UseCase, Define, Runner, Plan, Fresh/Loaded, Repository, Error, events, outbox writer, dispatch jobs
   event/                     Type, Metadata, the Event interface
-  httpfw/                    routes on ServeMux, middleware, envelope, JSON, validation, health, server, drain
+  httpfw/                    routes on ServeMux, middleware, envelope, JSON, validation, health, server, drain,
+                             typed operations and the OpenAPI emitter, CSRF, security headers
+  httpfw/spa/                the embedded SPA handler: hashed assets, index.html fallback, cache headers, CSP
+  session/  auth/            sessions (cookie, database, redis) and the OIDC relying party for the SPA (G5b)
   ratelimit/  ratelimit/redisrl/
   secrets/                   Resolver, Ref, env and file stores
   httpclient/                the HTTP client library (no fw import) and httpclient/module (the adapter)
@@ -272,9 +291,10 @@ go/
 
 ### 2.3 Licence
 
-**Apache-2.0** for all three modules, like the Java framework, the platform repository and the Rust
-framework. The dependencies are permissive (pgx MIT, go-redis BSD-2, templ MIT, datastar-go MIT,
-embedded-postgres MIT, go-yaml Apache-2.0 and MIT, go-jet Apache-2.0, sqlc MIT as a tool). The
+**Apache-2.0** for both modules and the UI packages, like the Java framework, the platform
+repository and the Rust framework. The dependencies are permissive (pgx MIT, go-redis BSD-2,
+embedded-postgres MIT, go-yaml Apache-2.0 and MIT, go-jet Apache-2.0, sqlc MIT as a tool; in the
+browser Vue, Nuxt UI, Reka UI, Tailwind CSS, TanStack Table, hey-api and Zod, all MIT). The
 exception is **fcsdk, which is MPL-2.0** ([gap analysis](gap-analysis.md) 4.3): legal to import from
 Apache-2.0 code, but against the Rust framework's no-MPL rule. Decision 3.
 
@@ -307,11 +327,15 @@ The table of Rust design section 3 applies unchanged: outbox (the `V0001` migrat
 encoding, the error envelope and statuses, HTTP routing and correlation rules, health JSON, body
 limit and drain, receiver signatures and responses, config rules, secret references, the framework
 tables (`fw_schema_history`, `fw_lock`, `fw_lock_fence`, `fw_dispatch_once`), the Redis lock and
-rate-limit keys and Lua scripts, metric names and exposition bytes, Datastar SSE bytes, and the
-`ui-kit/fixtures` goldens. Also the **use-case envelope and unit of work** (validate, authorize,
-execute returning a plan; one transaction; the failure table), the **authorization model** (`Grant`,
-`Authorize.PUBLIC`, permissions from the principal once M4c lands) and the **receiver principal
-ruling** (capabilities section 11).
+rate-limit keys and Lua scripts, and metric names and exposition bytes. Also the **use-case
+envelope and unit of work** (validate, authorize, execute returning a plan; one transaction; the
+failure table), the **authorization model** (`Grant`, `Authorize.PUBLIC`, permissions from the
+principal once M4c lands) and the **receiver principal ruling** (capabilities section 11).
+
+**Not shared:** the Datastar adapter (http contract section 10) and the `ui-kit/fixtures` goldens.
+Go applications use the Nuxt UI SPA, so those parts do not apply; this is a recorded difference
+(decision 27), as for TypeScript. The kit's specs and tokens remain the reference for behaviour and
+look ([`ui.md`](ui.md) sections 11 and 12).
 
 **How Go reads the shared files.** `//go:embed` cannot reach outside its module directory, so a
 statement the Go code sends (`conformance/sql/outbox/insert.sql`, `conformance/sql/locks/*.sql`,
@@ -320,7 +344,7 @@ it, and a conformance test compares the copy with the shared file **byte for byt
 go-sync-shared` target refreshes the copies. The vectors themselves (`conformance/*.json`) are read
 at test time with `os.ReadFile("../../conformance/...")`, which needs no copy. The alternative, a
 `go.mod` at the repository root, would let `embed` reach `conformance/` directly but would put the
-Java tree, `rust/` and `ui-kit/` into the Go module's zip (decision 10).
+Java tree, `rust/` and `ui-kit/` into the Go module's zip (decision 11).
 
 Placeholders: the shared statements use JDBC `?`; Go numbers them `$1`, `$2`, ... once at package
 initialisation, as the Rust driver does (`fw_db::number_placeholders`).
@@ -347,21 +371,20 @@ platform repository, tagged by the platform's release tooling like the other SDK
 development uses a `go.work` file (not committed) pointing at the sibling checkout, which is how the
 TypeScript spike plan wired its Go slice.
 
-### 4.2 The UI kit becomes a shared Go module (owner ruling d)
+### 4.2 The UI: the platform's patterns, not its code
 
-`internal/ui/kit` imports only templ; `htmlnorm` only `x/net/html`; `ds` only datastar-go;
-`compress` only brotli; `assets` only `compress`. They move to `go/ui` in this repository
-(`github.com/flowcatalyst/framework/go/ui`), next to the specs and fixtures they implement:
+The first draft extracted the platform's templ kit (`internal/ui/kit`, `htmlnorm`, `ds`, `assets`,
+`compress`) into a shared `go/ui` module. The 2026-10-13 ruling (Nuxt UI) withdraws that: the Go
+framework imports nothing from the platform's UI, and the platform's templ port under `/ui` is not
+affected ([`ui.md`](ui.md) section 16).
 
-- the conformance test reads `../../ui-kit/fixtures` in place, so the platform's fixture-vendoring
-  step disappears (the asset build, Tailwind and the sprite stay a script, now in this repository);
-- the platform imports `go/ui` and keeps `shell` and `guard` (they import platform auth);
-- JTE (Java) and templ (Go) are then two implementations of one kit in one repository, both tested
-  against one set of goldens.
-
-The move needs the platform to resolve this repository as a module, which needs it pushed (or a
-`go.work`/`replace` for local development). Nothing is pushed until the owner says so; the platform
-keeps its copy until then, and the first commits of G5a are a copy with history noted, not a move.
+What the framework takes from the platform instead is **patterns**, from its PrimeVue SPA and its
+API pipeline ([`ui.md`](ui.md) section 1): the embedded-SPA handler (`frontend/embed.go`,
+`handler.go`, with two corrections), the Vite proxy and the dev loop, generating TypeScript from a
+committed OpenAPI document with a CI drift check (`make api-diff`, `frontend-types-verify`), the
+list, drawer-route, cursor-pager and dirty-form composables, the session-cookie and route-guard
+shape, and the `/ui` guard's CSRF rules. None of it is importable (it is under `internal/` or is not
+a package), so each is rewritten for `@fw/ui` or `httpfw`.
 
 ### 4.3 Patterns copied from the platform
 
@@ -417,7 +440,7 @@ statement and pgx runs it (`sqlfw.Query(ctx, db, stmt, scan)`), never jet's QRM,
 driver and one scanning style. `Filter` (in `database`) is used by the framework's own code (it may
 not depend on jet) and by an application that does not adopt jet. The orders showcase writes the
 same list query both ways ([`orders-showcase.md`](orders-showcase.md) section 6) so the comparison
-slice can judge them on real code. Decision 12.
+slice can judge them on real code. Decision 13.
 
 ## 6. Testing and isolation (owner ruling h)
 
@@ -457,8 +480,11 @@ slice can judge them on real code. Decision 12.
 - **Conformance vectors that do not exist yet.** `conformance/` has `tsid`, `config`, `sql/locks`,
   `lua/locks`, `migrations`, `sql/outbox` and `outbox`. The vectors the Rust plan lists for HTTP
   errors, health, Datastar, metrics, rate limiting, secrets and the receivers (Rust milestones 3.1)
-  were never written, because Rust stopped at R2. The Java tests must write them before G3 and G4
-  can claim conformance (decision 24).
+  were never written, because Rust stopped at R2. The Java tests must write them (except Datastar,
+  which Go does not implement) before G3 and G4 can claim conformance (decision 26).
+- **OpenAPI is outside the http contract** (section 11 lists it as out of scope), and so are static
+  assets. Go needs both for the SPA: the static-asset rules are an amendment (decision 28); the
+  OpenAPI emitter is Go's own until Java needs one (decision 31).
 - `contracts/flowcatalyst.md` 4a's "Unix seconds must be ASCII digits" should say the millisecond
   ISO-8601 form is accepted too (Rust design 5; still open).
 - YAML: `go.yaml.in/yaml/v3` refuses a duplicate key, as Rust's reader does; the Java reader keeps the
@@ -475,48 +501,61 @@ slice can judge them on real code. Decision 12.
 | sqlc MIT, last release v1.31.1 (2026-04-22), active | GitHub API |
 | NilAway Apache-2.0, no releases or tags, active | GitHub API |
 | `gopkg.in/yaml.v3` archived; `yaml/go-yaml` maintained, tags up to `v3.0.5` (and `v4.0.0-rc.6`) | GitHub API |
-| templ v0.3.1070 (2026-10-04) latest; the platform pins v0.3.1020 | GitHub API, `go.mod` |
 | embedded-postgres v1.34.0 defaults to PostgreSQL 18.3.0 | the module source in the Go module cache |
-| the platform's UI packages' imports | `go list` of each package's imports |
+| Nuxt UI v4 runs on plain Vue through `@nuxt/ui/vite` and `@nuxt/ui/vue-plugin`; its options (`ui`, `router`, `components`, `autoImport`, `icon.clientBundle`, `theme.defaultVariants`, `colorMode`), `UApp`, the `isolate` root class, the `#build/ui` aliases; icons from installed Iconify collections are bundled and others fetched from the Iconify API; the component list and the `--ui-*` variables | ui.nuxt.com installation, icons, CSS-variables and components pages, 2026-10-13 |
+| `@hey-api/openapi-ts` 0.93.1 has the plugins `@hey-api/typescript`, `@hey-api/sdk` (with `validator` for requests and responses), `@hey-api/client-fetch`, `@hey-api/transformers` and `zod` (`compatibilityVersion` 3, 4 or `mini`) | its type declarations in the platform's `frontend/node_modules` |
+| huma v2.38.0 in the platform, on chi; adapters include `humago` (the stdlib mux); the platform replaces `huma.NewError` and sets `huma.DefaultArrayNullable` (package-level variables) | `go.mod`, the module cache, `internal/platform/shared/httpcompat` |
+| `http.CrossOriginProtection` in the standard library, used by the platform's `/ui` CSRF guard | `internal/ui/guard/guard.go` |
 
 **Not verified** (each is checked in the milestone named): sqlc's outer-join nullability and its
 handling of a type alias of a generic id as an override (G2); which go-jet runtime packages import
 `lib/pq` (G2); whether `ServeMux`'s 405 response can be replaced without wrapping every handler (G3,
-the design wraps); whether datastar-go writes the bytes the Java adapter writes (G3, needs the Java
-vectors); the platform's acceptance of fcsdk's snake_case outbox payload (reported only); `go get`
-of fcsdk through the repository-name mismatch (G4); NilAway's noise on this code (G1).
+the design wraps); the platform's acceptance of fcsdk's snake_case outbox payload (reported only);
+`go get` of fcsdk through the repository-name mismatch (G4); NilAway's noise on this code (G1);
+`exactOptionalPropertyTypes` with hey-api's output and Nuxt UI's types, and a style CSP without
+`'unsafe-inline'` for every Nuxt UI component (G5a, U0; [`ui.md`](ui.md) section 18).
 
 ## 9. Owner decisions, ordered by how much they block
 
+Renumbered 2026-10-13 for the Nuxt UI ruling: the Datastar decision (old 17) and the UI-kit module
+decision (old 25) are replaced by decisions 7, 18, 19 and 27 to 32.
+
 | # | Decision | Recommendation | Blocks |
 |---|---|---|---|
-| 1 | **Start now, and how far.** | Start G0 to G4 now: those Java contracts are built and stable. G5a (UI) may run ahead of Java's M-UI, because the kit fixtures, not Java, are the authority and the templ port exists. Hold G5b (sessions, login) for the M4c contract. | everything |
-| 2 | **Where the code lives and the module split.** | `go/` in this repository; three modules: core `github.com/flowcatalyst/framework/go`, `.../go/flowcatalyst` (the only fcsdk importer), `.../go/ui` (shared with the platform) (section 2.2). | G0 |
-| 3 | **Licence.** | Apache-2.0 for all three. fcsdk is MPL-2.0: relicense it to Apache-2.0 when it becomes its own module (the owner holds the copyright), so the framework and the Rust policy stay consistent. Otherwise accept MPL in `go/flowcatalyst` only, and say so in its README. | G0, G4 |
+| 1 | **Start now, and how far.** | Start G0 to G4 now: those Java contracts are built and stable. The UI package's first steps (U0 to U2 of G5a: workspace, gallery, components, partials) may start at once, in parallel, because they need no server and Java is not their authority ([`ui.md`](ui.md) section 17); U3 needs G3's typed operations. Hold G5b (sessions, login) for the M4c contract (decision 29). | everything |
+| 2 | **Where the code lives and the module split.** | `go/` in this repository with two modules: core `github.com/flowcatalyst/framework/go` and `.../go/flowcatalyst` (the only fcsdk importer) (section 2.2). The UI in a pnpm workspace rooted at the repository root: shared packages in `ui/`, example SPAs in `go/examples/*/web` ([`ui.md`](ui.md) section 4). | G0 |
+| 3 | **Licence.** | Apache-2.0 for both modules and the UI packages; browser dependencies permissive only (a licence check over the pnpm lockfile). fcsdk is MPL-2.0: relicense it to Apache-2.0 when it becomes its own module (the owner holds the copyright), so the framework and the Rust policy stay consistent. Otherwise accept MPL in `go/flowcatalyst` only, and say so in its README. | G0, G4 |
 | 4 | **How the framework consumes fcsdk.** | Make `pkg/fcsdk` its own module in the platform repository (or move it to `clients/go-sdk`), tagged like the other SDKs; add the missing sync categories (connections, scheduled jobs, docs) there. Until it is tagged, a local `go.work`. Not: depending on the whole platform module (pseudo-versions, the platform's dependencies in the module graph, the path/remote mismatch); not copying. | G4 |
 | 5 | **Test infrastructure.** | Embedded PostgreSQL 18 per test binary, a database per test from a migrated template, never 15432 or 8080; no `integration` build tag; Redis tests on a real `redis-server`/`valkey-server` from `PATH` (fail with instructions when absent), miniredis only above the driver. | G0 |
-| 6 | **Toolchain and lint.** | Go 1.27; the platform's golangci-lint v2 profile plus `gochecksumtype`, `forbidigo` (clock, env, global logger, background contexts) and revive `exported`; gofumpt and goimports; NilAway pinned by pseudo-version as its own CI step; `fwvet`; `-race` always. | G0 |
-| 7 | **Wiring model.** | An explicit `build` function, typed handles from `Declare` functions, `Boot` for lifecycle; no container, no `reflect`, no `override` (tests pass fakes to `build`) (section 1.2). | G1 |
-| 8 | **The framework's `Context`.** | Keep the contract's name, `fw.Context`, passed explicitly as a parameter beside `context.Context` (by convention `cx`), never stored in `context.Context`. The alternative (a typed accessor over `context.Value`) is the common Go habit but hides a required value behind a run-time lookup. | G1 |
-| 9 | **Framework tables and Redis keys are shared contracts.** | Yes, byte for byte, as Rust decision 8: a Go service can take over a Java service's database, and Java and Go replicas share locks and rate-limit budgets. | G1 |
-| 10 | **Shared statement files.** | Copies inside the Go packages that embed them, checked byte for byte against `conformance/` by a test (section 3). Not a root `go.mod`. | G1 |
-| 11 | **Use-case shape.** | A generic interface (`Name`, `Validate`, `Authorize`, `Execute`) registered with `usecase.Define`, so a missing `Authorize` is a **compile error**, `Execute` takes `Authorized[C]` that only the runner can make, and the conflict policy is a registration option. Plans are `usecase.NewPlan(event, steps...)` with `Insert`/`Update`/`Delete` steps typed by `Fresh`/`Loaded` (Go methods cannot have type parameters). The alternative is `usecaseop`'s struct of phase functions, familiar from the platform, checked at run time and by `uowseal`. | G2 |
-| 12 | **Dynamic SQL.** | Keep ruling c, scoped: sqlc for every static query; go-jet only for dynamic list and search queries of read models, used as a builder executed by pgx (not jet's QRM, not the experimental `pgx` branch); `Filter` for the framework's own code and as the fallback. Revisit after the comparison slice whether a second generator earns its place (section 5.2). | G2 |
-| 13 | **Static SQL check.** | sqlc generates without a database; `fw sql check` adds the prepare-every-query check against an embedded, framework-migrated PostgreSQL, plus `sqlc diff` in CI. | G2 |
-| 14 | **JSON.** | `encoding/json/v2` (case-sensitive, duplicate names refused, unknown members refused with an option, JSON Pointer in errors). Event data: optional fields as pointers with `omitzero`, so absent values are left out as Java's `NON_NULL` does. | G2, G3 |
-| 15 | **Router.** | The stdlib `ServeMux`, wrapped: the framework keeps its own route table to report duplicates and conflicts as start-up problems (the mux would panic), to answer 404, 405 with `Allow` and `OPTIONS 204` with the envelope, and to refuse unclean paths instead of redirecting. Accept one recorded difference: two routes that overlap with neither more specific (`/a/{x}/c` and `/a/b/{y}`) fail start-up in Go and are accepted in Java. | G3 |
-| 16 | **Validation.** | A hand-written collector with typed parse functions and parse-don't-validate into commands; no struct-tag validation library. | G3 |
-| 17 | **Datastar.** | Extract the platform's `ds` over datastar-go if its bytes equal the Java vectors; otherwise a framework adapter (about 300 lines, as Java's). | G3 |
-| 18 | **Metrics.** | The framework's own registry and exposition writer (the contract fixes the bytes), not `client_golang`'s registry; an optional bridge later. | G1 |
-| 19 | **Logging.** | `log/slog` only; library packages receive a `*slog.Logger` from `Boot`; `Context` fields as attributes. | G1 |
-| 20 | **Receiver principal.** | Implement the ruling (service principal of kind Service; causation = the dispatch job id; execution id = the job id as Java). Amend the contracts with the principal kind and the source of the service principal's id; report the Java receiver's difference. | G4 |
-| 21 | **Receiver semantics specific to Go.** | A typed dispatch handler whose payload does not decode answers `Reject` (as Rust decision 14); on a handler timeout the response is 503 at once and the goroutine is left running but tracked, so shutdown waits for it within the drain; the scheduled-job lock stays held until the handler returns. | G4 |
-| 22 | **Redis client.** | go-redis v9 (the platform's). | G1 |
-| 23 | **YAML.** | `go.yaml.in/yaml/v3` (the maintained successor of the archived `gopkg.in/yaml.v3`); a duplicate key is refused, recorded as an allowed difference from Java. | G1 |
-| 24 | **Missing conformance vectors.** | The Java tests write the errors, health, Datastar, metrics, rate-limit, secrets and receiver vectors as Go reaches each area; Java stays the reference (Rust decision 18). | G3, G4 |
-| 25 | **UI kit module.** | `go/ui` in this repository, extracted from the platform with its fixtures read in place; the platform switches to it once this repository can be fetched (section 4.2). | G5a |
-| 26 | **Names and publication.** | Nothing published, nothing pushed (ruling g). Module paths stay placeholders until naming (open question 6) is settled; tags `go/v*`, `go/flowcatalyst/v*`, `go/ui/v*` when publishing is allowed. CI workflow written but not run, as for Rust. | first release |
-| 27 | **The comparison.** | Fix the business slice and the measurements before G7, borrowing the TypeScript spike's list (lines per layer, seeded bugs caught, start-up, memory, test time, latency for context only). | G7 |
+| 6 | **Toolchain and lint (Go).** | Go 1.27; the platform's golangci-lint v2 profile plus `gochecksumtype`, `forbidigo` (clock, env, global logger, background contexts) and revive `exported`; gofumpt and goimports; NilAway pinned by pseudo-version as its own CI step; `fwvet`; `-race` always. | G0 |
+| 7 | **UI toolchain** (the stack itself is the owner's ruling). | Nuxt UI v4 through its Vite and Vue plugins, no Nuxt or Nitro; Vue 3.5+, vue-router, Vite; pnpm with exact versions, a catalog, `minimumReleaseAge` and a build-script allow-list; TypeScript pinned to what vue-tsc supports; the platform's tsconfig plus `exactOptionalPropertyTypes` and `verbatimModuleSyntax`, `erasableSyntaxOnly` kept, `strictTemplates`; typescript-eslint `strictTypeChecked` with type information and `eslint-plugin-vue`, no `any`, no casts, no non-null assertions; oxfmt; explicit imports (Nuxt UI's auto-imports off); Lucide icons bundled, never fetched; no Pinia in `@fw/ui` ([`ui.md`](ui.md) sections 2, 3, 5). | G5a (U0) |
+| 8 | **Wiring model.** | An explicit `build` function, typed handles from `Declare` functions, `Boot` for lifecycle; no container, no `reflect`, no `override` (tests pass fakes to `build`) (section 1.2). | G1 |
+| 9 | **The framework's `Context`.** | Keep the contract's name, `fw.Context`, passed explicitly as a parameter beside `context.Context` (by convention `cx`), never stored in `context.Context`. The alternative (a typed accessor over `context.Value`) is the common Go habit but hides a required value behind a run-time lookup. | G1 |
+| 10 | **Framework tables and Redis keys are shared contracts.** | Yes, byte for byte, as Rust decision 8: a Go service can take over a Java service's database, and Java and Go replicas share locks and rate-limit budgets. | G1 |
+| 11 | **Shared statement files.** | Copies inside the Go packages that embed them, checked byte for byte against `conformance/` by a test (section 3). Not a root `go.mod`. | G1 |
+| 12 | **Use-case shape.** | A generic interface (`Name`, `Validate`, `Authorize`, `Execute`) registered with `usecase.Define`, so a missing `Authorize` is a **compile error**, `Execute` takes `Authorized[C]` that only the runner can make, and the conflict policy is a registration option. Plans are `usecase.NewPlan(event, steps...)` with `Insert`/`Update`/`Delete` steps typed by `Fresh`/`Loaded` (Go methods cannot have type parameters). The alternative is `usecaseop`'s struct of phase functions, familiar from the platform, checked at run time and by `uowseal`. | G2 |
+| 13 | **Dynamic SQL.** | Keep ruling c, scoped: sqlc for every static query; go-jet only for dynamic list and search queries of read models, used as a builder executed by pgx (not jet's QRM, not the experimental `pgx` branch); `Filter` for the framework's own code and as the fallback. Revisit after the comparison slice whether a second generator earns its place (section 5.2). | G2 |
+| 14 | **Static SQL check.** | sqlc generates without a database; `fw sql check` adds the prepare-every-query check against an embedded, framework-migrated PostgreSQL, plus `sqlc diff` in CI. | G2 |
+| 15 | **JSON.** | `encoding/json/v2` (case-sensitive, duplicate names refused, unknown members refused with an option, JSON Pointer in errors). Event data: optional fields as pointers with `omitzero`, so absent values are left out as Java's `NON_NULL` does. | G2, G3 |
+| 16 | **Router.** | The stdlib `ServeMux`, wrapped: the framework keeps its own route table to report duplicates and conflicts as start-up problems (the mux would panic), to answer 404, 405 with `Allow` and `OPTIONS 204` with the envelope, and to refuse unclean paths instead of redirecting. Accept one recorded difference: two routes that overlap with neither more specific (`/a/{x}/c` and `/a/b/{y}`) fail start-up in Go and are accepted in Java. | G3 |
+| 17 | **Validation.** | A hand-written collector with typed parse functions and parse-don't-validate into commands; no struct-tag validation library. The OpenAPI document and the browser's Zod schemas describe shapes; the parse function stays the authority ([`ui.md`](ui.md) section 6). | G3 |
+| 18 | **OpenAPI and the typed handler layer.** | The framework's own emitter: operations declared as immutable descriptors at declare time (method, pattern, id, status, body and response types, error statuses), bound to handlers in `build`, schemas derived from the json/v2 types at the JSON edge (`EnumValues()` and `JSONSchema()` hooks for enums and value types), the document dumped by an `openapi` command that runs the declare phase only and committed with a drift check. Fallback if the schema walk overruns: huma's schema registry as a library, with the framework's own operations and router. Not: adopting huma's router and handlers (owner ruling a, package-level configuration, tag validation, json v1, its error defaults), nor a hand-written spec ([`ui.md`](ui.md) section 7). | G3 |
+| 19 | **The typed TypeScript spine.** | `@hey-api/openapi-ts`, exact pin, plugins `@hey-api/typescript` (enums as `as const` unions), `@hey-api/sdk` + `@hey-api/client-fetch` (every operation typed: path, query, body, response, error envelope) and `zod` (version 4) for `UForm`; SDK validation off except in the E2E run; `openapi.json` and the generated client committed, regenerated and diffed in CI. Not the platform's types-only output with a hand-written transport ([`ui.md`](ui.md) section 6). | G5a (U3) |
+| 20 | **Metrics.** | The framework's own registry and exposition writer (the contract fixes the bytes), not `client_golang`'s registry; an optional bridge later. | G1 |
+| 21 | **Logging.** | `log/slog` only; library packages receive a `*slog.Logger` from `Boot`; `Context` fields as attributes. | G1 |
+| 22 | **Receiver principal.** | Implement the ruling (service principal of kind Service; causation = the dispatch job id; execution id = the job id as Java). Amend the contracts with the principal kind and the source of the service principal's id; report the Java receiver's difference. | G4 |
+| 23 | **Receiver semantics specific to Go.** | A typed dispatch handler whose payload does not decode answers `Reject` (as Rust decision 14); on a handler timeout the response is 503 at once and the goroutine is left running but tracked, so shutdown waits for it within the drain; the scheduled-job lock stays held until the handler returns. | G4 |
+| 24 | **Redis client.** | go-redis v9 (the platform's). | G1 |
+| 25 | **YAML.** | `go.yaml.in/yaml/v3` (the maintained successor of the archived `gopkg.in/yaml.v3`); a duplicate key is refused, recorded as an allowed difference from Java. | G1 |
+| 26 | **Missing conformance vectors.** | The Java tests write the errors, health, metrics, rate-limit, secrets and receiver vectors as Go reaches each area; Java stays the reference (Rust decision 18). The Datastar and `htmlnorm` vectors are not needed by Go (decision 27). | G3, G4 |
+| 27 | **Datastar and the kit goldens are not implemented in Go.** | Record http contract section 10 and the `ui-kit/fixtures` goldens as not applicable to Go, in the conformance README and STATUS, as TypeScript decision 24 did. | G3 |
+| 28 | **Static assets and the SPA in the HTTP contract.** | Amend http sections 2 and 11 (as TypeScript decision 26): one trailing-wildcard static mount; hashed assets `immutable`, a missing asset 404, `index.html` with `no-cache` only for HTML navigations outside the API prefixes, API prefixes always the JSON 404; a strict CSP and the security headers; the SPA embedded with `//go:embed` ([`ui.md`](ui.md) section 9). | G5a (U3) |
+| 29 | **Sessions and login for the SPA (M4c).** | Write the M4c contract once and JSON-first for every implementation: the application as backend-for-frontend, OIDC code + PKCE as a public client, RS256 always, `GET /auth/login`, `GET /auth/callback`, `GET /auth/session`, `POST /auth/logout`; an opaque `__Host-` cookie (`HttpOnly; Secure; SameSite=Lax`), `database` driver by default; 401 for API calls, the SPA navigates to sign-in; CSRF by `SameSite`, `http.CrossOriginProtection`, refusal without provenance headers, JSON-only bodies, no token; platform calls as the service account; server-rendered default pages an optional Java addition ([`ui.md`](ui.md) section 8). Opus for the slice, a security review. | G5b |
+| 30 | **UI conformance.** | The kit specs (behaviour, accessibility, states) and the tokens stay the reference; the gallery's owner-approved screenshots are the look; axe (WCAG 2.2 AA, zero violations), Playwright behaviour checks, a CSP-violation check and vitest are enforced in CI; no golden HTML ([`ui.md`](ui.md) section 12). | G5a (U0) |
+| 31 | **Share the UI package with the Java framework?** | Decide when the comparison slice is chosen, leaning towards sharing: a backend-agnostic SPA against one committed OpenAPI document, served by Go and Java alike, is the only way the comparison measures backends rather than UI stacks; it reverses Java's M-UI (JTE + Datastar) plan and needs a Java OpenAPI emitter or document-conformance test ([`ui.md`](ui.md) section 15). | G6, G7, Java M-UI |
+| 32 | **The platform's SPA (PrimeVue) and its templ port.** | No change now. Revisit after G5a's partials and the comparison slice exist, with effort-per-screen numbers; the trade-offs are in [`ui.md`](ui.md) section 16. Separately, the owner says whether the platform's templ `/ui` port continues now that the framework does not consume the templ kit. | none |
+| 33 | **Names and publication.** | Nothing published, nothing pushed (ruling g). Module paths and package names stay placeholders until naming (open question 6) is settled; tags `go/v*`, `go/flowcatalyst/v*` when publishing is allowed; UI packages consumed as workspace source until then, a private registry after. CI workflow written but not run, as for Rust. | first release |
+| 34 | **The comparison.** | Fix the business slice and the measurements before G7, borrowing the TypeScript spike's list (lines per layer, seeded bugs caught, start-up, memory, test time, latency for context only), and decision 31. | G7 |
 
 The Java owner rulings still pending (rate-limit store failure default `ALLOW`, IPv6 /64, the memory
 overflow bucket; service-scoped secrets and world-readable files; SDK publication) apply to Go
