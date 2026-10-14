@@ -12,9 +12,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+/**
+ * Named instances built from configuration with one {@link InstanceFactory} (core contract section
+ * 2, amended by the config-and-code contract section 2.1: no driver names).
+ */
 class InstancesTest {
 
   @TempDir Path dir;
@@ -38,45 +43,32 @@ class InstancesTest {
     Files.writeString(dir.resolve("application.yaml"), text);
   }
 
+  /**
+   * The one factory: instances named {@code fail*} fail, {@code close*} record their closing, one
+   * with an {@code inner} key wraps an instance built before it, {@code strict*} require {@code
+   * text}; every other reads {@code text} (default hello) and {@code repeat.times}.
+   */
+  private final InstanceFactory<Greeter> factory =
+      (name, cfg, lookup, built) -> {
+        if (name.startsWith("fail")) {
+          throw new IOException("cannot reach the thing");
+        }
+        if (name.startsWith("close")) {
+          return new ClosingGreeter(name);
+        }
+        Optional<String> inner = cfg.findString("inner");
+        if (inner.isPresent()) {
+          Greeter wrapped = built.get(inner.get());
+          return () -> "wrapped(" + wrapped.greet() + ")";
+        }
+        String text = name.startsWith("strict") ? cfg.string("text") : cfg.string("text", "hello");
+        int times = cfg.section("repeat").integer("times", 1);
+        return () -> (name + ":" + text).repeat(times);
+      };
+
   private Mod module(String id) {
     return Mod.of(id)
-        .register(
-            b -> {
-              Drivers.Registrar drivers = b.drivers();
-              drivers.register(
-                  Greeter.class,
-                  "plain",
-                  (name, cfg, lookup, built) -> {
-                    String text = cfg.string("text", "hello");
-                    return () -> name + ":" + text;
-                  });
-              drivers.register(
-                  Greeter.class,
-                  "strict",
-                  (name, cfg, lookup, built) -> {
-                    String text = cfg.string("text");
-                    int times = cfg.section("repeat").integer("times", 1);
-                    return () -> (name + ":" + text).repeat(times);
-                  });
-              drivers.register(
-                  Greeter.class,
-                  "closing",
-                  (name, cfg, lookup, built) -> new ClosingGreeter(name));
-              drivers.register(
-                  Greeter.class,
-                  "failing",
-                  (name, cfg, lookup, built) -> {
-                    throw new IOException("cannot reach the thing");
-                  });
-              drivers.register(
-                  Greeter.class,
-                  "wrapper",
-                  (name, cfg, lookup, built) -> {
-                    Greeter inner = built.get(cfg.string("inner"));
-                    return () -> "wrapped(" + inner.greet() + ")";
-                  });
-              b.provide(Greeters.class, l -> new Greeters(Instances.build(Greeter.class, "greeters", l)));
-            });
+        .register(b -> b.provide(Greeters.class, l -> new Greeters(Instances.build(Greeter.class, "greeters", l, factory))));
   }
 
   private final class ClosingGreeter implements Greeter, AutoCloseable {
@@ -114,8 +106,8 @@ class InstancesTest {
         greeters:
           default: b
           instances:
-            a: { driver: plain, text: one }
-            b: { driver: plain }
+            a: { text: one }
+            b: {}
         """);
     Instances<Greeter> g = app(Map.of()).start().get(Greeters.class).instances();
     assertThat(g.names()).containsExactly("a", "b");
@@ -126,27 +118,27 @@ class InstancesTest {
 
   @Test
   void aSingleInstanceIsTheDefaultWhenDefaultIsOmitted() throws IOException {
-    yaml("greeters:\n  instances:\n    only: { driver: plain }\n");
+    yaml("greeters:\n  instances:\n    only: { text: hi }\n");
     assertThat(app(Map.of()).start().get(Greeters.class).instances().defaultInstance().greet())
-        .isEqualTo("only:hello");
+        .isEqualTo("only:hi");
   }
 
   @Test
   void severalInstancesWithNoDefaultFail() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: plain }\n    b: { driver: plain }\n");
+    yaml("greeters:\n  instances:\n    a: { text: x }\n    b: { text: y }\n");
     StartupException e = failure(Map.of());
     assertThat(e.getMessage()).contains("greeters.default").contains("a, b");
   }
 
   @Test
   void defaultNamingAMissingInstanceFails() throws IOException {
-    yaml("greeters:\n  default: zzz\n  instances:\n    a: { driver: plain }\n");
+    yaml("greeters:\n  default: zzz\n  instances:\n    a: { text: x }\n");
     assertThat(failure(Map.of()).getMessage()).contains("'zzz'").contains("known: a");
   }
 
   @Test
   void defaultCanComeFromTheEnvironment() throws IOException {
-    yaml("greeters:\n  default: a\n  instances:\n    a: { driver: plain }\n    b: { driver: plain }\n");
+    yaml("greeters:\n  default: a\n  instances:\n    a: { text: x }\n    b: { text: y }\n");
     Instances<Greeter> g =
         app(Map.of("GREETERS_DEFAULT", "b")).start().get(Greeters.class).instances();
     assertThat(g.defaultInstance().greet()).startsWith("b:");
@@ -165,7 +157,7 @@ class InstancesTest {
 
   @Test
   void getOfAnUnknownNameNamesTheKnownInstances() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: plain }\n    b: { driver: plain }\n  default: a\n");
+    yaml("greeters:\n  instances:\n    a: { text: x }\n    b: { text: y }\n  default: a\n");
     Instances<Greeter> g = app(Map.of()).start().get(Greeters.class).instances();
     assertThatIllegalArgumentException()
         .isThrownBy(() -> g.get("c"))
@@ -174,60 +166,13 @@ class InstancesTest {
   }
 
   @Test
-  void unknownDriverListsTheRegisteredNames() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: nope }\n");
+  void aDriverKeyIsJustAnUnknownKeyNow() throws IOException {
+    yaml("greeters:\n  instances:\n    a: { driver: plain, text: x }\n");
     StartupException e = failure(Map.of());
-    assertThat(e.getMessage())
-        .contains("module 'greetings'")
-        .contains("greeters.instances.a.driver")
-        .contains("unknown driver 'nope'")
-        .contains("closing, failing, plain, strict, wrapper");
-  }
-
-  @Test
-  void aDefaultDriverIsUsedWhenAnInstanceNamesNone() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { text: x }\n    b: { driver: other, text: y }\n  default: a\n");
-    Mod m =
-        Mod.of("other")
-            .register(
-                b -> {
-                  b.drivers()
-                      .register(Other.class, "only", (n, c, l, built) -> {
-                        String t = c.string("text");
-                        return () -> n + ":" + t;
-                      });
-                  b.drivers()
-                      .register(Other.class, "other", (n, c, l, built) -> {
-                        String t = c.string("text");
-                        return () -> "o" + t;
-                      });
-                  b.provide(
-                      OtherHolder.class,
-                      l -> new OtherHolder(Instances.build(Other.class, "greeters", l, "only")));
-                });
-    Instances<Other> i =
-        App.builder()
-            .configDirectory(dir)
-            .environment(Map.of())
-            .module(m)
-            .start()
-            .get(OtherHolder.class)
-            .instances();
-    assertThat(i.get("a").value()).isEqualTo("a:x");
-    assertThat(i.get("b").value()).isEqualTo("oy");
-  }
-
-  /** A second capability, so a default driver can be exercised alone. */
-  interface Other {
-    String value();
-  }
-
-  record OtherHolder(Instances<Other> instances) {}
-
-  @Test
-  void missingDriverKeyIsReported() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { text: x }\n");
-    assertThat(failure(Map.of()).getMessage()).contains("greeters.instances.a.driver");
+    assertThat(e.problems()).singleElement().satisfies(p -> {
+      assertThat(p.key()).isEqualTo("greeters.instances.a.driver");
+      assertThat(p.message()).contains("unknown key");
+    });
   }
 
   @Test
@@ -236,59 +181,59 @@ class InstancesTest {
         """
         greeters:
           instances:
-            a: { driver: strict, text: x, txt: typo, repeat: { times: 2, timez: 3 } }
+            strict: { text: x, txt: typo, repeat: { times: 2, timez: 3 } }
         """);
     StartupException e = failure(Map.of());
     assertThat(e.problems()).hasSize(2);
     assertThat(e.getMessage())
-        .contains("greeters.instances.a.txt")
-        .contains("greeters.instances.a.repeat.timez")
+        .contains("greeters.instances.strict.txt")
+        .contains("greeters.instances.strict.repeat.timez")
         .contains("unknown key");
   }
 
   @Test
   void unknownKeyInTheCapabilitySectionFails() throws IOException {
-    yaml("greeters:\n  defualt: a\n  instances:\n    a: { driver: plain }\n");
+    yaml("greeters:\n  defualt: a\n  instances:\n    a: { text: x }\n");
     assertThat(failure(Map.of()).getMessage()).contains("greeters.defualt");
   }
 
   @Test
   void envVarsOverrideInstanceKeys() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: strict, text: file }\n");
+    yaml("greeters:\n  instances:\n    strict: { text: file }\n");
     Instances<Greeter> g =
-        app(Map.of("GREETERS_INSTANCES_A_TEXT", "env", "GREETERS_INSTANCES_A_REPEAT_TIMES", "2"))
+        app(Map.of("GREETERS_INSTANCES_STRICT_TEXT", "env", "GREETERS_INSTANCES_STRICT_REPEAT_TIMES", "2"))
             .start()
             .get(Greeters.class)
             .instances();
-    assertThat(g.get("a").greet()).isEqualTo("a:enva:env");
+    assertThat(g.get("strict").greet()).isEqualTo("strict:envstrict:env");
   }
 
   @Test
   void aKeyGivenOnlyByEnvironmentIsAcceptedButDoesNotCreateAnInstance() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: strict }\n");
+    yaml("greeters:\n  instances:\n    strict: {}\n");
     Instances<Greeter> g =
-        app(Map.of("GREETERS_INSTANCES_A_TEXT", "t", "GREETERS_INSTANCES_B_DRIVER", "plain"))
+        app(Map.of("GREETERS_INSTANCES_STRICT_TEXT", "t", "GREETERS_INSTANCES_B_TEXT", "plain"))
             .start()
             .get(Greeters.class)
             .instances();
-    assertThat(g.names()).containsExactly("a");
+    assertThat(g.names()).containsExactly("strict");
   }
 
   @Test
   void missingRequiredKeyInAFactoryNamesTheKeyAndTheEnvVar() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: strict }\n");
+    yaml("greeters:\n  instances:\n    strict: {}\n");
     StartupException e = failure(Map.of());
     assertThat(e.getMessage())
         .contains("module 'greetings'")
-        .contains("greeters.instances.a.text")
-        .contains("GREETERS_INSTANCES_A_TEXT");
+        .contains("greeters.instances.strict.text")
+        .contains("GREETERS_INSTANCES_STRICT_TEXT");
   }
 
   @Test
   void factoryFailureIsReportedWithItsCause() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: failing }\n");
+    yaml("greeters:\n  instances:\n    failing: {}\n");
     StartupException e = failure(Map.of());
-    assertThat(e.getMessage()).contains("greeters.instances.a").contains("cannot reach the thing");
+    assertThat(e.getMessage()).contains("greeters.instances.failing").contains("cannot reach the thing");
     assertThat(e.getSuppressed()).hasSize(1);
   }
 
@@ -298,12 +243,11 @@ class InstancesTest {
         """
         greeters:
           instances:
-            a: { driver: nope }
-            b: { driver: failing }
-            c: { driver: strict }
-            d: { driver: plain, typo: 1 }
+            fail-b: {}
+            strict: {}
+            d: { typo: 1 }
         """);
-    assertThat(failure(Map.of()).problems()).hasSize(5); // a, b, c, d unknown key, default missing
+    assertThat(failure(Map.of()).problems()).hasSize(4); // fail-b, strict's text, d's unknown key, default missing
   }
 
   @Test
@@ -311,15 +255,14 @@ class InstancesTest {
     yaml(
         """
         greeters:
-          default: x
+          default: close-x
           instances:
-            x: { driver: closing }
-            y: { driver: closing }
-            z: { driver: failing }
+            close-x: {}
+            close-y: {}
+            fail-z: {}
         """);
-    // ClosingGreeter logs through the test instance; the driver in module() builds it.
     failure(Map.of());
-    assertThat(log).containsExactly("close y", "close x");
+    assertThat(log).containsExactly("close close-y", "close close-x");
   }
 
   @Test
@@ -329,8 +272,8 @@ class InstancesTest {
         greeters:
           default: w
           instances:
-            base: { driver: plain, text: hi }
-            w: { driver: wrapper, inner: base }
+            base: { text: hi }
+            w: { inner: base }
         """);
     Instances<Greeter> g = app(Map.of()).start().get(Greeters.class).instances();
     assertThat(g.get("w").greet()).isEqualTo("wrapped(base:hi)");
@@ -338,28 +281,17 @@ class InstancesTest {
 
   @Test
   void instancesAreClosedWithTheApplication() throws IOException {
-    yaml("greeters:\n  instances:\n    x: { driver: closing }\n    y: { driver: closing }\n  default: x\n");
+    yaml("greeters:\n  instances:\n    close-x: {}\n    close-y: {}\n  default: close-x\n");
     App app = app(Map.of()).start();
     app.close();
-    assertThat(log).containsExactly("close y", "close x");
-  }
-
-  @Test
-  void registeringOneDriverNameTwiceFailsStartUp() {
-    Mod a = Mod.of("a").register(b -> b.drivers().register(Greeter.class, "plain", (n, c, l, m) -> () -> "a"));
-    Mod b = Mod.of("b").register(x -> x.drivers().register(Greeter.class, "plain", (n, c, l, m) -> () -> "b"));
-    Throwable t =
-        org.assertj.core.api.Assertions.catchThrowable(
-            () -> App.builder().configDirectory(dir).environment(Map.of()).module(a).module(b).start());
-    assertThat(t).isInstanceOf(StartupException.class);
-    assertThat(t.getMessage()).contains("module 'b'").contains("plain").contains("registered twice");
+    assertThat(log).containsExactly("close close-y", "close close-x");
   }
 
   @Test
   void typedGettersOnInstanceConfigParseErrorsAreProblems() throws IOException {
-    yaml("greeters:\n  instances:\n    a: { driver: strict, text: x, repeat: { times: many } }\n");
+    yaml("greeters:\n  instances:\n    strict: { text: x, repeat: { times: many } }\n");
     StartupException e = failure(Map.of());
-    assertThat(e.getMessage()).contains("greeters.instances.a.repeat.times").contains("an integer");
+    assertThat(e.getMessage()).contains("greeters.instances.strict.repeat.times").contains("an integer");
     assertThat(SettingType.INTEGER.describe()).isEqualTo("an integer");
   }
 }

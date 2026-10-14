@@ -130,7 +130,6 @@ class AppLifecycleTest {
     assertThat(app.get(io.flowcatalyst.framework.config.Config.class)).isSameAs(app.config());
     assertThat(app.get(java.time.InstantSource.class)).isNotNull();
     assertThat(app.get(MonotonicClock.class)).isNotNull();
-    assertThat(app.get(Drivers.class)).isNotNull();
   }
 
   @Test
@@ -165,7 +164,7 @@ class AppLifecycleTest {
     AppBuilder b = builder();
     assertThatIllegalStateException().isThrownBy(() -> b.provide(Alpha.class, l -> new Alpha("x")));
     assertThatIllegalStateException().isThrownBy(() -> b.declare(Setting.string("a.b")));
-    assertThatIllegalStateException().isThrownBy(b::drivers);
+    assertThatIllegalStateException().isThrownBy(() -> b.claimComponent("a"));
     assertThatIllegalStateException().isThrownBy(b::moduleId);
     b.start();
     assertThatIllegalStateException().isThrownBy(b::start);

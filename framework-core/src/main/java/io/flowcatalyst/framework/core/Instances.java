@@ -16,10 +16,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The named instances of one capability, built from a configuration section such as
- * {@code locks} (core contract, section 2).
+ * {@code database} with one {@link InstanceFactory} (core contract section 2, amended by the
+ * config-and-code contract section 2.1: configuration names connections, never a driver).
  *
- * <p>Capability registries ({@code Locks}, {@code Databases}, {@code RedisConnections}) wrap one
- * of these.
+ * <p>Capability registries ({@code Databases}, {@code RedisConnections}) wrap one of these.
  *
  * @param <T> the capability type
  */
@@ -35,159 +35,6 @@ public final class Instances<T> implements AutoCloseable {
     this.capabilityName = capabilityName;
     this.byName = Collections.unmodifiableMap(byName);
     this.defaultName = defaultName;
-  }
-
-  /**
-   * Builds every instance configured under {@code section}.
-   *
-   * <p>Reads {@code <section>.default} and {@code <section>.instances.<name>.driver}, builds each
-   * instance with the registered driver, and reports as start-up problems: an unknown driver
-   * name (listing the registered ones), a factory failure, a key the factory did not read, a
-   * missing or unknown default. Instances already built are closed when any problem is found.
-   *
-   * @param <T> the capability type
-   * @param capability the capability, the key drivers are registered under
-   * @param section the configuration section, for example {@code locks}
-   * @param lookup the lookup of the provider calling this
-   * @return the instances; empty when nothing is configured
-   * @throws StartupException listing every problem found
-   */
-  public static <T> Instances<T> build(Class<T> capability, String section, Lookup lookup) {
-    return build(capability, section, lookup, (String) null);
-  }
-
-  /**
-   * As {@link #build(Class, String, Lookup)}, for a capability that has one obvious driver: an
-   * instance that gives no {@code driver} key uses {@code defaultDriver}.
-   *
-   * @param <T> the capability type
-   * @param capability the capability, the key drivers are registered under
-   * @param section the configuration section, for example {@code database}
-   * @param lookup the lookup of the provider calling this
-   * @param defaultDriver the driver used when an instance names none, or null to require one
-   * @return the instances; empty when nothing is configured
-   * @throws StartupException listing every problem found
-   */
-  public static <T> Instances<T> build(
-      Class<T> capability, String section, Lookup lookup, @Nullable String defaultDriver) {
-    Config config = lookup.get(Config.class);
-    Drivers drivers = lookup.get(Drivers.class);
-    String module = lookup.moduleId();
-    List<Problem> problems = new ArrayList<>();
-
-    InstanceConfig top = config.section(section);
-    String defaultName = null;
-    try {
-      defaultName = top.findString("default").orElse(null);
-    } catch (ConfigException e) {
-      problems.add(Problem.fromConfig(e.problem(), module));
-    }
-    InstanceConfig instances = top.section("instances");
-    List<String> names = new ArrayList<>(instances.keys());
-    // Mark the instances subtree as handled so only stray top-level keys are reported.
-    for (String stray : top.unreadKeys()) {
-      if (!stray.equals("instances") && !stray.startsWith("instances.")) {
-        problems.add(
-            new Problem(
-                module,
-                section + "." + stray,
-                top.sourceOf(stray),
-                "unknown key in section '" + section + "'",
-                null));
-      }
-    }
-
-    Map<String, T> built = new LinkedHashMap<>();
-    for (String name : names) {
-      String path = section + ".instances." + name;
-      InstanceConfig ic = instances.section(name);
-      String driver;
-      try {
-        driver = defaultDriver == null ? ic.string("driver") : ic.string("driver", defaultDriver);
-      } catch (ConfigException e) {
-        problems.add(Problem.fromConfig(e.problem(), module));
-        continue;
-      }
-      List<String> known = drivers.names(capability);
-      if (!known.contains(driver)) {
-        problems.add(
-            Problem.of(
-                module,
-                path + ".driver",
-                "unknown driver '"
-                    + driver
-                    + "' for "
-                    + capability.getSimpleName()
-                    + "; registered: "
-                    + (known.isEmpty() ? "(none)" : String.join(", ", known))));
-        continue;
-      }
-      T instance;
-      try {
-        instance = drivers.create(capability, driver, name, ic, lookup, built);
-      } catch (ConfigException e) {
-        problems.add(Problem.fromConfig(e.problem(), module));
-        continue;
-      } catch (StartupException e) {
-        problems.addAll(e.problems());
-        continue;
-      } catch (Exception e) {
-        problems.add(
-            new Problem(
-                module,
-                path,
-                null,
-                "driver '" + driver + "' failed: " + chain(e),
-                e));
-        continue;
-      }
-      if (instance == null) {
-        problems.add(Problem.of(module, path, "driver '" + driver + "' is not registered"));
-        continue;
-      }
-      built.put(name, instance);
-      for (String unknown : ic.unreadKeys()) {
-        problems.add(
-            new Problem(
-                module,
-                path + "." + unknown,
-                ic.sourceOf(unknown),
-                "unknown key for driver '" + driver + "'",
-                null));
-      }
-    }
-
-    String resolvedDefault = null;
-    if (defaultName != null) {
-      if (names.contains(defaultName)) {
-        resolvedDefault = defaultName;
-      } else {
-        problems.add(
-            Problem.of(
-                module,
-                section + ".default",
-                "names instance '"
-                    + defaultName
-                    + "', which is not configured; known: "
-                    + (names.isEmpty() ? "(none)" : String.join(", ", names))));
-      }
-    } else if (names.size() == 1) {
-      resolvedDefault = names.get(0);
-    } else if (names.size() > 1) {
-      problems.add(
-          Problem.of(
-              module,
-              section + ".default",
-              "missing; several instances are configured ("
-                  + String.join(", ", names)
-                  + ") so one must be named as the default"));
-    }
-
-    if (!problems.isEmpty()) {
-      closeAll(built.values());
-      throw new StartupException(problems);
-    }
-    return new Instances<>(capability.getSimpleName(), built, resolvedDefault);
   }
 
   /**

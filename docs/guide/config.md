@@ -238,8 +238,8 @@ plan item MA-5 and M5).
 ## Errors
 
 Config problems are collected and thrown together from `start()` as one `StartupException`: an
-unparseable value, a missing required setting, an unknown key in an instance section, an unknown
-driver, a duplicate declaration, two keys that read one environment variable, an invalid YAML file,
+unparseable value, a missing required setting, an unknown key in an instance section, a duplicate
+declaration, two keys that read one environment variable, an invalid YAML file,
 a removed key, an unknown key under a claimed component. Each names the key and the source, for
 example the file or `environment variable MAIL_HOST`.
 

@@ -9,7 +9,7 @@ hooks:
 
 | Hook | May do | May not do |
 |---|---|---|
-| `register(AppBuilder)` | declare settings, provide services, register drivers, contribute migrations | build services, read config values, start threads |
+| `register(AppBuilder)` | declare settings, provide services, contribute migrations, claim configuration components (amended 2026-10-14, config-and-code; registering drivers is gone) | build services, read config values, start threads |
 | `boot(App)` | read config, look up services, add health checks, start background work | provide new services |
 | `started(App)` | work that needs every module booted: compile a route table, start accepting traffic | provide new services |
 | `shutdown(App)` | stop background work it started | — |
@@ -34,7 +34,8 @@ reports every problem, each naming its module and key:
 - a lookup of a type nobody provides (names the module whose provider asked);
 - a cycle between providers (names the cycle);
 - any config error (section 4);
-- an unknown driver name or a driver factory failure (section 2);
+- an instance factory failure (section 2; before 2026-10-14 also an unknown driver name);
+- a removed key or an unknown key under a claimed component ([config and code](config-and-code.md), section 5);
 - an exception from a provider, a `boot` hook or a `started` hook.
 
 If `start()` fails after building some services, it closes those it built, in reverse order,
@@ -56,7 +57,7 @@ lookup of `type` (other providers', `App.get`, `App.find`) returns `instance`. R
   provides this type"). Conservative ruling: overriding an implementation class instead of the
   interface modules look up would otherwise do nothing, silently. Optional collaborators nobody
   provides are added with a test module's `provide`, not with `override`.
-- The framework's seeded types (`Config`, `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`)
+- The framework's seeded types (`Config`, `InstantSource`, `Ids`, `MonotonicClock`; `Drivers` until 2026-10-14)
   cannot be overridden (start-up fails); the builder has methods for the clocks and environment.
 - `override` itself throws `IllegalArgumentException` at once for a second override of one type or
   an instance that is not of the type. It may be called in any order with the other builder methods;

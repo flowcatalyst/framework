@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Describes an application and starts it.
  *
- * <p>The methods that declare, provide, register drivers and contribute are valid only inside a
+ * <p>The methods that declare, provide, claim a component and contribute are valid only inside a
  * module's {@code register} hook; elsewhere they throw {@link IllegalStateException}.
  *
  * <pre>{@code
@@ -60,7 +60,6 @@ public final class AppBuilder {
 
   // Registration state.
   private @Nullable String registering;
-  private final Drivers drivers = new Drivers();
   private final List<Problem> problems = new ArrayList<>();
   private final List<Declaration> declarations = new ArrayList<>();
   private final Map<Class<?>, ServiceGraph.Entry> providers = new LinkedHashMap<>();
@@ -332,16 +331,6 @@ public final class AppBuilder {
   }
 
   /**
-   * Registers drivers for capabilities.
-   *
-   * @return the registrar, bound to the module being registered
-   */
-  public Drivers.Registrar drivers() {
-    String module = requireRegistering("register drivers");
-    return new Drivers.Registrar(drivers, module, problems);
-  }
-
-  /**
    * Contributes a value that another module collects at start-up with
    * {@link Lookup#contributions(Class)}, for example a migration set.
    *
@@ -573,7 +562,6 @@ public final class AppBuilder {
     // 3. Build every provided service.
     Map<Class<?>, Object> seeded = new LinkedHashMap<>();
     seeded.put(Config.class, config);
-    seeded.put(Drivers.class, drivers);
     seeded.put(InstantSource.class, instantSource);
     seeded.put(Ids.class, new Ids(instantSource));
     seeded.put(MonotonicClock.class, monotonicClock);
@@ -706,7 +694,6 @@ public final class AppBuilder {
 
   private static boolean isFrameworkType(Class<?> type) {
     return type == Config.class
-        || type == Drivers.class
         || type == InstantSource.class
         || type == Ids.class
         || type == MonotonicClock.class

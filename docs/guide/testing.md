@@ -202,7 +202,7 @@ where `builder("test")` is `App.builder().configDirectory(dir).environment(Map.o
   also reads `config/secrets.local.yaml` from the config directory (see the note on `APP_ENV` above).
 - Override the **type modules look up** (`Mailer`, not `SmtpMailer`): overriding a type no module
   provides fails start-up, because it would otherwise change nothing. The framework's own types
-  (`Config`, `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`) cannot be overridden; use
+  (`Config`, `InstantSource`, `Ids`, `MonotonicClock`) cannot be overridden; use
   `instantSource(...)`, `monotonicClock(...)` and `environment(...)`.
 - Overriding one type twice, or with an instance of the wrong type, throws
   `IllegalArgumentException` at once.

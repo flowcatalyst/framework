@@ -1,4 +1,4 @@
-<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceFactory, InstanceConfig, HealthPolicy, DatabaseModule, DatabasePool, RedisModule, RedisPool, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
+<!-- types: Module, AppBuilder, App, Provider, Lookup, Instances, InstanceFactory, InstanceConfig, HealthPolicy, DatabaseModule, DatabasePool, RedisModule, RedisPool, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
 # Modules and the application lifecycle
 
 An application is a list of **modules** given to a builder, in code. Everything the framework
@@ -21,7 +21,7 @@ framework's own module, which is added for you.
 
 | Hook | Use it to | Do not |
 |---|---|---|
-| `register(AppBuilder)` | declare settings, provide services, register drivers, contribute migrations and definitions, claim commands | build services, read config values, start threads |
+| `register(AppBuilder)` | declare settings, provide services, claim configuration components, contribute migrations and definitions, claim commands | build services, read config values, start threads |
 | `boot(App)` | read config, look up services, add health checks, register routes, register background loops | provide new services |
 | `started(App)` | work that needs *every* module booted (the Jetty module compiles the route table and starts listening here) | provide new services |
 | `shutdown(App)` | stop what you started | |
@@ -84,7 +84,7 @@ app.provide(
 - Providers run once, at start-up, in dependency order. A provider that asks for a type nobody
   provides fails start-up and names the asking module.
 - These types are provided by the framework and cannot be provided by a module: `Config`,
-  `Drivers`, `InstantSource`, `Ids`, `MonotonicClock`, `Health`, `EnvironmentVariables` (reads one
+  `InstantSource`, `Ids`, `MonotonicClock`, `Health`, `EnvironmentVariables` (reads one
   variable by exact name; never lists them). The core module also provides
   `Metrics` and `Background` ([Background and metrics](background-and-metrics.md)). `Ids` generates TSIDs (`ids.generate("ord")`
   gives `ord_` plus 13 characters); `InstantSource` is the clock to use instead of
