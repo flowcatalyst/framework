@@ -459,7 +459,7 @@ transaction. Both implementations need the same answer (section 10).
 
 ## 7a. The orders screens in Nuxt UI
 
-`go/examples/orders-demo/web/` is the example SPA ([`ui.md`](ui.md)): Vue, Nuxt UI and `@fw/ui`,
+`go/examples/orders-demo/web/` is the example SPA ([`ui.md`](ui.md)): Vue, Nuxt UI and `@flowcatalyst/ui`,
 built into `web/dist` and embedded by `web/embed.go`. `make ui-gen` runs `orders-demo openapi`
 (declare phase only) into `web/openapi.json` and generates `web/src/api/` from it: `types.gen.ts`
 (`AddLineBody`, `LineAddedView`, `OrderList`, `OrderStatus` as a literal union),
@@ -481,7 +481,7 @@ Two screens:
 // web/src/pages/orders/useOrders.ts (sketch)
 import { listOrders } from "@/api/sdk.gen";
 import type { OrderList, OrderStatus } from "@/api/types.gen";
-import { useListState } from "@fw/ui";
+import { useListState } from "@flowcatalyst/ui";
 
 export function useOrders() {
   const state = useListState({

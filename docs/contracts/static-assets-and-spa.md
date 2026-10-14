@@ -1,6 +1,7 @@
 # Contract: static assets and the SPA
 
-Status: written 2026-10-14, before any code, for the UI direction decided that day (Nuxt UI SPA as
+Status: written 2026-10-14, before any code, for the UI direction decided that day; rulings 2, 4 and
+5 of section 12 confirmed by the owner the same day (Nuxt UI SPA as
 the primary UI for the Java and Go frameworks; [`../handover.md`](../handover.md), "UI direction").
 Nothing here is built. **Language-neutral**: Java (`framework-http`) builds it first and Go
 (`httpfw/spa`, [`../go/capabilities.md`](../go/capabilities.md) section 5) implements the same
@@ -201,8 +202,8 @@ The table is fixed so Java and Go answer the same bytes (the JDK's and Go's MIME
   geolocation=()`. Java: `.contentSecurityPolicy(Csp.strict("sha256-..."))`.
 - Whether Nuxt UI runs without `'unsafe-inline'` for styles is **unverified**; the shared UI
   package's first step (U0, [`../go/ui.md`](../go/ui.md) section 17) answers it under Playwright. If
-  it does, strict becomes the default in a later amendment of this section; until then the
-  baseline is the default, as in the platform.
+  it does, strict becomes the default in a later amendment of this section (owner ruling
+  2026-10-14); until then the baseline is the default, as in the platform.
 - HSTS is the TLS terminator's job (the http contract leaves TLS outside the application).
 
 ## 8. Build integration
@@ -280,17 +281,22 @@ expected status, headers and body hash) is written by the Java tests and compare
 | reads the embedded FS per request, ETags cached on first use | an index built at start-up | a missing `index.html` is found at start-up, not on the first request |
 | the fallback is chi's `NotFound` plus a GET-method-mismatch fallback | the router's fallback for a path with no route; a method mismatch is always the router's `405` | the framework's router already answers `405` correctly |
 
-## 12. Rulings taken here (owner may reverse)
+## 12. Rulings
+
+Rulings 2, 4 and 5 were confirmed by the owner on 2026-10-14; the others were taken here and the
+owner may reverse them.
 
 1. **The SPA is the router's fallback**, not a wildcard route; the http contract keeps "no
    wildcards".
 2. **API prefixes are derived from the routes** (section 5), so client and server routes never share
-   a first segment.
+   a first segment. *Owner, 2026-10-14: accepted.*
 3. **A missing `index.html` fails start-up** outside `local` and `test`.
 4. **Maven never runs Node**; CI builds the SPA first and Maven copies `web/dist` (section 8). The
    alternative (the `frontend-maven-plugin`, which downloads Node and pnpm during the Maven build)
-   keeps one command but puts a JavaScript toolchain inside every Java build.
-5. **Baseline CSP by default**, strict opt-in until U0 shows Nuxt UI runs under it.
+   keeps one command but puts a JavaScript toolchain inside every Java build. *Owner, 2026-10-14:
+   confirmed; the SPA is built separately and Maven copies `web/dist`.*
+5. **Baseline CSP by default**, strict opt-in until U0 shows Nuxt UI runs under it. *Owner,
+   2026-10-14: the strict policy becomes the default if U0 shows Nuxt UI runs under it.*
 6. **No compression** (no precompressed `.br`/`.gz` siblings, as [`../go/ui.md`](../go/ui.md) section 9
    sketched): compression is outside the http contract; a proxy or CDN compresses. Both
    implementations leave it out so they answer the same bytes.

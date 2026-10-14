@@ -807,9 +807,9 @@ Go implements the same two contracts ([`../contracts/static-assets-and-spa.md`](
 - **Stack:** Nuxt UI v4 through its Vite and Vue plugins (no Nuxt, no Nitro), Vue 3, vue-router,
   Vite, pnpm, TypeScript with the platform's strict settings plus `exactOptionalPropertyTypes` and
   `verbatimModuleSyntax`, vue-tsc, typescript-eslint type-aware, no `any` (decision 7).
-- **Packages:** `@fw/ui` (components, partials and pages that extend Nuxt UI, the app shell,
+- **Packages:** `@flowcatalyst/ui` (components, partials and pages that extend Nuxt UI, the app shell,
   composables ported from the platform SPA, the theme preset mapping `ui-kit/theme/tokens.css`),
-  `@fw/api-runtime`, `@fw/gallery`; an application's SPA in its Go module's `web/`, embedded.
+  `@flowcatalyst/api-runtime`, `@flowcatalyst/gallery`; an application's SPA in its Go module's `web/`, embedded.
 - **Typed spine:** operations (section 5) → OpenAPI 3.1 → hey-api types, SDK and Zod schemas →
   `UForm` (decision 19). The Go parse function stays the authority.
 - **Not implemented in Go:** the Datastar adapter and the `ui-kit/fixtures` goldens (decision 27).

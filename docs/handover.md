@@ -158,28 +158,34 @@ decided; section 7), `go/capabilities.md` sections 5 and 13, `go/milestones.md` 
 | 1 | The contracts above | done (this step) | |
 | 2 | **MS**: Java static assets + SPA fallback in `framework-http`, nosniff everywhere, the `conformance/http/spa.json` vector, guide page | 1 to 1.5 d | 1 |
 | 3 | **MO**: Java typed operations and the OpenAPI emitter: core declaration-phase command (0.5 d), `Rule`/`Validator` constraints as data (0.5 d), `Operation`/`Outcome`/`bind` and permissions (0.5 to 1 d), the schema walk and canonical writer (1.5 to 2 d), `framework-auth`'s two endpoints rebound as operations and the `conformance/openapi/` vectors (0.5 to 1 d), guide page (0.5 d) | 3.5 to 5 d | 2 |
-| 4 | **MU**: the shared UI package, U0 workspace, lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (1.5 to 2 d); U2 shell, list, drawer and form partials, composables, `@fw/api-runtime` (2.5 to 4 d); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
-| 5 | **M4d** admin skeleton (typed admin operations, `admin:*` sync, shell and permission gating as `@fw/ui` pages) then **M4e** slices (users and invitations, event types, config and secret status; scoped events and dispatch jobs wait on the platform) | M4d 2 to 3 d; M4e 1 to 2 d per slice | 4 |
+| 4 | **MU**: the shared UI package, U0 workspace, lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (1.5 to 2 d); U2 shell, list, drawer and form partials, composables, `@flowcatalyst/api-runtime` (2.5 to 4 d); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
+| 5 | **M4d** admin skeleton (typed admin operations, `admin:*` sync, shell and permission gating as `@flowcatalyst/ui` pages) then **M4e** slices (users and invitations, event types, config and secret status; scoped events and dispatch jobs wait on the platform) | M4d 2 to 3 d; M4e 1 to 2 d per slice | 4 |
 | 6 | **MC**: the control plane migration guide (framework side) | 0.5 to 1 d; the application's own work about 3 to 5 d (typed operations for five endpoints, a `web/` SPA with list, drawer and the sealed-union form, CI order) | 3, 4 (U3, U4) |
 | 7 | **M-UI**: the optional JTE + Datastar module | 4 to 6 d, when an application asks | none |
 
 Total framework side through item 6: about 18 to 27 days. The Go framework then implements MS and
 MO against the same vectors (inside its G3 and G5a) and reuses MU as is.
 
-**Open questions for the owner** (each also recorded in its contract's "Rulings taken here"):
+**Owner answers (2026-10-14)** to the questions this step left open (each recorded in its contract):
 
-1. Typed operations omit `null` values while plain routes keep Jackson's `null`s (openapi 13.4): or
-   switch the whole http mapper to omit nulls (a wire change for existing routes)?
-2. Maven never runs Node; CI builds `web/` first (static assets 12.4): or the `frontend-maven-plugin`?
-3. Distribution of `@fw/ui` and `@fw/api-runtime` to applications in other repositories (the control
-   plane): GitHub Packages npm under the organisation's scope (the npm scope must be the GitHub
-   owner, so `@fw` is a placeholder), alongside the Maven publication; until then a path dependency.
-4. Strict CSP as the default once U0 shows Nuxt UI runs without `'unsafe-inline'` styles.
-5. API prefixes derived from the routes (a client route can never share a first segment with a
-   server route), versus the platform's fixed list.
-6. `BigDecimal` as a JSON string on typed operations; closed (`additionalProperties: false`) response
-   schemas.
-7. Whether the platform's templ `/ui` port continues now that neither framework renders the kit by
-   default (Go decision 32; unchanged by this step).
-8. The U3 example: the Java `examples/orders-demo` (proposed, keeps the framework repo
-   self-contained) or the control plane directly.
+1. **Nulls: keep the split.** Typed operations omit `null` values; plain routes and `Response.json`
+   keep Jackson's `null`s (openapi section 13, ruling 4). No wire change for existing routes.
+2. **Maven never runs Node: confirmed.** The SPA is built separately (`pnpm --dir web build`); Maven
+   copies `web/dist` as a resource (static assets section 12, ruling 4).
+3. **UI packages: linked by path for now, GitHub Packages later.** An application in another
+   repository checks out the framework repository and links the package by path (pnpm
+   `"@flowcatalyst/ui": "link:../flowcatalyst-framework/ui/packages/ui"`); the package exports its
+   TypeScript and Vue source, so the consumer's Vite compiles it; CI checks the framework out at a
+   pinned tag or commit. Later the packages are published to GitHub Packages under the
+   `@flowcatalyst` scope (the npm scope must equal the GitHub owner). The `@fw` placeholder is
+   renamed in the docs: `@flowcatalyst/ui`, `@flowcatalyst/api-runtime`, `@flowcatalyst/gallery`.
+4. **Strict CSP becomes the default if U0 shows Nuxt UI runs under it**; until then the baseline is
+   the default (static assets section 7).
+5. **Derived API prefixes accepted**: a client route cannot share a first segment with a server route
+   (static assets section 5).
+6. **`BigDecimal` as a JSON string and closed response schemas: confirmed** (openapi section 13,
+   rulings 5 and 6).
+7. **The Go platform's templ `/ui` port continues**, and the Go framework offers both options as Java
+   does: Nuxt UI primary, an optional templ + Datastar module later (Go decision 32, `go/ui.md`
+   section 16).
+8. **U3 is built on the Java `examples/orders-demo`.**

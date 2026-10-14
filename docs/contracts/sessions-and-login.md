@@ -192,7 +192,9 @@ browser session only.
   read. *Amended 2026-10-14: was `null`; omitted matches section 6.1 ("optional values are omitted,
   not null") and the OpenAPI contract's "may be absent" rule. The Java code still writes `null` until
   logout becomes a typed operation (section 4.5); an SPA that tests `endSessionUrl` for truthiness
-  works with both.*
+  works with both. Ruled by the owner 2026-10-14: typed operations omit `null`s, plain routes keep
+  them (OpenAPI contract section 13, ruling 4), so the omission arrives with MO and nothing else
+  changes on the wire.*
 - Without a session the answer is the same `200` (logout is idempotent).
 
 ### 4.5 For a single-page application
@@ -225,7 +227,7 @@ In TypeScript the union narrows on `session.authenticated === true`. Whether hey
 Zod plugins render `const` as literal types is **unverified** and checked at the emitter step; if
 not, the components use a one-value `enum` instead, in this section and the vector together.
 
-**Client rules** (for `@fw/api-runtime`, and for any hand-written client):
+**Client rules** (for `@flowcatalyst/api-runtime`, and for any hand-written client):
 
 1. **Same origin, cookies only.** Every call is a same-origin `fetch` with `credentials:
    "same-origin"` (the default); never `mode: "no-cors"`, never an `Authorization` header from the
@@ -631,6 +633,12 @@ Conformance vectors (`conformance/auth/`: id_token cases, sealed cookies, the se
 written in M4c; they are listed for when Go implements this contract.
 
 ## 12. Rulings taken here (owner may reverse)
+
+Ruled by the owner on 2026-10-14, for the SPA amendments (4.4, 4.5): typed operations omit `null`s
+while plain routes keep them, so `endSessionUrl` is omitted once `/auth/session` and `/auth/logout`
+are typed operations (MO); the client package section 4.5 refers to is `@flowcatalyst/api-runtime`
+(linked by path until published under the `@flowcatalyst` scope). Rulings 1 to 7 below were not part
+of that answer and stay open to reversal.
 
 1. **No platform tokens in the session; no refresh** (6.4). Simplest correct choice for M4c:
    nothing to leak, nothing to rotate, no cross-replica refresh race. Cost: role changes and

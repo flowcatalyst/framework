@@ -66,7 +66,7 @@ Go's strength is that most problems have one obvious solution. The framework kee
 | dynamic SQL | go-jet as the typed builder, the `Filter` accumulator as fallback (section 5) | string concatenation with values |
 | JSON | `encoding/json/v2` | third-party JSON libraries |
 | a JSON API's description | typed operation descriptors in `httpfw`, from which the framework emits OpenAPI 3.1 (decision 18) | hand-written YAML, huma |
-| browser UI | a Nuxt UI v4 SPA in strict TypeScript, calling a client generated from that document, embedded in the binary ([`ui.md`](ui.md)) | templ, Datastar, server-rendered HTML |
+| browser UI | a Nuxt UI v4 SPA in strict TypeScript, calling a client generated from that document, embedded in the binary ([`ui.md`](ui.md)); server-rendered pages only through the optional templ + Datastar module (decision 32, later) | templ, Datastar or server-rendered HTML in the core |
 
 The standard library comes first. A dependency is added when it is the platform's existing choice
 (pgx, go-redis, sqlc, embedded-postgres) or when writing it ourselves would be worse (YAML).
@@ -256,9 +256,9 @@ example SPAs; [`ui.md`](ui.md) section 4), which Maven and Cargo ignore as well.
 | `github.com/flowcatalyst/framework/go` | `go/` | stdlib, `x/sync`, pgx v5, go-redis v9, `go.yaml.in/yaml/v3`, embedded-postgres (test helper package only) | the framework; an application that never uses FlowCatalyst does not get fcsdk in its module graph (plumbing 9a: the framework does not depend on FlowCatalyst) |
 | `github.com/flowcatalyst/framework/go/flowcatalyst` | `go/flowcatalyst/` | the core module, **fcsdk** | the only module that imports the platform SDK, as `framework-flowcatalyst` is the only Java module that imports the Java SDK |
 
-The UI is not a Go module: `@fw/ui` (components, partials and pages extending Nuxt UI, the app
-shell, composables, the theme preset), `@fw/api-runtime` (the generated client's transport and error
-handling) and `@fw/gallery` live in `ui/`; an application's SPA is built to `web/dist` inside its
+The UI is not a Go module: `@flowcatalyst/ui` (components, partials and pages extending Nuxt UI, the app
+shell, composables, the theme preset), `@flowcatalyst/api-runtime` (the generated client's transport and error
+handling) and `@flowcatalyst/gallery` live in `ui/`; an application's SPA is built to `web/dist` inside its
 own Go module and embedded with `//go:embed`. The earlier plan of a third module, `go/ui`, holding
 the platform's templ kit, is withdrawn by the 2026-10-13 ruling.
 
@@ -385,8 +385,9 @@ value itself rather than encoded), pinned by a copy of the vector in `pkg/fcsdk/
 
 The first draft extracted the platform's templ kit (`internal/ui/kit`, `htmlnorm`, `ds`, `assets`,
 `compress`) into a shared `go/ui` module. The 2026-10-13 ruling (Nuxt UI) withdraws that: the Go
-framework imports nothing from the platform's UI, and the platform's templ port under `/ui` is not
-affected ([`ui.md`](ui.md) section 16).
+framework's core imports nothing from the platform's UI, and the platform's templ port under `/ui`
+continues (owner, 2026-10-14; decision 32). The optional templ + Datastar module that decision 32
+adds later is where the kit and the port's code would be reused.
 
 What the framework takes from the platform instead is **patterns**, from its PrimeVue SPA and its
 API pipeline ([`ui.md`](ui.md) section 1): the embedded-SPA handler (`frontend/embed.go`,
@@ -394,7 +395,7 @@ API pipeline ([`ui.md`](ui.md) section 1): the embedded-SPA handler (`frontend/e
 committed OpenAPI document with a CI drift check (`make api-diff`, `frontend-types-verify`), the
 list, drawer-route, cursor-pager and dirty-form composables, the session-cookie and route-guard
 shape, and the `/ui` guard's CSRF rules. None of it is importable (it is under `internal/` or is not
-a package), so each is rewritten for `@fw/ui` or `httpfw`.
+a package), so each is rewritten for `@flowcatalyst/ui` or `httpfw`.
 
 ### 4.3 Patterns copied from the platform
 
@@ -538,7 +539,7 @@ decision (old 25) are replaced by decisions 7, 18, 19 and 27 to 32.
 | 4 | **How the framework consumes fcsdk.** | **Done (2026-10-13).** `pkg/fcsdk` is its own module, `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` (path matches the repository; `go get` through a `pkg/fcsdk/vX.Y.Z` git tag verified), released with `make release-go-sdk` (dry run verified, not yet released); the missing sync categories (connections, scheduled jobs, docs, OpenAPI) were added. Until the first tag, a local `go.work` or `replace`. Not: depending on the whole platform module; not copying. Section 4.1. | G4 |
 | 5 | **Test infrastructure.** | Embedded PostgreSQL 18 per test binary, a database per test from a migrated template, never 15432 or 8080; no `integration` build tag; Redis tests on a real `redis-server`/`valkey-server` from `PATH` (fail with instructions when absent), miniredis only above the driver. | G0 |
 | 6 | **Toolchain and lint (Go).** | Go 1.27; the platform's golangci-lint v2 profile plus `gochecksumtype`, `forbidigo` (clock, env, global logger, background contexts) and revive `exported`; gofumpt and goimports; NilAway pinned by pseudo-version as its own CI step; `fwvet`; `-race` always. | G0 |
-| 7 | **UI toolchain** (the stack itself is the owner's ruling). | Nuxt UI v4 through its Vite and Vue plugins, no Nuxt or Nitro; Vue 3.5+, vue-router, Vite; pnpm with exact versions, a catalog, `minimumReleaseAge` and a build-script allow-list; TypeScript pinned to what vue-tsc supports; the platform's tsconfig plus `exactOptionalPropertyTypes` and `verbatimModuleSyntax`, `erasableSyntaxOnly` kept, `strictTemplates`; typescript-eslint `strictTypeChecked` with type information and `eslint-plugin-vue`, no `any`, no casts, no non-null assertions; oxfmt; explicit imports (Nuxt UI's auto-imports off); Lucide icons bundled, never fetched; no Pinia in `@fw/ui` ([`ui.md`](ui.md) sections 2, 3, 5). | G5a (U0) |
+| 7 | **UI toolchain** (the stack itself is the owner's ruling). | Nuxt UI v4 through its Vite and Vue plugins, no Nuxt or Nitro; Vue 3.5+, vue-router, Vite; pnpm with exact versions, a catalog, `minimumReleaseAge` and a build-script allow-list; TypeScript pinned to what vue-tsc supports; the platform's tsconfig plus `exactOptionalPropertyTypes` and `verbatimModuleSyntax`, `erasableSyntaxOnly` kept, `strictTemplates`; typescript-eslint `strictTypeChecked` with type information and `eslint-plugin-vue`, no `any`, no casts, no non-null assertions; oxfmt; explicit imports (Nuxt UI's auto-imports off); Lucide icons bundled, never fetched; no Pinia in `@flowcatalyst/ui` ([`ui.md`](ui.md) sections 2, 3, 5). | G5a (U0) |
 | 8 | **Wiring model.** | An explicit `build` function, typed handles from `Declare` functions, `Boot` for lifecycle; no container, no `reflect`, no `override` (tests pass fakes to `build`) (section 1.2). | G1 |
 | 9 | **The framework's `Context`.** | Keep the contract's name, `fw.Context`, passed explicitly as a parameter beside `context.Context` (by convention `cx`), never stored in `context.Context`. The alternative (a typed accessor over `context.Value`) is the common Go habit but hides a required value behind a run-time lookup. | G1 |
 | 10 | **Framework tables and Redis keys are shared contracts.** | Yes, byte for byte, as Rust decision 8: a Go service can take over a Java service's database, and Java and Go replicas share locks and rate-limit budgets. | G1 |
@@ -558,13 +559,13 @@ decision (old 25) are replaced by decisions 7, 18, 19 and 27 to 32.
 | 24 | **Redis client.** | go-redis v9 (the platform's). | G1 |
 | 25 | **YAML.** | `go.yaml.in/yaml/v3` (the maintained successor of the archived `gopkg.in/yaml.v3`); a duplicate key is refused, recorded as an allowed difference from Java. | G1 |
 | 26 | **Missing conformance vectors.** | The Java tests write the errors, health, metrics, rate-limit, secrets and receiver vectors as Go reaches each area; Java stays the reference (Rust decision 18). The Datastar and `htmlnorm` vectors are not needed by Go (decision 27). | G3, G4 |
-| 27 | **Datastar and the kit goldens are not implemented in Go.** | Record http contract section 10 and the `ui-kit/fixtures` goldens as not applicable to Go, in the conformance README and STATUS, as TypeScript decision 24 did. | G3 |
+| 27 | **Datastar and the kit goldens are not implemented in Go's core.** | Record http contract section 10 and the `ui-kit/fixtures` goldens as not applicable to the Go core, in the conformance README and STATUS, as TypeScript decision 24 did. The optional templ + Datastar module (decision 32, later) implements both when it is built. | G3 |
 | 28 | **Static assets and the SPA in the HTTP contract.** | **Contract written 2026-10-14:** [`../contracts/static-assets-and-spa.md`](../contracts/static-assets-and-spa.md), shared with Java and mirroring the platform's F16 handler. Instead of a trailing-wildcard route, the SPA is the router's fallback (http section 2 unchanged); API prefixes derived from the routes; hashed assets `immutable`, a missing asset and an unknown API path the JSON 404, `index.html` `no-cache` with an ETag; the platform's baseline CSP by default, the strict policy opt-in until U0; embedded with `//go:embed` ([`ui.md`](ui.md) section 9). | G5a (U3) |
 | 29 | **Sessions and login for the SPA (M4c).** | Write the M4c contract once and JSON-first for every implementation: the application as backend-for-frontend, OIDC code + PKCE as a public client, RS256 always, `GET /auth/login`, `GET /auth/callback`, `GET /auth/session`, `POST /auth/logout`; an opaque `__Host-` cookie (`HttpOnly; Secure; SameSite=Lax`), `database` driver by default; 401 for API calls, the SPA navigates to sign-in; CSRF by `SameSite`, `http.CrossOriginProtection`, refusal without provenance headers, JSON-only bodies, no token; platform calls as the service account; server-rendered default pages an optional Java addition ([`ui.md`](ui.md) section 8). Opus for the slice, a security review. | G5b |
 | 30 | **UI conformance.** | The kit specs (behaviour, accessibility, states) and the tokens stay the reference; the gallery's owner-approved screenshots are the look; axe (WCAG 2.2 AA, zero violations), Playwright behaviour checks, a CSP-violation check and vitest are enforced in CI; no golden HTML ([`ui.md`](ui.md) section 12). | G5a (U0) |
-| 31 | **Share the UI package with the Java framework?** | **Decided 2026-10-14 (owner): shared.** Nuxt UI is the primary UI of both frameworks: one backend-agnostic package (`@fw/ui`, `@fw/api-runtime`, the gallery, the shared admin pages) against each application's emitted OpenAPI document; Java's JTE + Datastar (M-UI) becomes an optional, deferred module. Java emits its document by the shared [`../contracts/openapi.md`](../contracts/openapi.md) (no document-conformance test). U0 to U4 are built first against Java ([`ui.md`](ui.md) sections 15, 17). | done |
-| 32 | **The platform's SPA (PrimeVue) and its templ port.** | No change now. Revisit after G5a's partials and the comparison slice exist, with effort-per-screen numbers; the trade-offs are in [`ui.md`](ui.md) section 16. Separately, the owner says whether the platform's templ `/ui` port continues now that the framework does not consume the templ kit. | none |
-| 33 | **Names and publication.** | Nothing published, nothing pushed (ruling g). Module paths and package names stay placeholders until naming (open question 6) is settled; tags `go/v*`, `go/flowcatalyst/v*` when publishing is allowed; UI packages consumed as workspace source until then, a private registry after. CI workflow written but not run, as for Rust. | first release |
+| 31 | **Share the UI package with the Java framework?** | **Decided 2026-10-14 (owner): shared.** Nuxt UI is the primary UI of both frameworks: one backend-agnostic package (`@flowcatalyst/ui`, `@flowcatalyst/api-runtime`, the gallery, the shared admin pages) against each application's emitted OpenAPI document; Java's JTE + Datastar (M-UI) becomes an optional, deferred module. Java emits its document by the shared [`../contracts/openapi.md`](../contracts/openapi.md) (no document-conformance test). U0 to U4 are built first against Java ([`ui.md`](ui.md) sections 15, 17). | done |
+| 32 | **The platform's SPA (PrimeVue) and its templ port.** | **Decided 2026-10-14 (owner): the platform's templ `/ui` port continues**, and the Go framework offers **both options, as Java does**: Nuxt UI is the primary UI (the shared `@flowcatalyst/ui` package), and an **optional templ + Datastar module** (the counterpart of Java's optional M-UI, over the same `ui-kit/` specs and fixtures, drawing on the platform's port) comes later, when an application asks. Moving the platform's own UI to Nuxt UI is not on the table now; the trade-offs stay in [`ui.md`](ui.md) section 16. | done (the optional module: later) |
+| 33 | **Names and publication.** | Nothing published, nothing pushed (ruling g). Module paths and package names stay placeholders until naming (open question 6) is settled; tags `go/v*`, `go/flowcatalyst/v*` when publishing is allowed; UI packages (`@flowcatalyst/ui`, `@flowcatalyst/api-runtime`; owner 2026-10-14) consumed as source: in this repository as workspace packages, elsewhere by checking out the framework at a pinned tag or commit and linking by path (pnpm `link:`); later GitHub Packages under the `@flowcatalyst` scope. CI workflow written but not run, as for Rust. | first release |
 | 34 | **The comparison.** | Fix the business slice and the measurements before G7, borrowing the TypeScript spike's list (lines per layer, seeded bugs caught, start-up, memory, test time, latency for context only), and decision 31. | G7 |
 
 The Java owner rulings still pending (rate-limit store failure default `ALLOW`, IPv6 /64, the memory

@@ -133,7 +133,7 @@ These rows are not counted in the headline.
 
 | # | Capability | fcsdk | Platform | Go framework |
 |---|---|---|---|---|
-| 47 | UI components (Java plan: JTE over `ui-kit/`; Go: Nuxt UI, [`ui.md`](ui.md)) | n/a | the templ kit (`internal/ui/kit`) is **not used** by the Go framework; the PrimeVue SPA's composables (`useListState`, `useDrawerRoute`, `useCursorPagination`, `useDirtyForm`) and partials are the model | new: `@fw/ui` on Nuxt UI |
+| 47 | UI components (Java plan: JTE over `ui-kit/`; Go: Nuxt UI, [`ui.md`](ui.md)) | n/a | the templ kit (`internal/ui/kit`) is **not used** by the Go framework; the PrimeVue SPA's composables (`useListState`, `useDrawerRoute`, `useCursorPagination`, `useDirtyForm`) and partials are the model | new: `@flowcatalyst/ui` on Nuxt UI |
 | 48 | A typed JSON API description (OpenAPI) and a generated browser client | n/a | huma (`apiroute`, `tools/dump-spec`, `api/openapi.lock.json`, `make api-diff`) and hey-api **types only** with a hand-written transport; no enums, `Time` patched, `/bff` and `/auth` outside the spec | new: the framework's own emitter (design decision 18), the full hey-api client (decision 19) |
 | 49 | Serving the built SPA from the binary | n/a | **pattern**: `frontend/embed.go` and `handler.go` (a missing hashed asset and unknown paths answer `index.html`; `no-store` on `index.html`) | new, `httpfw/spa`, with those two points corrected |
 | 50 | CSRF for cookie-authenticated requests | n/a | **pattern**: `internal/ui/guard.CSRF` (`http.CrossOriginProtection` plus refusing no-provenance requests), applied to `/ui` only, not to the `/api` routes the SPA calls | new, `httpfw.CSRF` |

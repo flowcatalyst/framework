@@ -337,7 +337,7 @@ scheme was contributed is a dump problem ("say how callers authenticate").
 
 - `framework-auth` declares **`GET /auth/session`** (`getAuthSession`) and **`POST /auth/logout`**
   (`logout`) as operations, with the fixed component names and shapes in the sessions contract
-  section 4.5, so `@fw/api-runtime` calls them through a generated client (the platform's `/auth/*`
+  section 4.5, so `@flowcatalyst/api-runtime` calls them through a generated client (the platform's `/auth/*`
   surface, hand-typed and outside its spec, is the counter-example). Both are public in the
   document (no `security`): they answer without a session.
 - `/auth/login` and `/auth/callback` are browser navigations, never fetched: not in the document.
@@ -371,7 +371,7 @@ runs against the other's when the operations are the same:
   status, both security cases) described in its `README.md`, and `fixture.json`, the expected
   document. The Java tests write it (`-Dconformance.update=true`); Go's emitter must reproduce it
   **byte for byte**. `conformance/openapi/auth.json` holds the two operations of section 8 and their
-  components, which `@fw/api-runtime` is generated from;
+  components, which `@flowcatalyst/api-runtime` is generated from;
 - known modelling differences are absorbed by the rules: Java writes `@Nullable` absent, Go omits
   `omitzero` values, and both document "may be absent" (5.2); neither emits nullable types.
 
@@ -401,7 +401,7 @@ export default defineConfig({
 ```
 
 - **Committed:** `web/openapi.json` and `web/src/api/` (generated). The SPA imports only the
-  generated SDK for API calls; `@fw/api-runtime` configures its `client-fetch` instance (same
+  generated SDK for API calls; `@flowcatalyst/api-runtime` configures its `client-fetch` instance (same
   origin, `credentials: "same-origin"`, the `Error` envelope as the typed error, `401` to sign-in,
   validation details onto form fields). An ESLint rule forbids other `fetch` wrappers.
 - **Zod:** the plugin's schemas (zod 4) are passed to Nuxt UI's `UForm`; they carry the section 5.4
@@ -432,7 +432,10 @@ export default defineConfig({
 - an end-to-end check in the example application: the generated client compiles under the UI's
   `tsconfig` and a Playwright run with response validation on passes against the real server.
 
-## 13. Rulings taken here (owner may reverse)
+## 13. Rulings
+
+Rulings 4, 5 and 6 were confirmed by the owner on 2026-10-14; the others were taken here and the
+owner may reverse them.
 
 1. **The framework's own emitter**, deriving schemas from records, enums and sealed interfaces, not a
    library (swagger-core's model resolver or a JSON Schema generator): the house rules (values are
@@ -442,8 +445,11 @@ export default defineConfig({
    document is dumped without configuration or a database.
 3. **`Outcome<R>` as the handler's result** (a sealed type) instead of returning `Response`.
 4. **`@Nullable` means "may be absent"**; typed operations omit null values; no three-state values.
-5. **Closed schemas** (`additionalProperties: false`) for request and response records.
-6. **`BigDecimal` as a string** on the wire of typed operations.
+   *Owner, 2026-10-14: keep the split; plain routes and `Response.json` keep writing Jackson's
+   `null`s (no wire change for existing routes).*
+5. **Closed schemas** (`additionalProperties: false`) for request and response records. *Owner,
+   2026-10-14: confirmed.*
+6. **`BigDecimal` as a string** on the wire of typed operations. *Owner, 2026-10-14: confirmed.*
 7. **Constraints only from the Validator**; a custom rule documents nothing.
 8. **Security schemes contributed by the resolving module**; a context operation without one fails
    the dump.

@@ -26,8 +26,8 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | MU | The shared UI package: Nuxt UI v4 on Vue and Vite in strict TypeScript, the primary UI of the Java and Go frameworks (owner ruling 2026-10-14; design in [`go/ui.md`](../go/ui.md)); steps U0 to U4 | **Designed**, not built | |
 | MC | Migration guide for the first application's control plane onto typed operations and a `web/` SPA | Not started | |
 | M-UI | `framework-ui`: JTE templates for the `ui-kit/` components, view response helper | **Optional, deferred** (owner ruling 2026-10-14: an optional module for server-rendered pages without a JavaScript build; the framework's UI is the shared Nuxt UI package, MU) | |
-| M4d | Admin skeleton: typed admin operations with permission gating, and the admin shell as shared `@fw/ui` pages | Not started | |
-| M4e | Admin pages as shared `@fw/ui` pages: users, invitations, event types, config, scoped events and dispatch jobs | Not started | |
+| M4d | Admin skeleton: typed admin operations with permission gating, and the admin shell as shared `@flowcatalyst/ui` pages | Not started | |
+| M4e | Admin pages as shared `@flowcatalyst/ui` pages: users, invitations, event types, config, scoped events and dispatch jobs | Not started | |
 | M4f | Trial business service on these contracts | Not started | |
 | MA | Usability gaps raised by the first application | **Built** (2026-10-10; item 10 2026-10-13), nothing published. Item 10 (rate limiters built in code, `MemoryRateLimiter.create` and `RedisRateLimiter.create`, replacing the `rate-limits` configuration, `RateLimiters`, `RateLimitModule` and `RateLimitRedisModule` (**breaking**); a `PolicyResolver` on the middleware for a policy per request that may change at run time; [guide](rate-limiting.md#a-policy-per-request)); item 9 (rate limiting: `RateLimit` middleware, `memory` and `redis` limiters, key resolvers; [guide](rate-limiting.md)); item 6 (`framework-httpclient` on Vert.x and `HttpClientModule`: a client per service, auth with token caching, idempotent-only retries, `Context` propagation, metrics; [guide](http-client.md)); item 5 (`SecretResolver` with `file` and `env` drivers, cache, threat model; `platform` driver blocked on the platform; [guide](secrets.md)); item 3 (`Background` loops with health and an optional `LockGate`; `Metrics` with memory and noop drivers, built-in HTTP, use-case and loop metrics, a Prometheus endpoint off by default; [guide](background-and-metrics.md)); item 4 (`DispatchJob`, `Plan.andDispatch`: `DISPATCH_JOB` outbox rows in the platform's batch-item shape; [write path](write-path.md#dispatch-jobs)); item 1 (`framework-bom`, publishing configuration and workflow, [contract](../contracts/build.md); nothing published); item 2 (`AppBuilder.override(Class, instance)`, only when `APP_ENV` is `test`; [testing](testing.md#replacing-a-service)); item 8 (`framework-http` depends on `framework-core` only, enforced by a Maven Enforcer rule; `HttpErrors.of(ServiceError)`, which `UseCaseError` implements; [migration](http.md#what-framework-http-pulls-in)); item 7 (informational health checks: `Criticality`, `app.health.critical` / `app.health.informational`; `flowcatalyst` and `outbox` informational by default; `/health/ready` answers `DEGRADED` with 200) | [lifecycle](modules-and-lifecycle.md#critical-and-informational-checks) |
 | M5 | Cache and storage, platform config driver, metering, messaging | Not started | |
@@ -65,7 +65,11 @@ for all implementations. **Decided 2026-10-14 (owner):** the Java framework shar
 package, which is the primary UI of both (design decision 31); static assets and the OpenAPI document
 are shared contracts ([static assets and the SPA](../contracts/static-assets-and-spa.md),
 [OpenAPI](../contracts/openapi.md)), built first in Java (MS, MO, MU above); JTE + Datastar (M-UI) is
-an optional, deferred Java module.
+an optional, deferred Java module. **Owner answers 2026-10-14:** the platform's templ `/ui` port
+continues and the Go framework offers both options as Java does (Nuxt UI primary, an optional templ +
+Datastar module later); the UI packages are `@flowcatalyst/ui` and `@flowcatalyst/api-runtime`,
+linked by path from a checkout of this repository until they are published to GitHub Packages; the
+other answers are in [`implementation-plan.md`](../implementation-plan.md) ("Owner answers").
 
 ## Known gaps
 

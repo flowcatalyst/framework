@@ -8,7 +8,7 @@ the Go framework. The SPA is built to static files, embedded in the Go binary an
 application next to its JSON API. The owner already uses Nuxt UI this way in another project.
 
 **Owner ruling (2026-10-14): shared with Java.** Nuxt UI is the **primary UI of both the Java and
-the Go framework**: **one backend-agnostic UI package** (`@fw/ui`, `@fw/api-runtime`, the gallery,
+the Go framework**: **one backend-agnostic UI package** (`@flowcatalyst/ui`, `@flowcatalyst/api-runtime`, the gallery,
 and the shared admin pages) talking to a typed JSON API, served by either backend. Decision 31 is
 therefore decided (section 15). The Java JTE + Datastar stack (`framework-ui`, M-UI, the `ui-kit/`
 specs' markup and fixtures) becomes an **optional module** for applications that want
@@ -21,8 +21,13 @@ Where this page and a contract differ, the contract wins. The milestones of sect
 shared and are built first against the **Java** backend (the work order is in
 [`../handover.md`](../handover.md), "UI direction").
 
+**Owner ruling (2026-10-14, later): both options in Go too.** The platform's templ `/ui` port
+continues; the Go framework, like Java, offers Nuxt UI as the primary UI and an optional templ +
+Datastar module later (section 16, design decision 32). The packages are named `@flowcatalyst/ui`,
+`@flowcatalyst/api-runtime` and `@flowcatalyst/gallery` (section 4).
+
 What this page changes in the other Go pages: the `go/ui` Go module (the templ kit extracted from
-the platform) is gone; the Datastar adapter (http contract section 10) and the `ui-kit/fixtures`
+the platform) is gone from the core; the Datastar adapter (http contract section 10) and the `ui-kit/fixtures`
 goldens are not implemented in Go; the Go HTTP layer gains typed operations that emit an OpenAPI
 document, static asset serving, CSRF protection and (with M4c) a session surface for a browser SPA;
 milestone G5a becomes the TypeScript UI package. The decisions are in [`design.md`](design.md)
@@ -57,7 +62,7 @@ platform's `frontend/node_modules`.
 | Auth | a same-origin `fc_session` cookie (`HttpOnly`, `SameSite=Lax`, `Secure` by config) holding a platform session JWT; the server resolves roles and permissions per request; `GET /auth/me` hydrates a Pinia store; route guards check permissions from that list; 401 for fetch, a redirect for HTML navigation | the BFF cookie shape and the guard pattern (section 8) |
 | CSRF | the `/ui` (templ) routes run `guard.CSRF` (`http.CrossOriginProtection` plus refusing an unsafe request with neither `Sec-Fetch-Site` nor `Origin`); the **`/api` routes the SPA calls have no such check** and rely on `SameSite=Lax` (finding, section 8.4) | `guard.CSRF`'s rules |
 | Embedding | `frontend/embed.go` (`//go:embed all:dist`), `handler.go`: exact asset or `index.html`, `immutable` caching under `/assets/`, `no-store` on `index.html`, a clear "frontend not built" response | the pattern; with two corrections (section 9: a missing hashed asset and an unknown `/api` path must not answer `index.html`) |
-| Patterns | list pages as `DataTable` + `FcTableToolbar` + URL-synced filters (`useListState`), record drawers as **child routes** over the list (`useDrawerRoute`: deep links, Back closes, discard-changes guard on leave and on row switch), cursor pagination with an in-session back stack (`useCursorPagination`), `useDirtyForm` (structural snapshot), a convention test against assigning a `204` result to a ref | all of them, ported onto Nuxt UI components as `@fw/ui` composables and partials |
+| Patterns | list pages as `DataTable` + `FcTableToolbar` + URL-synced filters (`useListState`), record drawers as **child routes** over the list (`useDrawerRoute`: deep links, Back closes, discard-changes guard on leave and on row switch), cursor pagination with an in-session back stack (`useCursorPagination`), `useDirtyForm` (structural snapshot), a convention test against assigning a `204` result to a ref | all of them, ported onto Nuxt UI components as `@flowcatalyst/ui` composables and partials |
 | Look | hard-coded slate and navy hex values in scoped styles; 12.6 px base font; no dark mode | the kit's tokens instead (section 11) |
 
 ### 1.2 The UI kit and the platform's templ port
@@ -70,8 +75,9 @@ platform's templ port under `/ui` passes those fixtures and reached parity for t
 - the **specs' behaviour and accessibility sections** and the **tokens** stay the reference;
 - the **golden HTML does not apply**: Nuxt UI renders Reka UI markup (section 12 says what replaces
   it as the conformance authority);
-- the templ code and `datastar-go` are not used by the framework. The platform's port is not
-  affected by this ruling (section 16).
+- the templ code and `datastar-go` are not used by the framework's core. The platform's port
+  continues (owner, 2026-10-14), and the Go framework will offer an **optional templ + Datastar
+  module** later, as Java offers M-UI (section 16; design decision 32).
 
 ### 1.3 The Go platform's OpenAPI pipeline
 
@@ -97,7 +103,7 @@ framework's own route table. Section 7 compares this with the framework writing 
 | Format | oxfmt, as the platform | a development tool only |
 | API client | `@hey-api/openapi-ts` (exact pin; it is 0.x and changes between minors): `@hey-api/typescript`, `@hey-api/sdk`, `@hey-api/client-fetch`, `zod` | section 6 |
 | Forms | Nuxt UI `UForm` with the generated **Zod 4** schemas (Zod implements Standard Schema, which `UForm` accepts) | server validation stays the authority |
-| State | composables with `provide`/`inject` (session, permissions, current client); **no Pinia in `@fw/ui`** (an application may add it) | as TypeScript decision 19 |
+| State | composables with `provide`/`inject` (session, permissions, current client); **no Pinia in `@flowcatalyst/ui`** (an application may add it) | as TypeScript decision 19 |
 | Package manager | **pnpm** (the platform's, the owner's other project), workspace at the repository root, exact versions, `catalog:` for shared versions, frozen lockfile in CI, `minimumReleaseAge` and an `onlyBuiltDependencies` allow-list | Node 24 LTS |
 | Tests | vitest (+ `@vue/test-utils`, happy-dom), Playwright, `@axe-core/playwright` | section 12 |
 
@@ -172,7 +178,7 @@ typescript-eslint `strictTypeChecked` with type information (`parserOptions.proj
 | `@typescript-eslint/switch-exhaustiveness-check`, `strict-boolean-expressions`, `no-floating-promises`, `no-misused-promises` | unions handled everywhere; no forgotten promise in an event handler |
 | `vue/block-lang` (`ts` only), `vue/require-typed-ref`, `vue/define-props-declaration` (type-based), `vue/define-emits-declaration` (type-based), `vue/require-explicit-emits`, `vue/no-unused-properties` | every component typed |
 | `vue/no-v-html` | XSS; an exception is a reviewed component that sanitises (the Markdown viewer, if one is built) |
-| `no-restricted-imports`: `fetch` wrappers other than the generated client, `primevue`, `pinia` inside `@fw/ui` | one way to call the API; the package stays small |
+| `no-restricted-imports`: `fetch` wrappers other than the generated client, `primevue`, `pinia` inside `@flowcatalyst/ui` | one way to call the API; the package stays small |
 | `no-restricted-globals`: `localStorage` and `sessionStorage` outside one `useLocalState` composable | storage access is reviewed in one place |
 
 `make ui-check` runs: `pnpm install --frozen-lockfile`, OpenAPI and client drift checks, `vite build`,
@@ -194,7 +200,7 @@ package.json                   private; tooling only (eslint, oxfmt, typescript,
 ui/
   tsconfig.base.json  eslint.config.ts
   packages/
-    ui/                        @fw/ui: components, partials, pages, layouts, composables, theme preset, Vue plugin
+    ui/                        @flowcatalyst/ui: components, partials, pages, layouts, composables, theme preset, Vue plugin
       src/components/          Fw* components that extend Nuxt UI (FwTableToolbar, FwCursorPager, FwFormDialog, ...)
       src/partials/            FwListPage, FwRecordDrawer, FwDetailSection, FwFormPage
       src/pages/               default pages: not permitted, not found, error, signed out, profile
@@ -203,15 +209,15 @@ ui/
                                usePermissions, useConfirm, useLocalState
       src/theme/               the preset: Vite plugin options (colors, defaultVariants, component slots) and kit.css
       src/plugin.ts            install(app, { router, api, navigation }) for applications
-    api-runtime/               @fw/api-runtime: configures @hey-api/client-fetch (same origin, credentials, the
+    api-runtime/               @flowcatalyst/api-runtime: configures @hey-api/client-fetch (same origin, credentials, the
                                error envelope as a typed ServiceError, 401 -> sign-in, toasts), envelope -> UForm
                                errors, and the generated client of the framework's own endpoints (session, auth)
-  gallery/                     @fw/gallery: every component, partial and page in every state, light and dark
+  gallery/                     @flowcatalyst/gallery: every component, partial and page in every state, light and dark
 go/examples/orders-demo/web/   the example SPA (package.json, vite.config.ts, src/, openapi.json, the generated
                                client in src/api/, embed.go with //go:embed all:dist)
 ```
 
-**Extend, never fork.** `@fw/ui` composes Nuxt UI components and passes their props and slots
+**Extend, never fork.** `@flowcatalyst/ui` composes Nuxt UI components and passes their props and slots
 through; restyling is done with Nuxt UI's own mechanisms (the plugin's `ui` options and a
 component's `ui` prop), never by copying a component. A component the kit needs and Nuxt UI does
 not have is built on **Reka UI** primitives (already a dependency) with Nuxt UI's tokens. Prefix
@@ -219,9 +225,13 @@ not have is built on **Reka UI** primitives (already a dependency) with Nuxt UI'
 API themselves, so the gallery renders them with fixture data and the same page serves any
 backend that implements the same operations.
 
-Applications consume `@fw/ui` as **source** (workspace packages, compiled by the application's
-Vite build), so no declaration files are emitted or published. Distribution outside this
-repository is decided with publication (decision 33).
+Applications consume `@flowcatalyst/ui` as **source** (workspace packages, compiled by the application's
+Vite build), so no declaration files are emitted or published. **Outside this repository** (owner,
+2026-10-14): the application checks out the framework repository and links the package by path
+(pnpm `"@flowcatalyst/ui": "link:../flowcatalyst-framework/ui/packages/ui"`); the package exports its
+TypeScript and Vue source and the consumer's Vite compiles it; CI checks the framework out at a
+pinned tag or commit. Later the packages are published to GitHub Packages under the `@flowcatalyst`
+scope (the npm scope must equal the GitHub owner; `@fw` was a placeholder). Decision 33.
 
 ## 5. Nuxt UI without Nuxt
 
@@ -230,7 +240,7 @@ repository is decided with publication (decision 33).
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import ui from "@nuxt/ui/vite";
-import { fwTheme } from "@fw/ui/theme";
+import { fwTheme } from "@flowcatalyst/ui/theme";
 
 export default defineConfig({
   plugins: [
@@ -250,12 +260,12 @@ export default defineConfig({
 ```
 
 - **`app.config` equivalent:** in plain Vue the plugin's `ui` option is what `app.config.ts`'s `ui`
-  key is in Nuxt (colour aliases, per-component slot classes and default variants). `@fw/ui`
+  key is in Nuxt (colour aliases, per-component slot classes and default variants). `@flowcatalyst/ui`
   exports it as `fwTheme`; an application spreads it and overrides keys.
-- **Entry:** `main.ts` installs the router first, then `@nuxt/ui/vue-plugin`, then `@fw/ui`'s
+- **Entry:** `main.ts` installs the router first, then `@nuxt/ui/vue-plugin`, then `@flowcatalyst/ui`'s
   plugin; `App.vue` wraps everything in `UApp` (required for toasts, tooltips and programmatic
   overlays); the root element in `index.html` carries `class="isolate"`.
-- **CSS:** one entry, `@import "tailwindcss"; @import "@nuxt/ui"; @import "@fw/ui/theme/kit.css";`
+- **CSS:** one entry, `@import "tailwindcss"; @import "@nuxt/ui"; @import "@flowcatalyst/ui/theme/kit.css";`
   (section 11).
 - **Icons:** Lucide, as the kit (`@iconify-json/lucide` installed, so icons are **bundled** and the
   SPA never calls the Iconify API, which the CSP would block). `clientBundle.scan` finds literal
@@ -284,7 +294,7 @@ Go wire DTOs + operation descriptors (httpfw)
    -> @hey-api/openapi-ts: types.gen.ts, sdk.gen.ts (one function per operation), zod.gen.ts
    -> pages call sdk functions; UForm validates with the Zod schema of the request body
    -> the server parses again (decision 17) and answers 400 VALIDATION with field details
-   -> @fw/api-runtime maps details onto the form's fields
+   -> @flowcatalyst/api-runtime maps details onto the form's fields
 ```
 
 ### 6.1 Generation
@@ -340,7 +350,7 @@ import { addLine } from "@/api/sdk.gen";
 import { zAddLineBody } from "@/api/zod.gen";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import type { z } from "zod";
-import { applyServiceError } from "@fw/api-runtime";
+import { applyServiceError } from "@flowcatalyst/api-runtime";
 
 const schema = zAddLineBody;
 async function onSubmit(event: FormSubmitEvent<z.output<typeof schema>>): Promise<void> {
@@ -421,7 +431,7 @@ TypeScript design's decision 21(b).
 | `POST /auth/logout` | destroys the session, answers 200 with the platform's end-session URL for the SPA to navigate to |
 | everything under `/api` | the `ContextResolver` builds `fw.Context` from the session; 401 `UNAUTHENTICATED` for a missing or expired session |
 
-The endpoints are framework operations, so they are in the document and `@fw/api-runtime` calls
+The endpoints are framework operations, so they are in the document and `@flowcatalyst/api-runtime` calls
 them through a generated client: the platform's `/auth/*` surface, which is outside its spec and
 hand-typed, is the counter-example.
 
@@ -431,13 +441,13 @@ no `Domain`. Session data lives in the `database` driver by default (revocable, 
 expiry. Platform calls are made with the application's **service account**, never with the user's
 login token (TypeScript decision 21(b)).
 
-**401 versus 302:** API calls get 401 and the envelope; the SPA's `@fw/api-runtime` turns a 401
+**401 versus 302:** API calls get 401 and the envelope; the SPA's `@flowcatalyst/api-runtime` turns a 401
 into `window.location.assign("/auth/login?returnTo=" + current)`. `index.html` and the assets are
 public (no data in them), so the SPA itself never needs a server redirect, and the sign-in round
 trip lands on the page the user asked for.
 
 **Permissions in the browser** are for showing and hiding only: route `meta.permission` checked by
-a guard in `@fw/ui` (the platform's `createRoutePermissionGuard` pattern, including its rule that an
+a guard in `@flowcatalyst/ui` (the platform's `createRoutePermissionGuard` pattern, including its rule that an
 automatic landing does not show a denial), navigation items filtered by the same list. Every API
 operation still checks in `authorize`.
 
@@ -461,7 +471,7 @@ check in `fwvet` on operation descriptors: a `GET` operation with a body type is
 ### 8.3 How it relates to the Java M4c contract
 
 The Java plan's M4c renders login, callback, logout and not-permitted **pages** with JTE. With an
-SPA, the server side of M4c is the endpoint table above and the pages are SPA routes in `@fw/ui`.
+SPA, the server side of M4c is the endpoint table above and the pages are SPA routes in `@flowcatalyst/ui`.
 Recommendation (decision 29): write the M4c contract **once and JSON-first** (the endpoint table,
 the cookie, the session drivers, CSRF, the token-verification vectors in `conformance/auth/` that
 TypeScript decision 21 proposed), with server-rendered default pages as an optional Java addition.
@@ -529,8 +539,8 @@ route for a static mount, the fallback rules above, the caching rules and the se
 
 ## 10. ui-kit components and their Nuxt UI equivalents
 
-"Covered" means a Nuxt UI component does the job with `@fw/ui` theming only; "compose" means
-`@fw/ui` combines Nuxt UI components into a partial; "build" means `@fw/ui` writes it (on Reka UI
+"Covered" means a Nuxt UI component does the job with `@flowcatalyst/ui` theming only; "compose" means
+`@flowcatalyst/ui` combines Nuxt UI components into a partial; "build" means `@flowcatalyst/ui` writes it (on Reka UI
 where it is interactive).
 
 | ui-kit spec | Nuxt UI | Status |
@@ -561,7 +571,7 @@ where it is interactive).
 | field | `UFormField` (label, description, hint, help, error) | covered |
 | filter-select | `USelect` or `USelectMenu` with a clear item | covered |
 | flash-banner | `UAlert` | covered |
-| flash-stack | `UToast` through `useToast` | covered; a **look difference**: toasts in a corner instead of the kit's banner stack; the request-failure fallback lives in `@fw/api-runtime` |
+| flash-stack | `UToast` through `useToast` | covered; a **look difference**: toasts in a corner instead of the kit's banner stack; the request-failure fallback lives in `@flowcatalyst/api-runtime` |
 | form-dialog | `UModal` + `UForm` | compose `FwFormDialog` (busy and dirty state, discard question, server errors on fields) |
 | form-field | `UFormField` | covered |
 | form-section | none | **build** `FwFormSection` (title, description, content; trivial) |
@@ -611,7 +621,7 @@ are mostly covered by Nuxt UI too: number input (`UInputNumber`), password with 
 Nuxt UI works with colour **aliases** (`primary`, `secondary`, `success`, `info`, `warning`,
 `error`, `neutral`) that point at Tailwind palettes, and with semantic variables (`--ui-text`,
 `--ui-bg`, `--ui-border`, `--ui-radius`, ...) redefined under `:root` and `.dark`. The kit's
-`tokens.css` maps as follows (`@fw/ui/theme/kit.css` holds the overrides):
+`tokens.css` maps as follows (`@flowcatalyst/ui/theme/kit.css` holds the overrides):
 
 | ui-kit token | Nuxt UI | How |
 |---|---|---|
@@ -629,7 +639,7 @@ Nuxt UI works with colour **aliases** (`primary`, `secondary`, `success`, `info`
 | fonts: Inter, SF Mono stack | `--font-sans`, `--font-mono` in `@theme` | self-hosted Inter |
 
 The kit's dark values are new (fc-web had none), so both themes are reviewed in the gallery at U1.
-`ui-kit/theme/tokens.css` stays the source of the values; `kit.css` in `@fw/ui` copies them and a
+`ui-kit/theme/tokens.css` stays the source of the values; `kit.css` in `@flowcatalyst/ui` copies them and a
 vitest test compares the two files' values so they cannot drift.
 
 ## 12. Testing and conformance
@@ -641,7 +651,7 @@ The golden HTML fixtures do not apply (different markup). What replaces them:
 | unit | composables (`useListState` URL parsing, `useCursorPagination` back stack, `useDirtyForm`, the envelope mapper, permission checks) | vitest |
 | component | `Fw*` components' props, events and slots | vitest + `@vue/test-utils` on happy-dom |
 | type | templates and the generated client | `vue-tsc` (a contract change that breaks a page is a build error) |
-| gallery | every `Fw*` component, partial and default page, every variant and state from its kit spec, light and dark, desktop and phone width, with fixture data | `@fw/gallery` (a Vite app) |
+| gallery | every `Fw*` component, partial and default page, every variant and state from its kit spec, light and dark, desktop and phone width, with fixture data | `@flowcatalyst/gallery` (a Vite app) |
 | behaviour | each kit spec's Behaviour and Accessibility sections as Playwright checks (keyboard operation, focus trap and return, Escape, discard question, drawer Back, toolbar Clear All); the kit's 69 scripted checks ported where they apply | Playwright on the gallery |
 | accessibility | zero violations at WCAG 2.2 AA on every gallery page in both themes | `@axe-core/playwright` |
 | visual | screenshots of every gallery page, approved by the owner once and then compared | Playwright `toHaveScreenshot`, in the pinned Playwright container image so fonts and rendering are stable |
@@ -705,7 +715,7 @@ The later comparison builds a business slice on Java and on Go. If each has its 
 Nuxt UI; Java: JTE + Datastar, M-UI), the comparison measures two UI stacks as much as two
 backends, and every screen is built twice.
 
-**The option:** `@fw/ui` and the slice's SPA are **backend-agnostic**: they talk only to a JSON API
+**The option:** `@flowcatalyst/ui` and the slice's SPA are **backend-agnostic**: they talk only to a JSON API
 described by an OpenAPI document. A Java application serves the same built SPA if it:
 
 1. implements the same operations with the same wire shapes, checked against the **same committed
@@ -742,17 +752,18 @@ third stack in the family. Trade-offs if the platform's UI were ever moved to Nu
 | strict generated client and dark mode, which the PrimeVue SPA lacks | Nuxt UI is younger than PrimeVue and its v4 options are still being added (4.2 to 4.11 tags on the installation page) |
 | Tailwind tokens shared with the kit, which PrimeVue's preset does not use | the templ port gives the platform one binary with no Node build; a Nuxt UI platform keeps Node |
 
-When to decide: after G5a has built the list, drawer and form partials and the comparison slice
-has used them, with real numbers on effort per screen. Until then the platform's dogfood plan is
-unchanged by this page; whether it continues now that the framework does not consume the templ kit
-is an owner question (open doubt 4).
+**Decided 2026-10-14 (owner): the templ `/ui` port continues** (design decision 32). The platform's
+dogfood plan is unchanged, and the Go framework offers both options as Java does: Nuxt UI primary,
+an **optional templ + Datastar module** later (the counterpart of Java's M-UI, over the same
+`ui-kit/` specs and fixtures, drawing on the platform's port). Moving the platform's own UI to Nuxt
+UI is not on the table; the table above is kept as the reasoning should it come up again.
 
 ## 17. Milestone steps
 
 *Shared since 2026-10-14.* U0 to U4 are milestones of the **shared** UI package, built first against
 the Java backend (the Java example `examples/orders-demo` gets the `web/` folder for U3; U4 uses the
 built Java M4c endpoints), and reused by Go's G5a and G5b, which then only add the Go side (the
-emitter, `httpfw/spa`, sessions). The admin area (Java M4d and M4e, Go G6) is built once as `@fw/ui`
+emitter, `httpfw/spa`, sessions). The admin area (Java M4d and M4e, Go G6) is built once as `@flowcatalyst/ui`
 pages. Order and estimates: [`../handover.md`](../handover.md), "UI direction".
 
 Inside G5a (UI package) and G5b (sessions), [`milestones.md`](milestones.md):
@@ -761,7 +772,7 @@ Inside G5a (UI package) and G5b (sessions), [`milestones.md`](milestones.md):
 |---|---|---|
 | U0 | the pnpm workspace, `tsconfig.base.json`, ESLint, the gallery app, Nuxt UI wired without Nuxt, the theme preset from `tokens.css`, bundled Lucide icons, CSP-strict Playwright with axe | the unverified points of sections 3, 5, 9 and 10 answered and recorded; an empty gallery passes axe in both themes under the CSP; may start before G1 |
 | U1 | the covered and composed components and the built small ones in the gallery; screenshots approved | every row of section 10 except the shell and partials has its gallery entry and checks |
-| U2 | `FwAppShell`, `FwListPage`, `FwRecordDrawer`, `FwFormDialog`, `FwTableToolbar`, `FwCursorPager`, the composables; `@fw/api-runtime` | partials run in the gallery against fixture data |
+| U2 | `FwAppShell`, `FwListPage`, `FwRecordDrawer`, `FwFormDialog`, `FwTableToolbar`, `FwCursorPager`, the composables; `@flowcatalyst/api-runtime` | partials run in the gallery against fixture data |
 | U3 | after G3: the example SPA on the generated client of the Go orders-demo, served embedded | list, drawer and add-line form against the real server, validation errors on fields, E2E green |
 | U4 (G5b) | sign-in, session guard, not-permitted and signed-out pages, CSRF on the real endpoints | the M4c test list; a security review |
 
@@ -773,8 +784,9 @@ Inside G5a (UI package) and G5b (sessions), [`milestones.md`](milestones.md):
    deliberately with the drift check showing the diff.
 4. **Three UI stacks in the family** (PrimeVue SPA, templ `/ui` in the platform, Nuxt UI in both
    frameworks since 2026-10-14), with JTE + Datastar an optional, deferred Java module. The kit's
-   specs and tokens are the shared reference; markup is not shared. Whether the platform's templ port
-   continues is an owner question (section 16); Java's M-UI is settled (section 15).
+   specs and tokens are the shared reference; markup is not shared. Settled 2026-10-14: the
+   platform's templ port continues, and both frameworks offer the server-rendered stack as an
+   optional module (Java M-UI with JTE; Go templ, later) (sections 15, 16).
 5. **The Go OpenAPI emitter is new code** on the critical path of the typed spine; the fallback is
    huma's registry (section 7).
 6. **Typed ids stop at the API boundary**: TypeScript sees `string` (section 6.2).
