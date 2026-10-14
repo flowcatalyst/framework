@@ -1,242 +1,238 @@
-# Contract: configuration holds connections and secrets; behaviour is code
+# Contract: service settings are configuration; things with many instances are code
 
-Status: owner ruling 2026-10-14 ("move all behaviour to code"), written before the code; **built
-in Java 2026-10-14** (commits `3444145` to `9326692`; "As built" notes in sections 3.6 and 10). It
-generalises MA item 10 (rate limiters built in code, [rate-limiting contract](rate-limiting.md)
-section 1) to every module. It amends the [core contract](core.md) sections 1, 2 and 4 and the
-configuration sections of the [database and Redis](database-and-redis.md), [locks](locks.md),
-[HTTP](http.md), [HTTP client](http-client.md), [secrets](secrets.md),
-[background and metrics](background-and-metrics.md) and [FlowCatalyst](flowcatalyst.md) contracts;
-where they disagree with this text, this text wins. **Breaking** for every application: the
-migration is section 7 and [the guide page](../guide/migrating-config-to-code.md).
+Status: owner ruling 2026-10-14, **clarified the same day**. The first reading ("move all behaviour
+to code", written here and built in Java in commits `3444145` to `9326692`) over-reached; the
+owner's rule is narrower: *"The configs for services and things like that are all fine. It is just
+don't use a config to define pollers or things that can have many instances."* This text states
+that rule and the final state of every module; section 11 records what was reversed and why.
+
+It generalises MA item 10 (rate limiters built in code, [rate-limiting contract](rate-limiting.md)
+section 1) to every capability whose instances are a code fact. It amends the [core
+contract](core.md) section 2 (drivers) and the configuration sections of the [locks](locks.md),
+[HTTP client](http-client.md) and [secrets](secrets.md) contracts; where they disagree with this
+text, this text wins. The [database and Redis](database-and-redis.md), [HTTP](http.md),
+[background and metrics](background-and-metrics.md) and [FlowCatalyst](flowcatalyst.md) contracts'
+configuration sections stand as written before 2026-10-14 (with section 3's notes on ranges).
 
 Implementations: Java builds this. The Go (G1) and Rust (R1) implementations still read driver
-names and behavioural keys from configuration; they follow this contract when they next change
-their configuration code (the conformance vectors are unchanged by it, section 6).
+names for locks, secrets and HTTP clients from configuration; they follow this contract when they
+next change their configuration code (the conformance vectors are unchanged by it, section 6).
 
 ## 1. The rule
 
-Configuration (files, environment variables, `secrets.local.yaml`, later the platform's store)
-holds **only**:
+**Configuration** (files, environment variables, `secrets.local.yaml`, later the platform's store)
+holds the settings of a **service** or of a **connection**:
 
-- **connection settings**: where something is and who the application is to it: URLs, hosts,
-  ports, user names, client ids, the application's code on the platform, the application's own
-  public URLs, which configured connection is the default;
-- **secret settings**: passwords, tokens, client secrets, keys (`Secret`).
+- the settings of a singleton service of the application: the shutdown drain, health-check timeout
+  and criticality, the metrics driver, the HTTP server's limits and timeouts, the FlowCatalyst
+  module's switches, timeouts and receiver settings;
+- connection instances and their settings: database and Redis instances (URL, user, password, pool
+  sizing, timeouts, whether migrations run), the platform's address, the application's code on
+  the platform, the application's own public URLs;
+- secrets: passwords, tokens, client secrets, keys (`Secret`).
 
-Everything else is **behaviour** and is written in code: timeouts, sizes, pool sizing, retries,
-cache policies, health criticality, switches that turn a feature on or off, route paths, intervals
-and retentions, and **which driver** backs a capability. Behaviour is given to the framework as
-typed values when the application is assembled (section 2), reviewed and tested with the code,
-the same in every deployment. A deployment varies connections and secrets, nothing else.
+**Code** defines the things an application can have **many of**, each with its own policy, and
+the policy objects they carry:
 
-An application that wants a behavioural number to differ per deployment declares **its own**
-setting, in its own component, and passes the value in code (section 4). It then owns the name,
-the range and the default; the framework's components never carry behavioural keys.
+- rate limiters (MA item 10), background loops and pollers;
+- lock stores, secret stores, named HTTP clients, each with the driver (or strategy) that backs it
+  and its policy: retry, authentication strategy, cache policy, timeouts and size limits of one
+  client;
+- which driver backs such a thing (there is no `driver:` key anywhere).
 
-## 2. How behaviour is given in code
+**The decision test.** *Could an application want several of these, with different values?* Then
+it is code: each one is named and built where it is used, with its policy as a typed value.
+*Is it one setting of the service, or of a connection?* Then it is configuration: declared once,
+with a default and a checked range, varied per deployment. A deployment varies service settings,
+connections and secrets; the set of limiters, stores, clients and loops, and their policies, is
+the same in every deployment.
 
-- **Options records.** Each module's behaviour is a record with a `defaults()` factory and
-  `withX(...)` methods that return a copy (house rule: values are records). The compact constructor
-  **validates every value** and throws `IllegalArgumentException` naming the field and the allowed
-  range, so a wrong value fails where it is written, at the latest when the application is
-  assembled, before any connection is opened.
-- **Modules take their options when constructed.** A no-argument constructor (or `builder()` with
-  nothing set) means the documented defaults. Modules that hold named things in code (lock stores,
-  secret stores, HTTP clients) have a builder.
-- **Driver choice is code.** A capability with more than one driver is wired with a factory that
-  names the driver: `LockStores.memory()`, `DatabaseLockStores.database()`,
-  `RedisLockStores.redis(connection, prefix)`, `SecretStores.env(prefix)`,
-  `SecretStores.file(directory)`. There is no `driver:` key anywhere.
+## 2. How the code-defined things are given
+
+- **Builders that name instances.** `LocksModule.builder().store(name, LockStoreFactory)`,
+  `SecretsModule.builder().store(name, SecretStoreFactory)`,
+  `HttpClientModule.builder().client(name, HttpClientOptions)`; rate limiters are built with
+  `MemoryRateLimiter.create` / `RedisRateLimiter.create`. Names match `[a-z][a-z0-9-]*`; a name
+  given twice is `IllegalArgumentException`. With exactly one, it is the default; with several,
+  `defaultStore` must name one (otherwise `build()` throws). The registries (`Locks`,
+  `SecretResolver`, `ServiceClients`) keep their API.
+- **Policy objects are records** with a `defaults()` factory and `withX(...)` copies whose compact
+  constructor validates every value (`IllegalArgumentException` naming the field and the range):
+  `HttpClientOptions`, `RetryPolicy`, `ClientAuth`, `CachePolicy`, the store factories
+  (`LockStores`, `DatabaseLockStores`, `RedisLockStores`, `SecretStores`).
+- **Driver choice is the factory.** `LockStores.memory()`, `DatabaseLockStores.database()`,
+  `RedisLockStores.redis(connection, prefix)`, `SecretStores.env(prefix)`, `SecretStores.file(dir)`.
 - **No container.** The module and lifecycle mechanism is unchanged (`AppBuilder`, modules,
-  `Setting` for connection and secret values, providers, `Lookup`). There is no declarative
-  wiring, no scanning and no YAML-declared instance of anything behavioural.
-- **Connections stay named instances in configuration** (`database.instances.<n>`,
-  `redis.instances.<n>`, `http-clients.instances.<n>`), holding connection and secret keys only.
-  Options for them are given in code by instance name (section 3).
+  `Setting`, providers, `Lookup`). There is no declarative wiring, no scanning and no
+  YAML-declared instance of a code-defined thing.
+- **Service settings have one way in: configuration.** The modules of section 3 that read
+  configuration have no options record and no code override of those settings (an application
+  that wants a different value per test or per deployment sets the key). Where a test of the
+  framework needs a value, it sets the key.
 
 ### 2.1 Named instances without drivers (core contract section 2, amended)
 
 - `Drivers`, `DriverFactory` and `AppBuilder.drivers()` are removed. A capability whose instances
-  come from configuration (database, Redis) builds every instance under `<section>.instances` with
-  **one** factory: `Instances.build(capability, section, lookup, InstanceFactory<T>)`, where the
-  factory receives the instance name, its section, the lookup and the instances already built.
-  The rules of section 2 otherwise hold: unread keys in an instance section fail start-up as
-  unknown, `<section>.default` names the default instance, an instance cannot be created from
-  environment variables alone.
+  are connections in configuration (database, Redis) builds every instance under
+  `<section>.instances` with **one** factory: `Instances.build(capability, section, lookup,
+  InstanceFactory<T>)`, where the factory receives the instance name, its section, the lookup and
+  the instances already built. The other rules of core section 2 hold: unread keys in an instance
+  section fail start-up as unknown, `<section>.default` names the default instance, an instance
+  cannot be created from environment variables alone. A `driver` key in such a section is a
+  removed key (section 8).
 - A capability whose instances are a code fact (lock stores, secret stores, HTTP clients) names
-  them in the module's builder. Names match `[a-z][a-z0-9-]*`; a name given twice is
-  `IllegalArgumentException`. With exactly one, it is the default; with several, `defaultStore`
-  must name one (otherwise `build()` throws). The registries (`Locks`, `SecretResolver`,
-  `ServiceClients`) keep their API.
+  them in its module's builder (section 2).
 
-## 3. Module by module
+## 3. Module by module (final state)
 
-Defaults are those the configuration had; ranges are checked by the record's constructor.
-"Kept" lists every key the module still reads.
+"Config" lists every key the module reads, with its default and the range checked at start-up
+(a value out of range is a start-up problem naming the key). "Code" lists what is given in code.
 
-### 3.1 core (`app.*`)
+### 3.1 core (`app.*`, claimed)
 
-| Before (config) | After (code) |
+| Config | Default | Checked |
+|---|---|---|
+| `app.shutdown.drain` | `10s` | a duration |
+| `app.health.timeout` | `2s` | a duration |
+| `app.health.critical`, `app.health.informational` | empty | string lists; a name in both fails (problem on `app.health.informational`); a name matching no check after every `started` hook is a WARN |
+| `app.metrics.driver` | `memory` | `memory` or `noop` |
+| `app.metrics.max-series` | `1000` | 1 to 100 000 |
+
+Code: nothing. The metrics driver is a singleton service setting, so it is configuration.
+
+### 3.2 database (`database.instances.<n>`, connection instances)
+
+| Config | Default | Checked |
+|---|---|---|
+| `database.default` | the only instance | names a configured instance |
+| `url`, `username`, `password` (secret) | `url` required, `username` empty | |
+| `pool.max` | `10` | 1 to 1000 |
+| `pool.min-idle` | `1` | 0 to `pool.max` |
+| `pool.connect-timeout` | `5s` | 250 ms to 5 min |
+| `migrate` | `true` | a boolean; only the default instance's value is used (migrations run there) |
+
+Code: nothing. `driver` is removed (PostgreSQL is the only database). *Change from before
+2026-10-14:* the pool keys were not range-checked and a connect timeout under 250 ms was raised
+silently; they are now checked at start-up (the ranges the over-reach introduced, kept because a
+silent correction is worse than a start-up problem).
+
+### 3.3 Redis (`redis.instances.<n>`, connection instances)
+
+| Config | Default | Checked |
+|---|---|---|
+| `redis.default` | the only instance | names a configured instance |
+| `url`, `password` (secret) | `url` required | `redis://` or `rediss://` |
+| `timeout` | `2s` | more than 0, at most 5 min |
+| `pool.max` | `16` | 1 to 1000 |
+
+Code: nothing. `driver` is removed. *Change from before 2026-10-14:* `timeout` and `pool.max` are
+range-checked (as in 3.2).
+
+### 3.4 HTTP server (`http.*`, claimed)
+
+| Config | Default | Checked |
+|---|---|---|
+| `http.host` | `0.0.0.0` | |
+| `http.port` | `8080` | 0 to 65 535 |
+| `http.max-body-bytes` | `1048576` | not negative |
+| `http.request-timeout` | `30s` | a duration |
+| `http.shutdown-grace` | `app.shutdown.drain` | a duration |
+| `http.metrics.enabled` | `false` | a boolean |
+| `http.metrics.path` | `/metrics` | literal segments |
+| `http.metrics.bearer-token` | none (secret) | |
+
+Code: nothing (`new JettyHttpModule()`).
+
+### 3.5 FlowCatalyst (`flowcatalyst.*`, claimed)
+
+Every key of the [FlowCatalyst contract](flowcatalyst.md) sections 1 and 4 is configuration, with
+the defaults and checks it gives: `enabled` (`true`), `base-url`, `application`, `client-id`,
+`client-secret` (secret), `timeout` (`30s`, positive), `subscription-target-base-url`,
+`sync.on-boot` (`false`), `outbox.stale-after` (`5m`, positive), and under `receivers`: `enabled`
+(`true`), `path` (`/fc`, literal segments), `require-signature` (`true`), `signing-secret`,
+`bearer-token`, `dispatch.signing-secret`, `dispatch.bearer-token`,
+`scheduled-jobs.signing-secret`, `scheduled-jobs.bearer-token` (secrets), `dispatch-timeout`
+(`25s`, positive), `job-timeout` (`10m`, positive), `job-lock-lease` (`10m`, 1 s to 24 h),
+`completion-retry-delay` (`1s`, 0 to 1 min), `once-retention` (`30d`, positive),
+`once-purge-interval` (`1h`, positive).
+
+Code: nothing (`new FlowCatalystModule()`). `PlatformClient.timeout()` returns `flowcatalyst.timeout`.
+
+### 3.6 Sessions and login (`auth.*`, claimed)
+
+Already code-first (M4c); configuration holds `auth.issuer`, `auth.client-id`,
+`auth.client-secret`, `auth.public-base-url`, `auth.cookie-keys`. The module claims its component
+(section 5).
+
+### 3.7 locks (code; no `locks` configuration)
+
+| Code | Notes |
 |---|---|
-| `app.shutdown.drain` (10s) | `App.builder().shutdownDrain(Duration)`; more than 0, at most 1 h |
-| `app.health.timeout` (2s) | `App.builder().health(HealthPolicy)`: `HealthPolicy.defaults().withTimeout(Duration)`; more than 0, at most 5 min |
-| `app.health.critical`, `app.health.informational` | `HealthPolicy.withCritical(String...)`, `withInformational(String...)`; a name in both, or a blank name, is refused by the constructor. A name that matches no check after every `started` hook is still a WARN |
-| `app.metrics.driver` (memory) | `App.builder().metrics(MetricsOptions)`: `MetricsOptions.defaults()` (memory, 1000), `MetricsOptions.memory(maxSeries)`, `MetricsOptions.noop()` |
-| `app.metrics.max-series` (1000) | `MetricsOptions.memory(int)`; 1 to 100 000 |
+| `LocksModule.builder().store(n, LockStores.memory())` | one process only |
+| `.store(n, DatabaseLockStores.database())` / `database(instance)` | framework-locks-database; `LocksDatabaseModule` is still listed, for the `fw_lock` migration, and the store checks `fw_lock` exists on its instance at start-up |
+| `.store(n, RedisLockStores.redis())` / `redis(connection)` / `redis(connection, prefix)` | prefix default `fw:lock:`, not blank, at most 100 characters |
+| `.defaultStore(n)` | required with several stores |
 
-Kept: nothing. `health(...)`, `metrics(...)` and `shutdownDrain(...)` also accept a
-`Function<Config, T>`, resolved after configuration is loaded (section 4).
+`LocksRedisModule` is removed. A store factory is a `LockStoreFactory` (`create(name, lookup)`).
+The database and Redis instances a store uses are configuration (3.2, 3.3).
 
-### 3.2 database (`database.instances.<n>`)
+### 3.8 secrets (code; no `secrets` configuration)
 
-| Before | After |
+| Code | Notes |
 |---|---|
-| `pool.max` (10) | `DatabaseModule.builder().pool(DatabasePool)` for every instance, `.pool(name, DatabasePool)` for one; `DatabasePool.defaults().withMaxSize(int)`, 1 to 1000 |
-| `pool.min-idle` (1) | `DatabasePool.withMinIdle(int)`, 0 to `maxSize` |
-| `pool.connect-timeout` (5s) | `DatabasePool.withConnectTimeout(Duration)`, 250 ms to 5 min (before: values under 250 ms were silently raised) |
-| `migrate` (true) | `DatabaseModule.builder().migrate(boolean)`; migrations run on the default instance only, as before |
-| `driver` (optional, `postgresql`) | removed; PostgreSQL is the only database |
+| `SecretsModule.builder().store(n, SecretStores.env(prefix))` | |
+| `.store(n, SecretStores.file(Path).withMaxBytes(int))` | absolute path (checked at once), a directory (checked at start-up); 1 B to 1 MiB, default 65 536 |
+| `SecretStores.platform()` | still fails start-up: the platform has no endpoint |
+| `.withCache(CachePolicy.of(ttl, maxEntries))` | ttl 0 (no cache; also `CachePolicy.none()`) to 24 h, entries 1 to 1 000 000; `CachePolicy.defaults()` is 5 min, 10 000 |
+| `.defaultStore(n)` | required with several stores |
 
-Kept: `database.default`, `database.instances.<n>.url`, `.username`, `.password` (secret).
-`.pool(name, ...)` naming an instance that is not configured fails start-up. `pool(...)` and
-`migrate(...)` also accept a `Function<Config, T>` / `Predicate<Config>`.
+A deployment-specific directory or prefix is an application setting read by the store factory
+(`SecretStoreFactory` receives the lookup, section 4).
 
-### 3.3 Redis (`redis.instances.<n>`)
+### 3.9 HTTP clients (code; each client's section holds its URL and credentials)
 
-| Before | After |
+| Code | Notes |
 |---|---|
-| `timeout` (2s) | `RedisModule.builder().pool(RedisPool)` / `.pool(name, RedisPool)`; `RedisPool.defaults().withTimeout(Duration)`, more than 0, at most 5 min |
-| `pool.max` (16) | `RedisPool.withMaxSize(int)`, 1 to 1000 |
-| `driver` (optional, `redis`) | removed |
+| `HttpClientModule.builder().client(name, HttpClientOptions)` | the client exists because code names it; also `client(name, Function<Config, HttpClientOptions>)` |
+| `HttpClientOptions.defaults().withConnectTimeout`, `withRequestTimeout`, `withMaxResponseBytes` | 5 s, 30 s, 10 MiB; more than 0 and at most 1 h; 1 B to 1 GiB |
+| `HttpClientOptions.withRetry(RetryPolicy)` | `RetryPolicy.defaults().withMaxAttempts(...)`, ranges of the HTTP client contract |
+| `HttpClientOptions.withAuth(ClientAuth)` | `none()`, `bearer()`, `basic()`, `header(name)`, `clientCredentials().withScope(..).withAudience(..).withMethod(..)` |
+| `HttpClientModule.builder().eventLoops(int)`, `.maxConnectionsPerHost(int)` | 2 (1 to 64), 50 (1 to 1000); the engine every named client shares, given where the clients are named |
 
-Kept: `redis.default`, `redis.instances.<n>.url`, `.password` (secret). An unknown instance name in
-`.pool(name, ...)` fails start-up.
+Config, per client `<n>` named in code, in `http-clients.instances.<n>`: `base-url` (required) and
+the credentials its `ClientAuth` reads: `auth.token` (secret, `bearer`), `auth.username` and
+`auth.password` (secret, `basic`), `auth.value` (secret, `header`), `auth.token-url`,
+`auth.client-id` and `auth.client-secret` (secret, `clientCredentials`). A key the client's
+strategy does not read, a section for a client the code does not name and a stray key under
+`http-clients` fail start-up. A client's section must be in a file; the environment overrides
+single values (`HTTP_CLIENTS_INSTANCES_BILLING_BASE_URL`). The module claims `http-client`.
 
-### 3.4 locks (`locks.*`, the whole component)
+### 3.10 Rate limiting, background loops, use cases
 
-| Before | After |
-|---|---|
-| `locks.instances.<n>.driver: memory` | `LocksModule.builder().store(n, LockStores.memory())` |
-| `driver: database` (+ `database: <instance>`) | `.store(n, DatabaseLockStores.database())` / `database(instance)` (framework-locks-database; `LocksDatabaseModule` is still listed, for the `fw_lock` migration) |
-| `driver: redis` (+ `connection`, `prefix`) | `.store(n, RedisLockStores.redis())` / `redis(connection)` / `redis(connection, prefix)`; prefix default `fw:lock:`, not blank, at most 100 characters |
-| `locks.default` | `.defaultStore(n)` |
+Rate limiters are code (MA item 10); the old `rate-limits` section fails start-up (section 8).
+Background loops are code (`Background`, `LoopOptions`). Use cases, the outbox writer,
+`ContextIdsModule` and the database session store have no settings.
 
-Kept: nothing. `LocksRedisModule` is removed (it only registered the driver). A store factory is a
-`LockStoreFactory` (`create(name, lookup)`), so an application can write its own. The database
-store now checks that `fw_lock` exists on every instance it uses, the default one included, and
-fails start-up saying to list `LocksDatabaseModule`.
+## 4. Making a code-defined thing differ per deployment
 
-### 3.5 HTTP (`http.*`)
+An application that wants, for example, a different prefix for its secret store per deployment
+declares **its own** setting in its own component and reads it where the thing is built:
 
-| Before | After |
-|---|---|
-| `http.max-body-bytes` (1 MiB) | `new JettyHttpModule(HttpOptions.defaults().withMaxBodyBytes(long))`; 0 to 1 GiB |
-| `http.request-timeout` (30s) | `HttpOptions.withRequestTimeout(Duration)`; more than 0, at most 1 h |
-| `http.shutdown-grace` (the drain) | `HttpOptions.withShutdownGrace(Duration)`; 0 to 1 h; unset falls back to the shutdown drain |
-| `http.metrics.enabled` (false), `http.metrics.path` (`/metrics`) | `HttpOptions.withMetricsEndpoint(String path)`; literal segments; absent means no endpoint |
+- store factories (`LockStoreFactory`, `SecretStoreFactory`) receive the `Lookup` and can read
+  `Config`;
+- `HttpClientModule.builder().client(name, Function<Config, HttpClientOptions>)` resolves the
+  client's options once configuration is loaded;
+- a rate limiter or a background loop is built in a module's `boot`, where `app.config()` is
+  available.
 
-Kept: `http.host`, `http.port`, `http.metrics.bearer-token` (secret). The module also accepts a
-`Function<Config, HttpOptions>`.
-
-### 3.6 HTTP client (`http-client.*`, `http-clients.*`)
-
-| Before | After |
-|---|---|
-| `http-client.event-loops` (2), `http-client.max-connections-per-host` (50) | `HttpClientModule.builder().eventLoops(int)` (1 to 64), `.maxConnectionsPerHost(int)` (1 to 1000) |
-| an instance under `http-clients.instances` | `.client(name, HttpClientOptions)`: the client exists because code names it |
-| `connect-timeout` (5s), `request-timeout` (30s), `max-response-bytes` (10 MiB) | `HttpClientOptions.defaults().withConnectTimeout`, `withRequestTimeout` (more than 0, at most 1 h), `withMaxResponseBytes` (1 B to 1 GiB) |
-| `retry.max-attempts`, `retry.initial-backoff`, `retry.max-backoff`, `retry.max-retry-after` | `HttpClientOptions.withRetry(RetryPolicy)` (`RetryPolicy.defaults().withMaxAttempts(...)`, ranges unchanged) |
-| `auth.type` and `auth.method`, `auth.scope`, `auth.audience`, `auth.name` | `HttpClientOptions.withAuth(ClientAuth)`: `ClientAuth.none()`, `bearer()`, `basic()`, `header(name)`, `clientCredentials().withScope(..).withAudience(..).withMethod(..)` |
-| `http-clients.default`, `driver` | removed |
-
-Kept, per client `<n>` named in code, in its instance section
-`http-clients.instances.<n>`: `base-url` (required) and the credentials its `ClientAuth` needs:
-`auth.token` (secret, `bearer`), `auth.username` and `auth.password` (secret, `basic`),
-`auth.value` (secret, `header`), `auth.token-url`, `auth.client-id` and `auth.client-secret`
-(secret, `clientCredentials`). All of them are required for that client. `client(name, ...)` also
-accepts a `Function<Config, HttpClientOptions>`. `new HttpClientModule()` is the defaults with no
-named client.
-
-*As built:* the credential keys are not declared as settings, because with the
-`Function<Config, HttpClientOptions>` form the strategy is known only once configuration is loaded.
-The module reads the section like an instance section instead: a key the client's strategy does
-not read, a section for a client the code does not name, and a stray key under `http-clients`
-fail start-up. As before, a client's section must be in a file; the environment then overrides
-single values (`HTTP_CLIENTS_INSTANCES_BILLING_BASE_URL`). The module claims `http-client`, not
-`http-clients`.
-
-### 3.7 secrets (`secrets.*`, the whole component)
-
-| Before | After |
-|---|---|
-| `secrets.instances.<n>.driver: env` + `prefix` | `SecretsModule.builder().store(n, SecretStores.env(prefix))` |
-| `driver: file` + `directory`, `max-bytes` (65536) | `.store(n, SecretStores.file(Path).withMaxBytes(int))`; the path must be absolute (checked at once) and a directory (checked at start-up); 1 to 1 MiB |
-| `driver: platform` | `SecretStores.platform()`: still fails start-up, the platform has no endpoint |
-| `cache-ttl` (5m), `cache-max` (10000) | `.withCache(CachePolicy.of(ttl, maxEntries))`; ttl 0 (no cache, also `CachePolicy.none()`) to 24 h, entries 1 to 1 000 000; `CachePolicy.defaults()` |
-| `secrets.default` | `.defaultStore(n)` |
-
-Kept: nothing. A deployment-specific directory or prefix is an application setting passed in code
-(a `SecretStoreFactory` receives the lookup, section 4).
-
-### 3.8 FlowCatalyst (`flowcatalyst.*`)
-
-| Before | After |
-|---|---|
-| `flowcatalyst.enabled` (true) | `new FlowCatalystModule(FlowCatalystOptions.disabled())`, or `.withEnabled(boolean)` |
-| `flowcatalyst.timeout` (30s) | `FlowCatalystOptions.defaults().withTimeout(Duration)`; more than 0, at most 1 h; readable as `PlatformClient.timeout()` |
-| `flowcatalyst.sync.on-boot` (false) | `.withSyncOnBoot(boolean)` |
-| `flowcatalyst.outbox.stale-after` (5m) | `.withOutboxStaleAfter(Duration)`; more than 0 |
-| `flowcatalyst.receivers.enabled` (true), `.path` (`/fc`), `.require-signature` (true) | `.withReceivers(ReceiverOptions)`: `ReceiverOptions.defaults()`, `ReceiverOptions.disabled()`, `withPath(String)` (literal segments), `withRequireSignature(boolean)` |
-| `.dispatch-timeout` (25s), `.job-timeout` (10m), `.job-lock-lease` (10m), `.completion-retry-delay` (1s), `.once-retention` (30d), `.once-purge-interval` (1h) | `ReceiverOptions.withDispatchTimeout`, `withJobTimeout` (both more than 0), `withJobLockLease` (1 s to 24 h), `withCompletionRetryDelay` (0 to 1 min), `withOnceRetention`, `withOncePurgeInterval` (both more than 0) |
-
-Kept: `flowcatalyst.base-url`, `flowcatalyst.application`, `flowcatalyst.client-id`,
-`flowcatalyst.client-secret` (secret), `flowcatalyst.subscription-target-base-url` (the URL the
-platform reaches this deployment at; a connection setting, like `auth.public-base-url`), and the
-receiver secrets `flowcatalyst.receivers.signing-secret`, `.bearer-token`,
-`.dispatch.signing-secret`, `.dispatch.bearer-token`, `.scheduled-jobs.signing-secret`,
-`.scheduled-jobs.bearer-token`. The module also accepts a `Function<Config, FlowCatalystOptions>`.
-
-### 3.9 Already code, or nothing to move
-
-- Sessions and login (`AuthModule`): already code-first (M4c); config holds `auth.issuer`,
-  `auth.client-id`, `auth.client-secret`, `auth.public-base-url`, `auth.cookie-keys`. The module now
-  claims its component (section 5).
-- Rate limiting: built in code since MA item 10. The old `rate-limits` section, which was silently
-  ignored since then, now fails start-up (section 5).
-- Use cases, the outbox writer, `ContextIdsModule`, the database session store: no settings.
-
-## 4. Making a number tunable
-
-The application declares its own setting in one of its modules and passes the value in code. Every
-module option that is a single value also accepts a function of `Config`, resolved once, after
-configuration is loaded and before the module's services are built:
-
-```java
-// in OrdersModule.register: app.declare(DB_POOL);
-static final Setting<Integer> DB_POOL = Setting.integer("orders.db-pool").withDefault(10);
-
-App.builder()
-    .module(DatabaseModule.builder()
-        .pool(config -> DatabasePool.defaults().withMaxSize(config.get(DB_POOL)))
-        .build())
-    .module(new FlowCatalystModule(config ->
-        config.get(PLATFORM_ON) ? FlowCatalystOptions.defaults() : FlowCatalystOptions.disabled()))
-    .module(new OrdersModule())
-```
-
-- The function's result is validated like a value; an exception from it (a range, an undeclared
-  setting) fails start-up as a problem of the module that resolved it.
-- Factories (`LockStoreFactory`, `SecretStoreFactory`) receive the `Lookup`, so they can read
-  `Config` themselves.
-- The application's key must not be in a component the framework claims (section 5). Choose your
-  own component (`orders.*`).
+The application's key must not be in a component the framework claims (section 5); choose your
+own component (`orders.*`). Service settings (section 3.1 to 3.6) need none of this: they are
+configuration already.
 
 ## 5. Removed keys fail start-up; framework components are closed
 
-**Removed keys.** Every key listed in section 3 as moved (the full list is in the table of section
-8) is a **removed key**. Start-up fails in configuration loading (core contract step 2), before any
-service is built, when one is given:
+**Removed keys.** Every key listed in section 8 is a **removed key**. Start-up fails in
+configuration loading (core contract step 2), before any service is built, when one is given:
 
 - in a file (`application.yaml`, `application-{env}.yaml`, `secrets.local.yaml` when it is read):
   a key fails when its leading segments match a removed pattern, `*` matching one segment (so the
@@ -245,23 +241,22 @@ service is built, when one is given:
   looked up by its exact name; a `*` is replaced by each instance name found at that position in
   the files. The environment is still never scanned.
 
-The problem names the key, its source and where the behaviour went:
-`http.request-timeout (config/application.yaml): moved to code: HttpOptions.withRequestTimeout(Duration) (see migrating-config-to-code)`.
-One problem per offending key. A key that some module **declares** is never a removed key (an
-application may declare its own setting with such a name, outside the framework's components).
-The list is the framework's, applied whatever modules are listed, so a leftover key of a module the
+The problem names the key, its source and where the thing is defined now:
+`locks.default (config/application.yaml): moved to code: LocksModule.builder().defaultStore(name) (see the guide page migrating-config-to-code)`.
+One problem per offending key. A key that some module **declares** is never a removed key. The
+list is the framework's, applied whatever modules are listed, so a leftover key of a module the
 application no longer lists still fails.
 
 **Claimed components.** A module may claim a component in `register`
 (`AppBuilder.claimComponent(name)`): every key under it in a file must then be declared (by any
-module) or is a removed key; any other key fails start-up as unknown, listing the declared keys of
-that component. Two modules claiming one component fail start-up. The framework claims `app`
-(core), `http` (`JettyHttpModule`), `http-client` (`HttpClientModule`, which checks
-`http-clients` itself, section 3.6), `locks`
-(`LocksModule`), `secrets` (`SecretsModule`), `flowcatalyst` (`FlowCatalystModule`) and `auth`
-(`AuthModule`). `database` and `redis` are not claimed: their instance sections are checked by
-`Instances.build` (unread keys fail as unknown). Environment variables are not checked for unknown
-keys (they cannot be listed without scanning).
+module) or is a removed key; any other key, a misspelt one included, fails start-up as unknown,
+listing the declared keys of that component. Two modules claiming one component fail start-up.
+The framework claims `app` (core), `http` (`JettyHttpModule`), `http-client` (`HttpClientModule`,
+which checks `http-clients` itself, section 3.9), `locks` (`LocksModule`), `secrets`
+(`SecretsModule`), `flowcatalyst` (`FlowCatalystModule`) and `auth` (`AuthModule`). `database`
+and `redis` are not claimed: their instance sections are checked by `Instances.build` (unread keys
+fail as unknown). Environment variables are not checked for unknown keys (they cannot be listed
+without scanning).
 
 ## 6. What does not change
 
@@ -269,89 +264,99 @@ keys (they cannot be listed without scanning).
   two-keys-one-variable check, the platform addressing rules (core contract section 4).
 - The `conformance/config` vector. It exercises the loader alone
   (`Config.load(directory, env, declarations)`), which applies neither the removed keys nor the
-  claims: one of its scenarios has a `locks` section in a file, to test environment-name
-  collisions of instance keys. The application builder applies both checks, through
-  `Config.load(directory, env, declarations, rules)`, after the same loading. A vector for the two
-  checks is to be added together with the Go port of this contract (adding it now would fail the
-  Go comparison).
-- Health check names, metric names, routes, log messages other than those naming a moved key.
-  One exposition text changes: the `HELP` of `fw_metrics_dropped_series_total` named
-  `app.metrics.max-series` and now reads "Recordings dropped because a metric reached its series
-  limit (MetricsOptions.maxSeries)." (Go's registry still writes the old text.)
+  claims. The application builder applies both through `Config.load(directory, env, declarations,
+  rules)` after the same loading. A vector for the two checks is to be added together with the Go
+  port of this contract.
+- Health check names, metric names and their help texts, routes.
 
 ## 7. Migration
 
-For each module listed, in the application's wiring:
+From a configuration written before 2026-10-14:
 
-1. Delete the moved keys from every file and deployment environment (section 8). Start-up names
-   every one that is left.
-2. Give the behaviour in code with the API of section 3, only where the default is not what you
-   want. Most applications need nothing beyond deleting the keys.
-3. Driver choice: replace `locks` and `secrets` sections with builder calls; drop
+1. Delete the `locks`, `secrets` and `rate-limits` sections; name the stores in code
+   (`LocksModule.builder()`, `SecretsModule.builder()`, section 3.7, 3.8) and drop
    `LocksRedisModule`.
-4. Numbers that must differ per deployment: declare an application setting and pass it (section 4).
+2. For each HTTP client, keep `base-url` and its credentials in its section, delete the other keys
+   (`driver`, timeouts, `max-response-bytes`, `retry.*`, `auth.type`, `auth.method`, `auth.scope`,
+   `auth.audience`, `auth.name`) and `http-clients.default`, and name the client in code with its
+   policy (section 3.9). Move `http-client.event-loops` and `.max-connections-per-host` to the
+   builder.
+3. Delete `driver` from database and Redis instances.
+4. Everything else stays as it was.
 
-The guide page `migrating-config-to-code.md` gives the before and after for each key.
+From the over-reach state (an application already migrated to the first reading): replace
+`App.builder().shutdownDrain`, `.health(HealthPolicy)`, `.metrics(MetricsOptions)`,
+`new JettyHttpModule(HttpOptions)`, `DatabaseModule.builder()`, `RedisModule.builder()` and
+`new FlowCatalystModule(FlowCatalystOptions)` by the keys of section 3, and use the no-argument
+constructors. Start-up names every removed key that is still given; the compiler names every
+removed type.
+
+The guide page `migrating-config-to-code.md` gives the before and after for each moved key.
 
 ## 8. The removed keys
 
 Patterns; `*` is one segment (an instance or client name).
 
-| Pattern | Moved to |
+| Pattern | Defined in code by |
 |---|---|
-| `app.shutdown.drain` | `AppBuilder.shutdownDrain(Duration)` |
-| `app.health.timeout`, `app.health.critical`, `app.health.informational` | `AppBuilder.health(HealthPolicy)` |
-| `app.metrics.driver`, `app.metrics.max-series` | `AppBuilder.metrics(MetricsOptions)` |
-| `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace` | `JettyHttpModule(HttpOptions)` |
-| `http.metrics.enabled`, `http.metrics.path` | `HttpOptions.withMetricsEndpoint(path)` |
+| `database.instances.*.driver`, `redis.instances.*.driver` | nothing: one driver each |
+| `locks` (and `locks.default`, `locks.instances.*.driver`, `.database`, `.connection`, `.prefix`) | `LocksModule.builder()` with `LockStores`, `DatabaseLockStores`, `RedisLockStores` |
+| `secrets` (and `secrets.default`, `secrets.instances.*.driver`, `.directory`, `.prefix`, `.max-bytes`, `.cache-ttl`, `.cache-max`) | `SecretsModule.builder()` with `SecretStores`, `CachePolicy` |
 | `http-client.event-loops`, `http-client.max-connections-per-host` | `HttpClientModule.builder().eventLoops(..)`, `.maxConnectionsPerHost(..)` |
-| `http-clients.default`, `http-clients.instances.*.driver` | removed (clients are named in code) |
+| `http-clients.default`, `http-clients.instances.*.driver` | nothing: clients are named in code |
 | `http-clients.instances.*.connect-timeout`, `.request-timeout`, `.max-response-bytes` | `HttpClientOptions` |
 | `http-clients.instances.*.retry` (and `retry.max-attempts`, `retry.initial-backoff`, `retry.max-backoff`, `retry.max-retry-after`) | `HttpClientOptions.withRetry(RetryPolicy)` |
 | `http-clients.instances.*.auth.type`, `.auth.method`, `.auth.scope`, `.auth.audience`, `.auth.name` | `HttpClientOptions.withAuth(ClientAuth)` |
-| `database.instances.*.pool` (and `pool.max`, `pool.min-idle`, `pool.connect-timeout`) | `DatabaseModule.builder().pool(..)` |
-| `database.instances.*.migrate` | `DatabaseModule.builder().migrate(..)` |
-| `database.instances.*.driver`, `redis.instances.*.driver` | removed |
-| `redis.instances.*.timeout`, `redis.instances.*.pool` (and `pool.max`) | `RedisModule.builder().pool(..)` |
-| `locks` (and `locks.default`, `locks.instances.*.driver`, `.database`, `.connection`, `.prefix`) | `LocksModule.builder()` with `LockStores`, `DatabaseLockStores`, `RedisLockStores` |
-| `secrets` (and `secrets.default`, `secrets.instances.*.driver`, `.directory`, `.prefix`, `.max-bytes`, `.cache-ttl`, `.cache-max`) | `SecretsModule.builder()` with `SecretStores`, `CachePolicy` |
 | `rate-limits` (and `rate-limits.default`, `rate-limits.instances.*.driver`, `.limit`, `.period`, `.burst`, `.max-keys`, `.connection`, `.prefix`) | `MemoryRateLimiter.create`, `RedisRateLimiter.create` (MA item 10) |
-| `flowcatalyst.enabled`, `flowcatalyst.timeout`, `flowcatalyst.sync.on-boot`, `flowcatalyst.outbox.stale-after` | `FlowCatalystModule(FlowCatalystOptions)` |
-| `flowcatalyst.receivers.enabled`, `.path`, `.require-signature`, `.dispatch-timeout`, `.job-timeout`, `.job-lock-lease`, `.completion-retry-delay`, `.once-retention`, `.once-purge-interval` | `FlowCatalystOptions.withReceivers(ReceiverOptions)` |
+
+No key under `app`, `http`, `flowcatalyst`, `database.instances.*` (other than `driver`) or
+`redis.instances.*` (other than `driver`) is removed.
 
 ## 9. Tests
 
-Per module: the defaults equal the old configuration defaults; every range bound (just inside
-passes, just outside throws, naming the field); behaviour with a non-default option (a shorter
-timeout, a smaller pool, a disabled endpoint, a different driver); the `Function<Config, T>` form
-reading an application setting; every removed key in a file and in the environment fails start-up
-with the moved-to message; an unknown key under a claimed component fails; a declared key under a
-removed pattern is allowed; the existing behavioural tests pass through the code API.
+Per configuration module: every default; every range bound (just inside starts, just outside
+fails naming the key); the environment variable of each key; a misspelt key under a claimed
+component fails; the keys of section 3.1 to 3.5 given in a file and in the environment no longer
+fail as removed. Per code-defined thing: the defaults, every range bound of its records, a
+non-default value changing behaviour, each removed key of section 8 failing in a file and in the
+environment with its message.
 
-## 10. As built (Java, 2026-10-14)
+## 10. As built (Java)
 
 - Key rules: `Config.load(directory, env, declarations, KeyRules)`; `KeyRules.framework(claims)` is
-  the framework's removed keys (`KeyRules.frameworkRemovedKeys()`, one list in `framework-core`) plus
-  the modules' `ComponentClaim`s; `RemovedKey(pattern, module, movedTo)`. The three-argument loader
-  applies no rules. An empty mapping (`app:` with nothing under it) above a declared key is not
-  reported.
-- `HealthPolicy` (core), `MetricsOptions` (metrics package); `AppBuilder.shutdownDrain`, `health`,
-  `metrics`, each with a `Function<Config, T>` overload; a function's out-of-range result is a
-  start-up problem of module `core`.
-- `DatabasePool`, `RedisPool`; `DatabaseModule.builder()`, `RedisModule.builder()` (`new
-  DatabaseModule()` and `new RedisModule()` stay, as the defaults).
+  the framework's removed keys (`KeyRules.frameworkRemovedKeys()`, one list in `framework-core`)
+  plus the modules' `ComponentClaim`s; `RemovedKey(pattern, module, movedTo)`. The three-argument
+  loader applies no rules. An empty mapping (`app:` with nothing under it) above a declared key is
+  not reported.
 - `LockStoreFactory`, `LockStores`, `DatabaseLockStores`, `RedisLockStores`; `LocksModule` and
-  `SecretsModule` are builder-only (their no-argument constructors are gone, so an application that
-  listed them without stores gets a compile error, not an empty registry).
+  `SecretsModule` are builder-only.
 - `SecretStores.env`, `file`, `platform` return the records `SecretStores.EnvStore`, `FileStore`,
   `PlatformStore` (each a `SecretStoreFactory` with `withCache`, `FileStore.withMaxBytes`);
   `CachePolicy.defaults()`, `of`, `none()`.
-- `HttpOptions` (`framework-http-jetty`), `JettyHttpModule(HttpOptions)` and
-  `JettyHttpModule(Function<Config, HttpOptions>)`.
 - `HttpClientOptions`, `ClientAuth` (sealed: `None`, `Bearer`, `Basic`, `Header`,
-  `ClientCredentialsGrant`), `HttpClientModule.builder()`; see section 3.6 for the instance-section
-  reading.
-- `FlowCatalystOptions` and `ReceiverOptions`; the resolved `FlowCatalystOptions` is a provided
-  service; `PlatformClient.timeout()`.
+  `ClientCredentialsGrant`), `HttpClientModule.builder()`. The credential keys are not declared as
+  settings, because with the `Function<Config, HttpClientOptions>` form the strategy is known only
+  once configuration is loaded; the module reads the section like an instance section instead.
+- `Instances.build(capability, section, lookup, InstanceFactory)`; `Drivers`, `DriverFactory`,
+  `AppBuilder.drivers()` removed.
 - Not done: the conformance vector for the key rules (section 6); the Go and Rust ports.
 
+## 11. The reversal (2026-10-14)
+
+The first reading of the ruling moved **every** behavioural key to code: the core's drain, health
+policy and metrics driver (`HealthPolicy`, `MetricsOptions`, `AppBuilder.shutdownDrain`,
+`.health`, `.metrics`), the HTTP server's limits (`HttpOptions`), database and Redis pools and
+`migrate` (`DatabasePool`, `RedisPool`, `DatabaseModule.builder()`, `RedisModule.builder()`) and
+the FlowCatalyst module's switches, timeouts and receiver settings (`FlowCatalystOptions`,
+`ReceiverOptions`), each with a `Function<Config, T>` form so a deployment could still tune them
+through an application setting. That was the tell: a service setting that every deployment may
+need to vary had become an application-declared setting passed through code, two ways to do one
+thing, while the owner's concern was only things that can have many instances (pollers, limiters,
+stores, clients), whose number and policies are a fact of the code.
+
+Reversed: those records, builders and overloads are removed, and the keys are configuration
+again, with their pre-2026-10-14 names, defaults and environment variables (section 3.1 to 3.5).
+Kept: lock stores, secret stores and HTTP clients named in code with their policies, rate
+limiters in code, the driver registry's removal, the removed-key check (with the shorter list of
+section 8) and claimed components (now with the restored keys declared, so a misspelt key under
+`app`, `http` or `flowcatalyst` fails).

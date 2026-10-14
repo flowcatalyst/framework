@@ -54,11 +54,6 @@ app.get(Background.class)
 
 ## 2. Metrics
 
-*Amended 2026-10-14 ([config and code](config-and-code.md), sections 3.1 and 3.5): the driver and `max-series` are
-`AppBuilder.metrics(MetricsOptions)`; the Prometheus endpoint is mounted by
-`HttpOptions.withMetricsEndpoint(path)` (off by default); only `http.metrics.bearer-token`
-remains configuration.*
-
 `Metrics` is a service the core module provides. Instruments are **families** with fixed label
 names; `labels(values...)` returns the series to record on (cache it on hot paths).
 

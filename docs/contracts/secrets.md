@@ -68,7 +68,7 @@ With no instance configured the resolver exists and every `resolve` throws
 
 ## 4. Drivers
 
-*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.7): stores are wired in code,
+*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.8): stores are wired in code,
 `SecretsModule.builder().store(name, SecretStores.env(prefix) | SecretStores.file(dir))`, each
 with a `CachePolicy`; there is no `secrets` configuration. The YAML in section 3 is replaced by
 that; the rules of each driver below are unchanged.*

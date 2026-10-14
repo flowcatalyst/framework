@@ -78,11 +78,10 @@ provides the type. `find(Class<T>)` is the same read returning `Optional<T>` (no
 optional collaborators. No reflection. Only one
 provider per type; named variants are reached through their capability's registry (section 2).
 
-*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.1): the settings `app.shutdown.drain`,
-`app.health.timeout`, `app.health.critical`, `app.health.informational`, `app.metrics.driver` and
-`app.metrics.max-series` below moved to code: `AppBuilder.shutdownDrain(Duration)`,
-`AppBuilder.health(HealthPolicy)` and `AppBuilder.metrics(MetricsOptions)`, with the same defaults.
-Where this section says "configuration wins", read "the `HealthPolicy` wins".*
+*Note 2026-10-14 ([config and code](config-and-code.md), sections 3.1 and 11): the `app.*` settings
+below were briefly moved to code (`HealthPolicy`, `MetricsOptions`, `AppBuilder.shutdownDrain`) and
+are configuration again, as written here; the core claims the `app` component, so a misspelt key
+under it fails start-up.*
 
 **Shutdown** (`App.close()`, idempotent, also run from a JVM shutdown hook the builder may
 install): module `shutdown` hooks in reverse module order (for every module whose `boot` ran, which
@@ -202,9 +201,11 @@ and `SERVICE` (a service account), the platform's `type` claim. Rules:
 
 ## 4. Config
 
-*Amended 2026-10-14 ([config and code](config-and-code.md)): configuration holds connection and secret settings only.
-Removed keys fail start-up with the place their behaviour moved to, and a module may claim a
-component so that unknown keys under it fail (sections 5 and 8 there).*
+*Amended 2026-10-14 ([config and code](config-and-code.md)): configuration holds the settings of
+services and connections and secrets; things an application can have many of (lock stores, secret
+stores, HTTP clients, rate limiters, loops) are defined in code. Keys of those that moved fail
+start-up with the place they moved to, and a module may claim a component so that unknown keys
+under it fail (sections 5 and 8 there).*
 
 ### Declarations
 

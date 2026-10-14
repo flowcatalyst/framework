@@ -5,10 +5,12 @@ own contract.
 
 ## 1. Database instances
 
-*Amended 2026-10-14 ([config and code](config-and-code.md), sections 3.2 and 3.3): `pool.*`, `migrate`, Redis `timeout` and
-`pool.max`, and `driver` are no longer configuration. They are `DatabaseModule.builder().pool(..)`
-and `.migrate(..)`, `RedisModule.builder().pool(..)`, with the same defaults; an instance section
-holds `url`, `username` and `password` (Redis: `url`, `password`).*
+*Amended 2026-10-14 ([config and code](config-and-code.md), sections 3.2, 3.3 and 11): instances are
+connections and stay configuration with every key below, except `driver`, which is removed (a
+leftover one fails start-up). The pool keys and Redis `timeout` are now range-checked at start-up
+(`pool.max` 1 to 1000, `pool.min-idle` 0 to `pool.max`, `pool.connect-timeout` 250 ms to 5 min,
+Redis `timeout` more than 0 and at most 5 min); a connect timeout under 250 ms is no longer raised
+silently.*
 
 PostgreSQL only in M1. Named instances, configured like any capability:
 
