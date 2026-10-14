@@ -3,6 +3,11 @@
 Status: approved in direction 2026-10-09 (owner: move off PrimeVue completely; build the Go templ
 version; keep the Go platform). Phase 0 starts in the Go repository. Rulings are in section 8.
 
+*Update 2026-10-14 (owner ruling):* the frameworks' primary UI is now the shared Nuxt UI package
+(`go/ui.md`, implementation plan MU); the JTE implementation of this kit (M-UI) is an optional,
+deferred module. This plan's templ port in the platform is not changed by that ruling; whether it
+continues is the open question in `go/ui.md` section 16.
+
 ## 1. Goal
 
 Re-implement the FlowCatalyst platform's admin UI on the framework's UI kit (HTML + Tailwind +

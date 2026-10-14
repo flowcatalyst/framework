@@ -7,6 +7,20 @@ without Nuxt or Nitro**, written in **strict TypeScript**. It replaces the Datas
 the Go framework. The SPA is built to static files, embedded in the Go binary and served by the
 application next to its JSON API. The owner already uses Nuxt UI this way in another project.
 
+**Owner ruling (2026-10-14): shared with Java.** Nuxt UI is the **primary UI of both the Java and
+the Go framework**: **one backend-agnostic UI package** (`@fw/ui`, `@fw/api-runtime`, the gallery,
+and the shared admin pages) talking to a typed JSON API, served by either backend. Decision 31 is
+therefore decided (section 15). The Java JTE + Datastar stack (`framework-ui`, M-UI, the `ui-kit/`
+specs' markup and fixtures) becomes an **optional module** for applications that want
+server-rendered pages without a JavaScript build; lower priority, not built now. The first consumer
+is the Java control plane of the first application (`inhance/mono-repo`,
+`apps/ingest-control-plane`). Two contracts, written once for both backends, replace this page's
+Go-only sketches: [`../contracts/static-assets-and-spa.md`](../contracts/static-assets-and-spa.md)
+(section 9 here) and [`../contracts/openapi.md`](../contracts/openapi.md) (sections 6 and 7 here).
+Where this page and a contract differ, the contract wins. The milestones of section 17 are now
+shared and are built first against the **Java** backend (the work order is in
+[`../handover.md`](../handover.md), "UI direction").
+
 What this page changes in the other Go pages: the `go/ui` Go module (the templ kit extracted from
 the platform) is gone; the Datastar adapter (http contract section 10) and the `ui-kit/fixtures`
 goldens are not implemented in Go; the Go HTTP layer gains typed operations that emit an OpenAPI
@@ -167,7 +181,10 @@ typescript-eslint `strictTypeChecked` with type information (`parserOptions.proj
 ## 4. Packages and layout
 
 The UI is **TypeScript in a pnpm workspace whose root is this repository's root**, so the Go
-example's web app and, if decision 31 is taken, the Java example's share one install and lockfile.
+example's web app and the Java example's (`examples/*/web`, the first one built; decision 31 is
+decided) share one install and lockfile. Applications outside this repository (the first is the Java
+control plane in `inhance/mono-repo`) consume the packages from a registry once publishing is
+decided (decision 33).
 The Maven and Cargo builds ignore it; `go/` stays a pure Go tree apart from the example's `web/`
 folder.
 
@@ -252,6 +269,14 @@ export default defineConfig({
   what it uses, and greppable imports fit the "one way" rule. The cost is longer import lists.
 
 ## 6. The typed spine: Go types to forms
+
+*Since 2026-10-14 the document rules (type table, `@Nullable`/`omitzero` meaning "may be absent",
+closed schemas, the error envelope and implied statuses, security schemes, deterministic output),
+the hey-api configuration and the drift checks are fixed for Java and Go by
+[`../contracts/openapi.md`](../contracts/openapi.md); the Go emitter must reproduce its conformance
+vector byte for byte. Two changes from this section: `httpfw.Nullable[T]` is not emitted (no
+three-state values in this version; contract 5.2), and constraints come from the request's validation
+rules expressed as data (contract 5.4), which the Go `validate` package must offer.*
 
 ```
 Go wire DTOs + operation descriptors (httpfw)
@@ -453,6 +478,15 @@ preflight) was not checked. Reported, not fixed here.
 
 ## 9. Serving the SPA from the Go binary
 
+*Superseded 2026-10-14 by [`../contracts/static-assets-and-spa.md`](../contracts/static-assets-and-spa.md),
+written once for Java and Go and mirroring the platform's F16 handler. Differences from this section:
+the SPA is the router's fallback, not a trailing-wildcard route (so decision 28's amendment of http
+section 2 is not needed); API prefixes are derived from the routes; `index.html` is served for any
+extension-less GET outside them, without an `Accept` check; missing assets and unknown API paths
+answer the JSON envelope; the baseline CSP is the platform's and the strict policy below is opt-in
+until U0 verifies Nuxt UI under it; no precompressed siblings. The text below is kept as the
+reasoning.*
+
 `httpfw/spa` (sketch): `spa.Handler(dist fs.FS, spa.Options{Prefix: "/", APIPrefixes: ...})`,
 mounted last in the framework's route table.
 
@@ -653,7 +687,19 @@ a goal; the tokens make the two recognisably the same product.
 A Go-only change still runs steps 2 and 5 (the spec can change); the Playwright steps run when
 `ui/`, `web/` or `openapi.json` changed, and nightly.
 
-## 15. Sharing the UI package with the Java framework (an option)
+## 15. Sharing the UI package with the Java framework (decided 2026-10-14: shared)
+
+**Decided by the owner on 2026-10-14: variant A, and wider.** One UI package for both frameworks,
+not only for the comparison slice and the admin area: Nuxt UI is the primary UI of the Java
+framework too, and JTE + Datastar (M-UI) becomes an optional, deferred module. The four conditions
+below are met by contracts: (1) the Java side **emits** its document with the same rules as Go
+([`../contracts/openapi.md`](../contracts/openapi.md); a document-conformance test against a running
+API is out of scope); (2) the M4c contract is JSON-first and built in Java, with the SPA's needs in
+its section 4.5; (3) static files by [`../contracts/static-assets-and-spa.md`](../contracts/static-assets-and-spa.md);
+(4) the TypeScript client is generated from each application's own committed document. The "no Node"
+rule of the `ui-kit/` stays a rule of the optional JTE module only; a Java application with a UI now
+has a `web/` folder and a pnpm build, which CI runs before Maven (static-assets contract section 8).
+The analysis below is kept as the reasoning.
 
 The later comparison builds a business slice on Java and on Go. If each has its own UI stack (Go:
 Nuxt UI; Java: JTE + Datastar, M-UI), the comparison measures two UI stacks as much as two
@@ -703,6 +749,12 @@ is an owner question (open doubt 4).
 
 ## 17. Milestone steps
 
+*Shared since 2026-10-14.* U0 to U4 are milestones of the **shared** UI package, built first against
+the Java backend (the Java example `examples/orders-demo` gets the `web/` folder for U3; U4 uses the
+built Java M4c endpoints), and reused by Go's G5a and G5b, which then only add the Go side (the
+emitter, `httpfw/spa`, sessions). The admin area (Java M4d and M4e, Go G6) is built once as `@fw/ui`
+pages. Order and estimates: [`../handover.md`](../handover.md), "UI direction".
+
 Inside G5a (UI package) and G5b (sessions), [`milestones.md`](milestones.md):
 
 | Step | Scope | Exit |
@@ -719,10 +771,10 @@ Inside G5a (UI package) and G5b (sessions), [`milestones.md`](milestones.md):
 2. **CSP without `'unsafe-inline'` for styles**: unverified for every Nuxt UI component (U0, U1).
 3. **hey-api is 0.x**: minor versions change generated output and options; pinned exactly, upgraded
    deliberately with the drift check showing the diff.
-4. **Three UI stacks in the family** (PrimeVue SPA, templ `/ui` in the platform, Nuxt UI in the Go
-   framework), with JTE + Datastar planned for Java. The kit's specs and tokens are the shared
-   reference; markup is not shared. Whether the platform's templ port continues, and whether Java
-   keeps M-UI, are owner questions (sections 15, 16).
+4. **Three UI stacks in the family** (PrimeVue SPA, templ `/ui` in the platform, Nuxt UI in both
+   frameworks since 2026-10-14), with JTE + Datastar an optional, deferred Java module. The kit's
+   specs and tokens are the shared reference; markup is not shared. Whether the platform's templ port
+   continues is an owner question (section 16); Java's M-UI is settled (section 15).
 5. **The Go OpenAPI emitter is new code** on the critical path of the typed spine; the fallback is
    huma's registry (section 7).
 6. **Typed ids stop at the API boundary**: TypeScript sees `string` (section 6.2).

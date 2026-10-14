@@ -1,5 +1,12 @@
 # FlowCatalyst UI kit (HTML + Tailwind + Datastar)
 
+> **Status (owner ruling 2026-10-14).** This is the kit of the **optional** server-rendered module
+> (JTE + Datastar, `framework-ui`, milestone M-UI: optional, deferred) and of the FlowCatalyst
+> platform's templ port under `/ui`. The Java and Go frameworks' primary UI is the shared Nuxt UI
+> package (`docs/go/ui.md`, milestone MU), which does not render this markup: for it, the specs'
+> purpose, variants and states, behaviour and accessibility sections and `theme/tokens.css` stay the
+> reference; the golden HTML in `fixtures/` does not apply.
+
 A language-neutral port of the FlowCatalyst server-rendered UI components (the Topcoat UI components themed for the product, plus the hand-built admin components) to plain **HTML + Tailwind CSS + Datastar**. No Topcoat, no Rust, no Node. Server templates in any language (JTE, Rust, TypeScript, ...) are written from the specs in `components/`; the gallery proves the markup and behaviour in a real browser.
 
 - **Datastar:** 1.0.4 (stable, released 2026-09-21). Pinned in `gallery/*.html` as `https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.4/bundles/datastar.js`. All attribute names/separators in the specs are that release's (`data-on:click`, `data-attr:aria-current`, `data-signals:my-signal`, SSE events `datastar-patch-elements` / `datastar-patch-signals`).

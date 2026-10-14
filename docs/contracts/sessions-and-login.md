@@ -1,7 +1,10 @@
 # Contract: sessions and login (M4c)
 
 Status: M4c, written 2026-10-13 before the Java code; Java built the same day (`framework-auth`,
-`framework-auth-database`, `framework-auth-redis`). Amendments found by the build are marked. **Language-neutral and JSON-first**: Java,
+`framework-auth-database`, `framework-auth-redis`). Amendments found by the build are marked.
+*Amended 2026-10-14 for the SPA (UI direction, [`../handover.md`](../handover.md)): section 4.5 (what
+a single-page application relies on, the two endpoints as typed operations) and 4.4 (`endSessionUrl`
+omitted rather than `null`); neither is built yet.* **Language-neutral and JSON-first**: Java,
 Go, Rust and TypeScript implement the same endpoints, cookies, JSON shapes, error codes and
 verification rules. Java names appear only where the Java shape is described.
 
@@ -185,8 +188,65 @@ browser session only.
   post-logout redirect is configured in code, `post_logout_redirect_uri` (`{public-base-url}` +
   the configured path; it must be registered as a post-logout redirect URI of the platform client).
   The SPA navigates to it to end the platform session as well (single logout); ignoring it logs out
-  of the application only. `null` when discovery has no `end_session_endpoint` or cannot be read.
+  of the application only. **Omitted** when discovery has no `end_session_endpoint` or cannot be
+  read. *Amended 2026-10-14: was `null`; omitted matches section 6.1 ("optional values are omitted,
+  not null") and the OpenAPI contract's "may be absent" rule. The Java code still writes `null` until
+  logout becomes a typed operation (section 4.5); an SPA that tests `endSessionUrl` for truthiness
+  works with both.*
 - Without a session the answer is the same `200` (logout is idempotent).
+
+### 4.5 For a single-page application
+
+*Added 2026-10-14.* What a browser SPA served by the application (the
+[static-assets contract](static-assets-and-spa.md)) relies on. Nothing in sections 4.1 to 4.4
+changes behaviour for it; this section fixes the typed shapes and the client-side rules.
+
+**Typed operations.** `GET /auth/session` and `POST /auth/logout` are declared as operations of the
+[OpenAPI contract](openapi.md) (section 8 there), public (no `security`), so the SPA's client is
+generated. Their components are fixed here, identical in every implementation and recorded in
+`conformance/openapi/auth.json`:
+
+| Operation | `operationId` | Success | Component |
+|---|---|---|---|
+| `GET /auth/session` | `getAuthSession` | `200` | `AuthSession`: `oneOf` `AuthSessionAuthenticated`, `AuthSessionAnonymous` (no `discriminator` keyword: `authenticated` is a boolean, so each variant fixes it with `const`) |
+| `POST /auth/logout` | `logout` | `200` | `AuthLogout`: `loggedOut` (`const: true`), `endSessionUrl` (string, may be absent) |
+
+- `AuthSessionAuthenticated`: `authenticated` (`const: true`), `principal` (`AuthPrincipal`: `id`,
+  `kind` (`enum`: `USER`, `SERVICE`), `name` and `email` may be absent), `tier` (`enum`: `ANCHOR`,
+  `PARTNER`, `CLIENT`; may be absent), `client`, `clients`, `applications`, `roles`, `permissions`
+  (arrays of strings, always present), `authTime`, `expiresAt`, `idleExpiresAt` (`date-time`),
+  `csrf` (`AuthCsrf`: `mode` (`const: "fetch-metadata"`), `jsonBodies` (`const: true`)), in the order
+  of section 4.3.
+- `AuthSessionAnonymous`: `authenticated` (`const: false`), `loginUrl`.
+- `logout` documents `403` (`CROSS_ORIGIN_REQUEST`) and `415`; `getAuthSession` documents nothing
+  but `default`.
+
+In TypeScript the union narrows on `session.authenticated === true`. Whether hey-api's TypeScript and
+Zod plugins render `const` as literal types is **unverified** and checked at the emitter step; if
+not, the components use a one-value `enum` instead, in this section and the vector together.
+
+**Client rules** (for `@fw/api-runtime`, and for any hand-written client):
+
+1. **Same origin, cookies only.** Every call is a same-origin `fetch` with `credentials:
+   "same-origin"` (the default); never `mode: "no-cors"`, never an `Authorization` header from the
+   browser, never a token in storage. The browser adds `Sec-Fetch-Site: same-origin` (and `Origin`
+   on unsafe methods), which is what section 7.2 checks: **no CSRF header or token is sent**.
+2. **JSON bodies only.** Every request with a body sends `Content-Type: application/json`; a body
+   without it is refused `415` (section 7.2, rule 5). A body-less `POST` (logout) needs no
+   `Content-Type`.
+3. **Start.** Read `GET /auth/session` once before mounting the router's guarded routes; when
+   `authenticated` is `false`, navigate (`window.location.assign`) to
+   `loginUrl + "?returnTo=" + encodeURIComponent(path + search + hash)`. Re-read it when the window
+   regains focus, **not on a timer**: a read counts as activity (4.3), so polling would keep an idle
+   session alive until its absolute expiry.
+4. **401 on any call** means the session is gone: navigate to sign-in as in rule 3 (the server never
+   redirects a `fetch`; section 7.4). A `403` is shown, not retried.
+5. **Permissions in the browser** (`permissions` of the session) decide what is shown; every operation
+   still checks on the server.
+6. **Logout:** `POST /auth/logout`, then navigate to `endSessionUrl` when present (single logout), else
+   to the application's signed-out page.
+7. **Development:** `auth.public-base-url` is the Vite dev server's origin (static-assets contract
+   section 9), so the cookie and the CSRF origin are the page's origin, as in production.
 
 ## 5. The relying party
 

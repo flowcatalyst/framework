@@ -1,4 +1,4 @@
-# Handover (2026-10-13)
+# Handover (2026-10-14)
 
 The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; contracts in
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
@@ -61,9 +61,9 @@ rewritten at hand-off and can lag the code in between.
 - The first application is `inhance/mono-repo` (not under `flowcatalyst-apps`): `apps/ingest-runtime`
   (Camel) and `apps/ingest-control-plane`, with `libs/java/flowcatalyst-token` to be retired by the
   migration page's steps (not done; app-side work).
-- **Open owner decision for M-UI:** JTE + Datastar (the plan) or sharing the Go framework's Nuxt UI
-  SPA package (Go design decision 31). M4c's endpoints are JSON and serve either. Not decided here.
-- Next: the M-UI decision, then M-UI and the `/admin` area (M4d). Platform work for scoped
+- ~~Open owner decision for M-UI~~ **Decided 2026-10-14: Nuxt UI, shared** (section "UI direction"
+  below). M-UI (JTE + Datastar) is optional and deferred.
+- Next: MS (static assets and the SPA fallback), per the work order below. Platform work for scoped
   event/dispatch-job reads is listed in `contracts/flowcatalyst.md` section 5.
 - Rulings: the platform delivers the outbox; handler failure/timeout in a receiver is a
   transient error; a receiver without handlers answers 404 (reverses "routes stay and refuse");
@@ -108,3 +108,78 @@ rewritten at hand-off and can lag the code in between.
   the Java tests still have to write the HTTP, Datastar, metrics, rate-limit, secrets and receiver
   vectors the other implementations need.
 
+## UI direction (decided 2026-10-14)
+
+**Owner ruling:** the framework's UI is **Nuxt UI** (v4 on plain Vue 3 and Vite, strict TypeScript,
+no Nuxt or Nitro), the **primary UI of both the Java and the Go framework**: **one backend-agnostic
+UI package** (components, page partials and pages extending Nuxt UI, plus the shared admin pages)
+talking to a typed JSON API. The JTE + Datastar stack (`framework-ui`, M-UI, the `ui-kit/` specs and
+fixtures) becomes an **optional module** for applications that want server-rendered pages without a
+JavaScript build: lower priority, not built now ("we can add JTE later if needed"). The first
+consumer is the Camel-based application's control plane (`inhance/mono-repo`,
+`apps/ingest-control-plane`: five operator endpoints under `/api/v1/ingestions`, a placeholder
+`GET /` page, request and response records whose `Source`, `Split` and `DispatchTarget` are sealed
+interfaces with Jackson type names).
+
+Recorded in: `implementation-plan.md` (ruling paragraph; rows MS, MO, MU, MC; M-UI optional;
+M4d to M4f on the shared package), `guide/STATUS.md` (rows, known gaps, contract differences),
+`go/ui.md` (header, sections 6, 9, 15, 17, 18), `go/design.md` (ruling; decisions 1, 18, 28, 31
+decided; section 7), `go/capabilities.md` sections 5 and 13, `go/milestones.md` status,
+`ui-kit/README.md` and `ui-dogfood-plan.md` (the kit is the optional module's).
+
+**Contracts written (this step, docs only):**
+
+- `contracts/static-assets-and-spa.md`: the SPA as the router's **fallback** (no wildcard route);
+  API prefixes = first segment of every route + `api`, `auth` + code, always the JSON 404; non-GET
+  `405`; missing assets (under `assets/` or with an asset extension) `404 no-store`; `index.html`
+  `no-cache` + strong SHA-256 ETag, hashed assets `immutable`; nosniff, `Referrer-Policy:
+  same-origin`, `X-Frame-Options: DENY`, the platform's baseline CSP (`frame-ancestors 'none';
+  object-src 'none'; base-uri 'self'`), the strict CSP opt-in until U0; an index built at start-up;
+  no `index.html` fails start-up outside `local`/`test`; Maven copies `web/dist` and never runs Node;
+  nosniff on every framework response (http amendment).
+- `contracts/openapi.md`: `Operation` values declared in `register`, bound in `boot`, handlers return
+  a sealed `Outcome<R>`; schemas from records, enums and sealed interfaces (`@JsonTypeInfo` +
+  `@JsonSubTypes` -> `oneOf` + `discriminator`); `@Nullable` = may be absent (typed operations omit
+  nulls; no three-state values); closed schemas; `BigDecimal` as a string; constraints from the
+  `Validator`; one `Error` component and implied statuses; security schemes contributed by the
+  resolving module; deterministic bytes; the `openapi` **declaration-phase command** (core
+  amendment: runs after register only, no config or database); `OpenApiTesting.assertCommitted`
+  for drift in Maven; hey-api (`typescript` with `as const` enums, `client-fetch`, `sdk`, `zod` v4)
+  with a CI drift check; Java and Go reproduce `conformance/openapi/` **byte for byte**.
+- `contracts/sessions-and-login.md` section 4.5: `getAuthSession` and `logout` as typed operations
+  with fixed components; the SPA's client rules (same-origin `fetch`, no CSRF token or header, JSON
+  bodies, read the session at start and on focus, not on a timer; 401 -> navigate to sign-in);
+  4.4: `endSessionUrl` omitted rather than `null` (code still writes `null`, STATUS records it).
+
+**Work order and estimates** (days of agent-assisted work at the Java pace so far):
+
+| # | Item | Estimate | Depends on |
+|---|---|---|---|
+| 1 | The contracts above | done (this step) | |
+| 2 | **MS**: Java static assets + SPA fallback in `framework-http`, nosniff everywhere, the `conformance/http/spa.json` vector, guide page | 1 to 1.5 d | 1 |
+| 3 | **MO**: Java typed operations and the OpenAPI emitter: core declaration-phase command (0.5 d), `Rule`/`Validator` constraints as data (0.5 d), `Operation`/`Outcome`/`bind` and permissions (0.5 to 1 d), the schema walk and canonical writer (1.5 to 2 d), `framework-auth`'s two endpoints rebound as operations and the `conformance/openapi/` vectors (0.5 to 1 d), guide page (0.5 d) | 3.5 to 5 d | 2 |
+| 4 | **MU**: the shared UI package, U0 workspace, lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (1.5 to 2 d); U2 shell, list, drawer and form partials, composables, `@fw/api-runtime` (2.5 to 4 d); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
+| 5 | **M4d** admin skeleton (typed admin operations, `admin:*` sync, shell and permission gating as `@fw/ui` pages) then **M4e** slices (users and invitations, event types, config and secret status; scoped events and dispatch jobs wait on the platform) | M4d 2 to 3 d; M4e 1 to 2 d per slice | 4 |
+| 6 | **MC**: the control plane migration guide (framework side) | 0.5 to 1 d; the application's own work about 3 to 5 d (typed operations for five endpoints, a `web/` SPA with list, drawer and the sealed-union form, CI order) | 3, 4 (U3, U4) |
+| 7 | **M-UI**: the optional JTE + Datastar module | 4 to 6 d, when an application asks | none |
+
+Total framework side through item 6: about 18 to 27 days. The Go framework then implements MS and
+MO against the same vectors (inside its G3 and G5a) and reuses MU as is.
+
+**Open questions for the owner** (each also recorded in its contract's "Rulings taken here"):
+
+1. Typed operations omit `null` values while plain routes keep Jackson's `null`s (openapi 13.4): or
+   switch the whole http mapper to omit nulls (a wire change for existing routes)?
+2. Maven never runs Node; CI builds `web/` first (static assets 12.4): or the `frontend-maven-plugin`?
+3. Distribution of `@fw/ui` and `@fw/api-runtime` to applications in other repositories (the control
+   plane): GitHub Packages npm under the organisation's scope (the npm scope must be the GitHub
+   owner, so `@fw` is a placeholder), alongside the Maven publication; until then a path dependency.
+4. Strict CSP as the default once U0 shows Nuxt UI runs without `'unsafe-inline'` styles.
+5. API prefixes derived from the routes (a client route can never share a first segment with a
+   server route), versus the platform's fixed list.
+6. `BigDecimal` as a JSON string on typed operations; closed (`additionalProperties: false`) response
+   schemas.
+7. Whether the platform's templ `/ui` port continues now that neither framework renders the kit by
+   default (Go decision 32; unchanged by this step).
+8. The U3 example: the Java `examples/orders-demo` (proposed, keeps the framework repo
+   self-contained) or the control plane directly.

@@ -103,6 +103,12 @@ log (method, path template, status, duration, correlation id; never query string
 Application middleware runs inside those. Context resolution (section 6) runs after global
 middleware, before route middleware.
 
+*Amended 2026-10-14 (not built):* every response the framework sends carries
+`X-Content-Type-Options: nosniff` ([static-assets contract](static-assets-and-spa.md) section 6.1).
+A request whose path matches no route goes to the application's SPA, when one is mounted, instead of
+the `404` (same contract, section 1); a path that matches a route with another method keeps the
+`405`.
+
 ## 5. Errors
 
 Every non-2xx response the framework produces has the platform's envelope, content type
@@ -269,6 +275,10 @@ published spec when implementing and flag any difference).
 TLS (terminate in front), HTTP/2 (Jetty default h1 only), WebSockets, multipart, cookies and
 sessions (M4), OpenAPI generation, rate limiting (added by MA item 9, rate-limiting contract), compression, static assets, and any real
 `ContextResolver` or authentication.
+
+*Amended 2026-10-14 (UI direction; neither is built):* static assets and the SPA fallback are
+specified in [`static-assets-and-spa.md`](static-assets-and-spa.md); typed operations and OpenAPI
+generation in [`openapi.md`](openapi.md). Both are shared with the Go implementation.
 
 ## 12. Test requirements
 

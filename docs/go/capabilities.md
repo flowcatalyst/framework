@@ -431,8 +431,14 @@ Datastar adapter (decision 27).
 
 ### Typed operations and OpenAPI (decision 18)
 
-The UI's typed spine needs an OpenAPI document ([`ui.md`](ui.md) sections 6 and 7); the Java
-contract leaves OpenAPI out of scope, so this is Go's own API, on top of the routes above.
+The UI's typed spine needs an OpenAPI document ([`ui.md`](ui.md) sections 6 and 7). *Since
+2026-10-14 the document is specified once for Java and Go by
+[`../contracts/openapi.md`](../contracts/openapi.md)* (type table, "may be absent" for optional values,
+closed schemas, the error envelope and implied statuses, security schemes contributed by the
+resolver, deterministic output, the `openapi` command in the declare phase); the Go emitter must
+reproduce its conformance vector `conformance/openapi/` byte for byte. The declaration API below is
+Go's shape of the same rules; where they differ, the contract wins (notably: no `Nullable[T]`, and
+constraints come from validation rules expressed as data).
 
 ```go
 type Operation[Body, Resp any] struct {     // an immutable descriptor; package-level var allowed
@@ -471,15 +477,17 @@ type CursorPage[T any] struct{ Items []T; HasMore bool; NextCursor *string }
 
 ### Static assets, CSRF, security headers
 
-- `httpfw/spa.Handler(fs.FS, Options)`: the embedded SPA with [`ui.md`](ui.md) section 9's rules
-  (immutable hashed assets, 404 for a missing asset, `index.html` with `no-cache` for HTML
-  navigations outside the API prefixes, the JSON 404 inside them). Needs the http contract
-  amendment of decision 28 (one trailing-wildcard static mount).
+- `httpfw/spa.Handler(fs.FS, Options)`: the embedded SPA by the shared
+  [`../contracts/static-assets-and-spa.md`](../contracts/static-assets-and-spa.md) (2026-10-14,
+  mirroring the platform's F16 handler): the router's fallback for a path no route matches (no
+  wildcard route), API prefixes derived from the routes, immutable hashed assets, the JSON 404 for a
+  missing asset and an unknown API path, `index.html` `no-cache` with an ETag, the baseline CSP and
+  headers; the shared `conformance/http/spa.json` vector.
 - `httpfw.CSRF`: for cookie-authenticated unsafe methods, `http.CrossOriginProtection` plus refusing
   a request with neither `Sec-Fetch-Site` nor `Origin` (the platform's `/ui` guard); bearer-token
   requests skip it ([`ui.md`](ui.md) section 8.2).
-- `httpfw.SecurityHeaders`: the CSP and the other headers of [`ui.md`](ui.md) section 9 on the SPA's
-  responses; `X-Content-Type-Options: nosniff` everywhere.
+- `httpfw.SecurityHeaders`: the headers of the static-assets contract section 6.1 on the SPA's
+  responses (the strict CSP of section 7 opt-in); `X-Content-Type-Options: nosniff` everywhere.
 
 ### Changes
 
@@ -791,7 +799,10 @@ implements it like any other contract. It settles what this section used to sket
 
 ## 13. UI: Nuxt UI on Vue, strict TypeScript
 
-Owner ruling 2026-10-13; the whole design is [`ui.md`](ui.md). In short:
+Owner ruling 2026-10-13; the whole design is [`ui.md`](ui.md). **Since 2026-10-14 the UI package is
+shared with the Java framework** (decision 31, decided): built first against the Java backend, and
+Go implements the same two contracts ([`../contracts/static-assets-and-spa.md`](../contracts/static-assets-and-spa.md),
+[`../contracts/openapi.md`](../contracts/openapi.md)) to serve it. In short:
 
 - **Stack:** Nuxt UI v4 through its Vite and Vue plugins (no Nuxt, no Nitro), Vue 3, vue-router,
   Vite, pnpm, TypeScript with the platform's strict settings plus `exactOptionalPropertyTypes` and

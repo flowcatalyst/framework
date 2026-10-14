@@ -61,6 +61,8 @@
     - { title: HTTP client contract, path: contracts/http-client.md }
     - { title: Rate limiting contract, path: contracts/rate-limiting.md }
     - { title: Sessions and login contract, path: contracts/sessions-and-login.md }
+    - { title: Static assets and SPA contract, path: contracts/static-assets-and-spa.md }
+    - { title: OpenAPI contract, path: contracts/openapi.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }

@@ -12,6 +12,12 @@ Nothing is built. Building starts after the owner's review of [`design.md`](desi
 |---|---|
 | G0 to G7 | not started |
 
+*2026-10-14 (owner): the UI package is shared with Java and built first against the Java backend.*
+G5a's U0 to U2 (and U3, U4 on the Java example) are therefore done once, outside this plan; Go's G5a
+keeps U3 on the Go orders-demo, `httpfw/spa` and the emitter's conformance with
+[`../contracts/openapi.md`](../contracts/openapi.md); G6 reuses the shared admin pages. Estimates below
+are unchanged until the shared steps have real numbers.
+
 ## 1. Milestones
 
 Numbered G0 to G7 so they are not confused with the Java (M) and Rust (R) ones.
