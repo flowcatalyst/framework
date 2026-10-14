@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -84,6 +84,34 @@ DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(20)).migrate(f
 | `http.metrics.enabled: true` + `http.metrics.path` | off, `/metrics` | `HttpOptions.withMetricsEndpoint("/metrics")` |
 
 The module now claims `http`: a misspelt key there (`http.prot`) fails start-up.
+
+## HTTP client (`http-client.*`, `http-clients.*`)
+
+Each client is now named in code; its section keeps `base-url` and the credentials of its strategy.
+
+| Key | Default | Now |
+|---|---|---|
+| a client under `http-clients.instances.<n>` | | `HttpClientModule.builder().client("<n>", HttpClientOptions.defaults()...)` |
+| `connect-timeout`, `request-timeout`, `max-response-bytes` | `5s`, `30s`, 10 MiB | `HttpClientOptions.withConnectTimeout`, `withRequestTimeout`, `withMaxResponseBytes` |
+| `retry.*` | `RetryPolicy.defaults()` | `HttpClientOptions.withRetry(RetryPolicy.defaults().withMaxAttempts(..).withBackoff(..).withMaxRetryAfter(..))` |
+| `auth.type: bearer`, `basic`, `header` + `auth.name`, `client-credentials` | `none` | `withAuth(ClientAuth.bearer())`, `basic()`, `header("X-Api-Key")`, `clientCredentials()` |
+| `auth.scope`, `auth.audience`, `auth.method` | | `ClientAuth.clientCredentials().withScope(..).withAudience(..).withMethod(..)` |
+| `http-client.event-loops`, `http-client.max-connections-per-host` | `2`, `50` | `HttpClientModule.builder().eventLoops(int)`, `.maxConnectionsPerHost(int)` |
+| `http-clients.default`, `driver` | | delete them |
+
+Kept under `auth`: `token`, `username`, `password`, `value`, `token-url`, `client-id`,
+`client-secret`. A section for a client the code does not name now fails start-up.
+
+```java
+// before: http-clients.instances.billing: { base-url: ..., request-timeout: 10s,
+//           auth: { type: client-credentials, token-url: ..., client-id: orders, scope: billing } }
+HttpClientModule.builder()
+    .client("billing", HttpClientOptions.defaults()
+        .withRequestTimeout(Duration.ofSeconds(10))
+        .withAuth(ClientAuth.clientCredentials().withScope("billing")))
+    .build()
+// http-clients.instances.billing: { base-url: ..., auth: { token-url: ..., client-id: orders } }
+```
 
 ## Locks (`locks.*`, the whole section)
 

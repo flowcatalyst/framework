@@ -149,14 +149,21 @@ Kept: `http.host`, `http.port`, `http.metrics.bearer-token` (secret). The module
 | `auth.type` and `auth.method`, `auth.scope`, `auth.audience`, `auth.name` | `HttpClientOptions.withAuth(ClientAuth)`: `ClientAuth.none()`, `bearer()`, `basic()`, `header(name)`, `clientCredentials().withScope(..).withAudience(..).withMethod(..)` |
 | `http-clients.default`, `driver` | removed |
 
-Kept, per client `<n>` named in code (declared as settings by the module, so each can also come
-from the environment alone, for example `HTTP_CLIENTS_INSTANCES_BILLING_BASE_URL`):
-`http-clients.instances.<n>.base-url` (required) and the credentials its `ClientAuth` needs:
+Kept, per client `<n>` named in code, in its instance section
+`http-clients.instances.<n>`: `base-url` (required) and the credentials its `ClientAuth` needs:
 `auth.token` (secret, `bearer`), `auth.username` and `auth.password` (secret, `basic`),
 `auth.value` (secret, `header`), `auth.token-url`, `auth.client-id` and `auth.client-secret`
 (secret, `clientCredentials`). All of them are required for that client. `client(name, ...)` also
 accepts a `Function<Config, HttpClientOptions>`. `new HttpClientModule()` is the defaults with no
 named client.
+
+*As built:* the credential keys are not declared as settings, because with the
+`Function<Config, HttpClientOptions>` form the strategy is known only once configuration is loaded.
+The module reads the section like an instance section instead: a key the client's strategy does
+not read, a section for a client the code does not name, and a stray key under `http-clients`
+fail start-up. As before, a client's section must be in a file; the environment then overrides
+single values (`HTTP_CLIENTS_INSTANCES_BILLING_BASE_URL`). The module claims `http-client`, not
+`http-clients`.
 
 ### 3.7 secrets (`secrets.*`, the whole component)
 
@@ -248,7 +255,8 @@ application no longer lists still fails.
 (`AppBuilder.claimComponent(name)`): every key under it in a file must then be declared (by any
 module) or is a removed key; any other key fails start-up as unknown, listing the declared keys of
 that component. Two modules claiming one component fail start-up. The framework claims `app`
-(core), `http` (`JettyHttpModule`), `http-client` and `http-clients` (`HttpClientModule`), `locks`
+(core), `http` (`JettyHttpModule`), `http-client` (`HttpClientModule`, which checks
+`http-clients` itself, section 3.6), `locks`
 (`LocksModule`), `secrets` (`SecretsModule`), `flowcatalyst` (`FlowCatalystModule`) and `auth`
 (`AuthModule`). `database` and `redis` are not claimed: their instance sections are checked by
 `Instances.build` (unread keys fail as unknown). Environment variables are not checked for unknown

@@ -1,4 +1,4 @@
-<!-- types: HttpClients, ServiceClient, ServiceOptions, RequestBuilder, ClientResponse, RequestMethod, RetryPolicy, Auth, ClientCredentials, HttpClientException, UnexpectedStatusException, ClientObserver, HttpClientModule, ServiceClients -->
+<!-- types: HttpClients, ServiceClient, ServiceOptions, RequestBuilder, ClientResponse, RequestMethod, RetryPolicy, Auth, ClientCredentials, HttpClientException, UnexpectedStatusException, ClientObserver, HttpClientModule, HttpClientOptions, ClientAuth, ServiceClients -->
 # Calling other services: the HTTP client
 
 A blocking client for virtual threads, built on Vert.x: one `ServiceClient` per service you call,
@@ -6,28 +6,34 @@ each with its base URL, timeouts, auth and retry policy. Two artifacts:
 
 - `framework-httpclient`: the library. It does not depend on `framework-core`, so it works outside
   the framework too.
-- `framework-httpclient-module`: `HttpClientModule`, which builds clients from configuration, adds
-  the `Context`'s correlation id, records metrics and closes the engine at shutdown.
+- `framework-httpclient-module`: `HttpClientModule`, which builds the clients you name in code
+  (their base URL and credentials from configuration), adds the `Context`'s correlation id,
+  records metrics and closes the engine at shutdown.
 
 The specification is [contracts/http-client.md](../contracts/http-client.md).
 
 ## Configured clients
 
-List `HttpClientModule` and configure a client per service:
+Name each client in code with how it behaves; configuration gives its base URL and the credentials
+of its auth strategy (behaviour is code, [Config](config.md#what-configuration-holds)). From
+`HttpClientModuleTest`:
+
+```java
+HttpClientModule module =
+    HttpClientModule.builder()
+        .client("platform", HttpClientOptions.defaults().withAuth(ClientAuth.clientCredentials().withScope("api")))
+        .build();
+```
 
 ```yaml
 http-clients:
   instances:
-    billing:
-      base-url: https://billing.example.com/api
-      request-timeout: 10s
-      retry: { max-attempts: 3, initial-backoff: 200ms }
+    platform:
+      base-url: https://platform.example.com
       auth:
-        type: client-credentials
-        token-url: https://login.example.com/oauth/token
+        token-url: https://platform.example.com/oauth/token
         client-id: orders-service
-        scope: billing
-        # client-secret: from the environment, HTTP_CLIENTS_INSTANCES_BILLING_AUTH_CLIENT_SECRET
+        # client-secret: from the environment, HTTP_CLIENTS_INSTANCES_PLATFORM_AUTH_CLIENT_SECRET
 ```
 
 Then, in a handler or use case, with the `Context` you are working in (from
@@ -41,18 +47,35 @@ assertThat(billing.get("/invoices/{id}").pathParam("id", "i1").send().status()).
 `get(name, ctx)` sends `X-Correlation-Id` with the context's correlation id on every request, and
 nothing else from the context (the client id is not sent to other services).
 
-| Key | Default | Meaning |
-|---|---|---|
-| `base-url` | required | absolute `http(s)` URL; its path is a prefix of every request |
-| `connect-timeout` | `5s` | |
-| `request-timeout` | `30s` | per attempt, the whole exchange including the body |
-| `max-response-bytes` | `10485760` | larger answers fail (`RESPONSE_TOO_LARGE`) |
-| `retry.max-attempts`, `retry.initial-backoff`, `retry.max-backoff`, `retry.max-retry-after` | `3`, `200ms`, `5s`, `30s` | see [Retries](#retries) |
-| `auth.type` | `none` | `none`, `bearer` (`token`), `basic` (`username`, `password`), `header` (`name`, `value`), `client-credentials` (`token-url`, `client-id`, `client-secret`, `scope`, `audience`, `method`: `post` or `basic`) |
+`HttpClientOptions` (checked when built, `IllegalArgumentException`):
 
-Secrets (`token`, `password`, `value`, `client-secret`) are secret settings: give them through the
-environment or `config/secrets.local.yaml`. An unknown key fails start-up. Module settings:
-`http-client.event-loops` (2) and `http-client.max-connections-per-host` (50).
+| Method | Default | Meaning |
+|---|---|---|
+| `withConnectTimeout(Duration)` | `5s` | more than 0, at most 1 h |
+| `withRequestTimeout(Duration)` | `30s` | per attempt, the whole exchange including the body; more than 0, at most 1 h |
+| `withMaxResponseBytes(long)` | `10485760` | 1 B to 1 GiB; larger answers fail (`RESPONSE_TOO_LARGE`) |
+| `withRetry(RetryPolicy)` | `RetryPolicy.defaults()`: 3 attempts, `200ms` to `5s`, `Retry-After` up to `30s` | see [Retries](#retries) |
+| `withAuth(ClientAuth)` | `ClientAuth.none()` | the strategy; its credentials come from configuration |
+
+Configuration of a client `<n>`, under `http-clients.instances.<n>`: `base-url` (required; absolute
+`http(s)`, its path a prefix of every request) and the credentials its `ClientAuth` reads, all
+required:
+
+| `ClientAuth` | Keys under `auth` |
+|---|---|
+| `none()` | none |
+| `bearer()` | `token` (secret) |
+| `basic()` | `username`, `password` (secret) |
+| `header(name)` | `value` (secret); the header name is code |
+| `clientCredentials()`, then `withScope`, `withAudience`, `withMethod(POST or BASIC)` | `token-url`, `client-id`, `client-secret` (secret) |
+
+Give secrets through the environment or `config/secrets.local.yaml`. A key in a client's section
+that its strategy does not read, a section with no client of that name in code, and a client named
+in code without a `base-url` all fail start-up. `.client(name, config -> ...)` computes the options
+from a setting of your own ([Config](config.md#making-a-number-tunable)). The engine:
+`HttpClientModule.builder().eventLoops(int)` (default 2, 1 to 64) and
+`.maxConnectionsPerHost(int)` (default 50, 1 to 1000). `new HttpClientModule()` is the engine
+defaults with no named client.
 
 A client built in code (for example authenticated with the platform's own token) is added with
 `register` (from `PlatformApiCallTest`):
@@ -113,8 +136,8 @@ request with `idempotencyKey(key)` (sent as `Idempotency-Key`), or one marked `r
 **`POST` and `PATCH` are never retried otherwise.** `retryable(false)` sends any request once.
 
 Retried: `CONNECT`, `TIMEOUT` and `IO` failures, and the statuses 429, 502, 503 and 504. Waits
-double from `initial-backoff` to `max-backoff` with jitter; a `Retry-After` up to `max-retry-after`
-is honoured, and a longer one returns the response at once instead of blocking. When attempts run
+double from the policy's initial backoff to its maximum with jitter; a `Retry-After` up to its
+`maxRetryAfter` is honoured, and a longer one returns the response at once instead of blocking. When attempts run
 out, the last response is returned.
 
 ## Auth
@@ -131,7 +154,7 @@ out, the last response is returned.
 **Client credentials** fetch a token once and reuse it until shortly before it expires
 (`expires_in` minus up to 30 seconds); concurrent callers share one token request. After a `401` the
 token is dropped and the request is sent once more with a new one, whatever the method (a `401` was
-not processed). The client id and secret go in the form body by default (`method: basic` puts them
+not processed). The client id and secret go in the form body by default (`Method.BASIC` puts them
 in an `Authorization` header). The token URL must be `https`, or `http` to `localhost`.
 
 ## Metrics

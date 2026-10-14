@@ -10,7 +10,9 @@ import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.context.CorrelationId;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.StartupException;
+import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.httpclient.Auth;
+import io.flowcatalyst.framework.httpclient.RetryPolicy;
 import io.flowcatalyst.framework.httpclient.ServiceClient;
 import io.flowcatalyst.framework.httpclient.ServiceOptions;
 import io.flowcatalyst.framework.metrics.Metrics;
@@ -22,6 +24,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -78,12 +81,30 @@ class HttpClientModuleTest {
   }
 
   App start(String yaml, Map<String, String> env) throws IOException {
+    return start(yaml, env, new HttpClientModule());
+  }
+
+  App start(String yaml, Map<String, String> env, HttpClientModule module) throws IOException {
     Files.writeString(dir.resolve("application.yaml"), yaml);
-    return App.builder().configDirectory(dir).environment(env).module(new HttpClientModule()).start();
+    return App.builder().configDirectory(dir).environment(env).module(module).start();
+  }
+
+  StartupException failure(String yaml, Map<String, String> env, HttpClientModule module) {
+    Throwable t = catchThrowable(() -> start(yaml, env, module).close());
+    assertThat(t).isInstanceOf(StartupException.class);
+    return (StartupException) t;
   }
 
   @Test
-  void aConfiguredClientSendsTheCorrelationIdAndIsMeasured() throws IOException {
+  void aClientNamedInCodeSendsTheCorrelationIdAndIsMeasured() throws IOException {
+    HttpClientModule module =
+        HttpClientModule.builder()
+            .client(
+                "billing",
+                HttpClientOptions.defaults()
+                    .withRequestTimeout(Duration.ofSeconds(5))
+                    .withRetry(RetryPolicy.defaults().withMaxAttempts(2).withBackoff(Duration.ofMillis(1), Duration.ofMillis(5))))
+            .build();
     try (App app =
         start(
             """
@@ -91,11 +112,10 @@ class HttpClientModuleTest {
               instances:
                 billing:
                   base-url: %s/api
-                  request-timeout: 5s
-                  retry: { max-attempts: 2, initial-backoff: 1ms }
             """
                 .formatted(base()),
-            Map.of())) {
+            Map.of(),
+            module)) {
       Context ctx = Context.of(new ClientId("acme")).withCorrelationId(new CorrelationId("corr-7"));
       ServiceClient billing = app.get(ServiceClients.class).get("billing", ctx);
       assertThat(billing.get("/invoices/{id}").pathParam("id", "i1").send().status()).isEqualTo(200);
@@ -122,6 +142,10 @@ class HttpClientModuleTest {
 
   @Test
   void clientCredentialsComeFromConfigurationWithTheSecretFromTheEnvironment() throws IOException {
+    HttpClientModule module =
+        HttpClientModule.builder()
+            .client("platform", HttpClientOptions.defaults().withAuth(ClientAuth.clientCredentials().withScope("api")))
+            .build();
     try (App app =
         start(
             """
@@ -130,13 +154,12 @@ class HttpClientModuleTest {
                 platform:
                   base-url: %1$s
                   auth:
-                    type: client-credentials
                     token-url: %1$s/oauth/token
                     client-id: orders-service
-                    scope: api
             """
                 .formatted(base()),
-            Map.of("HTTP_CLIENTS_INSTANCES_PLATFORM_AUTH_CLIENT_SECRET", "env-secret"))) {
+            Map.of("HTTP_CLIENTS_INSTANCES_PLATFORM_AUTH_CLIENT_SECRET", "env-secret"),
+            module)) {
       app.get(ServiceClients.class).get("platform").get("/api/me").send();
       assertThat(seen.get(0)).containsEntry("path", "/oauth/token");
       assertThat(seen.get(0).get("body")).contains("client_secret=env-secret").contains("scope=api");
@@ -145,25 +168,232 @@ class HttpClientModuleTest {
   }
 
   @Test
-  void unknownKeysAndBadValuesFailStartUp() throws IOException {
-    for (String instance :
-        new String[] {
-          "{ base-url: %s, timeout: 5s }",
-          "{ base-url: %s, auth: { type: magic } }",
-          "{ base-url: %s, auth: { type: none, token: x } }",
-          "{ base-url: ftp://x }",
-          "{ base-url: %s, retry: { max-attempts: 0 } }",
-          "{ base-url: %s, auth: { type: client-credentials, token-url: http://login.example.com/t, client-id: c, client-secret: s } }"
-        }) {
-      Throwable t =
-          catchThrowable(
-              () ->
-                  start(
-                          "http-clients:\n  instances:\n    x: " + instance.formatted(base()) + "\n",
-                          Map.of())
-                      .close());
-      assertThat(t).as(instance).isInstanceOf(StartupException.class);
+  void eachAuthStrategyReadsItsCredentialsFromItsSection() throws IOException {
+    HttpClientModule module =
+        HttpClientModule.builder()
+            .client("b", HttpClientOptions.defaults().withAuth(ClientAuth.bearer()))
+            .client("u", HttpClientOptions.defaults().withAuth(ClientAuth.basic()))
+            .client("h", HttpClientOptions.defaults().withAuth(ClientAuth.header("X-Api-Key")))
+            .build();
+    String yaml =
+        """
+        http-clients:
+          instances:
+            b: { base-url: %1$s, auth: { token: t-1 } }
+            u: { base-url: %1$s, auth: { username: ann } }
+            h: { base-url: %1$s }
+        """
+            .formatted(base());
+    try (App app =
+        start(yaml, Map.of("HTTP_CLIENTS_INSTANCES_U_AUTH_PASSWORD", "pw", "HTTP_CLIENTS_INSTANCES_H_AUTH_VALUE", "k-1"), module)) {
+      ServiceClients clients = app.get(ServiceClients.class);
+      clients.get("b").get("/1").send();
+      clients.get("u").get("/2").send();
+      assertThat(seen.get(0)).containsEntry("authorization", "Bearer t-1");
+      assertThat(seen.get(1).get("authorization")).startsWith("Basic ");
     }
+    // a strategy's credential missing fails start-up naming the key
+    StartupException e = failure(yaml, Map.of("HTTP_CLIENTS_INSTANCES_U_AUTH_PASSWORD", "pw"), module);
+    assertThat(e.getMessage()).contains("http-clients.instances.h.auth.value");
+  }
+
+  @Test
+  void optionDefaultsAndRanges() {
+    HttpClientOptions d = HttpClientOptions.defaults();
+    assertThat(d)
+        .isEqualTo(
+            new HttpClientOptions(
+                Duration.ofSeconds(5), Duration.ofSeconds(30), 10L * 1024 * 1024, RetryPolicy.defaults(), ClientAuth.none()));
+    assertThat(d.withMaxResponseBytes(1).maxResponseBytes()).isEqualTo(1);
+    assertThat(d.withMaxResponseBytes(1L << 30).maxResponseBytes()).isEqualTo(1L << 30);
+    assertThat(d.withConnectTimeout(Duration.ofHours(1)).connectTimeout()).isEqualTo(Duration.ofHours(1));
+    assertThatIllegalArgumentException().isThrownBy(() -> d.withMaxResponseBytes(0)).withMessageContaining("maxResponseBytes");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> d.withMaxResponseBytes((1L << 30) + 1))
+        .withMessageContaining("maxResponseBytes");
+    assertThatIllegalArgumentException().isThrownBy(() -> d.withConnectTimeout(Duration.ZERO)).withMessageContaining("connectTimeout");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> d.withRequestTimeout(Duration.ofHours(1).plusNanos(1)))
+        .withMessageContaining("requestTimeout");
+    assertThatIllegalArgumentException().isThrownBy(() -> ClientAuth.header("Bad Header")).withMessageContaining("header name");
+    assertThatIllegalArgumentException().isThrownBy(() -> ClientAuth.clientCredentials().withScope(" "));
+    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().eventLoops(0));
+    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().eventLoops(65));
+    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().maxConnectionsPerHost(0));
+    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().maxConnectionsPerHost(1001));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> HttpClientModule.builder().client("a", d).client("a", d))
+        .withMessageContaining("already");
+  }
+
+  @Test
+  void theRequestTimeoutFromCodeApplies() throws IOException {
+    server.createContext(
+        "/slow",
+        exchange -> {
+          try {
+            Thread.sleep(3000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          exchange.sendResponseHeaders(204, -1);
+          exchange.close();
+        });
+    HttpClientModule module =
+        HttpClientModule.builder()
+            .client("s", HttpClientOptions.defaults().withRequestTimeout(Duration.ofMillis(200)).withRetry(RetryPolicy.none()))
+            .build();
+    try (App app = start("http-clients:\n  instances:\n    s: { base-url: " + base() + " }\n", Map.of(), module)) {
+      long t0 = System.nanoTime();
+      Throwable t = catchThrowable(() -> app.get(ServiceClients.class).get("s").get("/slow").send());
+      assertThat(t).isNotNull();
+      assertThat(Duration.ofNanos(System.nanoTime() - t0)).isLessThan(Duration.ofMillis(2000));
+    }
+  }
+
+  @Test
+  void theRetryPolicyFromCodeDecidesTheAttempts() throws IOException {
+    java.util.concurrent.atomic.AtomicInteger hits = new java.util.concurrent.atomic.AtomicInteger();
+    server.createContext(
+        "/busy",
+        exchange -> {
+          hits.incrementAndGet();
+          exchange.sendResponseHeaders(503, -1);
+          exchange.close();
+        });
+    HttpClientModule module =
+        HttpClientModule.builder()
+            .client("once", HttpClientOptions.defaults().withRetry(RetryPolicy.none()))
+            .client(
+                "twice",
+                HttpClientOptions.defaults()
+                    .withRetry(RetryPolicy.defaults().withMaxAttempts(2).withBackoff(Duration.ofMillis(1), Duration.ofMillis(2))))
+            .build();
+    try (App app =
+        start(
+            "http-clients:\n  instances:\n    once: { base-url: " + base() + " }\n    twice: { base-url: " + base() + " }\n",
+            Map.of(),
+            module)) {
+      assertThat(app.get(ServiceClients.class).get("once").get("/busy").send().status()).isEqualTo(503);
+      assertThat(hits).hasValue(1);
+      hits.set(0);
+      assertThat(app.get(ServiceClients.class).get("twice").get("/busy").send().status()).isEqualTo(503);
+      assertThat(hits).hasValue(2);
+    }
+  }
+
+  static final Setting<Duration> TIMEOUT = Setting.duration("demo.billing-timeout").withDefault(Duration.ofSeconds(30));
+
+  @Test
+  void optionsMayComeFromAnApplicationSetting() throws IOException {
+    java.util.concurrent.atomic.AtomicReference<Duration> used = new java.util.concurrent.atomic.AtomicReference<>();
+    io.flowcatalyst.framework.core.Module demo =
+        new io.flowcatalyst.framework.core.Module() {
+          @Override
+          public String id() {
+            return "demo";
+          }
+
+          @Override
+          public void register(io.flowcatalyst.framework.core.AppBuilder app) {
+            app.declare(TIMEOUT);
+          }
+        };
+    HttpClientModule module =
+        HttpClientModule.builder()
+            .client(
+                "billing",
+                config -> {
+                  used.set(config.get(TIMEOUT));
+                  return HttpClientOptions.defaults().withRequestTimeout(config.get(TIMEOUT));
+                })
+            .build();
+    Files.writeString(dir.resolve("application.yaml"), "http-clients:\n  instances:\n    billing: { base-url: " + base() + " }\n");
+    try (App app =
+        App.builder()
+            .configDirectory(dir)
+            .environment(Map.of("DEMO_BILLING_TIMEOUT", "7s"))
+            .module(module)
+            .module(demo)
+            .start()) {
+      assertThat(app.get(ServiceClients.class).get("billing")).isNotNull();
+      assertThat(used.get()).isEqualTo(Duration.ofSeconds(7));
+    }
+  }
+
+  @Test
+  void unknownKeysUnnamedClientsAndBadValuesFailStartUp() {
+    HttpClientModule one = HttpClientModule.builder().client("x", HttpClientOptions.defaults()).build();
+    // a key no strategy reads
+    assertThat(failure("http-clients:\n  instances:\n    x: { base-url: " + base() + ", timeout: 5s }\n", Map.of(), one).getMessage())
+        .contains("http-clients.instances.x.timeout");
+    // credentials for a strategy the code does not use
+    assertThat(failure("http-clients:\n  instances:\n    x: { base-url: " + base() + ", auth: { token: t } }\n", Map.of(), one).getMessage())
+        .contains("http-clients.instances.x.auth.token");
+    // a section with no client of that name in code
+    assertThat(
+            failure(
+                    "http-clients:\n  instances:\n    x: { base-url: " + base() + " }\n    legacy: { base-url: " + base() + " }\n",
+                    Map.of(),
+                    one)
+                .getMessage())
+        .contains("no client named 'legacy' in code");
+    // a client named in code with no section: its base URL is missing
+    assertThat(failure("", Map.of(), one).getMessage()).contains("http-clients.instances.x.base-url");
+    // a bad base URL, and a token URL over plain http to a non-loopback host
+    assertThat(failure("http-clients:\n  instances:\n    x: { base-url: ftp://x }\n", Map.of(), one).getMessage())
+        .contains("client 'x'");
+    HttpClientModule cc =
+        HttpClientModule.builder().client("x", HttpClientOptions.defaults().withAuth(ClientAuth.clientCredentials())).build();
+    assertThat(
+            failure(
+                    "http-clients:\n  instances:\n    x: { base-url: " + base() + ", auth: { token-url: http://login.example.com/t, client-id: c, client-secret: s } }\n",
+                    Map.of(),
+                    cc)
+                .getMessage())
+        .contains("client 'x'");
+  }
+
+  @Test
+  void theRemovedClientKeysFailStartUpNamingTheCode() {
+    HttpClientModule one = HttpClientModule.builder().client("x", HttpClientOptions.defaults()).build();
+    StartupException e =
+        failure(
+            """
+            http-client:
+              event-loops: 4
+            http-clients:
+              default: x
+              instances:
+                x:
+                  base-url: %s
+                  driver: http
+                  connect-timeout: 1s
+                  request-timeout: 5s
+                  max-response-bytes: 100
+                  retry: { max-attempts: 2 }
+                  auth: { type: bearer, method: post, scope: s, audience: a, name: X-K }
+            """
+                .formatted(base()),
+            Map.of("HTTP_CLIENT_MAX_CONNECTIONS_PER_HOST", "9"),
+            one);
+    assertThat(e.problems())
+        .extracting(io.flowcatalyst.framework.core.Problem::key)
+        .containsExactlyInAnyOrder(
+            "http-client.event-loops",
+            "http-client.max-connections-per-host",
+            "http-clients.default",
+            "http-clients.instances.x.driver",
+            "http-clients.instances.x.connect-timeout",
+            "http-clients.instances.x.request-timeout",
+            "http-clients.instances.x.max-response-bytes",
+            "http-clients.instances.x.retry.max-attempts",
+            "http-clients.instances.x.auth.type",
+            "http-clients.instances.x.auth.method",
+            "http-clients.instances.x.auth.scope",
+            "http-clients.instances.x.auth.audience",
+            "http-clients.instances.x.auth.name");
+    assertThat(e.getMessage()).contains("HttpClientOptions.withRetry(RetryPolicy)").contains("HttpClientOptions.withAuth(ClientAuth)");
   }
 
   @Test
@@ -186,7 +416,8 @@ class HttpClientModuleTest {
   @Test
   void theEngineIsClosedAtShutdown() throws IOException {
     ServiceClient client;
-    try (App app = start("http-clients:\n  instances:\n    a: { base-url: " + base() + " }\n", Map.of())) {
+    HttpClientModule module = HttpClientModule.builder().client("a", HttpClientOptions.defaults()).build();
+    try (App app = start("http-clients:\n  instances:\n    a: { base-url: " + base() + " }\n", Map.of(), module)) {
       client = app.get(ServiceClients.class).get("a");
       assertThat(client.get("/x").send().status()).isEqualTo(200);
     }

@@ -58,6 +58,27 @@ final class FrameworkKeys {
     l.add(k("http.metrics.enabled", "http", "HttpOptions.withMetricsEndpoint(path)" + jetty));
     l.add(k("http.metrics.path", "http", "HttpOptions.withMetricsEndpoint(path)" + jetty));
 
+    // http-client
+    l.add(k("http-client.event-loops", "http-client", "HttpClientModule.builder().eventLoops(int)"));
+    l.add(
+        k(
+            "http-client.max-connections-per-host",
+            "http-client",
+            "HttpClientModule.builder().maxConnectionsPerHost(int)"));
+    String named = "nothing: clients are named in code, HttpClientModule.builder().client(name, options)";
+    l.add(k("http-clients.default", "http-client", named));
+    l.add(k("http-clients.instances.*.driver", "http-client", named));
+    l.add(k("http-clients.instances.*.connect-timeout", "http-client", "HttpClientOptions.withConnectTimeout(Duration)"));
+    l.add(k("http-clients.instances.*.request-timeout", "http-client", "HttpClientOptions.withRequestTimeout(Duration)"));
+    l.add(k("http-clients.instances.*.max-response-bytes", "http-client", "HttpClientOptions.withMaxResponseBytes(long)"));
+    for (String s : List.of("max-attempts", "initial-backoff", "max-backoff", "max-retry-after")) {
+      l.add(k("http-clients.instances.*.retry." + s, "http-client", "HttpClientOptions.withRetry(RetryPolicy)"));
+    }
+    l.add(k("http-clients.instances.*.retry", "http-client", "HttpClientOptions.withRetry(RetryPolicy)"));
+    for (String s : List.of("type", "method", "scope", "audience", "name")) {
+      l.add(k("http-clients.instances.*.auth." + s, "http-client", "HttpClientOptions.withAuth(ClientAuth)"));
+    }
+
     // rate limits (MA item 10)
     String limiters = "MemoryRateLimiter.create or RedisRateLimiter.create, built in code";
     l.add(k("rate-limits.default", "rate-limit", limiters));
