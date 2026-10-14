@@ -188,6 +188,32 @@ sessions contract's `const` form stands. U1 to U4 are pending. Follow-ups:
   (`useDirtyForm` keeps the snapshot comparison); `UDashboardNavbar`'s `title` renders a second `h1`.
 - Not verified: Firefox and WebKit, the real API, screenshots (U1), hey-api 0.93.1.
 
+**U1 and U2 built (2026-10-14, commits bbed2bb and 9b712b7; results in [`ui/u1.md`](ui/u1.md) and
+[`ui/u2.md`](ui/u2.md)).** Every ui-kit spec has its gallery entry (37 covered, 11 composed, 11 built,
+1 not ported, checked against `ui-kit/components`); the partials (`FwListPage`, `FwRecordDrawer` with
+`useDrawerRoute`, `FwFormDialog`), `FwAppShell`, the composables and `@flowcatalyst/api-runtime` run in
+the gallery on a client generated from `conformance/openapi/orders-demo.json` against an in-page fake
+server; strict CSP clean everywhere; axe clean except exact kit-token pairs. `pnpm check` passes from a
+clean `pnpm install --frozen-lockfile` (84 vitest tests, 68 Playwright tests). Found on the way:
+
+- `fwOpenApiConfig` (`@flowcatalyst/api-runtime/openapi-ts`) adds two settings to the contract's
+  hey-api configuration: client-fetch `baseUrl: false` (a bare `openapi.json` input becomes the base
+  URL) and a Zod number resolver so `int64` stays `z.int()` (hey-api writes `z.coerce.bigint()`, which
+  `JSON.stringify` refuses; proven on `unitPriceCents`). **Contract section 11 should say so** (not
+  changed here).
+- Reka UI 2.10.5's toast announcer is `aria-hidden`: toasts are announced through the package's
+  `FwAnnouncer` instead (to report upstream).
+- `UInputNumber` commits typed text only on blur or Enter; `FwFormDialog` blurs before submitting.
+- Tabs follow the kit's look, which removed two of the four U0 contrast pairs; the kit's light 600
+  shades and the dark destructive red still fail AA in several places (exact list in `ui/u1.md`).
+- The orders example's page type has no `hasMore` and `listOrders` no search parameter (`ui/u2.md`).
+- Next: U3, the Java `examples/orders-demo/web` on its generated client (`fwOpenApiConfig`), served by MS.
+
+**Owner decisions pending from U1 and U2:** the kit tokens (light status/primary 600 shades, dark
+destructive red; the exact pairs in `ui/u1.md` replace U0's decision 1), the kit's 12.6 px text scale
+(not applied: it would put icon buttons under WCAG 2.2's 24 px target), the review screenshots
+(`pnpm gallery:screenshots`), and the two contract section 11 settings.
+
 **Owner decisions pending from U0:**
 
 1. The four light-theme colour pairs that fail WCAG AA 4.5:1 (white on primary emerald-600 3.76;
@@ -207,7 +233,7 @@ sessions contract's `const` form stands. U1 to U4 are pending. Follow-ups:
 | 1 | The contracts above | done (this step) | |
 | 2 | **MS**: Java static assets + SPA fallback in `framework-http`, nosniff everywhere, the `conformance/http/spa.json` vector, guide page | done 2026-10-14 | 1 |
 | 3 | **MO**: Java typed operations and the OpenAPI emitter: core declaration-phase command (0.5 d), `Rule`/`Validator` constraints as data (0.5 d), `Operation`/`Outcome`/`bind` and permissions (0.5 to 1 d), the schema walk and canonical writer (1.5 to 2 d), `framework-auth`'s two endpoints rebound as operations and the `conformance/openapi/` vectors (0.5 to 1 d), guide page (0.5 d) | done 2026-10-14 (`d91242b`, `7de03a0`) | 2 |
-| 4 | **MU**: the shared UI package, U0 workspace (**built 2026-10-14**), lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (1.5 to 2 d); U2 shell, list, drawer and form partials, composables, `@flowcatalyst/api-runtime` (2.5 to 4 d); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
+| 4 | **MU**: the shared UI package, U0 workspace (**built 2026-10-14**), lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (**built 2026-10-14**); U2 shell, list, drawer and form partials, composables, `@flowcatalyst/api-runtime` (**built 2026-10-14**); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
 | 5 | **M4d** admin skeleton (typed admin operations, `admin:*` sync, shell and permission gating as `@flowcatalyst/ui` pages) then **M4e** slices (users and invitations, event types, config and secret status; scoped events and dispatch jobs wait on the platform) | M4d 2 to 3 d; M4e 1 to 2 d per slice | 4 |
 | 6 | **MC**: the control plane migration guide (framework side) | 0.5 to 1 d; the application's own work about 3 to 5 d (typed operations for five endpoints, a `web/` SPA with list, drawer and the sealed-union form, CI order) | 3, 4 (U3, U4) |
 | 7 | **M-UI**: the optional JTE + Datastar module | 4 to 6 d, when an application asks | none |

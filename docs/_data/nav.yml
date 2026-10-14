@@ -88,6 +88,8 @@
     - { title: Go orders example, path: go/orders-showcase.md }
     - { title: Go UI (Nuxt UI), path: go/ui.md }
     - { title: "UI package: U0 results", path: ui/u0.md }
+    - { title: "UI package: U1 results", path: ui/u1.md }
+    - { title: "UI package: U2 results", path: ui/u2.md }
     - { title: Go milestones, path: go/milestones.md }
 - group: Rust design (parked)
   items:
