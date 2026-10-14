@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.http.jetty;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -117,7 +118,7 @@ class JettyHttpModuleTest {
   @Test
   void aBodyOverTheLimitByContentLengthIs413AndTheConnectionCloses() throws Exception {
     try (App app =
-        Apps.start(dir, Apps.env("HTTP_MAX_BODY_BYTES", "100"), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))))) {
+        Apps.start(dir, Apps.env(), HttpOptions.defaults().withMaxBodyBytes(100), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))))) {
       int port = app.get(HttpServer.class).port();
       try (RawHttp raw = new RawHttp(port)) {
         String body = "x".repeat(1000);
@@ -134,7 +135,7 @@ class JettyHttpModuleTest {
   @Test
   void aBodyOverTheLimitWhileReadingIs413() throws Exception {
     try (App app =
-        Apps.start(dir, Apps.env("HTTP_MAX_BODY_BYTES", "100"), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))))) {
+        Apps.start(dir, Apps.env(), HttpOptions.defaults().withMaxBodyBytes(100), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))))) {
       // no Content-Length: a chunked body
       HttpRequest chunked =
           HttpRequest.newBuilder(URI.create(Apps.url(app, "/in")))
@@ -149,7 +150,7 @@ class JettyHttpModuleTest {
   @Test
   void aBodyWithinTheLimitIsRead() throws Exception {
     try (App app =
-        Apps.start(dir, Apps.env("HTTP_MAX_BODY_BYTES", "100"), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))))) {
+        Apps.start(dir, Apps.env(), HttpOptions.defaults().withMaxBodyBytes(100), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))))) {
       HttpResponse<String> r =
           client.send(
               HttpRequest.newBuilder(URI.create(Apps.url(app, "/in"))).POST(HttpRequest.BodyPublishers.ofString("z".repeat(100))).build(),
@@ -432,7 +433,7 @@ class JettyHttpModuleTest {
 
   @Test
   void readTimeoutAppliesToASilentClient() throws Exception {
-    try (App app = Apps.start(dir, Apps.env("HTTP_REQUEST_TIMEOUT", "300ms"), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))));
+    try (App app = Apps.start(dir, Apps.env(), HttpOptions.defaults().withRequestTimeout(Duration.ofMillis(300)), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))));
         RawHttp raw = new RawHttp(app.get(HttpServer.class).port())) {
       raw.send("POST /in HTTP/1.1\r\nHost: l\r\nContent-Length: 10\r\n\r\nabc"); // promises 10, sends 3
       long start = System.nanoTime();
@@ -460,10 +461,8 @@ class JettyHttpModuleTest {
     try (App app =
         Apps.start(
             dir,
-            Apps.env(
-                "HTTP_METRICS_ENABLED", "true",
-                "HTTP_METRICS_PATH", "/internal/metrics",
-                "HTTP_METRICS_BEARER_TOKEN", "scrape-me"),
+            Apps.env("HTTP_METRICS_BEARER_TOKEN", "scrape-me"),
+            HttpOptions.defaults().withMetricsEndpoint("/internal/metrics"),
             r -> r.get("/ping", req -> Response.text(200, "pong")))) {
       assertThat(get(app, "/ping").statusCode()).isEqualTo(200);
       assertThat(get(app, "/internal/metrics").statusCode()).isEqualTo(401);
@@ -482,17 +481,97 @@ class JettyHttpModuleTest {
   }
 
   @Test
-  void aMetricsPathThatIsNotLiteralFailsStartUp() {
+  void aMetricsPathThatIsNotLiteralIsRefused() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> HttpOptions.defaults().withMetricsEndpoint("/m/{x}"))
+        .withMessageContaining("metricsPath");
+    assertThatIllegalArgumentException().isThrownBy(() -> HttpOptions.defaults().withMetricsEndpoint("/metrics/"));
+  }
+
+  // ---- behaviour in code (config-and-code contract, section 3.5) ----------------------------
+
+  @Test
+  void httpOptionsDefaultsAreTheOldConfigurationDefaults() {
+    assertThat(HttpOptions.defaults()).isEqualTo(new HttpOptions(1_048_576L, Duration.ofSeconds(30), null, null));
+  }
+
+  @Test
+  void httpOptionsRanges() {
+    HttpOptions d = HttpOptions.defaults();
+    assertThat(d.withMaxBodyBytes(0).maxBodyBytes()).isZero();
+    assertThat(d.withMaxBodyBytes(1L << 30).maxBodyBytes()).isEqualTo(1L << 30);
+    assertThat(d.withRequestTimeout(Duration.ofHours(1)).requestTimeout()).isEqualTo(Duration.ofHours(1));
+    assertThat(d.withShutdownGrace(Duration.ZERO).shutdownGrace()).isEqualTo(Duration.ZERO);
+    assertThat(d.withShutdownGrace(Duration.ofHours(1)).shutdownGrace()).isEqualTo(Duration.ofHours(1));
+    assertThatIllegalArgumentException().isThrownBy(() -> d.withMaxBodyBytes(-1)).withMessageContaining("maxBodyBytes");
+    assertThatIllegalArgumentException().isThrownBy(() -> d.withMaxBodyBytes((1L << 30) + 1)).withMessageContaining("maxBodyBytes");
+    assertThatIllegalArgumentException().isThrownBy(() -> d.withRequestTimeout(Duration.ZERO)).withMessageContaining("requestTimeout");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> d.withRequestTimeout(Duration.ofHours(1).plusNanos(1)))
+        .withMessageContaining("requestTimeout");
+    assertThatIllegalArgumentException().isThrownBy(() -> d.withShutdownGrace(Duration.ofMillis(-1))).withMessageContaining("shutdownGrace");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> d.withShutdownGrace(Duration.ofHours(1).plusNanos(1)))
+        .withMessageContaining("shutdownGrace");
+  }
+
+  static final io.flowcatalyst.framework.config.Setting<Long> BODY =
+      io.flowcatalyst.framework.config.Setting.longValue("demo.max-body").withDefault(1000L);
+
+  @Test
+  void theOptionsMayComeFromAnApplicationSetting() throws Exception {
+    io.flowcatalyst.framework.core.Module demo =
+        new io.flowcatalyst.framework.core.Module() {
+          @Override
+          public String id() {
+            return "demo";
+          }
+
+          @Override
+          public void register(io.flowcatalyst.framework.core.AppBuilder app) {
+            app.declare(BODY);
+          }
+        };
+    try (App app =
+        Apps.start(
+            dir,
+            Apps.env("DEMO_MAX_BODY", "100"),
+            b -> b,
+            new JettyHttpModule(config -> HttpOptions.defaults().withMaxBodyBytes(config.get(BODY))),
+            r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))),
+            demo)) {
+      HttpResponse<String> r =
+          client.send(
+              HttpRequest.newBuilder(URI.create(Apps.url(app, "/in"))).POST(HttpRequest.BodyPublishers.ofString("z".repeat(101))).build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertThat(r.statusCode()).isEqualTo(413);
+    }
+  }
+
+  @Test
+  void theRemovedHttpKeysFailStartUpNamingTheCode() throws Exception {
+    java.nio.file.Files.writeString(
+        dir.resolve("application.yaml"),
+        "http:\n  max-body-bytes: 5\n  shutdown-grace: 1s\n  metrics: { enabled: true, path: /m }\n");
     Throwable t =
         org.assertj.core.api.Assertions.catchThrowable(
-            () ->
-                Apps.start(
-                        dir,
-                        Apps.env("HTTP_METRICS_ENABLED", "true", "HTTP_METRICS_PATH", "/m/{x}"),
-                        r -> {})
-                    .close());
+            () -> Apps.start(dir, Apps.env("HTTP_REQUEST_TIMEOUT", "1s"), r -> {}).close());
     assertThat(t).isInstanceOf(io.flowcatalyst.framework.core.StartupException.class);
-    assertThat(t.getMessage()).contains("http.metrics.path");
+    assertThat(((io.flowcatalyst.framework.core.StartupException) t).problems())
+        .extracting(io.flowcatalyst.framework.core.Problem::key)
+        .containsExactlyInAnyOrder(
+            "http.max-body-bytes", "http.shutdown-grace", "http.metrics.enabled", "http.metrics.path", "http.request-timeout");
+    assertThat(t.getMessage()).contains("HttpOptions.withMaxBodyBytes(long)").contains("HttpOptions.withMetricsEndpoint(path)");
+  }
+
+  @Test
+  void anUnknownKeyUnderHttpFailsStartUp() throws Exception {
+    java.nio.file.Files.writeString(dir.resolve("application.yaml"), "http:\n  prot: 9090\n");
+    Throwable t = org.assertj.core.api.Assertions.catchThrowable(() -> Apps.start(dir, Apps.env(), r -> {}).close());
+    assertThat(t)
+        .isInstanceOf(io.flowcatalyst.framework.core.StartupException.class)
+        .hasMessageContaining("http.prot")
+        .hasMessageContaining("http.port");
   }
 
   @Test

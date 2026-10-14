@@ -51,12 +51,28 @@ final class Apps {
       UnaryOperator<AppBuilder> adjust,
       Consumer<Routes> registrar,
       Module... more) {
+    return start(dir, env, adjust, new JettyHttpModule(), registrar, more);
+  }
+
+  /** As above, with the server's behaviour given in code. */
+  static App start(
+      Path dir, Map<String, String> env, HttpOptions options, Consumer<Routes> registrar, Module... more) {
+    return start(dir, env, b -> b, new JettyHttpModule(options), registrar, more);
+  }
+
+  static App start(
+      Path dir,
+      Map<String, String> env,
+      UnaryOperator<AppBuilder> adjust,
+      JettyHttpModule http,
+      Consumer<Routes> registrar,
+      Module... more) {
     AppBuilder b = adjust.apply(App.builder().configDirectory(dir).environment(env));
     b.module(routes("test", registrar));
     for (Module m : more) {
       b.module(m);
     }
-    b.module(new JettyHttpModule());
+    b.module(http);
     return b.start();
   }
 

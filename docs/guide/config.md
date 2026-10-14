@@ -91,7 +91,7 @@ There are no external stores (AWS, the platform) yet; see [STATUS](STATUS.md).
 ### Environment variable names
 
 The key uppercased, with `.` and `-` replaced by `_`: `mail.host` is `MAIL_HOST`,
-`http.max-body-bytes` is `HTTP_MAX_BODY_BYTES`, `flowcatalyst.client-secret` is
+`http.port` is `HTTP_PORT`, `flowcatalyst.client-secret` is
 `FLOWCATALYST_CLIENT_SECRET`. `Setting.envName()` returns it. The environment is **never
 scanned**: only names derived from declared keys and from instance sections are looked up.
 Tests pass their own map with `builder.environment(Map)`, so they never touch the real one.
@@ -158,8 +158,8 @@ to code fails naming its replacement):
 
 | Key | Type | Default | Module |
 |---|---|---|---|
-| `http.host`, `http.port`, `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace` | see [HTTP](http.md#the-jetty-module-and-its-settings) | | `http` |
-| `http.metrics.enabled`, `http.metrics.path`, `http.metrics.bearer-token` | see [the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) | `false`, `/metrics`, none | `http` |
+| `http.host`, `http.port` | string, integer | `0.0.0.0`, `8080` | `http` ([HTTP](http.md#the-jetty-module-and-its-settings); the rest is `HttpOptions` in code) |
+| `http.metrics.bearer-token` | secret | none | `http` ([the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint)) |
 | `flowcatalyst.*` | see [The FlowCatalyst module](flowcatalyst-module.md#settings) | | `flowcatalyst` |
 
 The core declares no setting. The shutdown drain, the health policy and the metrics driver are

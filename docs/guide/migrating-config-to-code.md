@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -71,6 +71,19 @@ DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(20)).migrate(f
 | `timeout` | `2s` | `RedisModule.builder().pool(RedisPool.defaults().withTimeout(Duration))` (more than 0, at most 5 min) |
 | `pool.max` | `16` | `RedisPool.withMaxSize(int)` (1 to 1000) |
 | `driver: redis` | | delete it |
+
+## HTTP (`http.*`)
+
+`http.host`, `http.port` and `http.metrics.bearer-token` stay.
+
+| Key | Default | Now |
+|---|---|---|
+| `http.max-body-bytes` | `1048576` | `new JettyHttpModule(HttpOptions.defaults().withMaxBodyBytes(long))` (0 to 1 GiB) |
+| `http.request-timeout` | `30s` | `HttpOptions.withRequestTimeout(Duration)` (more than 0, at most 1 h) |
+| `http.shutdown-grace` | the drain | `HttpOptions.withShutdownGrace(Duration)` (0 to 1 h) |
+| `http.metrics.enabled: true` + `http.metrics.path` | off, `/metrics` | `HttpOptions.withMetricsEndpoint("/metrics")` |
+
+The module now claims `http`: a misspelt key there (`http.prot`) fails start-up.
 
 ## Locks (`locks.*`, the whole section)
 

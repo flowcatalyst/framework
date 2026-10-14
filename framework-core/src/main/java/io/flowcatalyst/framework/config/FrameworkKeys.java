@@ -50,6 +50,14 @@ final class FrameworkKeys {
     }
     l.add(k("locks", "locks", stores));
 
+    // http
+    String jetty = ", given to new JettyHttpModule(options)";
+    l.add(k("http.max-body-bytes", "http", "HttpOptions.withMaxBodyBytes(long)" + jetty));
+    l.add(k("http.request-timeout", "http", "HttpOptions.withRequestTimeout(Duration)" + jetty));
+    l.add(k("http.shutdown-grace", "http", "HttpOptions.withShutdownGrace(Duration)" + jetty));
+    l.add(k("http.metrics.enabled", "http", "HttpOptions.withMetricsEndpoint(path)" + jetty));
+    l.add(k("http.metrics.path", "http", "HttpOptions.withMetricsEndpoint(path)" + jetty));
+
     // rate limits (MA item 10)
     String limiters = "MemoryRateLimiter.create or RedisRateLimiter.create, built in code";
     l.add(k("rate-limits.default", "rate-limit", limiters));

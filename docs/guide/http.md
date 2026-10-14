@@ -1,4 +1,4 @@
-<!-- types: MetricsEndpoint, ServiceError, Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher -->
+<!-- types: HttpOptions, MetricsEndpoint, ServiceError, Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher -->
 # HTTP
 
 Two artifacts:
@@ -113,7 +113,7 @@ There are `get`, `post`, `put`, `patch`, `delete` and `add(Method, ...)`, each w
 | `query(name)`, `queries(name)` | first value or `null`; all values |
 | `queryRequired(name)`, `queryInt(name, default)`, `queryLong`, `queryBool`, `queryEnum(name, Class, default)` | typed query parameters; a bad value is a `ValidationException` naming the parameter |
 | `header(name)`, `headers(name)` | case-insensitive |
-| `body()`, `bodyBytes()`, `bodyText()` | the raw body (stream once, or bytes cached); limited by `http.max-body-bytes` |
+| `body()`, `bodyBytes()`, `bodyText()` | the raw body (stream once, or bytes cached); limited by `HttpOptions.maxBodyBytes` |
 | `json(Validator<T>)` | decode and validate a JSON body (below) |
 | `context()` | the resolved `Context`; `IllegalStateException` on a route without `requiresContext` |
 | `correlationId()` | |
@@ -302,16 +302,35 @@ planned `framework-ui` module (M-UI, see [STATUS](STATUS.md)).
 `JettyHttpModule` (module id `http`) runs Jetty 12 core handlers with **virtual threads** for
 request execution. The server header, version and stack traces are never sent.
 
+Configuration holds where to listen and the metrics endpoint's secret, nothing else:
+
 | Key | Type | Default |
 |---|---|---|
 | `http.host` | string | `0.0.0.0` |
 | `http.port` | integer | `8080` (`0` = any free port) |
-| `http.max-body-bytes` | long | `1048576` |
-| `http.request-timeout` | duration | `30s` (idle timeout of reads and writes) |
-| `http.shutdown-grace` | duration | falls back to the shutdown drain (`AppBuilder.shutdownDrain`) |
-| `http.metrics.enabled` | boolean | `false`; mounts the [Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) |
-| `http.metrics.path` | string | `/metrics` |
 | `http.metrics.bearer-token` | secret | none; when set, scrapes need it |
+
+How the server behaves is `HttpOptions`, given in code: `new JettyHttpModule()` is the defaults,
+`new JettyHttpModule(HttpOptions)` sets them, and `new JettyHttpModule(config -> ...)` computes them
+from a setting of your own ([Config](config.md#making-a-number-tunable)). The record checks its ranges
+when built (`IllegalArgumentException`):
+
+| `HttpOptions` | Default | Range |
+|---|---|---|
+| `withMaxBodyBytes(long)` | `1048576` | 0 to 1 GiB |
+| `withRequestTimeout(Duration)` | `30s` (idle timeout of reads and writes) | more than 0, at most 1 h |
+| `withShutdownGrace(Duration)` | the shutdown drain (`AppBuilder.shutdownDrain`) | 0 to 1 h |
+| `withMetricsEndpoint(String path)` | none: no [Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) | literal segments such as `/metrics` |
+
+From `JettyHttpModuleTest`:
+
+```java
+new JettyHttpModule(config -> HttpOptions.defaults().withMaxBodyBytes(config.get(BODY)))
+```
+
+The module claims the `http` component: any other key under `http` in a file fails start-up as
+unknown, and the old `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace`,
+`http.metrics.enabled` and `http.metrics.path` fail naming the `HttpOptions` method.
 
 A body over the limit (by `Content-Length` or while reading) is `413` and the connection is closed
 after the response. `started` fails with a `StartupException` if the port cannot be bound.
@@ -339,7 +358,7 @@ Add your own checks with `app.health().add(name, check)` (see
 ### Graceful shutdown
 
 On `shutdown` the module stops accepting (closes connectors), lets in-flight requests finish for
-up to `http.shutdown-grace`, then interrupts the rest. New requests on existing connections get
+up to the shutdown grace (`HttpOptions.withShutdownGrace`, else the shutdown drain), then interrupts the rest. New requests on existing connections get
 `503 UNAVAILABLE` with `Connection: close`.
 
 ## Testing
