@@ -1,1 +1,8 @@
 # source (repository root)  copy (under go/), one pair per line; see sync-shared.sh
+conformance/sql/locks/acquire.sql locks/dblock/sql/acquire.sql
+conformance/sql/locks/refresh.sql locks/dblock/sql/refresh.sql
+conformance/sql/locks/release.sql locks/dblock/sql/release.sql
+framework-locks-database/src/main/resources/db/migration/locks/V0001__create_lock_table.sql locks/dblock/migrations/V0001__create_lock_table.sql
+conformance/lua/locks/acquire.lua locks/redislock/lua/acquire.lua
+conformance/lua/locks/refresh.lua locks/redislock/lua/refresh.lua
+conformance/lua/locks/release.lua locks/redislock/lua/release.lua

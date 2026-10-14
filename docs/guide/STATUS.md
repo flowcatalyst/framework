@@ -56,7 +56,7 @@ published. The Rust and TypeScript implementations are parked (owner, 2026-10-13
 | # | Scope | State | Guide page |
 |---|---|---|---|
 | G0 | Skeleton: the core module, `go/flowcatalyst`, `go/tools` (pinned golangci-lint, NilAway, gofumpt), the lint profile and `make -C go go-check`, `cmd/fwvet` (`mustliteral`), `fwtest` (embedded PostgreSQL 18, a database per test, Redis from `PATH`, a fake clock), the conformance runner and the TSID vector, the CI workflow (not run), the [Go build contract](../contracts/go-build.md) | **Built** | [Go overview](go/index.md) |
-| G1 | Foundation and locks | Not started | |
+| G1 | Foundation and locks: `fw` (App, `Declarer` and typed handles, `Boot`, `Launch`/`Start`, commands, health with criticality and overrides, shutdown order), `config` (every rule, instance sections with driver keys checked at configure, `Secret`), `background` (loops, gates), `metrics` (registry, Prometheus writer, endpoint handler), `database` (pgxpool instances, the migration runner on `fw_schema_history`, `Tx`, `Filter`), `redisfw`, `locks` with memory, `dblock` and `redislock` (shared SQL and Lua embedded as checked copies) and `lockstest`; `examples/locks-demo`; vectors for config, the lock SQL and Lua and the `locks-database` history pass. Allowed difference: a duplicate YAML key is refused (Java keeps the last; no vector case has one) | **Built** | [application and config](go/core.md), [database and Redis](go/database.md), [locks](go/locks.md) |
 | G2 | Write path and checked SQL | Not started | |
 
 **UI (owner ruling, 2026-10-13):** the Go framework's UI is **Nuxt UI v4 on plain Vue and Vite,

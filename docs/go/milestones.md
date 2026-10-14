@@ -12,7 +12,8 @@ Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
 | # | State |
 |---|---|
 | G0 | **Built** (2026-10-14): `go/` with the core module, `go/flowcatalyst` (empty until G4) and `go/tools` (the pinned golangci-lint v2.14.0, NilAway and gofumpt, run by `go tool` so the local Go builds them; a third module, so the tools never enter the framework's module graph); `.golangci.yml`; `make -C go go-check`; `cmd/fwvet` with `mustliteral`; `fwtest` (embedded PostgreSQL 18, template and a database per test, Redis from `PATH`, fake clock); `internal/conformance` and the TSID vector; `.github/workflows/go.yml` (not run); [`go-build.md`](../contracts/go-build.md); `verify.sh` checks Go type names. NilAway on G0: no findings, no suppressions |
-| G1 to G7 | not started |
+| G1 | **Built** (2026-10-14): `fw` lifecycle, `config`, `background`, `metrics` (with the endpoint handler; mounting it is G3), `database` (migration runner, `Tx` constructible only inside the framework, `Filter`), `redisfw`, `locks` + `dblock` + `redislock` + `lockstest`, `examples/locks-demo`. Vectors: config (every entry), lock SQL and Lua (byte for byte, copies listed in `go/internal/conformance/shared-files.txt`), `locks-database` history (Go writes the Java rows and accepts a Java-migrated database). Rulings taken: instance sections are checked at configure (drivers declare their keys); `url` accepts `jdbc:postgresql://`, `postgres://`, `postgresql://` but not pgx's `key=value` form; a duplicate YAML key is refused (recorded in STATUS, the vector has no such case). NilAway: three findings, all fixed in code (an ok-returning `Default` now returns `nil, false` explicitly; a test slice), no suppressions |
+| G2 to G7 | not started |
 
 *2026-10-14 (owner): the UI package is shared with Java and built first against the Java backend.*
 G5a's U0 to U2 (and U3, U4 on the Java example) are therefore done once, outside this plan; Go's G5a

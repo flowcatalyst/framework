@@ -45,6 +45,9 @@
 - group: Go
   items:
     - { title: Go overview, path: guide/go/index.md }
+    - { title: "Go: application and config", path: guide/go/core.md }
+    - { title: "Go: database and Redis", path: guide/go/database.md }
+    - { title: "Go: locks", path: guide/go/locks.md }
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }
