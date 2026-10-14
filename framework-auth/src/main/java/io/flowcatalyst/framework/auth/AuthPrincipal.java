@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.auth;
 
+import io.flowcatalyst.framework.context.PrincipalKind;
 import org.jspecify.annotations.Nullable;
 
 /**

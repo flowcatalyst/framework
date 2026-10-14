@@ -124,6 +124,7 @@ final class AuthApp implements AutoCloseable {
             request -> {
               Map<String, Object> body = new LinkedHashMap<>();
               body.put("principal", String.valueOf(request.context().principal()));
+              body.put("principalKind", String.valueOf(request.context().principalKind()));
               body.put("client", request.context().client().value());
               body.put("application", String.valueOf(request.context().application()));
               body.put("permissions", new TreeSet<>(request.context().permissions()));

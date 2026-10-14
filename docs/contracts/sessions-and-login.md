@@ -524,6 +524,7 @@ body must be JSON for every caller (Java: `CsrfGuard.publicForm()`).
 | Context field | From a session | From a bearer token |
 |---|---|---|
 | `principal` | `principal.id` | `sub` |
+| principal kind (added 2026-10-14, core contract section 3) | `principal.kind` | `type`: `SERVICE`, else `USER` |
 | `client` | the client selection (below) | the client selection |
 | `application` | the application code set in code, if any | the same |
 | `permissions` | the permission mapping (below) | the permission mapping |

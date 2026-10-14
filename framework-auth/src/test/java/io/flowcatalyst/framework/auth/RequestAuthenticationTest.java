@@ -108,6 +108,7 @@ class RequestAuthenticationTest {
     assertThat(r.status()).isEqualTo(201);
     TestResponse me = b.get("/api/me", "Authorization", "Bearer " + token);
     assertThat(me.tree().path("principal").asString()).isEqualTo("prn_SVC");
+    assertThat(me.tree().path("principalKind").asString()).isEqualTo("SERVICE");
     assertThat(me.tree().path("source").asString()).isEqualTo("BEARER");
   }
 

@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.auth;
 
 import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.context.PrincipalKind;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.InstantSource;
@@ -157,7 +158,7 @@ final class SessionManager {
       Principal principal =
           new Principal(
               new PrincipalId(id),
-              PrincipalKind.of(p.path("kind").asString("USER")),
+              Claims.kind(p.path("kind").asString("USER")),
               textOrNull(p, "name"),
               textOrNull(p, "email"),
               textOrNull(root, "tier"),

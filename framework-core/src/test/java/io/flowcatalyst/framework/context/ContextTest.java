@@ -113,4 +113,69 @@ class ContextTest {
     assertThat(d.permissions()).containsExactly("a:b");
     assertThat(new Context(new ClientId("c"), null, null, new CorrelationId("x"), null, null).permissions()).isEmpty();
   }
+
+  // ---- the principal kind (core contract section 3, amended 2026-10-14) ----------------------
+
+  @Test
+  void aKindWithoutAPrincipalIsRefused() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                new Context(
+                    new ClientId("c"), null, PrincipalKind.SERVICE, null, new CorrelationId("x"), null, null, Set.of()))
+        .withMessageContaining("principal kind");
+  }
+
+  @Test
+  void theConstructorsThatPredateTheKindLeaveItUnknown() {
+    PrincipalId p = new PrincipalId("prn_1");
+    CorrelationId corr = new CorrelationId("x");
+    ClientId c = new ClientId("c");
+    assertThat(new Context(c, p, null, corr).principalKind()).isNull();
+    assertThat(new Context(c, p, null, corr, "cause", "run").principalKind()).isNull();
+    assertThat(new Context(c, p, null, corr, "cause", "run", Set.of("a:b")).principalKind()).isNull();
+    assertThat(new Context(c, p, null, corr, "cause", "run", Set.of("a:b")).findPrincipalKind()).isEmpty();
+  }
+
+  @Test
+  void withPrincipalAndKindSetsBothAndThePlainOneClearsTheKind() {
+    Context service =
+        Context.of(new ClientId("c")).withPrincipal(new PrincipalId("prn_svc"), PrincipalKind.SERVICE);
+    assertThat(service.principal()).isEqualTo(new PrincipalId("prn_svc"));
+    assertThat(service.principalKind()).isEqualTo(PrincipalKind.SERVICE);
+    assertThat(service.findPrincipalKind()).contains(PrincipalKind.SERVICE);
+    // a kind never outlives the principal it described
+    Context other = service.withPrincipal(new PrincipalId("prn_user"));
+    assertThat(other.principal()).isEqualTo(new PrincipalId("prn_user"));
+    assertThat(other.principalKind()).isNull();
+  }
+
+  @Test
+  void theKindSurvivesTheOtherWithMethods() {
+    Context c =
+        Context.of(new ClientId("c"))
+            .withPrincipal(new PrincipalId("prn_1"), PrincipalKind.USER)
+            .withApplication(new ApplicationCode("shop"))
+            .withCorrelationId(new CorrelationId("y"))
+            .withCausationId("dj_1")
+            .withExecutionId("dj_1")
+            .withPermissions(Set.of("a:b"));
+    assertThat(c.principalKind()).isEqualTo(PrincipalKind.USER);
+    assertThat(c.causationId()).isEqualTo("dj_1");
+    assertThat(c).isEqualTo(
+        new Context(
+            new ClientId("c"),
+            new PrincipalId("prn_1"),
+            PrincipalKind.USER,
+            new ApplicationCode("shop"),
+            new CorrelationId("y"),
+            "dj_1",
+            "dj_1",
+            Set.of("a:b")));
+  }
+
+  @Test
+  void thereAreExactlyTwoKinds() {
+    assertThat(PrincipalKind.values()).containsExactly(PrincipalKind.USER, PrincipalKind.SERVICE);
+  }
 }

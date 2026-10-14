@@ -315,6 +315,7 @@ class SessionLifecycleTest {
     assertThat(cookie).startsWith(auth.cookieName() + "=");
     TestResponse me = t.client.get("/api/me").header("Cookie", cookie).send();
     assertThat(me.tree().path("principal").asString()).isEqualTo("prn_T");
+    assertThat(me.tree().path("principalKind").asString()).isEqualTo("USER");
     assertThat(me.tree().path("permissions").toString()).isEqualTo("[\"orders:thing:create\",\"orders:thing:view\"]");
     assertThat(t.client.post("/api/things").header("Cookie", cookie).header("Sec-Fetch-Site", "same-origin").jsonBody("{}").send().status())
         .isEqualTo(201);

@@ -149,6 +149,7 @@ or a thread-local by the framework.
 |---|---|---|
 | client | `ClientId` | always (design rule 8) |
 | principal | `PrincipalId` | no |
+| principal kind | `PrincipalKind`: `USER` or `SERVICE` | no; only with a principal (added 2026-10-14, below) |
 | application | `ApplicationCode` | no |
 | correlation id | `CorrelationId` | always; generated when absent |
 | causation id | text | no (added in M2a: the event or message that caused this work) |
@@ -165,6 +166,26 @@ is true when some held permission **matches** the required one: both have the sa
 platform's rule, `shared/auth/auth.go`). A blank required permission never matches. Constructors
 without permissions keep working (empty set). The real resolver that fills it is the
 [sessions-and-login contract](sessions-and-login.md).
+
+*Amended 2026-10-14 (the receiver principal, owner ruling 2026-10-12, re-confirmed 2026-10-14):*
+`Context` carries the **principal kind**, `PrincipalKind` with exactly two values, `USER` (a person)
+and `SERVICE` (a service account), the platform's `type` claim. Rules:
+
+- The kind is present only together with a principal. A kind without a principal is refused when
+  the context is built (`IllegalArgumentException`). A principal without a kind is allowed: the
+  kind is then **unknown** (absent), which is what every constructor that predates the kind gives.
+  Those constructors keep working unchanged.
+- `withPrincipal(id, kind)` sets both. `withPrincipal(id)` sets the principal and **clears** the
+  kind, so a kind can never describe a different principal than the one it came with.
+- The framework's own producers always set it: the request resolver of the sessions-and-login
+  contract from the token's or session's `type` (`SERVICE` is a service account, anything else a
+  user, as built in M4c), and the FlowCatalyst receivers `SERVICE` (flowcatalyst contract
+  section 4b).
+- The kind is not written to the outbox: neither the event payload nor the audit item has a field
+  for it on the platform. It is for `authorize` and for logs.
+- Causation and execution ids keep their meaning: causation is the message that caused this work
+  (for a receiver, the delivered dispatch job or scheduled-job instance), execution the job or run
+  this work belongs to.
 
 ## 4. Config
 

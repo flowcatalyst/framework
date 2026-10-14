@@ -16,7 +16,7 @@ wants a login).
 | `new TokenVerifier(issuer, timeout, clock)` | `PlatformTokens.create(issuer, timeout, clock)` |
 | `verifier.verify(token)` returning `VerifiedToken`, throwing `InvalidTokenException`, `IOException`, `InterruptedException` | `tokens.verify(token)` returning `TokenResult`: `Valid(AccessToken)`, `Invalid(reason)`, `Unavailable(reason)`; nothing thrown |
 | `VerifiedToken.subject()` | `accessToken.principal().id().value()` |
-| `VerifiedToken.type()` (`"SERVICE"`, `"USER"`) | `accessToken.principal().kind()` (`PrincipalKind.SERVICE`, `USER`) |
+| `VerifiedToken.type()` (`"SERVICE"`, `"USER"`) | `accessToken.principal().kind()` (`PrincipalKind.SERVICE`, `USER`; `io.flowcatalyst.framework.context.PrincipalKind`, also on `Context`) |
 | `VerifiedToken.scopes()`, `hasScope(s)` | `accessToken.principal().scopes()`, `accessToken.hasScope(s)` |
 | `VerifiedToken.clients()`, `mayActFor(clientId)` | `accessToken.principal().clients()`, `accessToken.mayActFor(client)` |
 | `InvalidTokenException` message | `TokenResult.Invalid.reason()`: `malformed`, `alg`, `crit`, `kid`, `unknown_kid`, `signature`, `iss`, `aud`, `expired`, `not_yet_valid`, `iat`, `token_use`, `sub` |

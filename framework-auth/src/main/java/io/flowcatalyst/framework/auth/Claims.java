@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.auth;
 
 import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.context.PrincipalKind;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,6 +16,11 @@ import tools.jackson.databind.JsonNode;
 final class Claims {
 
   private Claims() {}
+
+  /** The kind named by a {@code type} claim; anything but {@code SERVICE} is a user. */
+  static PrincipalKind kind(String type) {
+    return "SERVICE".equals(type) ? PrincipalKind.SERVICE : PrincipalKind.USER;
+  }
 
   /** Checks an id_token's claims; returns the refusal reason or empty. */
   static Optional<String> idToken(JsonNode claims, String issuer, String clientId, String nonce, Instant now) {
@@ -91,7 +97,7 @@ final class Claims {
     }
     return new Principal(
         new PrincipalId(sub),
-        PrincipalKind.of(String.valueOf(Jwt.text(claims, "type"))),
+        Claims.kind(String.valueOf(Jwt.text(claims, "type"))),
         Jwt.text(claims, "name"),
         Jwt.text(claims, "email"),
         Jwt.text(claims, "tier"),

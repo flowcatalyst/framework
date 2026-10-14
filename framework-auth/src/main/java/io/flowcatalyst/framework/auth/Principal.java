@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.auth;
 
 import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.context.PrincipalKind;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;

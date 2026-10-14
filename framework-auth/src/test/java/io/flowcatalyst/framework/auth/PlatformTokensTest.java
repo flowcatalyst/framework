@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.flowcatalyst.framework.context.PrincipalKind;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;

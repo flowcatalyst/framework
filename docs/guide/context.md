@@ -1,4 +1,4 @@
-<!-- types: Context, ClientId, PrincipalId, ApplicationCode, CorrelationId, ContextResolver -->
+<!-- types: Context, ClientId, PrincipalId, PrincipalKind, ApplicationCode, CorrelationId, ContextResolver -->
 # Context
 
 `Context` is a value that says **who is acting, for which client, as part of which request**. You
@@ -9,6 +9,7 @@ or a thread-local, so there is no ambient context to forget about.
 public record Context(
     ClientId client,
     @Nullable PrincipalId principal,
+    @Nullable PrincipalKind principalKind,
     @Nullable ApplicationCode application,
     CorrelationId correlationId,
     @Nullable String causationId,
@@ -20,6 +21,7 @@ public record Context(
 |---|---|---|
 | `client` | always | the tenant the work is for, as a `ClientId` that holds the platform's **client code** (see below). Every aggregate carries one, and a use case refuses to write another client's aggregate |
 | `principal` | no | the user or service account acting; the audit row and event metadata record it |
+| `principalKind` | no; only with a principal | `USER` (a person) or `SERVICE` (a service account): the platform's `type` claim. Absent when unknown |
 | `application` | no | the application code |
 | `correlationId` | always | follows a request into logs, events and jobs; generated when absent |
 | `causationId` | no | the event or message that caused this work |
@@ -63,8 +65,25 @@ Context context = Context.of(new ClientId("acme")).withPrincipal(new PrincipalId
 
 `Context.of(client)` generates a correlation id and leaves the rest empty. The `with...` methods
 return a copy: `withPrincipal`, `withApplication`, `withCorrelationId`, `withCausationId`,
-`withExecutionId`, `withPermissions`. `findPrincipal()` and `findApplication()` return
-`Optional`s. The six- and four-argument constructors still exist and give an empty permission set.
+`withExecutionId`, `withPermissions`. `findPrincipal()`, `findPrincipalKind()` and
+`findApplication()` return `Optional`s. The seven-, six- and four-argument constructors still exist:
+they leave the principal kind unknown, and the six- and four-argument ones give an empty permission
+set.
+
+### The principal kind
+
+```java
+Context service =
+    Context.of(new ClientId("acme")).withPrincipal(new PrincipalId("prn_0HZXEQ5Y8JY5Z"), PrincipalKind.SERVICE);
+service.principalKind(); // SERVICE
+```
+
+A kind is never present without a principal (the constructor refuses it), and `withPrincipal(id)`
+without a kind **clears** any kind the context had, so a kind never describes another principal.
+The framework sets it wherever it knows it: `AuthModule`'s resolver from the session or the bearer
+token's `type` (`SERVICE`, else `USER`). Check it in `authorize` when an operation
+is for people only, or for the service only. It is not written to the outbox (the platform has no
+field for it).
 
 ### Permissions
 

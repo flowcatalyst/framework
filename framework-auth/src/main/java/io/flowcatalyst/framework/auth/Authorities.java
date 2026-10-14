@@ -42,6 +42,14 @@ final class Authorities {
   }
 
   Context context(Authenticated a, Request request) {
-    return new Context(a.client(), a.principal().id(), application, request.correlationId(), null, null, a.permissions());
+    return new Context(
+        a.client(),
+        a.principal().id(),
+        a.principal().kind(),
+        application,
+        request.correlationId(),
+        null,
+        null,
+        a.permissions());
   }
 }
