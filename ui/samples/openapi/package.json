@@ -18,6 +18,7 @@
     "@flowcatalyst/api-runtime": "workspace:*",
     "@hey-api/openapi-ts": "catalog:",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

@@ -21,7 +21,7 @@
   ],
   "scripts": {
     "build": "node scripts/nuxt-ui-types.ts",
-    "typecheck": "vue-tsc --build",
+    "typecheck": "tsc --build tsconfig.node.json && vue-tsc --build tsconfig.app.json tsconfig.test.json",
     "test": "vitest run"
   },
   "peerDependencies": {
@@ -41,6 +41,7 @@
     "@iconify-json/lucide": "catalog:",
     "@nuxt/ui": "catalog:",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "@vue/test-utils": "catalog:",
     "happy-dom": "catalog:",

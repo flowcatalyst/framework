@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --port 5174 --strictPort",
     "build": "vite build",
-    "typecheck": "vue-tsc --build",
+    "typecheck": "tsc --build tsconfig.node.json && vue-tsc --build tsconfig.app.json",
     "serve:csp": "node scripts/serve-csp.ts",
     "e2e": "vite build && playwright test",
     "generate": "openapi-ts",
@@ -30,6 +30,7 @@
     "@hey-api/openapi-ts": "catalog:",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

@@ -1,0 +1,8 @@
+{
+  "$comment": "tsconfig.generated.json for this package's own `tsc` (TypeScript 7): the same files and settings, with its own output and build info. The Vue packages (and applications) reference tsconfig.generated.json and build it with vue-tsc, which runs on TypeScript 6 (ui/README.md, 'Which TypeScript runs where'); a build info written by one compiler version is out of date for the other, so sharing one would rebuild it, and everything that references it, on every run. Goes when vue-tsc runs on TypeScript 7.",
+  "extends": "./tsconfig.generated.json",
+  "compilerOptions": {
+    "outDir": "./node_modules/.tmp/generated-ts7",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.generated.ts7.tsbuildinfo"
+  }
+}

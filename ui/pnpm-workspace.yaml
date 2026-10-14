@@ -29,6 +29,11 @@ strictPeerDependencies: true
 #   import `vue`, which it does not declare.)
 publicHoistPattern: []
 
+# @typescript/typescript6 6.0.2 declares `"@typescript/old": "npm:typescript@^6"`, a range; this pins
+# the TypeScript 6 behind the JS API to one version.
+overrides:
+  "@typescript/typescript6>@typescript/old": npm:typescript@6.0.3
+
 # Shared versions; a package refers to them as "catalog:".
 catalog:
   "@nuxt/ui": 4.11.3
@@ -37,7 +42,20 @@ catalog:
   "vite": 8.2.4
   "@vitejs/plugin-vue": 6.0.9
   "tailwindcss": 4.3.3
-  "typescript": 6.0.3
+  # TypeScript 7 is the compiler, TypeScript 6 the JS API (owner ruling 2026-10-14: TypeScript 7). The
+  # layout is the one the TypeScript 7.0 release notes give for running both side by side; which tool
+  # runs on which, and when the 6 goes, is in ui/README.md ("Which TypeScript runs where").
+  # - `@typescript/native` is TypeScript 7.0.2 under an alias. Its `tsc` (a Go binary from the
+  #   matching @typescript/typescript-<os>-<arch> optional dependency) is the `tsc` of every script.
+  #   7.0 has no programmatic API (only `typescript/unstable/*` IPC modules); nothing imports it.
+  # - `typescript` is @typescript/typescript6, Microsoft's compatibility package: it re-exports the
+  #   TypeScript 6 API of its dependency `@typescript/old` (pinned to typescript 6.0.3 in `overrides`)
+  #   and has a `tsc6` binary, no `tsc`. What imports `typescript` or names it as a peer resolves
+  #   here: typescript-eslint (type-aware lint), vue-tsc (.vue checks; 3.3.12 detects this package
+  #   and patches @typescript/old's tsc) and @hey-api/openapi-ts (it prints the generated client with
+  #   TypeScript's factory). Vite and @vitejs/plugin-vue do not use TypeScript.
+  "@typescript/native": npm:typescript@7.0.2
+  "typescript": npm:@typescript/typescript6@6.0.2
   "vue-tsc": 3.3.12
   "zod": 4.6.5
   "@iconify-json/lucide": 1.2.140
