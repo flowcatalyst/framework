@@ -138,16 +138,17 @@ paths cannot create series.
 
 ### The Prometheus endpoint
 
-Off by default; metrics reveal routes and volumes, so exposing them is your decision, made in
-code with `HttpOptions.withMetricsEndpoint(path)` (literal segments only). From the Jetty module's
-test:
+Off by default; metrics reveal routes and volumes, so exposing them is your decision:
 
-```java
-HttpOptions.defaults().withMetricsEndpoint("/internal/metrics")
+```yaml
+http:
+  metrics:
+    enabled: true
+    path: /internal/metrics        # default /metrics; literal segments only
+    # bearer-token: from the environment, HTTP_METRICS_BEARER_TOKEN
 ```
 
-The token is a secret and stays configuration: `http.metrics.bearer-token`, from the environment
-(`HTTP_METRICS_BEARER_TOKEN`). With it set, scrapes need `Authorization: Bearer <token>` (compared in constant time);
+With `bearer-token` set, scrapes need `Authorization: Bearer <token>` (compared in constant time);
 otherwise `401`. Start-up warns when the endpoint is enabled without a token, or with the `noop`
 driver. The body is the Prometheus text format 0.0.4 (`PrometheusText.write(snapshot)`); timers
 appear as histograms (`_bucket`, `_sum`, `_count`). Without the Jetty module, register

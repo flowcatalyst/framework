@@ -10,6 +10,8 @@ import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.core.MonotonicClock;
+import io.flowcatalyst.framework.core.Problem;
+import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.http.ContextResolver;
 import io.flowcatalyst.framework.http.Dispatcher;
 import io.flowcatalyst.framework.http.MetricsEndpoint;
@@ -17,9 +19,11 @@ import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.Routes;
 import io.flowcatalyst.framework.http.openapi.OpenApi;
 import io.flowcatalyst.framework.metrics.Metrics;
+import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,10 +37,6 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Module order is irrelevant: routes are registered in {@code boot}, and the table is compiled
  * only once all modules have booted.
- *
- * <p>Configuration holds the address only ({@code http.host}, {@code http.port}) and the metrics
- * endpoint's bearer token; how the server behaves is {@link HttpOptions}, given in code
- * (config-and-code contract, section 3.5). The module claims the {@code http} component.
  */
 public final class JettyHttpModule implements Module {
 
@@ -55,39 +55,41 @@ public final class JettyHttpModule implements Module {
           .withDefault(8080)
           .describedAs("Port the HTTP server listens on; 0 picks any free port.");
 
+  /** {@code http.max-body-bytes}: the largest request body accepted. */
+  public static final Setting<Long> MAX_BODY_BYTES =
+      Setting.longValue("http.max-body-bytes")
+          .withDefault(1_048_576L)
+          .describedAs("Largest request body accepted, in bytes; larger requests get 413.");
+
+  /** {@code http.request-timeout}: idle timeout for reads. */
+  public static final Setting<Duration> REQUEST_TIMEOUT =
+      Setting.duration("http.request-timeout")
+          .withDefault(Duration.ofSeconds(30))
+          .describedAs("Idle timeout of a connection while a request is read or a response written.");
+
+  /** {@code http.shutdown-grace}: how long in-flight requests may finish on shutdown. */
+  public static final Setting<Duration> SHUTDOWN_GRACE =
+      Setting.duration("http.shutdown-grace")
+          .describedAs("Time in-flight requests may take on shutdown; defaults to app.shutdown.drain.");
+
+  /** {@code http.metrics.enabled}: whether the Prometheus endpoint is mounted. */
+  public static final Setting<Boolean> METRICS_ENABLED =
+      Setting.bool("http.metrics.enabled")
+          .withDefault(false)
+          .describedAs("Mount the Prometheus metrics endpoint at http.metrics.path.");
+
+  /** {@code http.metrics.path}: where the Prometheus endpoint is mounted. */
+  public static final Setting<String> METRICS_PATH =
+      Setting.string("http.metrics.path")
+          .withDefault("/metrics")
+          .describedAs("Path of the Prometheus metrics endpoint: literal segments, no trailing slash.");
+
   /** {@code http.metrics.bearer-token}: when set, scrapes must present it. */
   public static final Setting<Secret> METRICS_BEARER_TOKEN =
       Setting.secret("http.metrics.bearer-token")
-          .describedAs(
-              "When set, the metrics endpoint (HttpOptions.withMetricsEndpoint) requires"
-                  + " 'Authorization: Bearer <token>'.");
+          .describedAs("When set, the metrics endpoint requires 'Authorization: Bearer <token>'.");
 
-  private final Function<Config, HttpOptions> options;
-  private volatile @Nullable HttpOptions resolved;
-
-  /** The defaults ({@link HttpOptions#defaults()}). */
-  public JettyHttpModule() {
-    this(HttpOptions.defaults());
-  }
-
-  /**
-   * With options given in code (config-and-code contract, section 3.5).
-   *
-   * @param options how the server behaves
-   */
-  public JettyHttpModule(HttpOptions options) {
-    this(config -> options);
-  }
-
-  /**
-   * With options computed from configuration once it is loaded, for an application that reads
-   * them from settings of its own.
-   *
-   * @param options computes the options
-   */
-  public JettyHttpModule(Function<Config, HttpOptions> options) {
-    this.options = options;
-  }
+  private static final Pattern LITERAL_PATH = Pattern.compile("(/[A-Za-z0-9._~-]+)+");
 
   @Override
   public String id() {
@@ -96,9 +98,16 @@ public final class JettyHttpModule implements Module {
 
   @Override
   public void register(AppBuilder app) {
+    // the server's settings are service settings (config-and-code contract, section 3.4); claiming
+    // the component makes a misspelt http key fail start-up
     app.claimComponent("http");
     app.declare(HOST);
     app.declare(PORT);
+    app.declare(MAX_BODY_BYTES);
+    app.declare(REQUEST_TIMEOUT);
+    app.declare(SHUTDOWN_GRACE);
+    app.declare(METRICS_ENABLED);
+    app.declare(METRICS_PATH);
     app.declare(METRICS_BEARER_TOKEN);
     // the environment decides whether an SPA without index.html may start (local, test); the
     // operations modules declared with OpenApi.declare must each be bound once (OpenAPI contract)
@@ -119,14 +128,16 @@ public final class JettyHttpModule implements Module {
           if (port < 0 || port > 65_535) {
             throw new IllegalArgumentException("http.port must be between 0 and 65535");
           }
-          HttpOptions o = options.apply(config);
-          resolved = o;
+          long max = config.get(MAX_BODY_BYTES);
+          if (max < 0) {
+            throw new IllegalArgumentException("http.max-body-bytes must not be negative");
+          }
           return new HttpServer(
               config.get(HOST),
               port,
-              o.maxBodyBytes(),
-              o.requestTimeout(),
-              o.shutdownGrace(),
+              max,
+              config.get(REQUEST_TIMEOUT),
+              config.find(SHUTDOWN_GRACE).orElse(null),
               lookup.get(MonotonicClock.class));
         });
   }
@@ -138,9 +149,13 @@ public final class JettyHttpModule implements Module {
     Routes own = routes.forModule(ID);
     own.get("/health/live", r -> Response.json(200, Map.of("status", "UP")));
     own.get("/health/ready", r -> ready(app, server));
-    HttpOptions o = resolved;
-    String path = o == null ? null : o.metricsPath();
-    if (path != null) {
+    if (app.config().get(METRICS_ENABLED)) {
+      String path = app.config().get(METRICS_PATH);
+      if (!LITERAL_PATH.matcher(path).matches()) {
+        throw new StartupException(
+            List.of(
+                Problem.of(ID, METRICS_PATH.key(), "must be literal segments such as /metrics")));
+      }
       Secret token =
           app.config().find(METRICS_BEARER_TOKEN).filter(t -> !t.reveal().isBlank()).orElse(null);
       if (token == null) {

@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 
 /** Starts applications with a real server on port 0. */
 final class Apps {
@@ -41,38 +40,12 @@ final class Apps {
   }
 
   static App start(Path dir, Map<String, String> env, Consumer<Routes> registrar, Module... more) {
-    return start(dir, env, b -> b, registrar, more);
-  }
-
-  /** As above, with the builder adjusted first (behaviour in code: drain, health policy). */
-  static App start(
-      Path dir,
-      Map<String, String> env,
-      UnaryOperator<AppBuilder> adjust,
-      Consumer<Routes> registrar,
-      Module... more) {
-    return start(dir, env, adjust, new JettyHttpModule(), registrar, more);
-  }
-
-  /** As above, with the server's behaviour given in code. */
-  static App start(
-      Path dir, Map<String, String> env, HttpOptions options, Consumer<Routes> registrar, Module... more) {
-    return start(dir, env, b -> b, new JettyHttpModule(options), registrar, more);
-  }
-
-  static App start(
-      Path dir,
-      Map<String, String> env,
-      UnaryOperator<AppBuilder> adjust,
-      JettyHttpModule http,
-      Consumer<Routes> registrar,
-      Module... more) {
-    AppBuilder b = adjust.apply(App.builder().configDirectory(dir).environment(env));
+    AppBuilder b = App.builder().configDirectory(dir).environment(env);
     b.module(routes("test", registrar));
     for (Module m : more) {
       b.module(m);
     }
-    b.module(http);
+    b.module(new JettyHttpModule());
     return b.start();
   }
 

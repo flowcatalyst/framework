@@ -164,8 +164,7 @@ to code fails naming its replacement):
 | `app.health.critical`, `app.health.informational` | string lists | empty | core ([critical and informational checks](modules-and-lifecycle.md#critical-and-informational-checks)) |
 | `app.metrics.driver` | `memory` or `noop` | `memory` | core ([metrics](background-and-metrics.md#drivers)) |
 | `app.metrics.max-series` | integer, 1 to 100 000 | `1000` | core |
-| `http.host`, `http.port` | string, integer | `0.0.0.0`, `8080` | `http` ([HTTP](http.md#the-jetty-module-and-its-settings); the rest is `HttpOptions` in code) |
-| `http.metrics.bearer-token` | secret | none | `http` ([the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint)) |
+| `http.host`, `http.port`, `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace`, `http.metrics.*` | see [HTTP](http.md#the-jetty-module-and-its-settings) | | `http` |
 | `flowcatalyst.base-url`, `application`, `client-id`, `client-secret`, `subscription-target-base-url`, the receiver secrets | see [The FlowCatalyst module](flowcatalyst-module.md#settings) (the rest is `FlowCatalystOptions` in code) | | `flowcatalyst` |
 | `auth.issuer`, `client-id`, `client-secret`, `public-base-url`, `cookie-keys` | see [Sessions and login](sessions-and-login.md) (the rest is `AuthModule.builder()` in code) | | `auth` |
 

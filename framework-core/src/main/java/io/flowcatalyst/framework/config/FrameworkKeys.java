@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The framework's removed keys (config-and-code contract, section 8). Kept in one place, in core,
+ * The framework's removed keys (config-and-code contract, section 8): keys of things an application
+ * can have many of, which are now defined in code, and driver keys. Kept in one place, in core,
  * so a leftover key fails start-up even when the module it belonged to is no longer listed. Most
  * specific patterns first: a key is reported with the first pattern it matches.
  */
@@ -40,14 +41,6 @@ final class FrameworkKeys {
       l.add(k("locks.instances.*." + s, "locks", stores));
     }
     l.add(k("locks", "locks", stores));
-
-    // http
-    String jetty = ", given to new JettyHttpModule(options)";
-    l.add(k("http.max-body-bytes", "http", "HttpOptions.withMaxBodyBytes(long)" + jetty));
-    l.add(k("http.request-timeout", "http", "HttpOptions.withRequestTimeout(Duration)" + jetty));
-    l.add(k("http.shutdown-grace", "http", "HttpOptions.withShutdownGrace(Duration)" + jetty));
-    l.add(k("http.metrics.enabled", "http", "HttpOptions.withMetricsEndpoint(path)" + jetty));
-    l.add(k("http.metrics.path", "http", "HttpOptions.withMetricsEndpoint(path)" + jetty));
 
     // http-client
     l.add(k("http-client.event-loops", "http-client", "HttpClientModule.builder().eventLoops(int)"));

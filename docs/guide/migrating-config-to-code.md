@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -32,7 +32,6 @@ Connections and secrets stay where they are: database and Redis URLs, user names
 | `LocksModule.MEMORY`, `LocksDatabaseModule.DRIVER`, `LocksRedisModule.DRIVER`, `DEFAULT_PREFIX` | `LockStores.memory()`, `DatabaseLockStores.database()`, `RedisLockStores.redis()`, `RedisLockStores.DEFAULT_PREFIX` |
 | `SecretsModule.ENV`, `FILE`, `PLATFORM` | `SecretStores.env(..)`, `file(..)`, `platform()` |
 | `DatabaseModule.DRIVER`, `RedisModule.DRIVER`, `HttpClientModule.DRIVER` | nothing (one driver each; clients are named in code) |
-| `JettyHttpModule.MAX_BODY_BYTES`, `REQUEST_TIMEOUT`, `SHUTDOWN_GRACE`, `METRICS_ENABLED`, `METRICS_PATH` | `HttpOptions` (`HOST`, `PORT`, `METRICS_BEARER_TOKEN` stay) |
 | `HttpClientModule.EVENT_LOOPS`, `MAX_CONNECTIONS` | `HttpClientModule.builder().eventLoops(..)`, `.maxConnectionsPerHost(..)` |
 | `FlowCatalystModule.ENABLED`, `TIMEOUT`, `SYNC_ON_BOOT`, `OUTBOX_STALE_AFTER`, `RECEIVERS_ENABLED`, `RECEIVERS_PATH`, `RECEIVERS_REQUIRE_SIGNATURE`, the receivers' timeout, lease, delay, retention and interval constants | `FlowCatalystOptions`, `ReceiverOptions`; read the timeout with `PlatformClient.timeout()` |
 | `Drivers`, `DriverFactory`, `AppBuilder.drivers()`, `Instances.build(capability, section, lookup[, defaultDriver])` | choose a driver in code; for instances that are connections, `Instances.build(capability, section, lookup, InstanceFactory)` |
@@ -76,16 +75,10 @@ DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(20)).migrate(f
 
 ## HTTP (`http.*`)
 
-`http.host`, `http.port` and `http.metrics.bearer-token` stay.
-
-| Key | Default | Now |
-|---|---|---|
-| `http.max-body-bytes` | `1048576` | `new JettyHttpModule(HttpOptions.defaults().withMaxBodyBytes(long))` (0 to 1 GiB) |
-| `http.request-timeout` | `30s` | `HttpOptions.withRequestTimeout(Duration)` (more than 0, at most 1 h) |
-| `http.shutdown-grace` | the drain | `HttpOptions.withShutdownGrace(Duration)` (0 to 1 h) |
-| `http.metrics.enabled: true` + `http.metrics.path` | off, `/metrics` | `HttpOptions.withMetricsEndpoint("/metrics")` |
-
-The module now claims `http`: a misspelt key there (`http.prot`) fails start-up.
+Nothing to migrate: the server's settings (`http.max-body-bytes`, `http.request-timeout`,
+`http.shutdown-grace`, `http.metrics.*`) are service settings and stay configuration. (For a few
+hours on 2026-10-14 they were `HttpOptions`, which is removed again.) The module claims `http`: a
+misspelt key there (`http.prot`) fails start-up.
 
 ## HTTP client (`http-client.*`, `http-clients.*`)
 

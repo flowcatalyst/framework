@@ -44,10 +44,12 @@ class KeyRulesTest {
 
   @Test
   void noServiceSettingIsARemovedKey() {
-    // config-and-code contract, section 8: nothing under app is removed
+    // config-and-code contract, section 8: nothing under app or http is removed
     for (RemovedKey removed : KeyRules.frameworkRemovedKeys()) {
       String p = removed.pattern();
-      assertThat(p).doesNotStartWith("app.").isNotEqualTo("app");
+      for (String component : new String[] {"app", "http"}) {
+        assertThat(p).doesNotStartWith(component + ".").isNotEqualTo(component);
+      }
     }
   }
 

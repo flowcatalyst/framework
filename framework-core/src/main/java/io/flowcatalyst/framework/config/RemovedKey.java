@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  *     matches when its leading segments match, so {@code locks} matches every key under it
  * @param module the module the key belonged to, for the problem
  * @param movedTo where the behaviour is now given, for example {@code
- *     HttpOptions.withRequestTimeout(Duration)}
+ *     LocksModule.builder().defaultStore(name)}
  */
 public record RemovedKey(String pattern, String module, String movedTo) {
 

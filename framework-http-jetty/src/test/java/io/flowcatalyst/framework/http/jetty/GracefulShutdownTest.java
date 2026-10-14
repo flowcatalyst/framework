@@ -50,8 +50,7 @@ class GracefulShutdownTest {
     App app =
         Apps.start(
             dir,
-            Apps.env(),
-            HttpOptions.defaults().withShutdownGrace(Duration.ofSeconds(20)),
+            Apps.env("HTTP_SHUTDOWN_GRACE", "20s"),
             r ->
                 r.get(
                     "/slow",
@@ -115,8 +114,7 @@ class GracefulShutdownTest {
     App app =
         Apps.start(
             dir,
-            Apps.env(),
-            HttpOptions.defaults().withShutdownGrace(Duration.ofSeconds(20)),
+            Apps.env("HTTP_SHUTDOWN_GRACE", "20s"),
             r ->
                 r.get(
                     "/slow",
@@ -152,8 +150,7 @@ class GracefulShutdownTest {
     App app =
         Apps.start(
             dir,
-            Apps.env(),
-            HttpOptions.defaults().withShutdownGrace(Duration.ofMillis(300)),
+            Apps.env("HTTP_SHUTDOWN_GRACE", "300ms"),
             r ->
                 r.get(
                     "/stuck",

@@ -11,8 +11,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Prometheus scrape endpoint (background-and-metrics contract, section 3): the registry's
- * snapshot in the text exposition format. The Jetty module mounts it when its {@code HttpOptions}
- * name a path ({@code withMetricsEndpoint}); other servers can register {@link #handler} themselves.
+ * snapshot in the text exposition format. The Jetty module mounts it when {@code
+ * http.metrics.enabled} is true; other servers can register {@link #handler} themselves.
  */
 public final class MetricsEndpoint {
 
