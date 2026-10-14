@@ -7,19 +7,21 @@ import io.flowcatalyst.framework.database.DatabaseModule;
 import io.flowcatalyst.framework.database.DatabasePool;
 import io.flowcatalyst.framework.locks.LockKey;
 import io.flowcatalyst.framework.locks.LockStore;
+import io.flowcatalyst.framework.locks.LockStores;
 import io.flowcatalyst.framework.locks.Locks;
 import io.flowcatalyst.framework.locks.LocksModule;
 import io.flowcatalyst.framework.locks.WithLockResult;
+import io.flowcatalyst.framework.locks.database.DatabaseLockStores;
 import io.flowcatalyst.framework.locks.database.LocksDatabaseModule;
-import io.flowcatalyst.framework.locks.redis.LocksRedisModule;
+import io.flowcatalyst.framework.locks.redis.RedisLockStores;
 import io.flowcatalyst.framework.redis.RedisModule;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Starts an application with the database, Redis and memory lock drivers configured, then takes a
- * lock on every instance. Run it with a PostgreSQL and a Redis reachable at the addresses in
+ * Starts an application with a database, a Redis and a memory lock store, then takes a lock on
+ * every one. Run it with a PostgreSQL and a Redis reachable at the addresses in
  * {@code config/application.yaml}.
  */
 public final class LocksDemo {
@@ -39,9 +41,16 @@ public final class LocksDemo {
                 .pool(DatabasePool.defaults().withConnectTimeout(Duration.ofSeconds(2)))
                 .build())
         .module(new RedisModule())
-        .module(new LocksModule())
-        .module(new LocksDatabaseModule())
-        .module(new LocksRedisModule());
+        // one lock store per driver; the driver is chosen here, in code
+        .module(
+            LocksModule.builder()
+                .store("main", DatabaseLockStores.database())
+                .store("shared", RedisLockStores.redis("default", "fw:lock:"))
+                .store("local", LockStores.memory())
+                .defaultStore("main")
+                .build())
+        // the fw_lock migration the database store needs
+        .module(new LocksDatabaseModule());
   }
 
   /**

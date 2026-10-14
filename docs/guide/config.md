@@ -136,13 +136,6 @@ redis:
   default: default
   instances:
     default: { url: "redis://localhost:6379/0" }
-
-locks:
-  default: main
-  instances:
-    main: { driver: database }
-    shared: { driver: redis, connection: default, prefix: "fw:lock:" }
-    local: { driver: memory }
 ```
 
 (`examples/locks-demo/config/application.yaml`.) The instance must be named in a YAML file;
@@ -156,7 +149,6 @@ to code fails naming its replacement):
 |---|---|
 | `database.instances.<n>` | `url` (required), `username`, `password` (secret). The pool and migrations are code: `DatabaseModule.builder().pool(DatabasePool)`, `.pool(name, DatabasePool)`, `.migrate(boolean)` ([lifecycle](modules-and-lifecycle.md#the-database-module-and-migrations)) |
 | `redis.instances.<n>` | `url` (required, `redis://` or `rediss://`, may carry user, password and database number), `password` (secret, wins over the URL's). The timeout and pool are code: `RedisModule.builder().pool(RedisPool)`, `.pool(name, RedisPool)` |
-| `locks.instances.<n>` | `driver` (required: `memory`, `database` or `redis`); `database` (instance name, for `database`); `connection` (Redis instance name) and `prefix` (default `fw:lock:`), for `redis` |
 | `secrets.instances.<n>` | `driver` (required: `file`, `env`; `platform` fails start-up); `directory` and `max-bytes` (65536) for `file`; `prefix` for `env`; `cache-ttl` (5m), `cache-max` (10000) for both. See [Per-client secrets](secrets.md) |
 | `http-clients.instances.<n>` | see [HTTP client](http-client.md#configured-clients) |
 

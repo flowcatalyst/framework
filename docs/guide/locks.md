@@ -1,4 +1,4 @@
-<!-- types: LockStore, Locks, LockKey, Lease, AcquireResult, RefreshResult, ReleaseResult, WithLockResult, LockedAction, LockStoreUnavailableException, LockedActionException, LocksModule, LocksDatabaseModule, LocksRedisModule, MemoryLockDriver, LockStoreContract, AdjustableClock, RedisModule, DatabaseModule -->
+<!-- types: LockStore, Locks, LockKey, Lease, AcquireResult, RefreshResult, ReleaseResult, WithLockResult, LockedAction, LockStoreUnavailableException, LockedActionException, LocksModule, LockStoreFactory, LockStores, DatabaseLockStores, RedisLockStores, LocksDatabaseModule, MemoryLockDriver, LockStoreContract, AdjustableClock, RedisModule, DatabaseModule -->
 # Locks
 
 A lock gives one holder at a time the right to do some work, for a bounded time (the **lease**).
@@ -9,30 +9,41 @@ seen. The lock alone cannot make that guarantee; the token is what lets the reso
 
 ## Setting up
 
-List the modules for the drivers you configure. All three, as in `examples/locks-demo`:
+Lock stores are named **in code**, each with the driver its factory chooses; there is no `locks`
+configuration (behaviour is code, [Config](config.md#what-configuration-holds)). All three drivers,
+as in `examples/locks-demo`:
 
 ```java
 App.builder()
-    .module(new DatabaseModule())
+    // behaviour is code: a short connect timeout, so a missing database fails start-up fast
+    .module(
+        DatabaseModule.builder()
+            .pool(DatabasePool.defaults().withConnectTimeout(Duration.ofSeconds(2)))
+            .build())
     .module(new RedisModule())
-    .module(new LocksModule())
-    .module(new LocksDatabaseModule())
-    .module(new LocksRedisModule());
+    // one lock store per driver; the driver is chosen here, in code
+    .module(
+        LocksModule.builder()
+            .store("main", DatabaseLockStores.database())
+            .store("shared", RedisLockStores.redis("default", "fw:lock:"))
+            .store("local", LockStores.memory())
+            .defaultStore("main")
+            .build())
+    // the fw_lock migration the database store needs
+    .module(new LocksDatabaseModule());
 ```
 
-`LocksModule` alone gives the `memory` driver. Add `LocksDatabaseModule` for `database` (it
-contributes the `fw_lock` table migration, so it needs `DatabaseModule`) and `LocksRedisModule`
-for `redis` (needs `RedisModule`). Then name instances in configuration (see
-[Config](config.md#named-instances)):
+| Factory | Driver | Needs |
+|---|---|---|
+| `LockStores.memory()` (`framework-locks`) | `memory`: one JVM only | nothing |
+| `DatabaseLockStores.database()`, `database(instance)` (`framework-locks-database`) | `database` on the default (or a named) database instance | `DatabaseModule`, and `LocksDatabaseModule` for the `fw_lock` migration; on another instance the table must exist, start-up checks |
+| `RedisLockStores.redis()`, `redis(connection)`, `redis(connection, prefix)` (`framework-locks-redis`) | `redis` on the default (or a named) connection, keys under `fw:lock:` (or your prefix: not blank, at most 100 characters) | `RedisModule` |
 
-```yaml
-locks:
-  default: main
-  instances:
-    main: { driver: database }
-    shared: { driver: redis, connection: default, prefix: "fw:lock:" }
-    local: { driver: memory }
-```
+Store names match `[a-z][a-z0-9-]*`. With one store it is the default; with several,
+`defaultStore(name)` must name one, or `build()` throws. A factory is a `LockStoreFactory`
+(`create(name, lookup)`), so you can write your own, and it can read your own settings from the
+lookup's `Config`. A factory that fails fails start-up naming the store. A leftover `locks` section
+in a file fails start-up with the code to write instead.
 
 `app.get(Locks.class)` is the registry: `get(name)`, `defaultInstance()`, `names()`.
 

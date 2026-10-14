@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.http.TestClient;
 import io.flowcatalyst.framework.http.TestResponse;
+import io.flowcatalyst.framework.locks.LockStores;
 import io.flowcatalyst.framework.locks.LocksModule;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,7 +51,6 @@ class ReceiversEnabledTest {
   void setUp() throws IOException {
     platform = FakePlatform.start();
     logs = LogCapture.start();
-    Files.writeString(dir.resolve("application.yaml"), "locks:\n  instances:\n    local: { driver: memory }\n");
   }
 
   @AfterEach
@@ -65,7 +65,7 @@ class ReceiversEnabledTest {
   private TestClient start(Consumer<Receivers> registrar, String... env) {
     app =
         Receiving.start(
-            dir, Receiving.env(platform, env), () -> NOW, new LocksModule(), Receiving.handlers(registrar));
+            dir, Receiving.env(platform, env), () -> NOW, LocksModule.builder().store("local", LockStores.memory()).build(), Receiving.handlers(registrar));
     return Receiving.client(app);
   }
 

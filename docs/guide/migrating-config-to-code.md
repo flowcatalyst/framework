@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool -->
+<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -71,6 +71,24 @@ DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(20)).migrate(f
 | `timeout` | `2s` | `RedisModule.builder().pool(RedisPool.defaults().withTimeout(Duration))` (more than 0, at most 5 min) |
 | `pool.max` | `16` | `RedisPool.withMaxSize(int)` (1 to 1000) |
 | `driver: redis` | | delete it |
+
+## Locks (`locks.*`, the whole section)
+
+Delete the section and `LocksRedisModule` from your module list; name the stores in code.
+
+| Before | Now |
+|---|---|
+| `main: { driver: memory }` | `LocksModule.builder().store("main", LockStores.memory())` |
+| `main: { driver: database }` | `.store("main", DatabaseLockStores.database())`; keep `DatabaseModule` and `LocksDatabaseModule` |
+| `main: { driver: database, database: reporting }` | `.store("main", DatabaseLockStores.database("reporting"))` |
+| `shared: { driver: redis }` | `.store("shared", RedisLockStores.redis())`; keep `RedisModule` |
+| `shared: { driver: redis, connection: cache, prefix: "x:" }` | `.store("shared", RedisLockStores.redis("cache", "x:"))` |
+| `locks.default: main` | `.defaultStore("main")` (needed with several stores) |
+| `.module(new LocksModule())` | `.module(LocksModule.builder()...build())` (the no-argument constructor is gone) |
+| `.module(new LocksRedisModule())` | delete it |
+
+The database store now checks `fw_lock` on the default instance too: without `LocksDatabaseModule`
+start-up fails saying so (before, the first lock failed).
 
 ## Rate limits (`rate-limits.*`)
 

@@ -149,9 +149,9 @@ The modules, and what each is for:
 | `framework-core` | none; it is always present (lifecycle, config, `Context`, health) | [lifecycle](modules-and-lifecycle.md), [config](config.md), [context](context.md) |
 | `framework-database` | `DatabaseModule` | [lifecycle](modules-and-lifecycle.md), [write path](write-path.md) |
 | `framework-redis` | `RedisModule` | [locks](locks.md) |
-| `framework-locks` | `LocksModule` (memory driver) | [locks](locks.md) |
-| `framework-locks-database` | `LocksDatabaseModule` | [locks](locks.md) |
-| `framework-locks-redis` | `LocksRedisModule` | [locks](locks.md) |
+| `framework-locks` | `LocksModule` (stores named in code; `LockStores.memory()`) | [locks](locks.md) |
+| `framework-locks-database` | `LocksDatabaseModule` (the `fw_lock` migration); `DatabaseLockStores` | [locks](locks.md) |
+| `framework-locks-redis` | none; `RedisLockStores` | [locks](locks.md) |
 | `framework-usecase` | `OutboxModule`, `UseCaseModule` | [write path](write-path.md) |
 | `framework-http` | none; the HTTP types and `TestClient`, no server. Depends on `framework-core` and Jackson only ([what it pulls in](http.md#what-framework-http-pulls-in)) | [http](http.md) |
 | `framework-http-jetty` | `JettyHttpModule` | [http](http.md) |

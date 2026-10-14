@@ -12,6 +12,7 @@ import io.flowcatalyst.framework.database.PostgresFixture;
 import io.flowcatalyst.framework.http.TestClient;
 import io.flowcatalyst.framework.http.TestResponse;
 import io.flowcatalyst.framework.locks.LocksModule;
+import io.flowcatalyst.framework.locks.database.DatabaseLockStores;
 import io.flowcatalyst.framework.locks.database.LocksDatabaseModule;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -65,9 +66,6 @@ class ScheduledJobLockIntegrationTest {
         database:
           instances:
             main: { url: %s, username: %s, password: %s }
-        locks:
-          instances:
-            main: { driver: database }
         """
             .formatted(pg.jdbcUrl(), pg.username(), pg.password()));
   }
@@ -85,7 +83,7 @@ class ScheduledJobLockIntegrationTest {
             Receiving.env(platform, env),
             () -> NOW,
             new DatabaseModule(),
-            new LocksModule(),
+            LocksModule.builder().store("main", DatabaseLockStores.database()).build(),
             new LocksDatabaseModule(),
             Receiving.handlers(r -> r.onScheduledJob(CODE, handler)));
     apps.add(app);

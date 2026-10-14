@@ -15,6 +15,7 @@ import io.flowcatalyst.framework.locks.AcquireResult;
 import io.flowcatalyst.framework.locks.LockKey;
 import io.flowcatalyst.framework.locks.LockStore;
 import io.flowcatalyst.framework.locks.Locks;
+import io.flowcatalyst.framework.locks.LockStores;
 import io.flowcatalyst.framework.locks.LocksModule;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -58,9 +59,6 @@ class OncePurgeTest {
         database:
           instances:
             main: { url: %s, username: %s, password: %s }
-        locks:
-          instances:
-            local: { driver: memory }
         """
             .formatted(pg.jdbcUrl(), pg.username(), pg.password()));
   }
@@ -81,7 +79,7 @@ class OncePurgeTest {
     System.arraycopy(env, 0, all, 2, env.length);
     app =
         Receiving.start(
-            dir, Receiving.env(platform, all), () -> NOW, new DatabaseModule(), new LocksModule());
+            dir, Receiving.env(platform, all), () -> NOW, new DatabaseModule(), LocksModule.builder().store("local", LockStores.memory()).build());
   }
 
   private static void row(String job, Instant processedAt) {

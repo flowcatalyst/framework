@@ -1,44 +1,61 @@
 package io.flowcatalyst.framework.locks;
 
-import io.flowcatalyst.framework.core.Instances;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
-/** The registry of named lock instances. Provided by {@link LocksModule}. */
+/** The registry of named lock stores. Provided by {@link LocksModule}. */
 public final class Locks {
 
-  private final Instances<LockStore> instances;
+  private final Map<String, LockStore> stores;
+  private final @Nullable String defaultName;
 
-  Locks(Instances<LockStore> instances) {
-    this.instances = instances;
+  Locks(Map<String, LockStore> stores, @Nullable String defaultName) {
+    this.stores = Collections.unmodifiableMap(new LinkedHashMap<>(stores));
+    this.defaultName = defaultName;
   }
 
   /**
-   * Returns the named instance.
+   * Returns the named store.
    *
-   * @param name the instance name
+   * @param name the store name
    * @return the store
-   * @throws IllegalArgumentException naming the known instances when there is no such instance
+   * @throws IllegalArgumentException naming the known stores when there is no such store
    */
   public LockStore get(String name) {
-    return instances.get(name);
+    LockStore store = stores.get(name);
+    if (store == null) {
+      throw new IllegalArgumentException(
+          "no LockStore instance named '"
+              + name
+              + "'; known instances: "
+              + (stores.isEmpty() ? "(none)" : String.join(", ", stores.keySet())));
+    }
+    return store;
   }
 
   /**
-   * The default instance.
+   * The default store.
    *
-   * @return the instance named by {@code locks.default}, or the only instance
-   * @throws IllegalStateException when no instance is configured
+   * @return the store named by {@code LocksModule.Builder.defaultStore}, or the only one
+   * @throws IllegalStateException when no store is given
    */
   public LockStore defaultInstance() {
-    return instances.defaultInstance();
+    String name = defaultName;
+    if (name == null) {
+      throw new IllegalStateException("no LockStore instance is configured");
+    }
+    return get(name);
   }
 
   /**
-   * The configured instance names.
+   * The store names.
    *
-   * @return names in configuration order
+   * @return names in the order they were given
    */
   public Set<String> names() {
-    return instances.names();
+    return stores.keySet();
   }
 }

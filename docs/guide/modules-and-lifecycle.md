@@ -158,43 +158,30 @@ migrations depend on its tables; registration order is migration order.
 
 ## Drivers and named instances
 
-A capability that has more than one implementation (locks now; cache and storage later) works the
-same way: modules register **drivers** by name, and configuration declares **named instances**
-that choose a driver. From `LocksDatabaseModule`:
+**Driver choice is code.** A capability with more than one implementation is wired with a factory
+that names the driver, in the module's builder: `LocksModule.builder().store("main",
+DatabaseLockStores.database())` ([Locks](locks.md)). No configuration key chooses a driver.
+
+**Connections are named instances in configuration.** A capability whose instances are
+deployment facts (database and Redis connections) builds every instance under
+`<section>.instances` with one `InstanceFactory`. From `DatabaseModule`:
 
 ```java
-app.drivers()
-    .register(
-        LockStore.class,
-        DRIVER,
-        (name, config, lookup, built) -> {
-          Databases databases = lookup.get(Databases.class);
-          Database database =
-              config
-                  .findString("database")
-                  .map(databases::get)
-                  .orElseGet(databases::defaultInstance);
-          return new LockStore(
-              new DatabaseLockDriver(database.dataSource()), lookup.get(MonotonicClock.class));
-        });
+Instances<Database> instances =
+    Instances.build(
+        Database.class,
+        "database",
+        lookup,
+        (name, section, l, built) ->
+            createInstance(name, section, own.getOrDefault(name, common), migrates));
 ```
 
-A `DriverFactory<T>` receives the instance name, its `InstanceConfig` section, a `Lookup`, and the
-instances of the same capability already built (for wrapper drivers). It reads its keys through the
-typed getters (`string`, `integer`, `bool`, `duration`, `secret`, `findString`, `section`...). After
-it returns, any key in the section that it did not read, other than `driver`, fails start-up as
-unknown, so a typo cannot pass silently.
-
-The capability's registry is a provided service built from `Instances`:
-
-```java
-app.provide(Locks.class, lookup -> new Locks(Instances.build(LockStore.class, "locks", lookup)));
-```
-
-`Instances.build(capability, section, lookup)` reads `<section>.default` and
-`<section>.instances.<name>.driver`, builds each instance, and reports every problem at once. A
-second form takes a default driver name, for a capability with one obvious driver (databases
-default to `postgresql`). The result has `get(name)`, `defaultInstance()`, `names()`, `all()`. If
+An `InstanceFactory<T>` receives the instance name, its `InstanceConfig` section (connection and
+secret keys only), a `Lookup`, and the instances already built. It reads its keys through the typed
+getters (`string`, `integer`, `bool`, `duration`, `secret`, `findString`, `section`...). After it
+returns, any key in the section that it did not read fails start-up as unknown, so a typo cannot
+pass silently. `Instances.build` reads `<section>.default`, builds each instance, and reports
+every problem at once; the result has `get(name)`, `defaultInstance()`, `names()`, `all()`. If
 there is exactly one instance, `default` may be omitted; with several, it must name one. A
 capability with no configured instances is valid and its registry is empty.
 

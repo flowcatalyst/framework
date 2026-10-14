@@ -12,7 +12,6 @@ import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.metrics.Metrics;
 import io.flowcatalyst.framework.metrics.MetricsSnapshot;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -99,13 +98,6 @@ class LockGateTest {
 
   @Test
   void twoReplicasOfALoopNeverRunTogether() throws Exception {
-    Files.writeString(
-        dir.resolve("application.yaml"),
-        """
-        locks:
-          instances:
-            local: { driver: memory }
-        """);
     AtomicInteger concurrent = new AtomicInteger();
     AtomicInteger maxConcurrent = new AtomicInteger();
     List<String> who = Collections.synchronizedList(new ArrayList<>());
@@ -139,7 +131,7 @@ class LockGateTest {
         App.builder()
             .configDirectory(dir)
             .environment(Map.of())
-            .module(new LocksModule())
+            .module(LocksModule.builder().store("local", LockStores.memory()).build())
             .module(replicas)
             .start()) {
       long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);

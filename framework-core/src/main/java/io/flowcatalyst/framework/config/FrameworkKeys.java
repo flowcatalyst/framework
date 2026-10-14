@@ -40,6 +40,16 @@ final class FrameworkKeys {
     l.add(k("redis.instances.*.pool", "redis", redisPool));
     l.add(k("redis.instances.*.driver", "redis", "nothing: one Redis driver"));
 
+    // locks
+    String stores =
+        "LocksModule.builder().store(name, LockStores.memory() | DatabaseLockStores.database(..) |"
+            + " RedisLockStores.redis(..))";
+    l.add(k("locks.default", "locks", "LocksModule.builder().defaultStore(name)"));
+    for (String s : List.of("driver", "database", "connection", "prefix")) {
+      l.add(k("locks.instances.*." + s, "locks", stores));
+    }
+    l.add(k("locks", "locks", stores));
+
     // rate limits (MA item 10)
     String limiters = "MemoryRateLimiter.create or RedisRateLimiter.create, built in code";
     l.add(k("rate-limits.default", "rate-limit", limiters));

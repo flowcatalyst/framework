@@ -258,9 +258,9 @@ A `ScheduledJobHandler` receives the `Context` and a `ScheduledJobFiring` (`jobI
 means false), the run takes the lock `scheduled-job:{jobCode}` (service scope) from the **default**
 lock instance, with a lease of `job-lock-lease` refreshed while the handler runs. Pass
 `firing.fencingToken()` on to what you write if a stale run must be rejected there. So start-up
-fails when such a job handler is registered and no lock instance is configured: list the locks
-module with a default instance (driver `database` or `redis` across replicas; `memory` only for one
-process).
+fails when such a job handler is registered and no lock store is given: list
+`LocksModule.builder()` with a default store (`DatabaseLockStores` or `RedisLockStores` across
+replicas; `LockStores.memory()` only for one process).
 
 ### Opting out of the lock: `JobOptions.alwaysConcurrent()`
 

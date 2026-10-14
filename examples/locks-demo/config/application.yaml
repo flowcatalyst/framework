@@ -1,5 +1,5 @@
-# Connections only: the pools are code (LocksDemo.builder()). Three lock instances, one per driver.
-# Every value can be overridden by the environment variable
+# Connections only: the pools and the three lock stores, one per driver, are code
+# (LocksDemo.builder()). Every value can be overridden by the environment variable
 # named after its path, for example DATABASE_INSTANCES_MAIN_URL or REDIS_INSTANCES_DEFAULT_URL.
 # Put the database password in config/secrets.local.yaml (never committed) or in
 # DATABASE_INSTANCES_MAIN_PASSWORD.
@@ -16,10 +16,3 @@ redis:
   default: default
   instances:
     default: { url: "redis://localhost:6379/0" }
-
-locks:
-  default: main
-  instances:
-    main: { driver: database }
-    shared: { driver: redis, connection: default, prefix: "fw:lock:" }
-    local: { driver: memory }

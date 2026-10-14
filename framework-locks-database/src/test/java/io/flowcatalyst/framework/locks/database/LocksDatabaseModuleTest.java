@@ -10,6 +10,7 @@ import io.flowcatalyst.framework.database.PostgresFixture;
 import io.flowcatalyst.framework.locks.AcquireResult;
 import io.flowcatalyst.framework.locks.LockKey;
 import io.flowcatalyst.framework.locks.LockStore;
+import io.flowcatalyst.framework.locks.LockStores;
 import io.flowcatalyst.framework.locks.Locks;
 import io.flowcatalyst.framework.locks.LocksModule;
 import java.io.IOException;
@@ -46,7 +47,7 @@ class LocksDatabaseModuleTest {
     pg.createDatabase("second");
   }
 
-  private void yaml(String locks) throws IOException {
+  private void yaml() throws IOException {
     Files.writeString(
         dir.resolve("application.yaml"),
         """
@@ -55,35 +56,32 @@ class LocksDatabaseModuleTest {
           instances:
             main: { url: %s, username: %s, password: %s }
             second: { url: %s, username: %s, password: %s }
-        locks:
-        %s
         """
             .formatted(
                 pg.jdbcUrl(), pg.username(), pg.password(),
-                pg.jdbcUrl("second"), pg.username(), pg.password(),
-                locks.indent(2)));
+                pg.jdbcUrl("second"), pg.username(), pg.password()));
   }
 
-  private App start() {
+  private App start(LocksModule locks) throws IOException {
+    yaml();
     return App.builder()
         .configDirectory(dir)
         .environment(Map.of())
         .module(new DatabaseModule())
-        .module(new LocksModule())
+        .module(locks)
         .module(new LocksDatabaseModule())
         .start();
   }
 
-  private StartupException failure() {
-    Throwable t = catchThrowable(() -> start().close());
+  private StartupException failure(LocksModule locks) {
+    Throwable t = catchThrowable(() -> start(locks).close());
     assertThat(t).isInstanceOf(StartupException.class);
     return (StartupException) t;
   }
 
   @Test
-  void theDriverWorksOnTheDefaultDatabaseAfterTheModuleMigration() throws IOException {
-    yaml("instances:\n  main: { driver: database }");
-    try (App app = start()) {
+  void theStoreWorksOnTheDefaultDatabaseAfterTheModuleMigration() throws IOException {
+    try (App app = start(LocksModule.builder().store("main", DatabaseLockStores.database()).build())) {
       LockStore store = app.get(Locks.class).defaultInstance();
       assertThat(store.tryAcquire(LockKey.service("k"), Duration.ofSeconds(5)))
           .isInstanceOf(AcquireResult.Acquired.class);
@@ -95,13 +93,13 @@ class LocksDatabaseModuleTest {
 
   @Test
   void theModuleListOrderDoesNotMatter() throws IOException {
-    yaml("instances:\n  main: { driver: database }");
+    yaml();
     try (App app =
         App.builder()
             .configDirectory(dir)
             .environment(Map.of())
             .module(new LocksDatabaseModule())
-            .module(new LocksModule())
+            .module(LocksModule.builder().store("main", DatabaseLockStores.database()).build())
             .module(new DatabaseModule())
             .start()) {
       assertThat(app.get(Locks.class).defaultInstance()).isNotNull();
@@ -109,9 +107,25 @@ class LocksDatabaseModuleTest {
   }
 
   @Test
-  void aNonDefaultDatabaseWithoutTheTableFailsStartUp() throws IOException {
-    yaml("instances:\n  odd: { driver: database, database: second }");
-    StartupException e = failure();
+  void withoutTheMigrationModuleTheDefaultDatabaseStoreFailsStartUpSayingWhy() throws IOException {
+    yaml();
+    Throwable t =
+        catchThrowable(
+            () ->
+                App.builder()
+                    .configDirectory(dir)
+                    .environment(Map.of())
+                    .module(new DatabaseModule())
+                    .module(LocksModule.builder().store("main", DatabaseLockStores.database()).build())
+                    .start()
+                    .close());
+    assertThat(t).isInstanceOf(StartupException.class);
+    assertThat(t.getMessage()).contains("fw_lock").contains("LocksDatabaseModule").contains("'main'");
+  }
+
+  @Test
+  void aNonDefaultDatabaseWithoutTheTableFailsStartUp() {
+    StartupException e = failure(LocksModule.builder().store("odd", DatabaseLockStores.database("second")).build());
     assertThat(e.getMessage())
         .contains("fw_lock")
         .contains("'second'")
@@ -124,28 +138,31 @@ class LocksDatabaseModuleTest {
         pg.jdbcUrl("second"),
         "CREATE SEQUENCE fw_lock_fence; CREATE TABLE fw_lock (lock_key text PRIMARY KEY, owner_token text, "
             + "fencing_token bigint NOT NULL, expires_at timestamptz NOT NULL)");
-    yaml("instances:\n  odd: { driver: database, database: second }");
-    try (App app = start()) {
+    try (App app = start(LocksModule.builder().store("odd", DatabaseLockStores.database("second")).build())) {
       assertThat(app.get(Locks.class).get("odd").tryAcquire(LockKey.service("k"), Duration.ofSeconds(5)))
           .isInstanceOf(AcquireResult.Acquired.class);
     }
   }
 
   @Test
-  void anUnknownDatabaseNameAndAnUnknownKeyAreReported() throws IOException {
-    yaml("instances:\n  a: { driver: database, database: nope }\n  b: { driver: database, connection: x }\ndefault: b");
-    StartupException e = failure();
-    assertThat(e.getMessage()).contains("nope").contains("locks.instances.a");
+  void anUnknownDatabaseNameIsReportedWithTheStore() {
+    StartupException e = failure(LocksModule.builder().store("a", DatabaseLockStores.database("nope")).build());
+    assertThat(e.getMessage()).contains("nope").contains("lock store 'a'");
   }
 
   @Test
-  void theDatabaseAndMemoryDriversCanRunSideBySide() throws IOException {
-    yaml("default: db\ninstances:\n  db: { driver: database }\n  mem: { driver: memory }");
-    try (App app = start()) {
-      Locks locks = app.get(Locks.class);
+  void theDatabaseAndMemoryStoresCanRunSideBySide() throws IOException {
+    LocksModule locks =
+        LocksModule.builder()
+            .store("db", DatabaseLockStores.database())
+            .store("mem", LockStores.memory())
+            .defaultStore("db")
+            .build();
+    try (App app = start(locks)) {
+      Locks all = app.get(Locks.class);
       LockKey key = LockKey.service("both");
-      assertThat(locks.get("db").tryAcquire(key, Duration.ofSeconds(5))).isInstanceOf(AcquireResult.Acquired.class);
-      assertThat(locks.get("mem").tryAcquire(key, Duration.ofSeconds(5))).isInstanceOf(AcquireResult.Acquired.class);
+      assertThat(all.get("db").tryAcquire(key, Duration.ofSeconds(5))).isInstanceOf(AcquireResult.Acquired.class);
+      assertThat(all.get("mem").tryAcquire(key, Duration.ofSeconds(5))).isInstanceOf(AcquireResult.Acquired.class);
     }
   }
 }

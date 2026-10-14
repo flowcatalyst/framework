@@ -23,6 +23,7 @@ import io.flowcatalyst.framework.locks.LockKey;
 import io.flowcatalyst.framework.locks.LockStore;
 import io.flowcatalyst.framework.locks.LockStoreUnavailableException;
 import io.flowcatalyst.framework.locks.Locks;
+import io.flowcatalyst.framework.locks.LockStores;
 import io.flowcatalyst.framework.locks.LocksModule;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -59,6 +60,8 @@ class ScheduledJobReceiverTest {
   FakePlatform platform;
   LogCapture logs;
   App app;
+  /** The lock stores each start uses; a test replaces it with none to see the start-up rule. */
+  LocksModule locks = LocksModule.builder().store("local", LockStores.memory()).build();
   final AtomicLong skew = new AtomicLong();
   final MonotonicClock monotonic = () -> System.nanoTime() + skew.get();
 
@@ -66,7 +69,6 @@ class ScheduledJobReceiverTest {
   void setUp() throws IOException {
     platform = FakePlatform.start();
     logs = LogCapture.start();
-    Files.writeString(dir.resolve("application.yaml"), "locks:\n  instances:\n    local: { driver: memory }\n");
   }
 
   @AfterEach
@@ -90,7 +92,7 @@ class ScheduledJobReceiverTest {
             Receiving.env(platform, all),
             () -> NOW,
             monotonic,
-            new LocksModule(),
+            locks,
             Receiving.handlers(registrar));
     return Receiving.client(app);
   }
@@ -801,32 +803,16 @@ class ScheduledJobReceiverTest {
 
   @Test
   void aLockStoreThatIsDownMeansTheJobDoesNotRun() throws Exception {
-    Files.writeString(dir.resolve("application.yaml"), "locks:\n  instances:\n    down: { driver: broken }\n");
     AtomicInteger runs = new AtomicInteger();
-    Module broken =
-        new Module() {
-          @Override
-          public String id() {
-            return "broken-locks";
-          }
-
-          @Override
-          public void register(AppBuilder builder) {
-            builder
-                .drivers()
-                .register(
-                    LockStore.class,
-                    "broken",
-                    (name, config, lookup, built) ->
-                        new LockStore(new DownDriver(), lookup.get(MonotonicClock.class)));
-          }
-        };
+    LocksModule broken =
+        LocksModule.builder()
+            .store("down", (name, lookup) -> new LockStore(new DownDriver(), lookup.get(MonotonicClock.class)))
+            .build();
     app =
         Receiving.start(
             dir,
             Receiving.env(platform, "FLOWCATALYST_RECEIVERS_COMPLETION_RETRY_DELAY", "10ms"),
             () -> NOW,
-            new LocksModule(),
             broken,
             Receiving.handlers(
                 r ->
@@ -865,7 +851,7 @@ class ScheduledJobReceiverTest {
 
   @Test
   void anAlwaysConcurrentJobNeedsNoLockInstanceAndRunsWithoutOne() throws Exception {
-    Files.delete(dir.resolve("application.yaml"));
+    locks = LocksModule.builder().build();
     AtomicInteger runs = new AtomicInteger();
     TestClient client =
         start(
@@ -946,7 +932,7 @@ class ScheduledJobReceiverTest {
 
   @Test
   void onlyExclusiveJobsNeedTheLockAtStartUp() throws IOException {
-    Files.delete(dir.resolve("application.yaml"));
+    locks = LocksModule.builder().build();
     Throwable t =
         catchThrowable(
             () ->
@@ -967,9 +953,9 @@ class ScheduledJobReceiverTest {
 
   @Test
   void aJobHandlerWithoutALockInstanceFailsStartUp() throws IOException {
-    Files.delete(dir.resolve("application.yaml"));
+    locks = LocksModule.builder().build();
     Throwable withoutInstances = catchThrowable(() -> start((ctx, f) -> JobResult.success()));
-    assertThat(withoutInstances).isInstanceOf(StartupException.class).hasMessageContaining("no lock instance");
+    assertThat(withoutInstances).isInstanceOf(StartupException.class).hasMessageContaining("no lock store is given");
     Throwable withoutModule =
         catchThrowable(
             () ->
@@ -979,7 +965,7 @@ class ScheduledJobReceiverTest {
                         () -> NOW,
                         Receiving.handlers(r -> r.onScheduledJob(CODE, (ctx, f) -> JobResult.success())))
                     .close());
-    assertThat(withoutModule).isInstanceOf(StartupException.class).hasMessageContaining("no lock instance");
+    assertThat(withoutModule).isInstanceOf(StartupException.class).hasMessageContaining("no lock store is given");
     app = null;
   }
 

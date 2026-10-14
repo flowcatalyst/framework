@@ -49,7 +49,7 @@ class LocksDemoTest {
       assertThat(report.get(2)).startsWith("local: completed with token ");
       assertThat(report.get(3)).isEqualTo("health: up [database:main, redis:default]");
       assertThat(app.moduleIds())
-          .containsExactly("core", "database", "redis", "locks", "locks-database", "locks-redis");
+          .containsExactly("core", "database", "redis", "locks", "locks-database");
     }
     assertThat(pg.query("SELECT module || ':' || version FROM fw_schema_history"))
         .isEqualTo("locks-database:1");

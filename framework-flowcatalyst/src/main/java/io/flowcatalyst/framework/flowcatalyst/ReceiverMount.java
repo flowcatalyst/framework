@@ -259,9 +259,10 @@ final class ReceiverMount {
               null,
               "scheduled-job handlers "
                   + receivers.exclusiveJobCodes().stream().sorted().toList()
-                  + " need the overlap lock, but no lock instance is configured: list the locks"
-                  + " module with a default instance (driver database or redis across replicas),"
-                  + " or register them with JobOptions.alwaysConcurrent()"));
+                  + " need the overlap lock, but no lock store is given: list"
+                  + " LocksModule.builder().store(...) with a default store (DatabaseLockStores or"
+                  + " RedisLockStores across replicas), or register them with"
+                  + " JobOptions.alwaysConcurrent()"));
     }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
