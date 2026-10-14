@@ -213,9 +213,9 @@ java -jar app.jar sync               # push to the platform
 - The command runs after services are built and **before any `boot`**. Building services includes
   the database module, which connects and **applies migrations** to the default database. So even
   a dry run needs database access and **changes the schema** (new migrations are applied, and a
-  checksum mismatch fails it). If the deploy step must not touch the schema, build the database
-  module with `DatabaseModule.builder().migrate(false)` for that run (or
-  `.migrate(config -> ...)` reading a setting of your own); the instance is still connected to, so
+  checksum mismatch fails it). If the deploy step must not touch the database, set
+  `database.instances.<name>.migrate: false` (or the environment variable
+  `DATABASE_INSTANCES_<NAME>_MIGRATE=false`) for that run; the instance is still connected to, so
   it must be reachable. No server starts and no `boot` hook runs.
 - Each category is synced by its own SDK call so one failure does not stop the others. Order:
   roles, event types, connections, dispatch pools, subscriptions, processes, scheduled jobs, docs.

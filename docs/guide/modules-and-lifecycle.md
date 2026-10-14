@@ -1,4 +1,4 @@
-<!-- types: Module, AppBuilder, App, Provider, Lookup, Instances, InstanceFactory, InstanceConfig, DatabaseModule, DatabasePool, RedisModule, RedisPool, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
+<!-- types: Module, AppBuilder, App, Provider, Lookup, Instances, InstanceFactory, InstanceConfig, DatabaseModule, RedisModule, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
 # Modules and the application lifecycle
 
 An application is a list of **modules** given to a builder, in code. Everything the framework
@@ -122,32 +122,18 @@ the SQL files (your module class is the natural choice). The database module col
 
 `DatabaseModule` provides `Databases` (the registry) and a `Database` per configured instance, each
 a HikariCP pool over the PostgreSQL JDBC driver, with a `database:<name>` health check.
-The connections are configuration ([Config](config.md#named-instances)); the pools and migrations
-are code. `new DatabaseModule()` is the defaults (`DatabasePool.defaults()`: 10 connections, 1
-idle, a 5 s connect timeout; migrations on). From `DatabaseModuleTest`:
-
-```java
-DatabaseModule module =
-    DatabaseModule.builder()
-        .pool(DatabasePool.defaults().withMaxSize(7))
-        .pool("second", DatabasePool.defaults().withMaxSize(2).withMinIdle(0))
-        .build();
-```
-
-`DatabasePool` checks its ranges when built (`maxSize` 1 to 1000, `minIdle` 0 to `maxSize`,
-`connectTimeout` 250 ms to 5 min; `IllegalArgumentException`). A pool named for an instance that
-is not configured fails start-up. `.migrate(false)` stops migrations from running at start-up (a
-separate job applies them). Each option also takes a function of `Config` (`pool(config -> ...)`,
-`migrate(config -> ...)`) to read a setting of your own ([Config](config.md#making-a-code-defined-thing-differ-per-deployment)).
-`RedisModule` works the same way with `RedisPool` (`timeout` 2 s, more than 0 and at most 5 min;
-`maxSize` 16, 1 to 1000). `Database` has `dataSource()` and `name()`.
+Each instance, pool and `migrate` included, is configuration ([Config](config.md#named-instances));
+the pool keys are checked at start-up (`pool.max` 1 to 1000, `pool.min-idle` 0 to `pool.max`,
+`pool.connect-timeout` 250 ms to 5 min). `RedisModule` does the same for `redis.instances`
+(`timeout` more than 0 and at most 5 min, `pool.max` 1 to 1000). `Database` has `dataSource()` and
+`name()`.
 
 Migrations are plain SQL files, forward only, named `V<version>__<description>.sql` with a
 positive integer version (for example `V0001__create_orders.sql`). Each module contributes at most
 one set (its module id plus a classpath location, found through the class loader of the class the
 module passes to `MigrationSet.contribute`); your application's module contributes its own the
 same way. Sets are applied to the **default** database instance, in module registration order,
-and by version within a set, unless the module was built with `.migrate(false)`. Each file
+and by version within a set, only when that instance's `migrate` is true (the default). Each file
 runs in its own transaction together with its row in `fw_schema_history`, under a PostgreSQL
 advisory lock so instances starting together apply each file once. A changed checksum of an
 applied file, a missing applied file, or a skipped lower version fails start-up.
@@ -157,13 +143,14 @@ migrations depend on its tables; registration order is migration order.
 
 ## Drivers and named instances
 
-**Driver choice is code.** A capability with more than one implementation is wired with a factory
-that names the driver, in the module's builder: `LocksModule.builder().store("main",
-DatabaseLockStores.database())` ([Locks](locks.md)). No configuration key chooses a driver.
+**Things an application can have many of are code.** Lock stores, secret stores, HTTP clients and
+rate limiters are named in the module's builder with a factory that names the driver:
+`LocksModule.builder().store("main", DatabaseLockStores.database())` ([Locks](locks.md)). No
+configuration key chooses a driver ([config-and-code contract](../contracts/config-and-code.md)).
 
 **Connections are named instances in configuration.** A capability whose instances are
-deployment facts (database and Redis connections) builds every instance under
-`<section>.instances` with one `InstanceFactory`. From `DatabaseModule`:
+connections (database and Redis) builds every instance under `<section>.instances` with one
+`InstanceFactory`. From `DatabaseModule`:
 
 ```java
 Instances<Database> instances =
@@ -171,12 +158,10 @@ Instances<Database> instances =
         Database.class,
         "database",
         lookup,
-        (name, section, l, built) ->
-            createInstance(name, section, own.getOrDefault(name, common), migrates));
+        (name, section, l, built) -> createInstance(name, section));
 ```
 
-An `InstanceFactory<T>` receives the instance name, its `InstanceConfig` section (connection and
-secret keys only), a `Lookup`, and the instances already built. It reads its keys through the typed
+An `InstanceFactory<T>` receives the instance name, its `InstanceConfig` section, a `Lookup`, and the instances already built. It reads its keys through the typed
 getters (`string`, `integer`, `bool`, `duration`, `secret`, `findString`, `section`...). After it
 returns, any key in the section that it did not read fails start-up as unknown, so a typo cannot
 pass silently. `Instances.build` reads `<section>.default`, builds each instance, and reports

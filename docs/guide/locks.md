@@ -10,18 +10,16 @@ seen. The lock alone cannot make that guarantee; the token is what lets the reso
 ## Setting up
 
 Lock stores are named **in code**, each with the driver its factory chooses; there is no `locks`
-configuration (behaviour is code, [Config](config.md#what-configuration-holds)). All three drivers,
-as in `examples/locks-demo`:
+configuration (an application can have many lock stores, so they are code,
+[Config](config.md#what-configuration-holds)). The database and Redis instances they use are
+configuration. All three drivers, as in `examples/locks-demo`:
 
 ```java
 App.builder()
-    // behaviour is code: a short connect timeout, so a missing database fails start-up fast
-    .module(
-        DatabaseModule.builder()
-            .pool(DatabasePool.defaults().withConnectTimeout(Duration.ofSeconds(2)))
-            .build())
+    // the database and Redis instances, pools included, are configuration
+    .module(new DatabaseModule())
     .module(new RedisModule())
-    // one lock store per driver; the driver is chosen here, in code
+    // lock stores can be many, so they are code: one per driver, the driver chosen here
     .module(
         LocksModule.builder()
             .store("main", DatabaseLockStores.database())

@@ -10,8 +10,8 @@ import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.StartupException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.net.ServerSocket;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -45,26 +45,18 @@ class RedisModuleTest {
   }
 
   private App start(Map<String, String> env) {
-    return start(env, new RedisModule());
-  }
-
-  private App start(Map<String, String> env, RedisModule module) {
-    return App.builder().configDirectory(dir).environment(env).module(module).start();
+    return App.builder().configDirectory(dir).environment(env).module(new RedisModule()).start();
   }
 
   private StartupException failure(Map<String, String> env) {
-    return failure(env, new RedisModule());
-  }
-
-  private StartupException failure(Map<String, String> env, RedisModule module) {
-    Throwable t = catchThrowable(() -> start(env, module).close());
+    Throwable t = catchThrowable(() -> start(env).close());
     assertThat(t).isInstanceOf(StartupException.class);
     return (StartupException) t;
   }
 
   @Test
   void startsPingsAndExposesAWorkingClient() throws IOException {
-    yaml("redis:\n  default: default\n  instances:\n    default: { url: \"" + plain.url() + "\" }\n");
+    yaml("redis:\n  default: default\n  instances:\n    default: { url: \"" + plain.url() + "\", timeout: 2s }\n");
     try (App app = start(Map.of())) {
       RedisConnection c = app.get(RedisConnections.class).defaultInstance();
       assertThat(c.name()).isEqualTo("default");
@@ -133,7 +125,7 @@ class RedisModuleTest {
 
   @Test
   void anUnreachableServerFailsStartUpNamingTheInstance() throws IOException {
-    yaml("redis:\n  instances:\n    gone: { url: \"redis://127.0.0.1:1/0\" }\n");
+    yaml("redis:\n  instances:\n    gone: { url: \"redis://127.0.0.1:1/0\", timeout: 500ms }\n");
     assertThat(failure(Map.of()).getMessage()).contains("cannot reach redis instance 'gone'");
   }
 
@@ -161,7 +153,7 @@ class RedisModuleTest {
 
   @Test
   void unknownKeysAndMissingUrlAreReported() throws IOException {
-    yaml("redis:\n  instances:\n    a: { usr: x }\n    b: { url: \"" + plain.url() + "\", tmeout: 1s }\n  default: b\n");
+    yaml("redis:\n  instances:\n    a: { timeout: 1s }\n    b: { url: \"" + plain.url() + "\", tmeout: 1s }\n  default: b\n");
     StartupException e = failure(Map.of());
     assertThat(e.getMessage()).contains("redis.instances.a.url").contains("redis.instances.b.tmeout");
   }
@@ -185,46 +177,40 @@ class RedisModuleTest {
     assertThat(catchThrowable(c::ping)).isNotNull();
   }
 
-  // ---- behaviour in code (config-and-code contract, section 3.3) ----------------------------
+  // ---- an instance is a connection: configuration (config-and-code contract, section 3.3) ------
 
-  @Test
-  void redisPoolDefaultsAndRanges() {
-    RedisPool d = RedisPool.defaults();
-    assertThat(d).isEqualTo(new RedisPool(Duration.ofSeconds(2), 16));
-    assertThat(d.withTimeout(Duration.ofMinutes(5)).timeout()).isEqualTo(Duration.ofMinutes(5));
-    assertThat(d.withMaxSize(1).maxSize()).isEqualTo(1);
-    assertThat(d.withMaxSize(1000).maxSize()).isEqualTo(1000);
-    assertThatIllegalArgumentException().isThrownBy(() -> d.withTimeout(Duration.ZERO)).withMessageContaining("timeout");
-    assertThatIllegalArgumentException()
-        .isThrownBy(() -> d.withTimeout(Duration.ofMinutes(5).plusNanos(1)))
-        .withMessageContaining("timeout");
-    assertThatIllegalArgumentException().isThrownBy(() -> d.withMaxSize(0)).withMessageContaining("maxSize");
-    assertThatIllegalArgumentException().isThrownBy(() -> d.withMaxSize(1001)).withMessageContaining("maxSize");
+  private static Duration timeToFail(Runnable start) {
+    long t0 = System.nanoTime();
+    start.run();
+    return Duration.ofNanos(System.nanoTime() - t0);
   }
 
   @Test
-  void theTimeoutFromCodeBoundsAServerThatNeverAnswers() throws IOException {
+  void theTimeoutBoundsAServerThatNeverAnswersAndDefaultsToTwoSeconds() throws IOException {
     // A socket that accepts connections (in the backlog) and never answers: PING waits the timeout.
     try (ServerSocket silent = new ServerSocket(0)) {
-      yaml("redis:\n  instances:\n    mute: { url: \"redis://127.0.0.1:" + silent.getLocalPort() + "/0\" }\n");
-      long t0 = System.nanoTime();
-      StartupException e =
-          failure(Map.of(), RedisModule.builder().pool(RedisPool.defaults().withTimeout(Duration.ofMillis(300))).build());
-      assertThat(e.getMessage()).contains("cannot reach redis instance 'mute'");
-      // the default would wait 2s
-      assertThat(Duration.ofNanos(System.nanoTime() - t0)).isLessThan(Duration.ofMillis(1500));
+      String mute = "redis:\n  instances:\n    mute: { url: \"redis://127.0.0.1:" + silent.getLocalPort() + "/0\" }\n";
+      yaml(mute);
+      Duration configured =
+          timeToFail(() -> assertThat(failure(Map.of("REDIS_INSTANCES_MUTE_TIMEOUT", "300ms")).getMessage())
+              .contains("cannot reach redis instance 'mute'"));
+      assertThat(configured).isLessThan(Duration.ofMillis(1500));
+      Duration oneSecond = timeToFail(() -> failure(Map.of("REDIS_INSTANCES_MUTE_TIMEOUT", "1s")));
+      Duration byDefault = timeToFail(() -> failure(Map.of()));
+      // the default (2s) waits clearly longer than an explicit 1s
+      assertThat(byDefault).isGreaterThan(oneSecond.plusMillis(500)).isLessThan(Duration.ofSeconds(15));
     }
   }
 
   @Test
-  void thePoolSizeFromCodeBoundsConcurrentConnections() throws Exception {
-    yaml("redis:\n  instances:\n    a: { url: \"" + plain.url() + "\" }\n    b: { url: \"" + plain.url() + "\" }\n  default: a\n");
-    RedisModule module =
-        RedisModule.builder()
-            .pool(RedisPool.defaults().withMaxSize(1).withTimeout(Duration.ofMillis(300)))
-            .pool("b", RedisPool.defaults().withMaxSize(2))
-            .build();
-    try (App app = start(Map.of(), module)) {
+  void poolMaxBoundsConcurrentConnectionsPerInstance() throws Exception {
+    yaml(
+        "redis:\n  instances:\n    a: { url: \""
+            + plain.url()
+            + "\", timeout: 300ms, pool: { max: 1 } }\n    b: { url: \""
+            + plain.url()
+            + "\", pool: { max: 2 } }\n  default: a\n");
+    try (App app = start(Map.of())) {
       for (String name : new String[] {"a", "b"}) {
         RedisConnection c = app.get(RedisConnections.class).get(name);
         CompletableFuture<Object> holder =
@@ -242,26 +228,34 @@ class RedisModuleTest {
   }
 
   @Test
-  void aPoolForAnInstanceThatIsNotConfiguredFailsStartUp() throws IOException {
+  void theRangesAreCheckedAtStartUp() throws IOException {
     yaml("redis:\n  instances:\n    a: { url: \"" + plain.url() + "\" }\n");
-    StartupException e = failure(Map.of(), RedisModule.builder().pool("cache", RedisPool.defaults()).build());
+    start(Map.of("REDIS_INSTANCES_A_TIMEOUT", "5m", "REDIS_INSTANCES_A_POOL_MAX", "1")).close();
+    start(Map.of("REDIS_INSTANCES_A_TIMEOUT", "1ms", "REDIS_INSTANCES_A_POOL_MAX", "1000")).close();
+    assertOutOfRange("REDIS_INSTANCES_A_TIMEOUT", "0s", "redis.instances.a.timeout", "more than 0 and at most 5m");
+    assertOutOfRange("REDIS_INSTANCES_A_TIMEOUT", "300001ms", "redis.instances.a.timeout", "more than 0 and at most 5m");
+    assertOutOfRange("REDIS_INSTANCES_A_POOL_MAX", "0", "redis.instances.a.pool.max", "1 to 1000");
+    assertOutOfRange("REDIS_INSTANCES_A_POOL_MAX", "1001", "redis.instances.a.pool.max", "1 to 1000");
+  }
+
+  private void assertOutOfRange(String variable, String value, String key, String message) {
+    StartupException e = failure(Map.of(variable, value));
     assertThat(e.problems()).singleElement().satisfies(p -> {
-      assertThat(p.key()).isEqualTo("redis.instances.cache");
-      assertThat(p.message()).contains("not configured");
+      assertThat(p.module()).isEqualTo("redis");
+      assertThat(p.key()).isEqualTo(key);
+      assertThat(p.source()).isEqualTo("environment variable " + variable);
+      assertThat(p.message()).contains(message);
     });
   }
 
   @Test
-  void theRemovedInstanceKeysFailStartUpNamingTheCode() throws IOException {
-    yaml("redis:\n  instances:\n    a: { url: \"" + plain.url() + "\", timeout: 2s, driver: redis, pool: { max: 4 } }\n");
-    StartupException e = failure(Map.of());
-    assertThat(e.problems())
-        .extracting(p -> p.key())
-        .containsExactlyInAnyOrder("redis.instances.a.timeout", "redis.instances.a.driver", "redis.instances.a.pool.max");
-    assertThat(e.getMessage()).contains("RedisModule.builder().pool(RedisPool)");
-    yaml("redis:\n  instances:\n    a: { url: \"" + plain.url() + "\" }\n");
-    assertThat(failure(Map.of("REDIS_INSTANCES_A_TIMEOUT", "1s")).problems())
+  void aDriverKeyFailsStartUp() throws IOException {
+    yaml("redis:\n  instances:\n    a: { url: \"" + plain.url() + "\", driver: redis }\n");
+    assertThat(failure(Map.of()).problems())
         .singleElement()
-        .satisfies(p -> assertThat(p.source()).isEqualTo("environment variable REDIS_INSTANCES_A_TIMEOUT"));
+        .satisfies(p -> {
+          assertThat(p.key()).isEqualTo("redis.instances.a.driver");
+          assertThat(p.message()).contains("one Redis driver");
+        });
   }
 }

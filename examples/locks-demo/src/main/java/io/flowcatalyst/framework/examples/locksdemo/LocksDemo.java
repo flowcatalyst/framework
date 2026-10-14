@@ -4,7 +4,6 @@ import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.database.DatabaseModule;
-import io.flowcatalyst.framework.database.DatabasePool;
 import io.flowcatalyst.framework.locks.LockKey;
 import io.flowcatalyst.framework.locks.LockStore;
 import io.flowcatalyst.framework.locks.LockStores;
@@ -35,13 +34,10 @@ public final class LocksDemo {
    */
   public static AppBuilder builder() {
     return App.builder()
-        // behaviour is code: a short connect timeout, so a missing database fails start-up fast
-        .module(
-            DatabaseModule.builder()
-                .pool(DatabasePool.defaults().withConnectTimeout(Duration.ofSeconds(2)))
-                .build())
+        // the database and Redis instances, pools included, are configuration
+        .module(new DatabaseModule())
         .module(new RedisModule())
-        // one lock store per driver; the driver is chosen here, in code
+        // lock stores can be many, so they are code: one per driver, the driver chosen here
         .module(
             LocksModule.builder()
                 .store("main", DatabaseLockStores.database())

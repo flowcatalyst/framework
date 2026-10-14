@@ -122,8 +122,8 @@ does not have to match its keys. The framework's own settings (`app`, `http`, `d
 ## Named instances
 
 Connections are configured as named instances under a section; the key path decides the
-environment variable. An instance section holds the connection and its secrets only; how the
-framework uses it (pool sizes, timeouts, migrations) is code.
+environment variable. An instance section holds the connection, its secrets and its settings
+(pool sizes, timeouts, whether migrations run).
 
 ```yaml
 database:
@@ -132,25 +132,27 @@ database:
     main:
       url: jdbc:postgresql://localhost:5432/app
       username: app
-      password: ""          # a secret: give it in secrets.local.yaml or DATABASE_INSTANCES_MAIN_PASSWORD
+      password: ""
+      pool: { max: 10, min-idle: 1, connect-timeout: 5s }
+      migrate: true
 
 redis:
   default: default
   instances:
-    default: { url: "redis://localhost:6379/0" }
+    default: { url: "redis://localhost:6379/0", timeout: 2s }
 ```
 
 (`examples/locks-demo/config/application.yaml`.) The instance must be named in a YAML file;
 `DATABASE_INSTANCES_MAIN_URL` or `DATABASE_INSTANCES_MAIN_PASSWORD` then override single values. An instance cannot be
 created from environment variables alone.
 
-Keys each framework instance reads (a key left unread fails start-up as unknown; a key that moved
-to code fails naming its replacement):
+Keys each framework instance reads (a key left unread fails start-up as unknown; `driver` fails
+as removed):
 
 | Section | Keys |
 |---|---|
-| `database.instances.<n>` | `url` (required), `username`, `password` (secret). The pool and migrations are code: `DatabaseModule.builder().pool(DatabasePool)`, `.pool(name, DatabasePool)`, `.migrate(boolean)` ([lifecycle](modules-and-lifecycle.md#the-database-module-and-migrations)) |
-| `redis.instances.<n>` | `url` (required, `redis://` or `rediss://`, may carry user, password and database number), `password` (secret, wins over the URL's). The timeout and pool are code: `RedisModule.builder().pool(RedisPool)`, `.pool(name, RedisPool)` |
+| `database.instances.<n>` | `url` (required), `username`, `password` (secret), `pool.max` (10; 1 to 1000), `pool.min-idle` (1; 0 to `pool.max`), `pool.connect-timeout` (5s; 250 ms to 5 min), `migrate` (true; counts on the default instance) ([lifecycle](modules-and-lifecycle.md#the-database-module-and-migrations)) |
+| `redis.instances.<n>` | `url` (required, `redis://` or `rediss://`, may carry user, password and database number), `password` (secret, wins over the URL's), `timeout` (2s; more than 0, at most 5 min), `pool.max` (16; 1 to 1000) |
 | `http-clients.instances.<n>` | `base-url` and the credentials of the client's `ClientAuth`; the client is named in code ([HTTP client](http-client.md#configured-clients)) |
 
 `<section>.default` names the default instance; with exactly one instance it may be omitted.

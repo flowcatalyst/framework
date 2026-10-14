@@ -40,9 +40,6 @@ class MigrationRunnerTest {
     pg.close();
   }
 
-  /** The module each start uses; a test may replace it before starting. */
-  private DatabaseModule.Builder database = DatabaseModule.builder();
-
   @BeforeEach
   void setUp() throws IOException {
     pg.reset();
@@ -63,6 +60,7 @@ class MigrationRunnerTest {
               url: %s
               username: %s
               password: %s
+              pool: { max: 4 }
               %s
         """
             .formatted(defaultName, pg.jdbcUrl(), pg.username(), pg.password(), extra));
@@ -70,10 +68,7 @@ class MigrationRunnerTest {
 
   private AppBuilder builder(Module... modules) {
     AppBuilder b =
-        App.builder()
-            .configDirectory(configDir)
-            .environment(Map.of())
-            .module(database.pool(DatabasePool.defaults().withMaxSize(4)).build());
+        App.builder().configDirectory(configDir).environment(Map.of()).module(new DatabaseModule());
     for (Module m : modules) {
       b.module(m);
     }
@@ -208,7 +203,7 @@ class MigrationRunnerTest {
 
   @Test
   void migrationsDoNotRunWhenMigrateIsFalse() throws IOException {
-    database = DatabaseModule.builder().migrate(false);
+    yaml("main", "migrate: false");
     TestMigrations.write(modA, "V0001__a.sql", "CREATE TABLE a(id int);");
     startAndClose(TestMigrations.in("alpha", modA));
     assertThat(tableExists("a")).isFalse();

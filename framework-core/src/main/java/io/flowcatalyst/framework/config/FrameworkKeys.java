@@ -18,18 +18,8 @@ final class FrameworkKeys {
   private static List<RemovedKey> build() {
     List<RemovedKey> l = new ArrayList<>();
 
-    // database and redis
-    String pool = "DatabaseModule.builder().pool(DatabasePool)";
-    for (String s : List.of("max", "min-idle", "connect-timeout")) {
-      l.add(k("database.instances.*.pool." + s, "database", pool));
-    }
-    l.add(k("database.instances.*.pool", "database", pool));
-    l.add(k("database.instances.*.migrate", "database", "DatabaseModule.builder().migrate(boolean)"));
+    // database and redis: instances are connections and stay configuration; only the driver went
     l.add(k("database.instances.*.driver", "database", "nothing: PostgreSQL is the only database driver"));
-    String redisPool = "RedisModule.builder().pool(RedisPool)";
-    l.add(k("redis.instances.*.timeout", "redis", redisPool));
-    l.add(k("redis.instances.*.pool.max", "redis", redisPool));
-    l.add(k("redis.instances.*.pool", "redis", redisPool));
     l.add(k("redis.instances.*.driver", "redis", "nothing: one Redis driver"));
 
     // locks

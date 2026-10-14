@@ -42,7 +42,7 @@ public final class Database implements AutoCloseable {
   /**
    * Whether migrations may run on this instance (when it is the default instance).
    *
-   * @return the {@code migrate} option of {@code DatabaseModule}
+   * @return the {@code migrate} setting
    */
   public boolean migrates() {
     return migrate;

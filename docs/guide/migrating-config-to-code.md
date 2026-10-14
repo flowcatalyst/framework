@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, KeyRules, DatabaseModule, RedisModule, JettyHttpModule, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -42,36 +42,15 @@ Nothing to migrate: `app.shutdown.drain`, `app.health.*` and `app.metrics.*` are
 and stay configuration. (For a few hours on 2026-10-14 they were `AppBuilder.shutdownDrain`,
 `health(HealthPolicy)` and `metrics(MetricsOptions)`; those are removed again.)
 
-## Database (`database.instances.<n>`)
+## Database and Redis instances
 
-`url`, `username`, `password` and `database.default` stay.
-
-| Key | Default | Now |
-|---|---|---|
-| `pool.max` | `10` | `DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(int))` (1 to 1000) |
-| `pool.min-idle` | `1` | `DatabasePool.withMinIdle(int)` (0 to `maxSize`) |
-| `pool.connect-timeout` | `5s` | `DatabasePool.withConnectTimeout(Duration)` (250 ms to 5 min; values under 250 ms used to be raised silently, now they are refused) |
-| `migrate: false` | `true` | `DatabaseModule.builder().migrate(false)` |
-| `driver: postgresql` | | delete it |
-
-A pool for one instance: `.pool("reporting", DatabasePool...)`. Several instances with different
-`migrate` values are no longer expressible: migrations only ever ran on the default instance, so
-only its value mattered.
-
-```java
-// before: database.instances.main: { url: ..., pool: { max: 20 }, migrate: false }
-DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(20)).migrate(false).build()
-```
-
-## Redis (`redis.instances.<n>`)
-
-`url`, `password` and `redis.default` stay.
-
-| Key | Default | Now |
-|---|---|---|
-| `timeout` | `2s` | `RedisModule.builder().pool(RedisPool.defaults().withTimeout(Duration))` (more than 0, at most 5 min) |
-| `pool.max` | `16` | `RedisPool.withMaxSize(int)` (1 to 1000) |
-| `driver: redis` | | delete it |
+Nothing moves but `driver`: delete `driver: postgresql` and `driver: redis` from instance
+sections. `pool.*`, `migrate`, Redis `timeout` and `pool.max` are connection settings and stay
+configuration (for a few hours on 2026-10-14 they were `DatabasePool`, `RedisPool` and the
+modules' builders, which are removed again). The pool keys are now checked at start-up
+(`pool.max` 1 to 1000, `pool.min-idle` 0 to `pool.max`, `pool.connect-timeout` 250 ms to 5 min;
+Redis `timeout` more than 0 and at most 5 min, `pool.max` 1 to 1000); a connect timeout under
+250 ms used to be raised silently and is now refused.
 
 ## HTTP (`http.*`)
 

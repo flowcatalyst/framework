@@ -1,6 +1,5 @@
 package io.flowcatalyst.framework.redis;
 
-import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.InstanceConfig;
 import io.flowcatalyst.framework.config.Secret;
 import io.flowcatalyst.framework.core.App;
@@ -13,12 +12,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.regex.Pattern;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.Connection;
 import redis.clients.jedis.DefaultJedisClientConfig;
@@ -32,116 +26,26 @@ import redis.clients.jedis.RedisClient;
  * redis:
  *   default: default
  *   instances:
- *     default: { url: "redis://localhost:6379/0" }
+ *     default: { url: "redis://localhost:6379/0", timeout: 2s }
  * }</pre>
  *
- * <p>Keys per instance, connection only: {@code url} (required; {@code redis://} or {@code
- * rediss://}, may carry user and password) and {@code password} (a secret; wins over the URL's).
- * The timeout and pool size are code (config-and-code contract, section 3.3):
- *
- * <pre>{@code
- * RedisModule.builder().pool(RedisPool.defaults().withMaxSize(32)).pool("cache", RedisPool.defaults().withTimeout(Duration.ofMillis(500))).build()
- * }</pre>
- *
- * <p>Each instance's health check is {@code redis:<name>}.
+ * <p>An instance is a connection, so all of it is configuration (config-and-code contract, section
+ * 3.3). Keys per instance: {@code url} (required; {@code redis://} or {@code rediss://}, may carry
+ * user and password), {@code password} (a secret; wins over the URL's), {@code timeout} (connect
+ * and read, default 2s, more than 0 and at most 5 minutes) and {@code pool.max} (default 16, 1 to
+ * 1000), checked at start-up. Instances name no {@code driver}: there is one. Each instance's
+ * health check is {@code redis:<name>}.
  */
 public final class RedisModule implements Module {
 
   /** The module id. */
   public static final String ID = "redis";
 
-  private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9_-]*");
+  /** The longest {@code timeout} accepted. */
+  static final Duration MAX_TIMEOUT = Duration.ofMinutes(5);
 
-  private final Function<Config, RedisPool> pool;
-  private final Map<String, Function<Config, RedisPool>> pools;
-
-  /** The defaults: {@link RedisPool#defaults()} for every instance. */
-  public RedisModule() {
-    this(builder());
-  }
-
-  private RedisModule(Builder b) {
-    this.pool = b.pool;
-    this.pools = new LinkedHashMap<>(b.pools);
-  }
-
-  /**
-   * Starts a module definition with the defaults.
-   *
-   * @return the builder
-   */
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  /** Builds a {@link RedisModule}. */
-  public static final class Builder {
-    private Function<Config, RedisPool> pool = c -> RedisPool.defaults();
-    private final Map<String, Function<Config, RedisPool>> pools = new LinkedHashMap<>();
-
-    private Builder() {}
-
-    /**
-     * The pool of every instance without one of its own (default {@link RedisPool#defaults()}).
-     *
-     * @param value the pool
-     * @return this builder
-     */
-    public Builder pool(RedisPool value) {
-      this.pool = c -> value;
-      return this;
-    }
-
-    /**
-     * As {@link #pool(RedisPool)}, computed from configuration once it is loaded.
-     *
-     * @param value computes the pool
-     * @return this builder
-     */
-    public Builder pool(Function<Config, RedisPool> value) {
-      this.pool = value;
-      return this;
-    }
-
-    /**
-     * The pool of one instance. Naming an instance that is not configured fails start-up.
-     *
-     * @param instance the instance name under {@code redis.instances}
-     * @param value the pool
-     * @return this builder
-     * @throws IllegalArgumentException for an invalid or repeated name
-     */
-    public Builder pool(String instance, RedisPool value) {
-      return pool(instance, c -> value);
-    }
-
-    /**
-     * As {@link #pool(String, RedisPool)}, computed from configuration once it is loaded.
-     *
-     * @param instance the instance name
-     * @param value computes the pool
-     * @return this builder
-     * @throws IllegalArgumentException for an invalid or repeated name
-     */
-    public Builder pool(String instance, Function<Config, RedisPool> value) {
-      if (!NAME.matcher(instance).matches()) {
-        throw new IllegalArgumentException("invalid redis instance name '" + instance + "'");
-      }
-      if (pools.putIfAbsent(instance, value) != null) {
-        throw new IllegalArgumentException("a pool for redis instance '" + instance + "' is already given");
-      }
-      return this;
-    }
-
-    /**
-     * Builds the module.
-     *
-     * @return the module
-     */
-    public RedisModule build() {
-      return new RedisModule(this);
-    }
-  }
+  /** The largest {@code pool.max} accepted. */
+  static final int MAX_POOL = 1000;
 
   @Override
   public String id() {
@@ -152,37 +56,13 @@ public final class RedisModule implements Module {
   public void register(AppBuilder app) {
     app.provide(
         RedisConnections.class,
-        lookup -> {
-          Config config = lookup.get(Config.class);
-          RedisPool common = pool.apply(config);
-          Map<String, RedisPool> own = new LinkedHashMap<>();
-          for (Map.Entry<String, Function<Config, RedisPool>> e : pools.entrySet()) {
-            own.put(e.getKey(), e.getValue().apply(config));
-          }
-          Set<String> configured = config.section("redis").section("instances").keys();
-          List<Problem> problems = new ArrayList<>();
-          for (String name : own.keySet()) {
-            if (!configured.contains(name)) {
-              problems.add(
-                  Problem.of(
-                      ID,
-                      "redis.instances." + name,
-                      "RedisModule.builder().pool(\""
-                          + name
-                          + "\", ...) names an instance that is not configured; configured: "
-                          + (configured.isEmpty() ? "(none)" : String.join(", ", configured))));
-            }
-          }
-          if (!problems.isEmpty()) {
-            throw new StartupException(problems);
-          }
-          return new RedisConnections(
-              Instances.build(
-                  RedisConnection.class,
-                  "redis",
-                  lookup,
-                  (name, section, l, built) -> createInstance(name, section, own.getOrDefault(name, common))));
-        });
+        lookup ->
+            new RedisConnections(
+                Instances.build(
+                    RedisConnection.class,
+                    "redis",
+                    lookup,
+                    (name, section, l, built) -> createInstance(name, section))));
   }
 
   @Override
@@ -194,11 +74,24 @@ public final class RedisModule implements Module {
     }
   }
 
-  private static RedisConnection createInstance(String name, InstanceConfig config, RedisPool settings) {
+  private static RedisConnection createInstance(String name, InstanceConfig config) {
     String url = config.string("url");
-    Duration timeout = settings.timeout();
-    int poolMax = settings.maxSize();
+    Duration timeout = config.duration("timeout", Duration.ofSeconds(2));
+    InstanceConfig poolSection = config.section("pool");
+    int poolMax = poolSection.integer("max", 16);
     Secret passwordKey = config.findSecret("password").orElse(null);
+
+    // Checked before any connection is opened.
+    List<Problem> problems = new ArrayList<>();
+    if (!timeout.isPositive() || timeout.compareTo(MAX_TIMEOUT) > 0) {
+      problems.add(outOfRange(config, "timeout", "must be more than 0 and at most 5m, was " + timeout));
+    }
+    if (poolMax < 1 || poolMax > MAX_POOL) {
+      problems.add(outOfRange(poolSection, "max", "must be 1 to 1000, was " + poolMax));
+    }
+    if (!problems.isEmpty()) {
+      throw new StartupException(problems);
+    }
 
     URI uri;
     try {
@@ -277,5 +170,9 @@ public final class RedisModule implements Module {
           "cannot reach redis instance '" + name + "' at " + host + ":" + port, e);
     }
     return connection;
+  }
+
+  private static Problem outOfRange(InstanceConfig section, String key, String message) {
+    return new Problem(ID, section.path() + "." + key, section.sourceOf(key), message, null);
   }
 }

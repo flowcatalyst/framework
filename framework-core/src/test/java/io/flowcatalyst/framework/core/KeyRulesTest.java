@@ -44,11 +44,15 @@ class KeyRulesTest {
 
   @Test
   void noServiceSettingIsARemovedKey() {
-    // config-and-code contract, section 8: nothing under app or http is removed
+    // config-and-code contract, section 8: nothing under app or http is removed, and of a
+    // database or Redis instance section only driver
     for (RemovedKey removed : KeyRules.frameworkRemovedKeys()) {
       String p = removed.pattern();
       for (String component : new String[] {"app", "http"}) {
         assertThat(p).doesNotStartWith(component + ".").isNotEqualTo(component);
+      }
+      if (p.startsWith("database") || p.startsWith("redis")) {
+        assertThat(p).endsWith(".driver");
       }
     }
   }

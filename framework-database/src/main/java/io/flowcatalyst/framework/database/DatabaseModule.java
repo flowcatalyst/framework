@@ -2,7 +2,6 @@ package io.flowcatalyst.framework.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.InstanceConfig;
 import io.flowcatalyst.framework.config.Secret;
 import io.flowcatalyst.framework.core.App;
@@ -12,20 +11,13 @@ import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 /**
  * Provides {@link Databases}: the instances configured under {@code database}, then applies the
  * migration sets contributed by modules to the default instance.
- *
- * <p>Configuration holds each instance's connection only; the pool and whether migrations run are
- * code (config-and-code contract, section 3.2):
  *
  * <pre>{@code
  * database:
@@ -34,145 +26,30 @@ import java.util.regex.Pattern;
  *     main:
  *       url: jdbc:postgresql://localhost:5432/app
  *       username: app
- *       password: ""          # a secret: DATABASE_INSTANCES_MAIN_PASSWORD
+ *       password: ""
+ *       pool: { max: 10, min-idle: 1, connect-timeout: 5s }
+ *       migrate: true
  * }</pre>
  *
- * <pre>{@code
- * new DatabaseModule()                                     // the defaults
- * DatabaseModule.builder()
- *     .pool(DatabasePool.defaults().withMaxSize(20))       // every instance
- *     .pool("reporting", DatabasePool.defaults().withMaxSize(4))
- *     .migrate(false)                                      // migrations run by a separate job
- *     .build()
- * }</pre>
- *
- * <p>PostgreSQL is the only database. Each instance's health check is {@code database:<name>}.
+ * <p>An instance is a connection, so all of it is configuration (config-and-code contract, section
+ * 3.2). The pool keys are checked at start-up: {@code pool.max} 1 to 1000, {@code pool.min-idle} 0
+ * to {@code pool.max}, {@code pool.connect-timeout} 250 ms to 5 minutes. {@code migrate} counts on
+ * the default instance, where migrations run. PostgreSQL is the only database; an instance names no
+ * {@code driver}. Each instance's health check is {@code database:<name>}.
  */
 public final class DatabaseModule implements Module {
 
   /** The module id. */
   public static final String ID = "database";
 
-  private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9_-]*");
+  /** The largest {@code pool.max} accepted. */
+  static final int MAX_POOL = 1000;
 
-  private final Function<Config, DatabasePool> pool;
-  private final Map<String, Function<Config, DatabasePool>> pools;
-  private final Predicate<Config> migrate;
+  /** The shortest {@code pool.connect-timeout} accepted (HikariCP's own minimum). */
+  static final Duration MIN_CONNECT_TIMEOUT = Duration.ofMillis(250);
 
-  /** The defaults: {@link DatabasePool#defaults()} for every instance, migrations on. */
-  public DatabaseModule() {
-    this(builder());
-  }
-
-  private DatabaseModule(Builder b) {
-    this.pool = b.pool;
-    this.pools = new LinkedHashMap<>(b.pools);
-    this.migrate = b.migrate;
-  }
-
-  /**
-   * Starts a module definition with the defaults.
-   *
-   * @return the builder
-   */
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  /** Builds a {@link DatabaseModule}. */
-  public static final class Builder {
-    private Function<Config, DatabasePool> pool = c -> DatabasePool.defaults();
-    private final Map<String, Function<Config, DatabasePool>> pools = new LinkedHashMap<>();
-    private Predicate<Config> migrate = c -> true;
-
-    private Builder() {}
-
-    /**
-     * The pool of every instance without one of its own (default {@link DatabasePool#defaults()}).
-     *
-     * @param value the pool
-     * @return this builder
-     */
-    public Builder pool(DatabasePool value) {
-      this.pool = c -> value;
-      return this;
-    }
-
-    /**
-     * As {@link #pool(DatabasePool)}, computed from configuration once it is loaded (an
-     * application's own setting).
-     *
-     * @param value computes the pool
-     * @return this builder
-     */
-    public Builder pool(Function<Config, DatabasePool> value) {
-      this.pool = value;
-      return this;
-    }
-
-    /**
-     * The pool of one instance. Naming an instance that is not configured fails start-up.
-     *
-     * @param instance the instance name under {@code database.instances}
-     * @param value the pool
-     * @return this builder
-     * @throws IllegalArgumentException for an invalid or repeated name
-     */
-    public Builder pool(String instance, DatabasePool value) {
-      return pool(instance, c -> value);
-    }
-
-    /**
-     * As {@link #pool(String, DatabasePool)}, computed from configuration once it is loaded.
-     *
-     * @param instance the instance name
-     * @param value computes the pool
-     * @return this builder
-     * @throws IllegalArgumentException for an invalid or repeated name
-     */
-    public Builder pool(String instance, Function<Config, DatabasePool> value) {
-      if (!NAME.matcher(instance).matches()) {
-        throw new IllegalArgumentException("invalid database instance name '" + instance + "'");
-      }
-      if (pools.putIfAbsent(instance, value) != null) {
-        throw new IllegalArgumentException(
-            "a pool for database instance '" + instance + "' is already given");
-      }
-      return this;
-    }
-
-    /**
-     * Whether migrations run on the default instance at start-up (default true). False when a
-     * separate job applies them.
-     *
-     * @param value true to run them
-     * @return this builder
-     */
-    public Builder migrate(boolean value) {
-      this.migrate = c -> value;
-      return this;
-    }
-
-    /**
-     * As {@link #migrate(boolean)}, decided from configuration once it is loaded.
-     *
-     * @param value decides
-     * @return this builder
-     */
-    public Builder migrate(Predicate<Config> value) {
-      this.migrate = value;
-      return this;
-    }
-
-    /**
-     * Builds the module.
-     *
-     * @return the module
-     */
-    public DatabaseModule build() {
-      return new DatabaseModule(this);
-    }
-  }
+  /** The longest {@code pool.connect-timeout} accepted. */
+  static final Duration MAX_CONNECT_TIMEOUT = Duration.ofMinutes(5);
 
   @Override
   public String id() {
@@ -184,21 +61,12 @@ public final class DatabaseModule implements Module {
     app.provide(
         Databases.class,
         lookup -> {
-          Config config = lookup.get(Config.class);
-          boolean migrates = migrate.test(config);
-          DatabasePool common = pool.apply(config);
-          Map<String, DatabasePool> own = new LinkedHashMap<>();
-          for (Map.Entry<String, Function<Config, DatabasePool>> e : pools.entrySet()) {
-            own.put(e.getKey(), e.getValue().apply(config));
-          }
-          requireConfigured(own.keySet(), config);
           Instances<Database> instances =
               Instances.build(
                   Database.class,
                   "database",
                   lookup,
-                  (name, section, l, built) ->
-                      createInstance(name, section, own.getOrDefault(name, common), migrates));
+                  (name, section, l, built) -> createInstance(name, section));
           try {
             migrate(instances, lookup.contributions(MigrationSet.class));
           } catch (StartupException e) {
@@ -218,27 +86,6 @@ public final class DatabaseModule implements Module {
     }
   }
 
-  /** A pool given in code for an instance that is not configured is a typo: fail start-up. */
-  private static void requireConfigured(Iterable<String> named, Config config) {
-    var configured = config.section("database").section("instances").keys();
-    List<Problem> problems = new ArrayList<>();
-    for (String name : named) {
-      if (!configured.contains(name)) {
-        problems.add(
-            Problem.of(
-                ID,
-                "database.instances." + name,
-                "DatabaseModule.builder().pool(\""
-                    + name
-                    + "\", ...) names an instance that is not configured; configured: "
-                    + (configured.isEmpty() ? "(none)" : String.join(", ", configured))));
-      }
-    }
-    if (!problems.isEmpty()) {
-      throw new StartupException(problems);
-    }
-  }
-
   private static void migrate(Instances<Database> instances, List<MigrationSet> sets) {
     if (sets.isEmpty() || instances.names().isEmpty()) {
       return;
@@ -250,17 +97,42 @@ public final class DatabaseModule implements Module {
     Migrations.apply(target.name(), target.dataSource(), sets);
   }
 
-  private static Database createInstance(
-      String name, InstanceConfig config, DatabasePool pool, boolean migrate) {
+  private static Database createInstance(String name, InstanceConfig config) {
+    String url = config.string("url");
+    String username = config.string("username", "");
+    Secret password = config.findSecret("password").orElse(Secret.of(""));
+    InstanceConfig pool = config.section("pool");
+    int max = pool.integer("max", 10);
+    int minIdle = pool.integer("min-idle", 1);
+    Duration connectTimeout = pool.duration("connect-timeout", Duration.ofSeconds(5));
+    boolean migrate = config.bool("migrate", true);
+
+    // Checked before any connection is opened; every problem of the instance at once.
+    List<Problem> problems = new ArrayList<>();
+    boolean maxValid = max >= 1 && max <= MAX_POOL;
+    if (!maxValid) {
+      problems.add(outOfRange(pool, "max", "must be 1 to 1000, was " + max));
+    }
+    // against pool.max only when that is valid, so one wrong value is one problem
+    if (minIdle < 0 || (maxValid && minIdle > max)) {
+      problems.add(outOfRange(pool, "min-idle", "must be 0 to pool.max (" + max + "), was " + minIdle));
+    }
+    if (connectTimeout.compareTo(MIN_CONNECT_TIMEOUT) < 0
+        || connectTimeout.compareTo(MAX_CONNECT_TIMEOUT) > 0) {
+      problems.add(outOfRange(pool, "connect-timeout", "must be 250ms to 5m, was " + connectTimeout));
+    }
+    if (!problems.isEmpty()) {
+      throw new StartupException(problems);
+    }
+
     HikariConfig hikari = new HikariConfig();
     hikari.setPoolName("fw-db-" + name);
-    hikari.setJdbcUrl(config.string("url"));
-    hikari.setUsername(config.string("username", ""));
-    Secret password = config.findSecret("password").orElse(Secret.of(""));
+    hikari.setJdbcUrl(url);
+    hikari.setUsername(username);
     hikari.setPassword(password.reveal());
-    hikari.setMaximumPoolSize(pool.maxSize());
-    hikari.setMinimumIdle(pool.minIdle());
-    hikari.setConnectionTimeout(pool.connectTimeout().toMillis());
+    hikari.setMaximumPoolSize(max);
+    hikari.setMinimumIdle(minIdle);
+    hikari.setConnectionTimeout(connectTimeout.toMillis());
     // Fail in the check below, with the instance's name, rather than inside the pool constructor.
     hikari.setInitializationFailTimeout(-1);
 
@@ -274,5 +146,9 @@ public final class DatabaseModule implements Module {
           "cannot connect to database instance '" + name + "': " + e.getMessage(), e);
     }
     return db;
+  }
+
+  private static Problem outOfRange(InstanceConfig section, String key, String message) {
+    return new Problem(ID, section.path() + "." + key, section.sourceOf(key), message, null);
   }
 }
