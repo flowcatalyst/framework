@@ -34,6 +34,7 @@ import java.util.concurrent.CountDownLatch;
  *   <li>{@code /control/reset} deletes every order (sessions stay)
  *   <li>{@code /control/end-sessions} deletes every session, as an expiry would
  *   <li>{@code /control/provider-down?value=true|false} makes the platform answer 503
+ *   <li>{@code /control/authorize-error?value=access_denied} makes the platform refuse the next sign-ins (empty: normal)
  * </ul>
  */
 public final class OrdersE2e {
@@ -92,6 +93,12 @@ public final class OrdersE2e {
         "/control/end-sessions",
         e -> {
           pg.execute("DELETE FROM fw_session");
+          reply(e, 200, "ok");
+        });
+    control.createContext(
+        "/control/authorize-error",
+        e -> {
+          provider.authorizeError(query(e.getRequestURI()).getOrDefault("value", ""));
           reply(e, 200, "ok");
         });
     control.createContext(

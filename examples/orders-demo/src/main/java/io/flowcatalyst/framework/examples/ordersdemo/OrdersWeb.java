@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.examples.ordersdemo;
 
 import io.flowcatalyst.framework.auth.AuthModule;
+import io.flowcatalyst.framework.auth.LoginFailureHandler;
 import io.flowcatalyst.framework.auth.PermissionMapper;
 import io.flowcatalyst.framework.auth.database.AuthDatabaseModule;
 import io.flowcatalyst.framework.context.ApplicationCode;
@@ -47,6 +48,8 @@ public final class OrdersWeb {
                 .apply(AuthModule.builder())
                 .application(new ApplicationCode("orders-demo"))
                 .postLogoutRedirect("/signed-out")
+                // A failed sign-in lands on the SPA's page for it, not on the JSON envelope.
+                .loginFailure(LoginFailureHandler.redirectTo("/sign-in-failed"))
                 .permissions(
                     PermissionMapper.scopes()
                         .and(

@@ -121,7 +121,7 @@ test("form dialog: first field focused, client errors focus the field, int64 pos
 
   await page.getByTestId("line-sku").fill("bad sku");
   await page.getByTestId("fw-form-submit").click();
-  await expect(dialog.getByText("Invalid string: must match pattern")).toBeVisible();
+  await expect(dialog.getByText("Enter a value in the expected format.")).toBeVisible();
   await expect(page.getByTestId("line-sku")).toBeFocused();
   await expect(page.getByTestId("line-sku")).toHaveAttribute("aria-invalid", "true");
 

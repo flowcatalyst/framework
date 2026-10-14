@@ -15,6 +15,7 @@ export const router = createRouter({
       children: [{ path: ":id", component: () => import("./pages/OrderDrawer.vue"), meta: { title: "Orders", permission: READ } }],
     },
     { path: "/signed-out", component: () => import("./pages/SignedOutPage.vue"), meta: { title: "Signed out", public: true } },
+    { path: "/sign-in-failed", component: () => import("./pages/SignInFailedPage.vue"), meta: { title: "Sign-in failed", public: true } },
     { path: "/not-permitted", component: () => import("./pages/NotPermittedPage.vue"), meta: { title: "Not permitted" } },
     { path: "/unavailable", component: () => import("./pages/UnavailablePage.vue"), meta: { title: "Unavailable", public: true } },
     { path: "/:pathMatch(.*)*", component: () => import("./pages/NotFoundPage.vue"), meta: { title: "Not found" } },

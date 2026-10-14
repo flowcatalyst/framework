@@ -153,10 +153,10 @@ async function cancel(): Promise<void> {
           </thead>
           <tbody>
             <tr v-for="l in order.lines" :key="l.lineId" class="border-t border-default">
-              <td class="py-1 font-mono">{{ l.sku }}</td>
-              <td class="py-1 text-right tabular-nums">{{ l.quantity }}</td>
-              <td class="py-1 text-right tabular-nums">{{ money(l.unitPriceCents) }}</td>
-              <td class="py-1 text-right tabular-nums">{{ money(l.totalCents) }}</td>
+              <td class="py-1 pr-2 font-mono text-xs break-all">{{ l.sku }}</td>
+              <td class="py-1 pl-2 text-right tabular-nums">{{ l.quantity }}</td>
+              <td class="py-1 pl-2 text-right tabular-nums">{{ money(l.unitPriceCents) }}</td>
+              <td class="py-1 pl-2 text-right tabular-nums">{{ money(l.totalCents) }}</td>
             </tr>
           </tbody>
         </table>

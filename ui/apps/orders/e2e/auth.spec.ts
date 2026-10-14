@@ -79,3 +79,54 @@ test("a user with no orders role is told so instead of seeing an empty or broken
   // The sidebar offers nothing the user cannot open.
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveCount(0);
 });
+
+test("the session is read again when the window regains focus, so an ended session is noticed without a call", async ({ page }) => {
+  await openPage(page, "/orders", "Orders");
+  const reads: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/auth/session")) {
+      reads.push(request.url());
+    }
+  });
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect.poll(() => reads.length).toBe(1);
+  await control("/control/end-sessions");
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+  });
+  // The answer is anonymous: back through sign-in to the page the user was on.
+  await expect.poll(() => reads.length).toBeGreaterThan(1);
+  await expect(page.getByRole("heading", { level: 1, name: "Orders" })).toBeVisible();
+  await expect(page).toHaveURL(/\/orders$/);
+  expect((await fetchJson(page, "/auth/session")).body).toMatchObject({ authenticated: true });
+});
+
+test("when the application cannot be reached at all the user sees that, with a way to retry", async ({ page, csp }) => {
+  await page.route("**/auth/session", (route) => route.abort("connectionrefused"));
+  await page.goto("/orders");
+  await expect(page.getByRole("heading", { level: 1, name: "Orders is unavailable" })).toBeVisible();
+  await expect(page).toHaveURL(/\/unavailable$/);
+  await page.unroute("**/auth/session");
+  await page.getByTestId("retry").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Orders" })).toBeVisible();
+  // The aborted read is the page's own error to report; nothing else may be wrong.
+  expect(csp.pageErrors).toEqual([]);
+});
+
+test("a refused sign-in lands on the application's page for it, and trying again works once the platform agrees", async ({ page, csp }) => {
+  await control("/control/authorize-error?value=access_denied");
+  try {
+    await page.goto("/orders");
+    await expect(page.getByRole("heading", { level: 1, name: "Sign-in failed" })).toBeVisible();
+    await expect(page).toHaveURL(/\/sign-in-failed\?error=LOGIN_REFUSED$/);
+    await expect(page.getByTestId("failure-code")).toHaveText("LOGIN_REFUSED");
+    await expect(page.getByText("The sign-in was refused.")).toBeVisible();
+  } finally {
+    await control("/control/authorize-error?value=");
+  }
+  await page.getByTestId("retry-sign-in").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Orders" })).toBeVisible();
+  await csp.expectClean();
+});

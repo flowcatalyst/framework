@@ -29,6 +29,10 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(page.getByRole("heading", { level: 1, name: "Signed out" })).toBeVisible();
     expect(await axeViolations(page), "signed out").toEqual([]);
 
+    await page.goto("/sign-in-failed?error=LOGIN_REFUSED");
+    await expect(page.getByRole("heading", { level: 1, name: "Sign-in failed" })).toBeVisible();
+    expect(await axeViolations(page), "sign-in failed").toEqual([]);
+
     await signInAs();
     await page.context().clearCookies();
     await page.goto("/orders");

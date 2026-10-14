@@ -66,17 +66,26 @@ const selected = computed(() => {
   return typeof id === "string" ? id : undefined;
 });
 
+// Cell padding that gives a phone's 358 px to the content (UTable's p-4 is 32 px per column).
+const TIGHT = "px-1.5 sm:px-4";
 const columns: TableColumn<OrderSummaryView>[] = [
   {
     accessorKey: "id",
     header: "Order",
+    meta: { class: { td: TIGHT, th: TIGHT } },
     cell: ({ row }) =>
-      h(RouterLink, { to: { path: `/orders/${row.original.id}`, query: route.query }, class: "font-medium text-highlighted underline-offset-2 hover:underline" }, () => row.original.id),
+      h(RouterLink, { to: { path: `/orders/${row.original.id}`, query: route.query }, class: "text-xs font-medium text-highlighted underline-offset-2 hover:underline sm:text-sm" }, () => row.original.id),
   },
-  { accessorKey: "customer", header: "Customer" },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => h(FwStatusBadge, { status: row.original.status, colors: STATUS_COLORS }) },
-  { accessorKey: "lineCount", header: "Lines", meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
-  { accessorKey: "totalCents", header: "Total", cell: ({ row }) => money(row.original.totalCents), meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
+  { accessorKey: "customer", header: "Customer", meta: { class: { td: TIGHT, th: TIGHT } } },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => h(FwStatusBadge, { status: row.original.status, colors: STATUS_COLORS }), meta: { class: { td: TIGHT, th: TIGHT } } },
+  // Below the sm breakpoint a phone shows Order, Customer and Status; the numbers are in the drawer.
+  { accessorKey: "lineCount", header: "Lines", meta: { class: { td: "hidden text-right tabular-nums sm:table-cell", th: "hidden text-right sm:table-cell" } } },
+  {
+    accessorKey: "totalCents",
+    header: "Total",
+    cell: ({ row }) => money(row.original.totalCents),
+    meta: { class: { td: "hidden text-right tabular-nums sm:table-cell", th: "hidden text-right sm:table-cell" } },
+  },
 ];
 
 const statusItems = [

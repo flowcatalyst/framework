@@ -26,7 +26,7 @@ test("an empty list says so; New order creates an order and opens its drawer", a
     }
   });
   await dialog.getByRole("button", { name: "Create order" }).click();
-  await expect(dialog.getByText(/too small|required|at least/i).first()).toBeVisible();
+  await expect(dialog.getByText("This field is required.")).toBeVisible();
   expect(posts).toHaveLength(0);
 
   await page.getByTestId("new-customer").fill("Ada Lovelace");
@@ -60,7 +60,7 @@ test("a line is added with its int64 price as a number; the totals follow", asyn
   // The server's rules are the schema's: lower-case SKUs are refused in the browser.
   await page.getByTestId("line-sku").fill("punch cards");
   await dialog.getByRole("button", { name: "Add line" }).click();
-  await expect(dialog.getByText(/invalid|pattern|match/i).first()).toBeVisible();
+  await expect(dialog.getByText("Enter a value in the expected format.")).toBeVisible();
   expect(bodies).toHaveLength(0);
 
   await page.getByTestId("line-sku").fill("PUNCH-CARDS");

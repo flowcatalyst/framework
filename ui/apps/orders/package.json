@@ -11,7 +11,8 @@
     "typecheck": "tsc --build tsconfig.node.json && vue-tsc --build tsconfig.app.json",
     "generate": "openapi-ts",
     "drift": "openapi-ts && node ../../scripts/api-drift.ts src/api",
-    "e2e": "vite build && playwright test"
+    "e2e": "vite build && playwright test",
+    "screenshots": "vite build && SCREENSHOTS=1 playwright test e2e/screenshots.spec.ts"
   },
   "dependencies": {
     "@flowcatalyst/api-runtime": "link:../../packages/api-runtime",
