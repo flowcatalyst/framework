@@ -199,7 +199,6 @@ A deployment-specific directory or prefix is an application setting read by the 
 | `HttpClientOptions.defaults().withConnectTimeout`, `withRequestTimeout`, `withMaxResponseBytes` | 5 s, 30 s, 10 MiB; more than 0 and at most 1 h; 1 B to 1 GiB |
 | `HttpClientOptions.withRetry(RetryPolicy)` | `RetryPolicy.defaults().withMaxAttempts(...)`, ranges of the HTTP client contract |
 | `HttpClientOptions.withAuth(ClientAuth)` | `none()`, `bearer()`, `basic()`, `header(name)`, `clientCredentials().withScope(..).withAudience(..).withMethod(..)` |
-| `HttpClientModule.builder().eventLoops(int)`, `.maxConnectionsPerHost(int)` | 2 (1 to 64), 50 (1 to 1000); the engine every named client shares, given where the clients are named |
 
 Config, per client `<n>` named in code, in `http-clients.instances.<n>`: `base-url` (required) and
 the credentials its `ClientAuth` reads: `auth.token` (secret, `bearer`), `auth.username` and
@@ -209,10 +208,12 @@ strategy does not read, a section for a client the code does not name and a stra
 `http-clients` fail start-up. A client's section must be in a file; the environment overrides
 single values (`HTTP_CLIENTS_INSTANCES_BILLING_BASE_URL`). The module claims `http-client`.
 
-*Open for the owner:* `eventLoops` and `maxConnectionsPerHost` are one setting each of the engine
-all clients share, so the decision test (section 1) points at configuration
-(`http-client.event-loops`, `http-client.max-connections-per-host`, as before 2026-10-14). They
-stay code as built, with the rest of the HTTP client module, until ruled.
+The engine every named client shares is configuration (owner ruling, 2026-10-14, after the
+decision test of section 1): `http-client.event-loops` (default 2, 1 to 64, environment variable
+`HTTP_CLIENT_EVENT_LOOPS`) and `http-client.max-connections-per-host` (default 50, 1 to 1000,
+`HTTP_CLIENT_MAX_CONNECTIONS_PER_HOST`), declared by `HttpClientModule` as `EVENT_LOOPS` and
+`MAX_CONNECTIONS_PER_HOST`. A value out of range fails start-up naming the key and where it came
+from. They have no builder methods; the builder holds only the named clients.
 
 ### 3.10 Rate limiting, background loops, use cases
 
@@ -286,8 +287,8 @@ From a configuration written before 2026-10-14:
 2. For each HTTP client, keep `base-url` and its credentials in its section, delete the other keys
    (`driver`, timeouts, `max-response-bytes`, `retry.*`, `auth.type`, `auth.method`, `auth.scope`,
    `auth.audience`, `auth.name`) and `http-clients.default`, and name the client in code with its
-   policy (section 3.9). Move `http-client.event-loops` and `.max-connections-per-host` to the
-   builder.
+   policy (section 3.9). `http-client.event-loops` and `.max-connections-per-host` stay
+   configuration, unchanged.
 3. Delete `driver` from database and Redis instances.
 4. Everything else stays as it was.
 
@@ -309,7 +310,6 @@ Patterns; `*` is one segment (an instance or client name).
 | `database.instances.*.driver`, `redis.instances.*.driver` | nothing: one driver each |
 | `locks` (and `locks.default`, `locks.instances.*.driver`, `.database`, `.connection`, `.prefix`) | `LocksModule.builder()` with `LockStores`, `DatabaseLockStores`, `RedisLockStores` |
 | `secrets` (and `secrets.default`, `secrets.instances.*.driver`, `.directory`, `.prefix`, `.max-bytes`, `.cache-ttl`, `.cache-max`) | `SecretsModule.builder()` with `SecretStores`, `CachePolicy` |
-| `http-client.event-loops`, `http-client.max-connections-per-host` | `HttpClientModule.builder().eventLoops(..)`, `.maxConnectionsPerHost(..)` |
 | `http-clients.default`, `http-clients.instances.*.driver` | nothing: clients are named in code |
 | `http-clients.instances.*.connect-timeout`, `.request-timeout`, `.max-response-bytes` | `HttpClientOptions` |
 | `http-clients.instances.*.retry` (and `retry.max-attempts`, `retry.initial-backoff`, `retry.max-backoff`, `retry.max-retry-after`) | `HttpClientOptions.withRetry(RetryPolicy)` |
@@ -373,3 +373,8 @@ Kept: lock stores, secret stores and HTTP clients named in code with their polic
 limiters in code, the driver registry's removal, the removed-key check (with the shorter list of
 section 8) and claimed components (now with the restored keys declared, so a misspelt key under
 `app`, `http` or `flowcatalyst` fails).
+
+The HTTP client engine settings (`http-client.event-loops`, `http-client.max-connections-per-host`)
+were moved to the module's builder in the first reading and, by the owner's ruling the same day,
+are configuration again: one setting each of a single engine, not a thing with many instances.
+They are not removed keys (section 8). Pool range checks on database and Redis stay as they are.

@@ -217,10 +217,6 @@ class HttpClientModuleTest {
         .withMessageContaining("requestTimeout");
     assertThatIllegalArgumentException().isThrownBy(() -> ClientAuth.header("Bad Header")).withMessageContaining("header name");
     assertThatIllegalArgumentException().isThrownBy(() -> ClientAuth.clientCredentials().withScope(" "));
-    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().eventLoops(0));
-    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().eventLoops(65));
-    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().maxConnectionsPerHost(0));
-    assertThatIllegalArgumentException().isThrownBy(() -> HttpClientModule.builder().maxConnectionsPerHost(1001));
     assertThatIllegalArgumentException()
         .isThrownBy(() -> HttpClientModule.builder().client("a", d).client("a", d))
         .withMessageContaining("already");
@@ -355,13 +351,74 @@ class HttpClientModuleTest {
   }
 
   @Test
+  void theEngineSettingsAreConfigurationWithTheDefaultsOfBefore() throws IOException {
+    try (App app = start("", Map.of())) {
+      assertThat(app.config().get(HttpClientModule.EVENT_LOOPS)).isEqualTo(2);
+      assertThat(app.config().get(HttpClientModule.MAX_CONNECTIONS_PER_HOST)).isEqualTo(50);
+      assertThat(HttpClientModule.EVENT_LOOPS.key()).isEqualTo("http-client.event-loops");
+      assertThat(HttpClientModule.MAX_CONNECTIONS_PER_HOST.key()).isEqualTo("http-client.max-connections-per-host");
+      assertThat(HttpClientModule.engine(app.config())).isEqualTo(new HttpClientModule.Engine(2, 50));
+    }
+  }
+
+  @Test
+  void theEngineSettingsComeFromAFileAndTheEnvironmentOverridesIt() throws IOException {
+    String yaml = "http-client:\n  event-loops: 4\n  max-connections-per-host: 7\n";
+    try (App app = start(yaml, Map.of())) {
+      assertThat(HttpClientModule.engine(app.config())).isEqualTo(new HttpClientModule.Engine(4, 7));
+    }
+    try (App app = start(yaml, Map.of("HTTP_CLIENT_EVENT_LOOPS", "8", "HTTP_CLIENT_MAX_CONNECTIONS_PER_HOST", "9"))) {
+      assertThat(HttpClientModule.engine(app.config())).isEqualTo(new HttpClientModule.Engine(8, 9));
+    }
+  }
+
+  @Test
+  void theEngineSettingsAcceptTheirLimits() throws IOException {
+    try (App app = start("http-client: { event-loops: 1, max-connections-per-host: 1 }\n", Map.of())) {
+      assertThat(HttpClientModule.engine(app.config())).isEqualTo(new HttpClientModule.Engine(1, 1));
+    }
+    try (App app = start("http-client: { event-loops: 64, max-connections-per-host: 1000 }\n", Map.of())) {
+      assertThat(HttpClientModule.engine(app.config())).isEqualTo(new HttpClientModule.Engine(64, 1000));
+    }
+  }
+
+  @Test
+  void anEngineSettingOutOfRangeFailsStartUpNamingTheKeyAndWhereItCameFrom() {
+    for (String bad : new String[] {"0", "65", "-1"}) {
+      StartupException e = failure("", Map.of("HTTP_CLIENT_EVENT_LOOPS", bad), new HttpClientModule());
+      assertThat(e.problems()).singleElement().satisfies(p -> {
+        assertThat(p.key()).isEqualTo("http-client.event-loops");
+        assertThat(p.source()).isEqualTo("environment variable HTTP_CLIENT_EVENT_LOOPS");
+        assertThat(p.message()).contains("1 to 64").contains(bad);
+      });
+    }
+    for (String bad : new String[] {"0", "1001"}) {
+      StartupException e = failure("http-client:\n  max-connections-per-host: " + bad + "\n", Map.of(), new HttpClientModule());
+      assertThat(e.problems()).singleElement().satisfies(p -> {
+        assertThat(p.key()).isEqualTo("http-client.max-connections-per-host");
+        assertThat(p.message()).contains("1 to 1000").contains(bad);
+      });
+    }
+    // both wrong: both reported
+    assertThat(
+            failure("http-client: { event-loops: 0, max-connections-per-host: 0 }\n", Map.of(), new HttpClientModule())
+                .problems())
+        .hasSize(2);
+  }
+
+  @Test
+  void aMisspeltHttpClientKeyStillFailsAndTheSettingsAreNoLongerRemovedKeys() {
+    StartupException e = failure("http-client:\n  event-loop: 3\n", Map.of(), new HttpClientModule());
+    assertThat(e.problems()).extracting(io.flowcatalyst.framework.core.Problem::key).containsExactly("http-client.event-loop");
+    assertThat(e.getMessage()).doesNotContain("moved to code");
+  }
+
+  @Test
   void theRemovedClientKeysFailStartUpNamingTheCode() {
     HttpClientModule one = HttpClientModule.builder().client("x", HttpClientOptions.defaults()).build();
     StartupException e =
         failure(
             """
-            http-client:
-              event-loops: 4
             http-clients:
               default: x
               instances:
@@ -375,13 +432,11 @@ class HttpClientModuleTest {
                   auth: { type: bearer, method: post, scope: s, audience: a, name: X-K }
             """
                 .formatted(base()),
-            Map.of("HTTP_CLIENT_MAX_CONNECTIONS_PER_HOST", "9"),
+            Map.of(),
             one);
     assertThat(e.problems())
         .extracting(io.flowcatalyst.framework.core.Problem::key)
         .containsExactlyInAnyOrder(
-            "http-client.event-loops",
-            "http-client.max-connections-per-host",
             "http-clients.default",
             "http-clients.instances.x.driver",
             "http-clients.instances.x.connect-timeout",

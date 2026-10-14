@@ -4,6 +4,7 @@ import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.ConfigException;
 import io.flowcatalyst.framework.config.InstanceConfig;
 import io.flowcatalyst.framework.config.Secret;
+import io.flowcatalyst.framework.config.Setting;
 import io.flowcatalyst.framework.config.SettingType;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Lookup;
@@ -51,8 +52,8 @@ import java.util.regex.Pattern;
  *
  * <p>A key in a client's section that its strategy does not read, and a client section with no
  * client of that name in code, fail start-up. The module claims the {@code http-client}
- * component, whose engine settings moved to {@link Builder#eventLoops} and {@link
- * Builder#maxConnectionsPerHost}.
+ * component: its engine settings are {@link #EVENT_LOOPS} and {@link
+ * #MAX_CONNECTIONS_PER_HOST} (configuration, range-checked at start-up), shared by every client.
  */
 public final class HttpClientModule implements Module {
 
@@ -62,23 +63,34 @@ public final class HttpClientModule implements Module {
   private static final String SECTION = "http-clients";
   private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9-]*");
 
-  private final int eventLoops;
-  private final int maxConnectionsPerHost;
+  /**
+   * {@code http-client.event-loops}: the engine's Vert.x event loops, 1 to 64. A single setting of
+   * the engine every named client shares, so configuration (config-and-code contract, section 3.9).
+   */
+  public static final Setting<Integer> EVENT_LOOPS =
+      Setting.integer("http-client.event-loops")
+          .withDefault(2)
+          .describedAs("Vert.x event loops of the HTTP client engine, 1 to 64.");
+
+  /** {@code http-client.max-connections-per-host}: pooled connections per host, 1 to 1000. */
+  public static final Setting<Integer> MAX_CONNECTIONS_PER_HOST =
+      Setting.integer("http-client.max-connections-per-host")
+          .withDefault(50)
+          .describedAs("Pooled connections per host of the HTTP client engine, 1 to 1000.");
+
   private final Map<String, Function<Config, HttpClientOptions>> clients;
 
-  /** Two event loops, 50 connections per host, no client named in code. */
+  /** Default engine settings, no client named in code. */
   public HttpClientModule() {
     this(builder());
   }
 
   private HttpClientModule(Builder b) {
-    this.eventLoops = b.eventLoops;
-    this.maxConnectionsPerHost = b.maxConnectionsPerHost;
     this.clients = new LinkedHashMap<>(b.clients);
   }
 
   /**
-   * Starts a module definition with the defaults.
+   * Starts a module definition.
    *
    * @return the builder
    */
@@ -88,41 +100,9 @@ public final class HttpClientModule implements Module {
 
   /** Builds an {@link HttpClientModule}. */
   public static final class Builder {
-    private int eventLoops = 2;
-    private int maxConnectionsPerHost = 50;
     private final Map<String, Function<Config, HttpClientOptions>> clients = new LinkedHashMap<>();
 
     private Builder() {}
-
-    /**
-     * The engine's Vert.x event loops (default 2).
-     *
-     * @param value 1 to 64
-     * @return this builder
-     * @throws IllegalArgumentException when out of range
-     */
-    public Builder eventLoops(int value) {
-      if (value < 1 || value > 64) {
-        throw new IllegalArgumentException("eventLoops must be 1 to 64, was " + value);
-      }
-      this.eventLoops = value;
-      return this;
-    }
-
-    /**
-     * Pooled connections per host (default 50).
-     *
-     * @param value 1 to 1000
-     * @return this builder
-     * @throws IllegalArgumentException when out of range
-     */
-    public Builder maxConnectionsPerHost(int value) {
-      if (value < 1 || value > 1000) {
-        throw new IllegalArgumentException("maxConnectionsPerHost must be 1 to 1000, was " + value);
-      }
-      this.maxConnectionsPerHost = value;
-      return this;
-    }
 
     /**
      * Names a client. Its base URL and credentials are read from {@code
@@ -166,6 +146,34 @@ public final class HttpClientModule implements Module {
     }
   }
 
+  /** The engine's validated settings. */
+  record Engine(int eventLoops, int maxConnectionsPerHost) {}
+
+  /** Reads and range-checks the engine settings; every problem fails start-up. */
+  static Engine engine(Config config) {
+    int loops = config.get(EVENT_LOOPS);
+    int connections = config.get(MAX_CONNECTIONS_PER_HOST);
+    InstanceConfig section = config.section("http-client");
+    List<Problem> problems = new ArrayList<>();
+    if (loops < 1 || loops > 64) {
+      problems.add(
+          new Problem(ID, EVENT_LOOPS.key(), section.sourceOf("event-loops"), "must be 1 to 64, was " + loops, null));
+    }
+    if (connections < 1 || connections > 1000) {
+      problems.add(
+          new Problem(
+              ID,
+              MAX_CONNECTIONS_PER_HOST.key(),
+              section.sourceOf("max-connections-per-host"),
+              "must be 1 to 1000, was " + connections,
+              null));
+    }
+    if (!problems.isEmpty()) {
+      throw new StartupException(problems);
+    }
+    return new Engine(loops, connections);
+  }
+
   @Override
   public String id() {
     return ID;
@@ -174,13 +182,16 @@ public final class HttpClientModule implements Module {
   @Override
   public void register(AppBuilder app) {
     app.claimComponent("http-client");
+    app.declare(EVENT_LOOPS);
+    app.declare(MAX_CONNECTIONS_PER_HOST);
     app.provide(
         HttpClients.class,
         lookup -> {
           MonotonicClock clock = lookup.get(MonotonicClock.class);
+          Engine engine = engine(lookup.get(Config.class));
           return HttpClients.create(
               new HttpClients.Settings(
-                  eventLoops, maxConnectionsPerHost, clock::nanos, lookup.get(InstantSource.class)));
+                  engine.eventLoops(), engine.maxConnectionsPerHost(), clock::nanos, lookup.get(InstantSource.class)));
         });
     app.provide(ClientMetrics.class, lookup -> new ClientMetrics(lookup.get(Metrics.class)));
     app.provide(

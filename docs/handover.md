@@ -62,7 +62,7 @@ rewritten at hand-off and can lag the code in between.
   |---|---|
   | `locks.*` | `LocksModule.builder().store(name, LockStores.memory() / DatabaseLockStores.database() / RedisLockStores.redis(..))`; drop `LocksRedisModule` |
   | `secrets.*` | `SecretsModule.builder().store(name, SecretStores.env(..) / file(..))` with `CachePolicy` |
-  | `http-client.event-loops`, `.max-connections-per-host`; `http-clients.default`; per client `driver`, timeouts, `max-response-bytes`, `retry.*`, `auth.type`, `auth.method`, `auth.scope`, `auth.audience`, `auth.name` | `HttpClientModule.builder().eventLoops(..)`, `.client(name, HttpClientOptions..withAuth(ClientAuth..))`; the section keeps `base-url` and credentials |
+  | `http-clients.default`; per client `driver`, timeouts, `max-response-bytes`, `retry.*`, `auth.type`, `auth.method`, `auth.scope`, `auth.audience`, `auth.name` | `HttpClientModule.builder().client(name, HttpClientOptions..withAuth(ClientAuth..))`; the section keeps `base-url` and credentials |
   | `database.instances.<n>.driver`, `redis.instances.<n>.driver` | delete |
   | `rate-limits.*` (ignored since MA 10) | now fails start-up |
 
@@ -73,9 +73,10 @@ rewritten at hand-off and can lag the code in between.
   `SECRETS_INSTANCES_FILES_*` / `SECRETS_DEFAULT`; everything else stays (`flowcatalyst.receivers.enabled:
   false`, `http.port`, `FlowCatalystModule.TIMEOUT`, `new HttpClientModule()` with
   `ServiceClients.register`, the control plane's `database` section with `pool` and `migrate`).
-  Open question for the owner: `http-client.event-loops` and `.max-connections-per-host` are one
-  setting of the HTTP client engine, so the decision test says configuration; they stay code as
-  built (the orchestrator's ruling) until the owner says otherwise. Go G1 and Rust R1 still read
+  Owner ruling (2026-10-14, resolves the former open question): `http-client.event-loops` and
+  `.max-connections-per-host` are configuration (one engine setting each), not code; they are
+  declared by `HttpClientModule` (`EVENT_LOOPS`, `MAX_CONNECTIONS_PER_HOST`), range-checked, and
+  not removed keys, so nothing changes for the first application. Go G1 and Rust R1 still read
   driver names for locks, secrets and HTTP clients; the key-rules conformance vector is to be added
   with the Go port. Nothing published: the mono-repo needs a fresh `./mvnw install` of the framework.
 - Owner decisions waiting (each recorded in its contract under "Rulings pending owner"): publishing

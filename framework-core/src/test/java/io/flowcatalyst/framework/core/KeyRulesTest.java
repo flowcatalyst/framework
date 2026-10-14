@@ -72,13 +72,14 @@ class KeyRulesTest {
   @Test
   void aRemovedKeyInTheEnvironmentFailsStartUp() {
     StartupException e =
-        failure(builder(Map.of("HTTP_CLIENT_EVENT_LOOPS", "4", "HTTP_CLIENTS_DEFAULT", "billing")));
+        failure(builder(Map.of("LOCKS_DEFAULT", "main", "HTTP_CLIENTS_DEFAULT", "billing")));
     assertThat(e.problems())
         .extracting(Problem::key)
-        .containsExactlyInAnyOrder("http-client.event-loops", "http-clients.default");
+        .containsExactlyInAnyOrder("locks.default", "http-clients.default");
     assertThat(e.getMessage())
-        .contains("environment variable HTTP_CLIENT_EVENT_LOOPS")
-        .contains("HttpClientModule.builder().eventLoops(int)");
+        .contains("environment variable HTTP_CLIENTS_DEFAULT")
+        .contains("environment variable LOCKS_DEFAULT")
+        .contains("HttpClientModule.builder().client(name, options)");
   }
 
   @Test
@@ -114,8 +115,8 @@ class KeyRulesTest {
 
   @Test
   void aKeyThatAModuleDeclaresIsNeverARemovedKey() throws IOException {
-    Setting<Integer> own = Setting.integer("http-client.event-loops");
-    file("application.yaml", "http-client:\n  event-loops: 3\n");
+    Setting<Integer> own = Setting.integer("locks.default");
+    file("application.yaml", "locks:\n  default: 3\n");
     App app = builder().module(Mod.of("mine").register(b -> b.declare(own))).start();
     assertThat(app.config().get(own)).isEqualTo(3);
   }

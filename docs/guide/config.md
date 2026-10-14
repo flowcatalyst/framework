@@ -207,7 +207,7 @@ that resolved it.
   your files have there. Patterns of one segment (`locks`) are not looked up in the environment.
 
 The problem says where the thing is defined now, for example
-`key 'http-client.event-loops' (from environment variable HTTP_CLIENT_EVENT_LOOPS): moved to code: HttpClientModule.builder().eventLoops(int)`.
+`key 'http-clients.default' (from environment variable HTTP_CLIENTS_DEFAULT): moved to code: nothing: clients are named in code, HttpClientModule.builder().client(name, options)`.
 The list applies whatever modules you list, so a leftover section of a module you dropped still
 fails. A key that some module **declares** is never treated as removed.
 

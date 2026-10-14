@@ -73,10 +73,11 @@ required:
 Give secrets through the environment or `config/secrets.local.yaml`. A key in a client's section
 that its strategy does not read, a section with no client of that name in code, and a client named
 in code without a `base-url` all fail start-up. `.client(name, config -> ...)` computes the options
-from a setting of your own ([Config](config.md#making-a-code-defined-thing-differ-per-deployment)). The engine:
-`HttpClientModule.builder().eventLoops(int)` (default 2, 1 to 64) and
-`.maxConnectionsPerHost(int)` (default 50, 1 to 1000). `new HttpClientModule()` is the engine
-defaults with no named client.
+from a setting of your own ([Config](config.md#making-a-code-defined-thing-differ-per-deployment)). The engine every client
+shares is configuration: `http-client.event-loops` (default 2, 1 to 64, `HTTP_CLIENT_EVENT_LOOPS`)
+and `http-client.max-connections-per-host` (default 50, 1 to 1000,
+`HTTP_CLIENT_MAX_CONNECTIONS_PER_HOST`); a value out of range fails start-up naming the key.
+`new HttpClientModule()` is the engine defaults with no named client.
 
 A client built in code (for example authenticated with the platform's own token) is added with
 `register` (from `PlatformApiCallTest`):

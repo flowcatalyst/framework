@@ -42,7 +42,7 @@ application that had already moved to them goes back to the keys and to `new Jet
 | `LocksModule.MEMORY`, `LocksDatabaseModule.DRIVER`, `LocksRedisModule.DRIVER`, `DEFAULT_PREFIX` | `LockStores.memory()`, `DatabaseLockStores.database()`, `RedisLockStores.redis()`, `RedisLockStores.DEFAULT_PREFIX` |
 | `SecretsModule.ENV`, `FILE`, `PLATFORM` | `SecretStores.env(..)`, `file(..)`, `platform()` |
 | `DatabaseModule.DRIVER`, `RedisModule.DRIVER`, `HttpClientModule.DRIVER` | nothing (one driver each; clients are named in code) |
-| `HttpClientModule.EVENT_LOOPS`, `MAX_CONNECTIONS` | `HttpClientModule.builder().eventLoops(..)`, `.maxConnectionsPerHost(..)` |
+| `HttpClientModule.EVENT_LOOPS`, `MAX_CONNECTIONS` | `HttpClientModule.EVENT_LOOPS`, `MAX_CONNECTIONS_PER_HOST` (still configuration) |
 | `Drivers`, `DriverFactory`, `AppBuilder.drivers()`, `Instances.build(capability, section, lookup[, defaultDriver])` | choose a driver in code; for instances that are connections, `Instances.build(capability, section, lookup, InstanceFactory)` |
 
 ## Database and Redis instances
@@ -64,7 +64,7 @@ each client is now named in code; its section keeps `base-url` and the credentia
 | `retry.*` | `RetryPolicy.defaults()` | `HttpClientOptions.withRetry(RetryPolicy.defaults().withMaxAttempts(..).withBackoff(..).withMaxRetryAfter(..))` |
 | `auth.type: bearer`, `basic`, `header` + `auth.name`, `client-credentials` | `none` | `withAuth(ClientAuth.bearer())`, `basic()`, `header("X-Api-Key")`, `clientCredentials()` |
 | `auth.scope`, `auth.audience`, `auth.method` | | `ClientAuth.clientCredentials().withScope(..).withAudience(..).withMethod(..)` |
-| `http-client.event-loops`, `http-client.max-connections-per-host` | `2`, `50` | `HttpClientModule.builder().eventLoops(int)`, `.maxConnectionsPerHost(int)` |
+| `http-client.event-loops`, `http-client.max-connections-per-host` | `2`, `50` | unchanged: still configuration (one engine for all clients), now range-checked at start-up (1 to 64, 1 to 1000) |
 | `http-clients.default`, `driver` | | delete them |
 
 Kept under `auth`: `token`, `username`, `password`, `value`, `token-url`, `client-id`,

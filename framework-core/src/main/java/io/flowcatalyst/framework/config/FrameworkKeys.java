@@ -33,12 +33,6 @@ final class FrameworkKeys {
     l.add(k("locks", "locks", stores));
 
     // http-client
-    l.add(k("http-client.event-loops", "http-client", "HttpClientModule.builder().eventLoops(int)"));
-    l.add(
-        k(
-            "http-client.max-connections-per-host",
-            "http-client",
-            "HttpClientModule.builder().maxConnectionsPerHost(int)"));
     String named = "nothing: clients are named in code, HttpClientModule.builder().client(name, options)";
     l.add(k("http-clients.default", "http-client", named));
     l.add(k("http-clients.instances.*.driver", "http-client", named));
