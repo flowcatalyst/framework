@@ -809,7 +809,7 @@ Go implements the same two contracts ([`../contracts/static-assets-and-spa.md`](
   Vite, pnpm, TypeScript with the platform's strict settings plus `exactOptionalPropertyTypes` and
   `verbatimModuleSyntax`, vue-tsc, typescript-eslint type-aware, no `any` (decision 7).
 - **Packages:** `@flowcatalyst/ui` (components, partials and pages that extend Nuxt UI, the app shell,
-  composables ported from the platform SPA, the theme preset mapping `ui-kit/theme/tokens.css`),
+  composables ported from the platform SPA, `theme.css` on Nuxt UI variables, values checked against `ui-kit/theme/tokens.css`),
   `@flowcatalyst/api-runtime`, `@flowcatalyst/gallery`; an application's SPA in its Go module's `web/`, embedded.
 - **Typed spine:** operations (section 5) → OpenAPI 3.1 → hey-api types, SDK and Zod schemas →
   `UForm` (decision 19). The Go parse function stays the authority.

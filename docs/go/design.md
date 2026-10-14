@@ -340,8 +340,7 @@ principal once M4c lands) and the **receiver principal ruling** (capabilities se
 
 **Not shared:** the Datastar adapter (http contract section 10) and the `ui-kit/fixtures` goldens.
 Go applications use the Nuxt UI SPA, so those parts do not apply; this is a recorded difference
-(decision 27), as for TypeScript. The kit's specs and tokens remain the reference for behaviour and
-look ([`ui.md`](ui.md) sections 11 and 12).
+(decision 27), as for TypeScript. The kit's specs are the behaviour checklist and its tokens the theme's starting values ([`ui.md`](ui.md) sections 11 and 12).
 
 **How Go reads the shared files.** `//go:embed` cannot reach outside its module directory, so a
 statement the Go code sends (`conformance/sql/outbox/insert.sql`, `conformance/sql/locks/*.sql`,

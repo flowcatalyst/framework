@@ -67,12 +67,14 @@ platform's `frontend/node_modules`.
 
 ### 1.2 The UI kit and the platform's templ port
 
-`ui-kit/` has 60 component specs (purpose, markup, Props table, accessibility, behaviour), tokens
+`ui-kit/` has 60 component specs (purpose, markup, Props table, accessibility, behaviour; used as a
+behaviour checklist, section 10), tokens
 for light and dark, a gallery with 69 scripted interaction checks and 124+ golden fixtures. The
 platform's templ port under `/ui` passes those fixtures and reached parity for ten areas by
 2026-10-10 (`flowcatalyst-go/docs/ui/README.md`). For the Go framework:
 
-- the **specs' behaviour and accessibility sections** and the **tokens** stay the reference;
+- the **specs' behaviour and accessibility sections** are the checklist (section 10) and the **tokens**
+  are the starting values of the theme (section 11); the specs are not a visual or API contract;
 - the **golden HTML does not apply**: Nuxt UI renders Reka UI markup (section 12 says what replaces
   it as the conformance authority);
 - the templ code and `datastar-go` are not used by the framework's core. The platform's port
@@ -230,7 +232,7 @@ ui/                            the pnpm workspace root
       src/layouts/             FwAppShell (dashboard group, sidebar, navbar, user menu, client switcher)
       src/composables/         useListState, useCursorPagination, useDrawerRoute, useDirtyForm, useSession,
                                usePermissions, useConfirm, useLocalState
-      src/theme/               the preset: Vite plugin options (colors, defaultVariants, component slots) and kit.css
+      src/theme/               theme.css (Nuxt UI variables) and fcComponentTheme (variants), passed to the Vite plugin
       src/plugin.ts            install(app, { router, api, navigation }) for applications
     api-runtime/               @flowcatalyst/api-runtime: configures @hey-api/client-fetch (same origin, credentials, the
                                error envelope as a typed ServiceError, 401 -> sign-in, toasts), envelope -> UForm
@@ -292,7 +294,7 @@ export default defineConfig({
 - **Entry:** `main.ts` installs the router first, then `@nuxt/ui/vue-plugin`, then `@flowcatalyst/ui`'s
   plugin; `App.vue` wraps everything in `UApp` (required for toasts, tooltips and programmatic
   overlays); the root element in `index.html` carries `class="isolate"`.
-- **CSS:** one entry, `@import "tailwindcss"; @import "@nuxt/ui"; @import "@flowcatalyst/ui/theme/kit.css";`
+- **CSS:** one entry, `@import "tailwindcss"; @import "@nuxt/ui"; @import "@flowcatalyst/ui/theme.css";`
   (section 11).
 - **Icons:** Lucide, as the kit (`@iconify-json/lucide` installed, so icons are **bundled** and the
   SPA never calls the Iconify API, which the CSP would block). `clientBundle.scan` finds literal
@@ -565,110 +567,59 @@ application.
 section 2 has no wildcards. Amend both, as TypeScript decision 26 proposed: one trailing wildcard
 route for a static mount, the fallback rules above, the caching rules and the security headers.
 
-## 10. ui-kit components and their Nuxt UI equivalents
+## 10. ui-kit specs as a behaviour checklist, and what `@flowcatalyst/ui` adds
 
-"Covered" means a Nuxt UI component does the job with `@flowcatalyst/ui` theming only; "compose" means
-`@flowcatalyst/ui` combines Nuxt UI components into a partial; "build" means `@flowcatalyst/ui` writes it (on Reka UI
-where it is interactive).
+**As built (2026-10-14, owner rulings).** The Nuxt UI app is **not** a 1:1 port of the ui-kit. The
+`ui-kit/components` specs are a checklist of **behaviours** the platform needs, not a visual or API
+contract: Nuxt UI's own components, props and variants are used directly, and an `Fw*` part exists only
+where it adds something FlowCatalyst-specific. The audit of every part against Nuxt UI 4.11.3 is
+[`../ui/nuxt-native.md`](../ui/nuxt-native.md); the build record is [`../ui/u1.md`](../ui/u1.md) and
+[`../ui/u2.md`](../ui/u2.md).
 
-| ui-kit spec | Nuxt UI | Status |
-|---|---|---|
-| accordion | `UAccordion` | covered |
-| alert | `UAlert` | covered |
-| alert-dialog | none with `role="alertdialog"`; `UModal` is a dialog | **build** `FwAlertDialog` on Reka's `AlertDialog` |
-| app-shell | `UDashboardGroup`, `UDashboardSidebar` (collapse, resize, mobile), `UDashboardPanel`, `UDashboardNavbar`, `UNavigationMenu`, `UDropdownMenu` + `UUser` for the user menu, `UColorModeSelect` | compose `FwAppShell`; the **client switcher** is built (`USelectMenu` + the session's clients) |
-| autocomplete | `UInputMenu` (server search through its search term, local filtering off) | covered |
-| avatar | `UAvatar` | covered |
-| badge | `UBadge` | covered |
-| breadcrumb | `UBreadcrumb` | covered |
-| button | `UButton` (`solid`, `outline`, `soft`, `subtle`, `ghost`, `link`; colour aliases; `loading`) | covered |
-| card | `UCard` | covered |
-| checkbox | `UCheckbox`, `UCheckboxGroup` | covered |
-| code-block | none (Prose `pre` exists only with `prose: true` and brings no highlighter) | **build** `FwCodeBlock` (a highlighter for JSON Schema and code, copy button) |
-| code-chips | `UBadge` list | compose `FwCodeChips` |
-| confirm-dialog | `UModal` + `useOverlay` | compose `useConfirm()` returning a promise (the platform's `confirmDiscardChanges` shape) |
-| cursor-pager | none (`UPagination` is numbered) | **build** `FwCursorPager` with `useCursorPagination` |
-| data-table (composition) | `UTable` (TanStack: sorting, selection, column visibility, pinning, expansion, virtualisation) | compose `FwListPage`: `FwPageHeader`, `FwTableToolbar`, `UTable`, `UEmpty`, a pager, a drawer outlet; URL state by `useListState` |
-| date-range | `UInputDate` (range), or `UCalendar` range in a `UPopover` | covered; range mode checked at U0 |
-| detail-field | none | **build** `FwDetailField` (a `dl` row; trivial) |
-| dialog | `UModal` | covered |
-| dirty-form | `UForm` exposes its state; dirty tracking against the initial values checked at U0 | compose `useDirtyForm` (the platform's) with a route-leave guard |
-| drawer (record drawer) | `USlideover` (non-modal mode, side `right`) | compose `FwRecordDrawer` with `useDrawerRoute` (child route, Back closes, discard guard on leave and row switch) |
-| dropdown-menu | `UDropdownMenu` | covered |
-| empty-state | `UEmpty` | covered |
-| field | `UFormField` (label, description, hint, help, error) | covered |
-| filter-select | `USelect` or `USelectMenu` with a clear item | covered |
-| flash-banner | `UAlert` | covered |
-| flash-stack | `UToast` through `useToast` | covered; a **look difference**: toasts in a corner instead of the kit's banner stack; the request-failure fallback lives in `@flowcatalyst/api-runtime` |
-| form-dialog | `UModal` + `UForm` | compose `FwFormDialog` (busy and dirty state, discard question, server errors on fields) |
-| form-field | `UFormField` | covered |
-| form-section | none | **build** `FwFormSection` (title, description, content; trivial) |
-| hover-card | `UPopover` in hover mode | covered |
-| input | `UInput` | covered |
-| json-block | none | **build** `FwJsonBlock` (pretty-printed, copy) |
-| kbd | `UKbd` | covered |
-| label | part of `UFormField` | covered (no standalone use) |
-| legacy-fc-btn | `UButton` (`square` for icon buttons) | **not ported** (a legacy class set) |
-| local-time | none | **build** `FwLocalTime` (`<time datetime>`, `Intl.DateTimeFormat`, UTC in the title) |
-| multi-select | `USelectMenu` with `multiple` and search | covered |
-| page-header | `UDashboardNavbar` title; `UPageHeader` is a marketing header | **build** `FwPageHeader` (title, subtitle, actions; small) |
-| pagination | `UPagination` | covered |
-| paginator | `UPagination` + `USelect` for page size | compose `FwPaginator` |
-| pick-list | `UListbox` (two of them) | compose `FwPickList` (filter, move buttons, keyboard); the largest compose item |
-| progress | `UProgress` | covered |
-| radio-group | `URadioGroup` | covered |
-| row-actions | `UDropdownMenu` on an icon `UButton`, the primary action inline | compose `FwRowActions` |
-| search-input | `UInput` with a leading icon; debounce in `useListState` | covered |
-| select | `USelect`, `USelectMenu` | covered |
-| separator | `USeparator` | covered |
-| sheet | `USlideover` (modal) | covered |
-| sidebar | `UDashboardSidebar`, `USidebar` | covered |
-| skeleton | `USkeleton` | covered |
-| spinner | none; `UButton` `loading` and an animated `UIcon` | **build** `FwSpinner` (trivial) |
-| switch | `USwitch` | covered |
-| table | `UTable` | covered |
-| table-toolbar | none | **build** `FwTableToolbar` (search, a filter popover with an active-filter count, clear all; the platform's `FcTableToolbar` is the model) |
-| tabs | `UTabs` | covered; route-synced tabs composed |
-| tag | `UBadge` | compose `FwTag` (the kit's severities mapped to colour aliases) |
-| textarea | `UTextarea` | covered |
-| toggle | `UButton` with `active`, `UFieldGroup`; no toggle group | **build** `FwToggleGroup` on Reka's `ToggleGroup` |
-| tooltip | `UTooltip` | covered |
+**The checklist.** `ui/apps/gallery/src/behaviours.ts` lists **62 behaviours** (3 for every page: strict
+CSP, axe AA, one `<h1>`; the rest on a page), each with the part that provides it and the gallery page
+that shows it. A Playwright reporter enforces it: every row must have a marked element on its page, and a
+full run fails when a row is claimed by no passing test.
 
-Fixture-only parts of the kit (`user-menu`, `icon-button`, `table-row`, `sortable-header`,
-`table-toolbar-state`, ...) fall under the rows above.
+**Used directly (Nuxt UI, themed only):** `UPageHeader`, `UBadge`, `UEmpty`, `UProgress`, `UButton
+:loading`, `UTable` (sorting, selection, column visibility, global filter), `UForm`/`UFormField`,
+`USelect`/`USelectMenu`/`UInputMenu`, date inputs, menus, `UTooltip`, `UTabs`, `UModal`, `UPopover`,
+`USlideover`, `UToast`, and the dashboard shell parts.
 
-**Count:** of 60 specs, **37 covered**, **11 composed**, **11 built** (most are a few dozen
-lines; the real work is `FwTableToolbar`, `FwCursorPager`, `FwCodeBlock`, `FwPickList` and the
-drawer and form-dialog partials), **1 not ported**. Needs the platform SPA has that the kit lacks
-are mostly covered by Nuxt UI too: number input (`UInputNumber`), password with a strength meter
-(`UInput` + `UProgress`), file import (`UFileUpload`), tags (`UInputTags`), a command palette
-(`UCommandPalette`). The permission-denied notice is built (a page and a toast).
+**Deleted:** `FwPageHeader`, `FwTag`, `FwSpinner`, `FwEmptyState` and `FwConfirmDialog` (the last only
+adapted props; `useConfirm` now opens `FwAlertDialog` through `useOverlay`).
 
-## 11. Theming: kit tokens onto Nuxt UI tokens
+**Thin wrappers:** `FwAlertDialog` (a `UModal` with the alert-dialog settings: role, Cancel focus, mask)
+and `FwToggleGroup` (a `UFieldGroup` of `UButton`s with Reka's `ToggleGroup` behaviour).
 
-Nuxt UI works with colour **aliases** (`primary`, `secondary`, `success`, `info`, `warning`,
-`error`, `neutral`) that point at Tailwind palettes, and with semantic variables (`--ui-text`,
-`--ui-bg`, `--ui-border`, `--ui-radius`, ...) redefined under `:root` and `.dark`. The kit's
-`tokens.css` maps as follows (`@flowcatalyst/ui/theme/kit.css` holds the overrides):
+**Kept** (platform patterns or behaviour Nuxt UI lacks): `FwStatusBadge`, `FwListPage`,
+`FwRecordDrawer`, `FwFormDialog`, `FwAppShell`, `FwTableToolbar`, `FwCursorPager`, `FwPaginator`,
+`FwRowActions`, `FwPickList`, `FwDetailList`/`FwDetailField`, `FwFormSection`, `FwLocalTime`,
+`FwCodeBlock`, `FwJsonBlock`, `FwCodeChips`, `FwColorModeButton`, `FwAnnouncer`, and the composables.
 
-| ui-kit token | Nuxt UI | How |
-|---|---|---|
-| `--primary` emerald-600, hover emerald-700 | `primary: 'emerald'` | `:root { --ui-primary: var(--ui-color-primary-600) }` (Nuxt UI defaults to shade 500 in light, 400 in dark) |
-| `--destructive` red-600 | `error: 'red'` | `--ui-error` to shade 600 |
-| `--success` green-600, `--info` sky-600, `--warning` orange-600 | `success: 'green'`, `info: 'sky'`, `warning: 'orange'` | shade 600 in light |
-| `--foreground` slate-800, `--muted-foreground` slate-500, `--border` slate-200, `--background` slate-50 | `neutral: 'slate'` | `--ui-text` to neutral-800 (default 700); `--ui-bg` stays white for surfaces and the page background uses `--ui-bg-muted` |
-| `--card`, `--popover` white | `--ui-bg`, `--ui-bg-elevated` | defaults |
-| `--input` slate-400 (control borders), `--field-border` | `--ui-border-accented` | one override (controls are a shade darker than in Nuxt UI) |
-| `--ring` = primary | the focus ring uses `--ui-primary` | default |
-| navy palette and the `--sidebar-*` chrome | a `navy` palette in `@theme` | `FwAppShell` styles `UDashboardSidebar` through its `ui` slots (`bg-navy-900`, inverted text) |
-| `--radius-*` 2 px | `--ui-radius: 2px` | Nuxt UI scales other radii from it |
-| text scale (12.6 px controls) | `theme.defaultVariants.size: 'sm'` and a 12.6 px base like the platform | checked against the gallery screenshots at U1 |
-| `.dark` class on `<html>` | the same class | dark values from `tokens.css` mapped the same way |
-| fonts: Inter, SF Mono stack | `--font-sans`, `--font-mono` in `@theme` | self-hosted Inter |
+Needs the platform SPA has that the kit lacks are covered by Nuxt UI: number input (`UInputNumber`),
+password with a strength meter (`UInput` + `UProgress`), file import (`UFileUpload`), tags
+(`UInputTags`), a command palette (`UCommandPalette`). The permission-denied notice is a page and a toast.
 
-The kit's dark values are new (fc-web had none), so both themes are reviewed in the gallery at U1.
-`ui-kit/theme/tokens.css` stays the source of the values; `kit.css` in `@flowcatalyst/ui` copies them and a
-vitest test compares the two files' values so they cannot drift.
+## 11. Theming: Nuxt UI variables, with the kit's values as the start
+
+The theme is `@flowcatalyst/ui/theme.css` (was `theme/kit.css`). It sets **only Nuxt UI's variables**
+(`--ui-*`: the five colour aliases, text, backgrounds, borders, `--ui-radius` 2px), light and dark, plus
+self-hosted Inter and the `navy` palette the sidebar uses. Component looks are Nuxt UI variants in
+`fcComponentTheme`, passed by `nuxtUiOptions()` to the Vite plugin's `ui` option: `tabs` (bordered),
+`pageHeader` (compact), `alert` (description at full opacity).
+
+- **Values:** the kit's, checked by a unit test against `ui-kit/theme/tokens.css` (the file stays the
+  source of the values), except the contrast changes below.
+- **Contrast:** the failing pairs are one shade darker, hue kept (light: emerald-700 primary, green-700
+  success, sky-700 info, orange-700 warning, red-700 error; dark error red-400). Strict axe, WCAG 2.2 AA,
+  passes on every page in both themes. Light success and warning text on their own 10 % tint
+  (`soft`/`subtle`) stays just under AA (4.38, 4.48) and is not used; the theme test pins the ratios.
+  Tables of ratios: [`../ui/u1.md`](../ui/u1.md).
+- **Text scale:** Nuxt UI's defaults. The kit's 12.6 px scale is **not** applied (owner ruling).
+- **Licences:** `THIRD-PARTY-NOTICES` is generated.
+- **Toolchain:** `tsc` runs on TypeScript 7; `vue-tsc` and typescript-eslint stay on the TypeScript 6
+  API (section 3.3; `ui/README.md`).
 
 ## 12. Testing and conformance
 
@@ -679,19 +630,19 @@ The golden HTML fixtures do not apply (different markup). What replaces them:
 | unit | composables (`useListState` URL parsing, `useCursorPagination` back stack, `useDirtyForm`, the envelope mapper, permission checks) | vitest |
 | component | `Fw*` components' props, events and slots | vitest + `@vue/test-utils` on happy-dom |
 | type | templates and the generated client | `vue-tsc` (a contract change that breaks a page is a build error) |
-| gallery | every `Fw*` component, partial and default page, every variant and state from its kit spec, light and dark, desktop and phone width, with fixture data | `@flowcatalyst/gallery` (a Vite app) |
-| behaviour | each kit spec's Behaviour and Accessibility sections as Playwright checks (keyboard operation, focus trap and return, Escape, discard question, drawer Back, toolbar Clear All); the kit's 69 scripted checks ported where they apply | Playwright on the gallery |
-| accessibility | zero violations at WCAG 2.2 AA on every gallery page in both themes | `@axe-core/playwright` |
+| gallery | every `Fw*` component, partial and default page, the states the behaviour checklist names, light and dark, desktop and phone width, with fixture data | `@flowcatalyst/gallery` (a Vite app) |
+| behaviour | the 62-row checklist (`behaviours.ts`): keyboard operation, focus trap and return, Escape, discard question, drawer Back, toolbar Clear All; a reporter fails a full run when a row is claimed by no passing test | Playwright on the gallery |
+| accessibility | zero violations at WCAG 2.2 AA (strict, no tolerated pairs) on every gallery page in both themes | `@axe-core/playwright` |
 | visual | screenshots of every gallery page, approved by the owner once and then compared | Playwright `toHaveScreenshot`, in the pinned Playwright container image so fonts and rendering are stable |
 | CSP | the gallery and the example served with section 9's headers; any `securitypolicyviolation` or request to a third-party host fails | Playwright |
 | contract | `openapi.json` and the generated client up to date; the example's E2E run with response validation on | CI drift checks; Playwright against the real Go server |
 | end to end | the orders example: sign-in against a test OIDC provider (a small one in `fwtest`), list, filter, open a drawer, add a line, see a validation error, sign out | Playwright, Go server on embedded PostgreSQL |
 
-**The conformance authority** for the Nuxt UI implementation is: the kit specs (behaviour,
-accessibility, which variants and states exist), the gallery's approved screenshots (the look), and
-the axe and Playwright checks (both enforced in CI). A component is done when its gallery entry
-covers every state in its spec and all four checks pass. Pixel parity with the Datastar kit is not
-a goal; the tokens make the two recognisably the same product.
+**The conformance authority** for the Nuxt UI implementation is: the behaviour checklist
+(`behaviours.ts`, from the kit specs' behaviour and accessibility sections), the gallery's approved
+screenshots (the look), and the axe and Playwright checks (enforced in CI). A part is done when its
+checklist rows are shown in the gallery and the checks pass. Parity with the Datastar kit's look or
+API is not a goal; the theme starts from the kit's values.
 
 ## 13. Development loop
 
