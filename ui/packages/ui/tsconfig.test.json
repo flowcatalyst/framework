@@ -19,5 +19,10 @@
     "test/**/*.ts",
     "src/**/*.ts",
     "src/**/*.vue"
+  ],
+  "references": [
+    {
+      "path": "../api-runtime/tsconfig.generated.json"
+    }
   ]
 }

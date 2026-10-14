@@ -4,3 +4,4 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 openapi-ts-error-*.log
+screenshots/

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { FwPageHeader } from "@flowcatalyst/ui";
+import { FwPageHeader, useDirtyForm } from "@flowcatalyst/ui";
 import { CalendarDate } from "@internationalized/date";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UCheckbox from "@nuxt/ui/components/Checkbox.vue";
+import UCheckboxGroup from "@nuxt/ui/components/CheckboxGroup.vue";
 import UForm from "@nuxt/ui/components/Form.vue";
 import UFormField from "@nuxt/ui/components/FormField.vue";
 import UInput from "@nuxt/ui/components/Input.vue";
 import UInputDate from "@nuxt/ui/components/InputDate.vue";
 import type { InputDateProps } from "@nuxt/ui/components/InputDate.vue";
+import UInputMenu from "@nuxt/ui/components/InputMenu.vue";
 import UInputNumber from "@nuxt/ui/components/InputNumber.vue";
 import URadioGroup from "@nuxt/ui/components/RadioGroup.vue";
 import USelect from "@nuxt/ui/components/Select.vue";
@@ -17,6 +19,7 @@ import UTextarea from "@nuxt/ui/components/Textarea.vue";
 import type { FormErrorEvent, FormSubmitEvent } from "@nuxt/ui";
 import { computed, reactive, ref, shallowRef, useTemplateRef } from "vue";
 import { z } from "zod";
+import GallerySection from "../components/GallerySection.vue";
 
 // The shape a generated Zod schema (docs/contracts/openapi.md section 11) would have.
 const schema = z.object({
@@ -66,11 +69,10 @@ const periodText = computed(() => `${period.value?.start?.toString() ?? ""}..${p
 
 const form = useTemplateRef("form");
 // UForm's `dirty` means "a field had input since the last submit", not "differs from the initial
-// values" (checked at U0); useDirtyForm (U2) compares a snapshot, as the platform's does.
+// values" (checked at U0); useDirtyForm compares a snapshot, as the platform's does.
 const formDirty = computed(() => form.value?.dirty === true);
 const differsFromInitial = computed(() => JSON.stringify(state) !== JSON.stringify(initial));
 const submitted = ref("");
-
 const errorSummary = ref("");
 
 function onSubmit(event: FormSubmitEvent<OrderForm>): void {
@@ -81,63 +83,115 @@ function onSubmit(event: FormSubmitEvent<OrderForm>): void {
 function onError(event: FormErrorEvent): void {
   errorSummary.value = event.errors.map((error) => `${error.name ?? "?"}: ${error.message}`).join("; ");
 }
+
+// filter-select: a status filter with a clear button ("any status").
+const statusFilter = shallowRef<OrderForm["status"] | null>(null);
+// autocomplete: server-searched in an application (local filtering off); here a fixed list.
+const customers = ["Acme", "Globex", "Initech", "Umbrella", "Hooli"];
+const customer = shallowRef("");
+const channels = shallowRef<string[]>(["email"]);
+const search = shallowRef("");
+
+// dirty-form: Save enabled only when the values differ from the loaded ones.
+const profile = reactive({ name: "Ada Lovelace", team: "Analytics" });
+const dirtyForm = useDirtyForm(() => profile);
+dirtyForm.markClean();
+const saved = shallowRef(0);
+function saveProfile(): void {
+  saved.value += 1;
+  dirtyForm.markClean();
+}
+function discardProfile(): void {
+  Object.assign(profile, { name: "Ada Lovelace", team: "Analytics" });
+}
 </script>
 
 <template>
   <div class="space-y-6">
     <FwPageHeader title="Forms" subtitle="UForm with a Zod 4 schema and every input the kit maps" />
 
-    <UForm ref="form" :schema="schema" :state="state" class="grid max-w-xl gap-4" novalidate data-testid="order-form" @submit="onSubmit" @error="onError">
-      <UFormField label="Customer" name="customer" required>
-        <UInput v-model="state.customer" class="w-full" data-testid="customer" />
-      </UFormField>
-      <UFormField label="Email" name="email" required>
-        <UInput v-model="state.email" type="email" class="w-full" data-testid="email" />
-      </UFormField>
-      <UFormField label="Status" name="status">
-        <USelect v-model="state.status" :items="statusItems" class="w-full" data-testid="status" />
-      </UFormField>
-      <UFormField label="Tags" name="tags" description="Up to three">
-        <USelectMenu v-model="state.tags" :items="tagItems" multiple class="w-full" data-testid="tags" />
-      </UFormField>
-      <UFormField label="Notes" name="notes">
-        <UTextarea v-model="state.notes" class="w-full" />
-      </UFormField>
-      <UFormField label="Quantity" name="quantity">
-        <UInputNumber v-model="state.quantity" :min="1" :max="99" />
-      </UFormField>
-      <UFormField label="Priority" name="priority">
-        <URadioGroup v-model="state.priority" :items="priorityItems" orientation="horizontal" />
-      </UFormField>
-      <UFormField name="urgent">
-        <!-- UCheckbox emits boolean | "indeterminate"; the form keeps a boolean. -->
-        <UCheckbox :model-value="state.urgent" label="Urgent" @update:model-value="(value) => (state.urgent = value === true)" />
-      </UFormField>
-      <UFormField name="notify">
-        <USwitch v-model="state.notify" label="Notify the customer" />
-      </UFormField>
-      <div>
-        <UButton type="submit" label="Save order" data-testid="submit" />
-      </div>
-    </UForm>
+    <GallerySection spec="field form-field label input textarea select radio-group checkbox switch multi-select" title="A form" description="UForm, a Zod schema, UFormField (label, hint, description, help, required marker, error) around each input.">
+      <UForm ref="form" :schema="schema" :state="state" class="grid max-w-xl gap-4" novalidate data-testid="order-form" @submit="onSubmit" @error="onError">
+        <UFormField label="Customer" name="customer" required>
+          <UInput v-model="state.customer" class="w-full" data-testid="customer" />
+        </UFormField>
+        <UFormField label="Email" name="email" required hint="Order confirmations">
+          <UInput v-model="state.email" type="email" class="w-full" data-testid="email" />
+        </UFormField>
+        <UFormField label="Status" name="status">
+          <USelect v-model="state.status" :items="statusItems" class="w-full" data-testid="status" />
+        </UFormField>
+        <UFormField label="Tags" name="tags" description="Up to three">
+          <USelectMenu v-model="state.tags" :items="tagItems" multiple class="w-full" data-testid="tags" />
+        </UFormField>
+        <UFormField label="Notes" name="notes" help="Shown to the warehouse.">
+          <UTextarea v-model="state.notes" class="w-full" />
+        </UFormField>
+        <UFormField label="Quantity" name="quantity">
+          <UInputNumber v-model="state.quantity" :min="1" :max="99" />
+        </UFormField>
+        <UFormField label="Priority" name="priority">
+          <URadioGroup v-model="state.priority" :items="priorityItems" orientation="horizontal" />
+        </UFormField>
+        <UFormField name="urgent">
+          <!-- UCheckbox emits boolean | "indeterminate"; the form keeps a boolean. -->
+          <UCheckbox :model-value="state.urgent" label="Urgent" @update:model-value="(value) => (state.urgent = value === true)" />
+        </UFormField>
+        <UFormField name="notify">
+          <USwitch v-model="state.notify" label="Notify the customer" />
+        </UFormField>
+        <div>
+          <UButton type="submit" label="Save order" data-testid="submit" />
+        </div>
+      </UForm>
 
-    <dl class="grid max-w-xl grid-cols-2 gap-1 text-sm">
-      <dt class="text-muted">UForm dirty</dt>
-      <dd data-testid="form-dirty">{{ formDirty }}</dd>
-      <dt class="text-muted">Differs from initial values</dt>
-      <dd data-testid="differs">{{ differsFromInitial }}</dd>
-      <dt class="text-muted">Errors</dt>
-      <dd data-testid="errors">{{ errorSummary }}</dd>
-      <dt class="text-muted">Submitted</dt>
-      <dd data-testid="submitted">{{ submitted }}</dd>
-    </dl>
+      <dl class="grid max-w-xl grid-cols-2 gap-1 text-sm">
+        <dt class="text-muted">UForm dirty</dt>
+        <dd data-testid="form-dirty">{{ formDirty }}</dd>
+        <dt class="text-muted">Differs from initial values</dt>
+        <dd data-testid="differs">{{ differsFromInitial }}</dd>
+        <dt class="text-muted">Errors</dt>
+        <dd data-testid="errors">{{ errorSummary }}</dd>
+        <dt class="text-muted">Submitted</dt>
+        <dd data-testid="submitted">{{ submitted }}</dd>
+      </dl>
+    </GallerySection>
 
-    <section class="max-w-xl space-y-2">
-      <h2 class="font-semibold">Date range</h2>
+    <GallerySection spec="filter-select" title="Filter select" description="A select with a clear button for 'any'.">
+      <USelectMenu v-model="statusFilter" :items="statusItems" value-key="value" placeholder="Any status" clear class="w-56" aria-label="Status filter" />
+    </GallerySection>
+
+    <GallerySection spec="autocomplete" title="Autocomplete" description="UInputMenu: type to narrow, arrow keys to choose.">
+      <UFormField label="Customer">
+        <UInputMenu v-model="customer" :items="customers" placeholder="Start typing" class="w-56" />
+      </UFormField>
+    </GallerySection>
+
+    <GallerySection spec="search-input" title="Search input" description="A search box (the table toolbar's; debounced by useListState).">
+      <UInput v-model="search" type="search" icon="i-lucide-search" placeholder="Search orders…" aria-label="Search orders" class="w-64" />
+    </GallerySection>
+
+    <GallerySection spec="checkbox" title="Checkbox group">
+      <UCheckboxGroup v-model="channels" legend="Notify by" :items="['email', 'sms', 'webhook']" />
+    </GallerySection>
+
+    <GallerySection spec="date-range" title="Date range" description="UInputDate in range mode, edited by keyboard.">
       <UFormField label="Period" name="period">
         <UInputDate v-model="period" range data-testid="period" />
       </UFormField>
       <p class="text-sm text-muted">Selected: <span data-testid="period-text">{{ periodText }}</span></p>
-    </section>
+    </GallerySection>
+
+    <GallerySection spec="dirty-form" title="Dirty form (useDirtyForm)" description="Save stays disabled until a value differs from the loaded one; typing it back disables it again; Discard restores.">
+      <form class="grid max-w-md gap-3" data-testid="profile-form" @submit.prevent="saveProfile">
+        <UFormField label="Name"><UInput v-model="profile.name" class="w-full" data-testid="profile-name" /></UFormField>
+        <UFormField label="Team"><UInput v-model="profile.team" class="w-full" /></UFormField>
+        <div class="flex gap-2">
+          <UButton type="submit" label="Save" :disabled="!dirtyForm.dirty.value" data-testid="profile-save" />
+          <UButton v-if="dirtyForm.dirty.value" label="Discard" color="neutral" variant="ghost" @click="discardProfile" />
+        </div>
+        <p class="text-sm text-muted">Saved <span data-testid="profile-saved">{{ saved }}</span> times.</p>
+      </form>
+    </GallerySection>
   </div>
 </template>

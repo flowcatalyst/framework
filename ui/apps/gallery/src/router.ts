@@ -1,23 +1,30 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
+import { pages } from "./pages.ts";
 
-export interface GalleryPage {
-  readonly path: string;
-  readonly title: string;
-}
-
-/** The gallery's pages, in sidebar order. Every page is loaded lazily, so a probe's code never runs on another page. */
-export const pages: readonly GalleryPage[] = [
-  { path: "/", title: "Overview" },
-  { path: "/overlays", title: "Overlays" },
-  { path: "/forms", title: "Forms" },
-  { path: "/data", title: "Data display" },
-];
+const components: Readonly<Record<string, RouteRecordRaw["component"]>> = {
+  "/": () => import("./pages/HomePage.vue"),
+  "/actions": () => import("./pages/ActionsPage.vue"),
+  "/overlays": () => import("./pages/OverlaysPage.vue"),
+  "/forms": () => import("./pages/FormsPage.vue"),
+  "/data": () => import("./pages/DataPage.vue"),
+  "/feedback": () => import("./pages/FeedbackPage.vue"),
+  "/values": () => import("./pages/ValuesPage.vue"),
+  "/lists": () => import("./pages/ListsPage.vue"),
+  "/shell": () => import("./pages/ShellPage.vue"),
+};
 
 const routes: RouteRecordRaw[] = [
-  { path: "/", component: () => import("./pages/HomePage.vue"), meta: { title: "Overview" } },
-  { path: "/overlays", component: () => import("./pages/OverlaysPage.vue"), meta: { title: "Overlays" } },
-  { path: "/forms", component: () => import("./pages/FormsPage.vue"), meta: { title: "Forms" } },
-  { path: "/data", component: () => import("./pages/DataPage.vue"), meta: { title: "Data display" } },
+  ...pages
+    .filter((page) => page.path !== "/orders")
+    .map((page) => ({ path: page.path, component: components[page.path] ?? (() => import("./pages/NotFoundPage.vue")), meta: { title: page.title } })),
+  // The list page and its record drawer as a child route (useDrawerRoute): /orders/:id.
+  {
+    path: "/orders",
+    component: () => import("./pages/orders/OrdersPage.vue"),
+    meta: { title: "Orders (partials)" },
+    children: [{ path: ":id", component: () => import("./pages/orders/OrderDrawer.vue"), meta: { title: "Orders (partials)" } }],
+  },
+  { path: "/signed-out", component: () => import("./pages/SignedOutPage.vue"), meta: { title: "Signed out" } },
   // Components known to break the strict CSP, kept so the e2e suite notices when that changes.
   { path: "/probes/drawer", component: () => import("./pages/probes/DrawerProbe.vue") },
   { path: "/probes/banner", component: () => import("./pages/probes/BannerProbe.vue") },

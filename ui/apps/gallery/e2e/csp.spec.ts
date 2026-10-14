@@ -44,7 +44,7 @@ test("system dark mode is followed without a stored choice", async ({ page, csp 
   await csp.expectClean();
 });
 
-test("overlays: modal, slideover, popover, hover card, tooltip, dropdown menu, toast", async ({ page, csp }) => {
+test("overlays: modal, slideover, popover, hover card", async ({ page, csp }) => {
   await openPage(page, "/overlays", "Overlays");
 
   await page.getByTestId("open-modal").click();
@@ -61,22 +61,23 @@ test("overlays: modal, slideover, popover, hover card, tooltip, dropdown menu, t
   await expect(page.getByTestId("popover-content")).toBeVisible();
   await page.keyboard.press("Escape");
 
-  await page.getByTestId("tooltip-trigger").hover();
-  await expect(page.locator("[data-slot=content]", { hasText: "Copies the order id" })).toBeVisible();
-  await page.mouse.move(0, 0);
-
   await page.getByTestId("open-hovercard").hover();
   await expect(page.getByTestId("hovercard-content")).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(page.getByTestId("hovercard-content")).toBeHidden();
 
+  await csp.expectClean();
+});
+
+test("actions: tooltip and dropdown menu", async ({ page, csp }) => {
+  await openPage(page, "/actions", "Actions");
+  await page.getByTestId("tooltip-trigger").hover();
+  await expect(page.locator("[data-slot=content]", { hasText: "Copies the order id" })).toBeVisible();
+  await page.mouse.move(0, 0);
+
   await page.getByTestId("open-menu").click();
   await page.getByRole("menuitem", { name: "Duplicate" }).click();
   await expect(page.getByTestId("last-action")).toHaveText("duplicate");
-
-  await page.getByTestId("show-toast").click();
-  await expect(page.getByText("Order 1042 was saved.")).toBeVisible();
-
   await csp.expectClean();
 });
 
@@ -93,12 +94,13 @@ test("forms: select, select menu, validation errors, submit, date range", async 
 
   await page.getByTestId("email").fill("not-an-email");
   await page.getByTestId("submit").click();
-  await expect(page.getByText("Not an email address")).toBeVisible();
+  const form = page.getByTestId("order-form");
+  await expect(form.getByText("Not an email address")).toBeVisible();
 
   await page.getByTestId("email").fill("orders@acme.example");
   // Wait for the field's re-validation to finish: UForm 4.11.3 drops a submit made while the
   // input-triggered validation is still running (recorded in docs/ui/u0.md).
-  await expect(page.getByText("Not an email address")).toBeHidden();
+  await expect(form.getByText("Not an email address")).toBeHidden();
   await page.getByTestId("submit").click();
   await expect(page.getByTestId("submitted")).toHaveText("Acme x1");
 

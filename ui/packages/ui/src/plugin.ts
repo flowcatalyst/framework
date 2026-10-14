@@ -1,17 +1,26 @@
+import type { ApiRuntime } from "@flowcatalyst/api-runtime";
 import type { App, Plugin } from "vue";
 import { useColorMode } from "./composables/useColorMode.ts";
+import { API_RUNTIME_KEY } from "./composables/useSession.ts";
+
+export interface FlowcatalystUiOptions {
+  /** The application's runtime (createApiRuntime): the session for the shell and usePermissions. */
+  readonly api?: ApiRuntime;
+}
 
 /**
  * The @flowcatalyst/ui Vue plugin. Install it after the router and `@nuxt/ui/vue-plugin`:
  *
- *   app.use(router).use(ui).use(flowcatalystUi);
+ *   app.use(router).use(ui).use(flowcatalystUi, { api });
  *
- * U0 scope: applies the stored colour mode for the whole application (what Nuxt UI's own colour
- * mode plugin did before it was switched off). The `api` and `navigation` options of
- * docs/go/ui.md section 4 arrive with U2.
+ * Applies the stored colour mode for the whole application (Nuxt UI's own colour mode is off, see
+ * useColorMode) and provides the runtime to useSession, usePermissions and FwAppShell.
  */
-export const flowcatalystUi: Plugin = {
-  install(app: App): void {
+export const flowcatalystUi: Plugin<[FlowcatalystUiOptions?]> = {
+  install(app: App, options: FlowcatalystUiOptions = {}): void {
+    if (options.api !== undefined) {
+      app.provide(API_RUNTIME_KEY, options.api);
+    }
     app.runWithContext(() => {
       useColorMode();
     });

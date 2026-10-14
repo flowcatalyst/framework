@@ -26,7 +26,7 @@ import type { NuxtUIOptions } from "@nuxt/ui/vite";
 import tailwindColors from "tailwindcss/colors";
 import type { Plugin } from "vite";
 import { COLOR_MODE_SNIPPET } from "./csp.ts";
-import { fcColorAliases, fcColors, fcIcons } from "./theme/index.ts";
+import { fcColorAliases, fcColors, fcComponentTheme, fcIcons } from "./theme/index.ts";
 
 type ColorMap = Readonly<Record<string, string>>;
 type Palettes = Readonly<Record<string, Readonly<Record<string, string>>>>;
@@ -42,7 +42,7 @@ export interface NuxtUiOverrides {
 export function nuxtUiOptions(overrides: NuxtUiOverrides = {}): NuxtUIOptions {
   const colors: Record<string, string> = { ...fcColors, ...overrides.colors };
   return {
-    ui: { colors },
+    ui: { colors, ...fcComponentTheme },
     theme: { colors: [...fcColorAliases] },
     router: true,
     // Explicit imports only (docs/go/ui.md section 5): no generated globals to trust.

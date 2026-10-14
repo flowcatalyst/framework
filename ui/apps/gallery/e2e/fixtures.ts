@@ -1,6 +1,7 @@
 // Every test runs with a CSP monitor: it records each `securitypolicyviolation` event (installed
-// before any page script runs), each console message about the Content Security Policy and each
-// request to another origin (the Iconify API, a font host, ...). The tests assert all three are empty.
+// before any page script runs), each console message about the Content Security Policy, each request
+// to another origin (the Iconify API, a font host, ...) and each uncaught page error. The tests
+// assert all four are empty.
 import { test as base, expect, type Page } from "@playwright/test";
 
 export interface CspMonitor {
@@ -10,7 +11,9 @@ export interface CspMonitor {
   readonly foreignRequests: string[];
   /** Console messages that mention the Content Security Policy. */
   readonly consoleMessages: string[];
-  /** Asserts no violation, no CSP console message and no foreign request so far. */
+  /** Uncaught exceptions in the page. */
+  readonly pageErrors: string[];
+  /** Asserts no violation, no CSP console message, no foreign request and no page error so far. */
   expectClean(): Promise<void>;
 }
 
@@ -38,6 +41,7 @@ export const test = base.extend<{ csp: CspMonitor }>({
       const origin = baseURL ?? "";
       const foreignRequests: string[] = [];
       const consoleMessages: string[] = [];
+      const pageErrors: string[] = [];
       page.on("request", (request) => {
         const url = request.url();
         if (!url.startsWith(origin) && !url.startsWith("data:")) {
@@ -49,15 +53,20 @@ export const test = base.extend<{ csp: CspMonitor }>({
           consoleMessages.push(message.text());
         }
       });
+      page.on("pageerror", (error) => {
+        pageErrors.push(error.message);
+      });
       const violations = async (): Promise<string[]> => page.evaluate(() => window.__cspViolations ?? []);
       await use({
         violations,
         foreignRequests,
         consoleMessages,
+        pageErrors,
         expectClean: async () => {
           expect(await violations(), "CSP violations").toEqual([]);
           expect(consoleMessages, "CSP console messages").toEqual([]);
           expect(foreignRequests, "requests to other origins").toEqual([]);
+          expect(pageErrors, "uncaught page errors").toEqual([]);
         },
       });
     },

@@ -1,45 +1,8 @@
-// docs/go/ui.md section 12: zero axe violations at WCAG 2.2 AA on every gallery page, in both themes.
-import AxeBuilder from "@axe-core/playwright";
+// docs/go/ui.md section 12: zero axe violations at WCAG 2.2 AA on every gallery page, in both themes,
+// at desktop and phone width, and with the overlays open (they render outside the page's flow).
 import { expect, openPage, test } from "./fixtures.ts";
-
-const pages = [
-  { path: "/", heading: "FlowCatalyst UI gallery" },
-  { path: "/overlays", heading: "Overlays" },
-  { path: "/forms", heading: "Forms" },
-  { path: "/data", heading: "Data display" },
-] as const;
-
-type Result = Awaited<ReturnType<AxeBuilder["analyze"]>>["violations"][number];
-
-const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-
-/**
- * KNOWN, recorded in docs/ui/u0.md for the owner: colour pairs from the ui-kit's light tokens
- * (ui-kit/theme/tokens.css, copied unchanged) that fail WCAG AA 4.5:1 in Nuxt UI's variants.
- * Only these exact foreground/background pairs are tolerated; any other contrast failure fails.
- */
-const KNOWN_LIGHT_CONTRAST = new Set([
-  "#ffffff on #059669", // solid primary (--primary emerald-600, white text): 3.76
-  "#16a34a on #e8f6ed", // subtle success badge (--success green-600 on its 10% tint): 2.95
-  "#0284c7 on #e6f3f9", // subtle info badge (--info sky-600 on its 10% tint): 3.61
-  "#64748b on #f1f5f9", // muted text (--muted-foreground slate-500) on Nuxt UI's bg-elevated: 4.34
-]);
-
-function contrastPair(node: Result["nodes"][number]): string {
-  const data: unknown = node.any[0]?.data;
-  if (typeof data === "object" && data !== null && "fgColor" in data && "bgColor" in data) {
-    return `${String(data.fgColor)} on ${String(data.bgColor)}`;
-  }
-  return "unknown";
-}
-
-function unexpected(violations: Result[]): string[] {
-  return violations.flatMap((violation) =>
-    violation.nodes
-      .filter((node) => !(violation.id === "color-contrast" && KNOWN_LIGHT_CONTRAST.has(contrastPair(node))))
-      .map((node) => `${violation.id}: ${node.target.join(" ")} ${violation.id === "color-contrast" ? contrastPair(node) : ""}`),
-  );
-}
+import { axeViolations } from "./axe-tools.ts";
+import { pages } from "../src/pages.ts";
 
 for (const scheme of ["light", "dark"] as const) {
   for (const { path, heading } of pages) {
@@ -47,23 +10,53 @@ for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await openPage(page, path, heading);
       await expect(page.locator("html")).toHaveClass(scheme === "dark" ? /dark/ : /^(?!.*dark).*$/);
-      const result = await new AxeBuilder({ page }).withTags(tags).analyze();
-      const found = scheme === "dark" ? result.violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(" ")}`)) : unexpected(result.violations);
-      expect(found).toEqual([]);
+      await page.waitForLoadState("networkidle");
+      expect(await axeViolations(page, scheme)).toEqual([]);
       await csp.expectClean();
     });
   }
+
+  test(`axe: overlays open in ${scheme} (record drawer, form dialog, alert dialog, filters, row menu)`, async ({ page, csp }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await openPage(page, "/orders/ord_1042", "Orders");
+    await expect(page.getByTestId("fw-drawer-title")).toHaveText("ord_1042");
+    expect(await axeViolations(page, scheme), "drawer").toEqual([]);
+    await page.getByTestId("add-line").click();
+    await expect(page.getByRole("dialog", { name: "Add a line" })).toBeVisible();
+    expect(await axeViolations(page, scheme), "form dialog").toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await openPage(page, "/overlays", "Overlays");
+    await page.getByTestId("open-alert").click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
+    expect(await axeViolations(page, scheme), "alert dialog").toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await openPage(page, "/lists", "List parts");
+    await page.getByTestId("fw-toolbar-filters").click();
+    await expect(page.getByTestId("fw-toolbar-filters-panel")).toBeVisible();
+    expect(await axeViolations(page, scheme), "filters popover").toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await openPage(page, "/actions", "Actions");
+    await page.getByRole("button", { name: "More actions for Orders pool" }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    expect(await axeViolations(page, scheme), "row menu").toEqual([]);
+    await csp.expectClean();
+  });
 }
 
-test("axe: the empty gallery (overview) has no violation at all, light and dark, desktop and phone", async ({ page, csp }) => {
-  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
-    for (const scheme of ["light", "dark"] as const) {
-      await page.setViewportSize(viewport);
-      await page.emulateMedia({ colorScheme: scheme });
-      await openPage(page, "/", "FlowCatalyst UI gallery");
-      const result = await new AxeBuilder({ page }).withTags(tags).analyze();
-      expect(result.violations.map((v) => `${v.id} (${scheme}, ${String(viewport.width)}px)`)).toEqual([]);
+test("axe: every page at phone width (390 px), light and dark", async ({ page, csp }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const found: string[] = [];
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const { path, heading } of pages) {
+      await openPage(page, path, heading);
+      found.push(...(await axeViolations(page, scheme)).map((v) => `${path} ${scheme}: ${v}`));
     }
   }
+  expect(found).toEqual([]);
   await csp.expectClean();
 });

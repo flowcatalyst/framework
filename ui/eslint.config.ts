@@ -22,6 +22,7 @@ export default defineConfig(
       "samples/openapi/src/api/**",
       "packages/api-runtime/src/generated/**",
       "packages/api-runtime/test/orders-demo/api/**",
+      "apps/gallery/src/api/**",
     ],
   },
   tseslint.configs.strictTypeChecked,
@@ -86,10 +87,32 @@ export default defineConfig(
       ],
       "no-restricted-globals": [
         "error",
-        { name: "localStorage", message: "Storage access is reviewed in one composable (useLocalState, U2)." },
-        { name: "sessionStorage", message: "Storage access is reviewed in one composable (useLocalState, U2)." },
+        { name: "localStorage", message: "Storage access is reviewed in one composable (useLocalState)." },
+        { name: "sessionStorage", message: "Storage access is reviewed in one composable (useLocalState)." },
+      ],
+      "no-restricted-properties": [
+        "error",
+        { object: "window", property: "localStorage", message: "Storage access is reviewed in one composable (useLocalState)." },
+        { object: "window", property: "sessionStorage", message: "Storage access is reviewed in one composable (useLocalState)." },
       ],
     },
+  },
+  {
+    files: ["**/*.vue"],
+    rules: {
+      // Vue's reactive props destructure (`const { size = "md" } = defineProps<{ size?: string }>()`)
+      // is the documented way to give a prop a default; typescript-eslint reads defineProps' return
+      // type (all props required) and calls every such default useless.
+      "@typescript-eslint/no-useless-default-assignment": "off",
+      // With exactOptionalPropertyTypes an absent optional prop is meaningful (undefined), and
+      // type-based props need no runtime default.
+      "vue/require-default-prop": "off",
+    },
+  },
+  {
+    // The one reviewed place that touches localStorage (docs/go/ui.md section 3.2).
+    files: ["packages/ui/src/composables/useLocalState.ts"],
+    rules: { "no-restricted-globals": "off" },
   },
   {
     // The CSP probes import the components the rule above forbids, on purpose.
@@ -99,6 +122,6 @@ export default defineConfig(
   {
     // Tests and Node scripts may touch storage directly and use Node APIs.
     files: ["**/test/**", "**/e2e/**", "**/scripts/**", "**/*.config.ts"],
-    rules: { "no-restricted-globals": "off" },
+    rules: { "no-restricted-globals": "off", "vue/one-component-per-file": "off" },
   },
 );

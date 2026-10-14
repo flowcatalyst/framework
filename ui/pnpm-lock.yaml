@@ -42,6 +42,9 @@ catalogs:
     happy-dom:
       specifier: 20.14.5
       version: 20.14.5
+    reka-ui:
+      specifier: 2.10.5
+      version: 2.10.5
     tailwindcss:
       specifier: 4.3.3
       version: 4.3.3
@@ -95,6 +98,9 @@ importers:
 
   apps/gallery:
     dependencies:
+      '@flowcatalyst/api-runtime':
+        specifier: workspace:*
+        version: link:../../packages/api-runtime
       '@flowcatalyst/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -123,6 +129,9 @@ importers:
       '@axe-core/playwright':
         specifier: 'catalog:'
         version: 4.13.0(playwright-core@1.63.0)
+      '@hey-api/openapi-ts':
+        specifier: 'catalog:'
+        version: 0.99.0(typescript@6.0.3)
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.63.0
@@ -171,12 +180,18 @@ importers:
 
   packages/ui:
     dependencies:
+      '@flowcatalyst/api-runtime':
+        specifier: workspace:*
+        version: link:../api-runtime
       '@fontsource-variable/inter':
         specifier: 'catalog:'
         version: 5.3.0
       '@vueuse/core':
         specifier: 'catalog:'
         version: 14.4.0(vue@3.5.43(typescript@6.0.3))
+      reka-ui:
+        specifier: 'catalog:'
+        version: 2.10.5(vue@3.5.43(typescript@6.0.3))
     devDependencies:
       '@iconify-json/lucide':
         specifier: 'catalog:'
@@ -217,6 +232,9 @@ importers:
       vue-tsc:
         specifier: 'catalog:'
         version: 3.3.12(typescript@6.0.3)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
 
   samples/openapi:
     dependencies:

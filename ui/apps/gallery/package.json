@@ -9,9 +9,13 @@
     "build": "vite build",
     "typecheck": "vue-tsc --build",
     "serve:csp": "node scripts/serve-csp.ts",
-    "e2e": "vite build && playwright test"
+    "e2e": "vite build && playwright test",
+    "generate": "openapi-ts",
+    "drift": "openapi-ts && node ../../scripts/api-drift.ts src/api",
+    "screenshots": "vite build && SCREENSHOTS=1 playwright test e2e/screenshots.spec.ts"
   },
   "dependencies": {
+    "@flowcatalyst/api-runtime": "workspace:*",
     "@flowcatalyst/ui": "workspace:*",
     "@iconify-json/lucide": "catalog:",
     "@internationalized/date": "catalog:",
@@ -23,6 +27,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",
+    "@hey-api/openapi-ts": "catalog:",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
