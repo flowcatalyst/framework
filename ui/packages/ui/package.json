@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@flowcatalyst/api-runtime": "workspace:*",
-    "@fontsource-variable/inter": "catalog:",
+    "@fontsource-variable/ibm-plex-sans": "catalog:",
     "@vueuse/core": "catalog:",
     "reka-ui": "catalog:"
   },

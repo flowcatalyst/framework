@@ -1,9 +1,9 @@
-// The font comparison (docs/ui/fonts.md): three alternatives to the theme's default Inter, rendered by
+// The font comparison (docs/ui/fonts.md): three alternatives to the theme's default IBM Plex Sans (Inter, the former default, among them), rendered by
 // the same gallery screens with `?font=<id>`. They are self-hosted Fontsource packages (OFL-1.1,
 // `font-src 'self'`), devDependencies of the gallery only, and they are loaded only when the build
 // is `vite` (dev) or `vite build --mode fonts` (__FONT_COMPARISON__, vite.config.ts). In the default
 // production build the dynamic imports below are dead code: no comparison font file reaches `dist/`
-// (so the THIRD-PARTY-NOTICES measured on it stay Inter's), and `?font=` does nothing. The theme's
+// (so the THIRD-PARTY-NOTICES measured on it stay IBM Plex Sans's), and `?font=` does nothing. The theme's
 // default font is not touched: this only overrides `--font-sans` on <html> (main.css).
 
 import { comparisonFonts, type ComparisonFont } from "./font-list.ts";
@@ -15,7 +15,7 @@ export const fontComparisonAvailable: boolean = __FONT_COMPARISON__;
 
 const loaders: Readonly<Record<string, () => Promise<unknown>>> = __FONT_COMPARISON__
   ? {
-      "ibm-plex-sans": () => import("@fontsource-variable/ibm-plex-sans"),
+      inter: () => import("@fontsource-variable/inter"),
       "source-sans-3": () => import("@fontsource-variable/source-sans-3"),
       geist: () => import("@fontsource-variable/geist"),
     }
@@ -39,7 +39,7 @@ export async function applyComparisonFont(font: ComparisonFont | undefined): Pro
       root.classList.remove(name);
     }
   }
-  if (font === undefined || font.id === "inter") {
+  if (font === undefined || font.id === "ibm-plex-sans") {
     return;
   }
   await loaders[font.id]?.();

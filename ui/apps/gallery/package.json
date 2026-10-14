@@ -19,7 +19,7 @@
     "@flowcatalyst/api-runtime": "workspace:*",
     "@flowcatalyst/ui": "workspace:*",
     "@fontsource-variable/geist": "5.3.0",
-    "@fontsource-variable/ibm-plex-sans": "5.3.0",
+    "@fontsource-variable/inter": "catalog:",
     "@fontsource-variable/source-sans-3": "5.3.0",
     "@iconify-json/lucide": "catalog:",
     "@internationalized/date": "catalog:",

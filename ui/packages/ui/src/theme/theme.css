@@ -12,14 +12,14 @@
    other than by the shade changes it lists. The variables are set outside any cascade layer, so they
    win over Nuxt UI's `@layer theme` defaults and the generated colour stylesheet. */
 
-/* Self-hosted Inter (font-src 'self'; no third-party font host). */
-@import "@fontsource-variable/inter";
+/* Self-hosted IBM Plex Sans (font-src 'self'; no third-party font host). */
+@import "@fontsource-variable/ibm-plex-sans";
 
 /* Tailwind scans the package's own components, wherever the package is installed or linked from. */
 @source "../";
 
 @theme {
-  --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
 
   /* FlowCatalyst brand palette (the kit's `@theme inline`), for the shell's sidebar. */

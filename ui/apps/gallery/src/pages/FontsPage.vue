@@ -18,7 +18,7 @@ import GallerySection from "../components/GallerySection.vue";
 import { comparisonFontFor, comparisonFonts, fontComparisonAvailable } from "../fonts.ts";
 
 const route = useRoute();
-const current = computed(() => comparisonFontFor(route.query["font"])?.id ?? "inter");
+const current = computed(() => comparisonFontFor(route.query["font"])?.id ?? "ibm-plex-sans");
 
 interface Delivery {
   readonly id: string;
@@ -65,7 +65,7 @@ const queues = ["orders-high", "orders-default", "billing"];
 
 <template>
   <div class="space-y-6">
-    <UPageHeader title="Font comparison" description="The same screens in Inter (the default) and three candidates; the whole page, shell included, uses the chosen font">
+    <UPageHeader title="Font comparison" description="The same screens in IBM Plex Sans (the default), Inter and two other candidates; the whole page, shell included, uses the chosen font">
       <template #links>
         <UButton label="Primary action" color="neutral" variant="outline" />
       </template>
@@ -85,7 +85,7 @@ const queues = ["orders-high", "orders-default", "billing"];
         />
       </div>
       <p v-else class="text-sm text-muted" data-testid="fonts-unavailable">
-        The comparison fonts are not in this build (the default production build ships Inter only).
+        The comparison fonts are not in this build (the default production build ships IBM Plex Sans only).
       </p>
       <p class="text-sm" data-testid="font-current">Showing: {{ comparisonFonts.find((font) => font.id === current)?.label }}</p>
     </GallerySection>

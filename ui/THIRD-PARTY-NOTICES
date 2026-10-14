@@ -11,7 +11,7 @@ Shipped packages: 35
 - @floating-ui/dom 1.8.0: MIT
 - @floating-ui/utils 0.2.12: MIT
 - @floating-ui/vue 1.1.11: MIT
-- @fontsource-variable/inter 5.3.0: OFL-1.1 (the Inter font files (woff2) and their CSS)
+- @fontsource-variable/ibm-plex-sans 5.3.0: OFL-1.1 (the IBM Plex Sans font files (woff2) and their CSS)
 - @iconify-json/lucide 1.2.140: ISC (the icons derived from Feather: MIT) (Lucide icon data, inlined by Nuxt UI's icon bundle)
 - @iconify/vue 5.0.3: MIT
 - @internationalized/date 3.12.4: Apache-2.0
@@ -156,12 +156,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-@fontsource-variable/inter 5.3.0
+@fontsource-variable/ibm-plex-sans 5.3.0
 Licence: OFL-1.1
 Repository: git+https://github.com/fontsource/font-files.git
-Shipped as: the Inter font files (woff2) and their CSS
+Shipped as: the IBM Plex Sans font files (woff2) and their CSS
 
-Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+Copyright 2019 IBM Corp. All rights reserved. IBMPlexSans-Italic[wdth,wght].ttf: Copyright 2019 IBM Corp. All rights reserved.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

@@ -1,4 +1,4 @@
-// The font comparison page in the default production build: it renders in Inter, `?font=` is ignored
+// The font comparison page in the default production build: it renders in IBM Plex Sans, `?font=` is ignored
 // and no comparison font file is requested or shipped (the licence notices are measured on this build).
 // The sidebar's spacing (owner feedback 2026-10-14) is checked here too: 40 px items, well above the
 // WCAG 2.2 target size of 24 px.
@@ -14,12 +14,12 @@ test.describe("font comparison page", () => {
     });
     await openPage(page, "/fonts?font=geist", "Font comparison");
     await expect(page.getByTestId("fonts-unavailable")).toBeVisible();
-    await expect(page.getByTestId("font-current")).toContainText("Inter (default)");
+    await expect(page.getByTestId("font-current")).toContainText("IBM Plex Sans (default)");
     await expect(page.locator("html")).not.toHaveClass(/fc-font-/);
     await page.waitForLoadState("networkidle");
-    expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toMatch(/^"Inter Variable"/);
+    expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toMatch(/^"IBM Plex Sans Variable"/);
     expect(fontFiles.length).toBeGreaterThan(0);
-    expect(fontFiles.filter((url) => !/\/inter-/.test(url))).toEqual([]);
+    expect(fontFiles.filter((url) => !/\/ibm-plex-sans-/.test(url))).toEqual([]);
     await csp.expectClean();
   });
 });

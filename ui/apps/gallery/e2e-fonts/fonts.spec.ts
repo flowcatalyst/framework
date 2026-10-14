@@ -12,7 +12,7 @@ for (const scheme of ["light", "dark"] as const) {
       await openPage(page, `/fonts?font=${font.id}`, "Font comparison");
       await expect(page.getByTestId("font-current")).toContainText(font.label);
       // The class is set once the font's CSS is in; wait for the files the page uses to load.
-      await expect(page.locator("html")).toHaveClass(font.id === "inter" ? /^(?!.*fc-font-)/ : new RegExp(`fc-font-${font.id}`));
+      await expect(page.locator("html")).toHaveClass(font.id === "ibm-plex-sans" ? /^(?!.*fc-font-)/ : new RegExp(`fc-font-${font.id}`));
       await page.evaluate(async (family) => {
         await document.fonts.load(`400 16px "${family}"`);
         await document.fonts.load(`600 16px "${family}"`);

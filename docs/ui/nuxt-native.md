@@ -100,7 +100,7 @@ Shown in the gallery, each with its checklist rows, under the strict CSP and axe
 ## Theme
 
 `@flowcatalyst/ui/theme.css` (was `theme/kit.css`) sets only Nuxt UI's variables: the five colour
-aliases, text, backgrounds, borders and `--ui-radius` (2px), light and dark, plus Inter (self-hosted) and
+aliases, text, backgrounds, borders and `--ui-radius` (2px), light and dark, plus IBM Plex Sans (self-hosted) and
 the navy palette the sidebar uses (`bg-navy-900`, no hex in the shell any more). The values are the
 kit's (a unit test compares them with `ui-kit/theme/tokens.css`), except the one-shade contrast changes
 of [`u1.md`](u1.md). Component looks are Nuxt UI variants in `fcComponentTheme`, passed by

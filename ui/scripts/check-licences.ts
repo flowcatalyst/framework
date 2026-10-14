@@ -8,7 +8,7 @@
 //   node scripts/check-licences.ts --write --dist <app>/dist --out <file>   an application's own bundle
 //
 // The shipped packages are read from the bundle's source maps (every module under node_modules that
-// ended up in a chunk), plus what reaches the bundle without a JavaScript module: the Inter font files,
+// ended up in a chunk), plus what reaches the bundle without a JavaScript module: the IBM Plex Sans font files,
 // the Lucide icon data Nuxt UI inlines, and the CSS Tailwind generates. Needs a build with source maps
 // (`pnpm build` first; the gallery builds with `sourcemap: true`).
 import { execFileSync } from "node:child_process";
@@ -27,10 +27,10 @@ const REVIEWED: ReadonlyMap<string, readonly [string, string]> = new Map([
   ["lightningcss-darwin-x64", ["MPL-2.0", "lightningcss's platform binary"]],
   ["lightningcss-linux-x64-gnu", ["MPL-2.0", "lightningcss's platform binary"]],
   ["lightningcss-linux-arm64-gnu", ["MPL-2.0", "lightningcss's platform binary"]],
-  ["@fontsource-variable/inter", ["OFL-1.1", "the Inter font, shipped as woff2; OFL allows bundling (its notice goes with the app: THIRD-PARTY-NOTICES)"]],
-  ["@fontsource-variable/ibm-plex-sans", ["OFL-1.1", "font comparison only (apps/gallery, docs/ui/fonts.md): a gallery devDependency built into dist-fonts/ only, never into dist/ or an application's bundle; its notice joins THIRD-PARTY-NOTICES if the theme adopts it"]],
-  ["@fontsource-variable/source-sans-3", ["OFL-1.1", "font comparison only, as IBM Plex Sans above"]],
-  ["@fontsource-variable/geist", ["OFL-1.1", "font comparison only, as IBM Plex Sans above"]],
+  ["@fontsource-variable/ibm-plex-sans", ["OFL-1.1", "the IBM Plex Sans font, shipped as woff2; OFL allows bundling (its notice goes with the app: THIRD-PARTY-NOTICES)"]],
+  ["@fontsource-variable/inter", ["OFL-1.1", "font comparison only (apps/gallery, docs/ui/fonts.md): a gallery dependency built into dist-fonts/ only, never into dist/ or an application's bundle; the former default"]],
+  ["@fontsource-variable/source-sans-3", ["OFL-1.1", "font comparison only, as Inter above"]],
+  ["@fontsource-variable/geist", ["OFL-1.1", "font comparison only, as Inter above"]],
   ["vaul-vue", ["Unknown", "0.4.1's npm package has no licence field or file; the repository (unovue/vaul-vue) is MIT (THIRD-PARTY-NOTICES carries its text)"]],
 ]);
 
@@ -150,12 +150,12 @@ function shippedPackages(dist: string): Shipped[] {
   const result = [...dirs].map((dir) => describe(dir));
   // Only the default font ships. A comparison font (apps/gallery/src/fonts.ts) in this bundle would
   // need its notice and a decision; fail instead of omitting it silently.
-  const strayFonts = files.filter((file) => /\.woff2?$/.test(file) && !/^inter-/.test(file));
+  const strayFonts = files.filter((file) => /\.woff2?$/.test(file) && !/^ibm-plex-sans-/.test(file));
   if (strayFonts.length > 0) {
-    throw new Error(`${dist} ships font files other than Inter's (${strayFonts.join(", ")}): the comparison fonts belong in the fonts build only`);
+    throw new Error(`${dist} ships font files other than IBM Plex Sans's (${strayFonts.join(", ")}): the comparison fonts belong in the fonts build only`);
   }
-  if (files.some((file) => /^inter-.*\.woff2$/.test(file))) {
-    result.push(describe(installed("@fontsource-variable/inter"), "the Inter font files (woff2) and their CSS"));
+  if (files.some((file) => /^ibm-plex-sans-.*\.woff2$/.test(file))) {
+    result.push(describe(installed("@fontsource-variable/ibm-plex-sans"), "the IBM Plex Sans font files (woff2) and their CSS"));
   }
   if (lucide) {
     result.push(describe(installed("@iconify-json/lucide"), "Lucide icon data, inlined by Nuxt UI's icon bundle"));
