@@ -6,11 +6,13 @@ milestone where they belong, as the Rust plan did.
 
 ## 0. Status
 
-Nothing is built. Building starts after the owner's review of [`design.md`](design.md) section 9.
+Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
+([`../guide/go/index.md`](../guide/go/index.md)) say how to use what is built.
 
 | # | State |
 |---|---|
-| G0 to G7 | not started |
+| G0 | **Built** (2026-10-14): `go/` with the core module, `go/flowcatalyst` (empty until G4) and `go/tools` (the pinned golangci-lint v2.14.0, NilAway and gofumpt, run by `go tool` so the local Go builds them; a third module, so the tools never enter the framework's module graph); `.golangci.yml`; `make -C go go-check`; `cmd/fwvet` with `mustliteral`; `fwtest` (embedded PostgreSQL 18, template and a database per test, Redis from `PATH`, fake clock); `internal/conformance` and the TSID vector; `.github/workflows/go.yml` (not run); [`go-build.md`](../contracts/go-build.md); `verify.sh` checks Go type names. NilAway on G0: no findings, no suppressions |
+| G1 to G7 | not started |
 
 *2026-10-14 (owner): the UI package is shared with Java and built first against the Java backend.*
 G5a's U0 to U2 (and U3, U4 on the Java example) are therefore done once, outside this plan; Go's G5a

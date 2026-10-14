@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes, Spa, Csp, SpaTesting -->
 # Status
 
-Last verified against commit 48a545b (2026-10-14). `verify.sh` fails if that commit is not an
+Last verified against commit 59ab98c (2026-10-14). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -47,10 +47,17 @@ compare. Nothing is published.
 
 ## The Go implementation
 
-Designed 2026-10-13, nothing built: [`docs/go/`](../go/design.md) (gap analysis against the Go SDK
-and platform, design, capabilities, the orders example, the UI, milestones G0 to G7). It will live
-in `go/` and share the contracts and `conformance/`, as Rust does. The Rust and TypeScript
-implementations are parked (owner, 2026-10-13).
+A further implementation of the contracts, in `go/` ([overview](go/index.md), design in
+[`docs/go/`](../go/design.md): gap analysis against the Go SDK and platform, design, capabilities,
+the orders example, the UI, milestones G0 to G7). It shares the contracts and the conformance
+vectors in `conformance/`, which the Java tests write and the Go tests compare. Nothing is
+published. The Rust and TypeScript implementations are parked (owner, 2026-10-13).
+
+| # | Scope | State | Guide page |
+|---|---|---|---|
+| G0 | Skeleton: the core module, `go/flowcatalyst`, `go/tools` (pinned golangci-lint, NilAway, gofumpt), the lint profile and `make -C go go-check`, `cmd/fwvet` (`mustliteral`), `fwtest` (embedded PostgreSQL 18, a database per test, Redis from `PATH`, a fake clock), the conformance runner and the TSID vector, the CI workflow (not run), the [Go build contract](../contracts/go-build.md) | **Built** | [Go overview](go/index.md) |
+| G1 | Foundation and locks | Not started | |
+| G2 | Write path and checked SQL | Not started | |
 
 **UI (owner ruling, 2026-10-13):** the Go framework's UI is **Nuxt UI v4 on plain Vue and Vite,
 without Nuxt or Nitro, in strict TypeScript**, replacing the Datastar + templ kit for Go

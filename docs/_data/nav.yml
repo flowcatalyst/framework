@@ -42,6 +42,9 @@
     - { title: "Rust: locks", path: guide/rust/locks.md }
     - { title: "Rust: write path", path: guide/rust/write-path.md }
     - { title: "Rust: checked SQL", path: guide/rust/checked-sql.md }
+- group: Go
+  items:
+    - { title: Go overview, path: guide/go/index.md }
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }
@@ -57,6 +60,7 @@
     - { title: HTTP contract, path: contracts/http.md }
     - { title: FlowCatalyst contract, path: contracts/flowcatalyst.md }
     - { title: Build and publishing contract, path: contracts/build.md }
+    - { title: Go build contract, path: contracts/go-build.md }
     - { title: Background and metrics contract, path: contracts/background-and-metrics.md }
     - { title: Secrets contract, path: contracts/secrets.md }
     - { title: HTTP client contract, path: contracts/http-client.md }

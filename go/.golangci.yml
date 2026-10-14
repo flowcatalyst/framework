@@ -1,0 +1,89 @@
+# The Go framework's lint profile: the FlowCatalyst platform's profile (flowcatalyst-go
+# .golangci.yml) plus what a public library needs (docs/go/design.md section 2.4):
+#   - gochecksumtype: sealed interfaces (//sumtype:decl) are switched over exhaustively;
+#   - forbidigo: no global state and time only from the injected clock in library packages;
+#   - revive `exported` ON: these are public packages, so every exported name is documented.
+# Run with the pinned golangci-lint built by the local Go: `make -C go lint` (go tool golangci-lint
+# from go/tools).
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - bodyclose
+    - gocritic
+    - gosec
+    - misspell
+    - revive
+    - whitespace
+    - errorlint
+    - modernize
+    - exhaustive
+    - gochecksumtype
+    - forbidigo
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: false
+    gochecksumtype:
+      default-signifies-exhaustive: false
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: error-return
+        - name: error-naming
+        - name: indent-error-flow
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^time\.(Now|Since|Until)$
+          msg: time comes from the injected fw.Clock (b.Clock(), a Clock parameter); fw.SystemClock is the one reader of the system clock
+        - pattern: ^os\.(Getenv|LookupEnv|Environ)$
+          msg: the environment is read by package config only (EnvironmentVariables), so tests can pass an explicit map
+        - pattern: ^slog\.(Default|SetDefault)$
+          msg: no global logger; library code logs through the *slog.Logger that fw.Boot gives it
+        - pattern: ^context\.(Background|TODO)$
+          msg: take a context.Context parameter; only main functions and tests start from context.Background
+        - pattern: ^reflect\.
+          msg: no reflection for wiring; reflection is allowed only at the JSON edge (nolint there, with the reason)
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - (github.com/jackc/pgx/v5.Tx).Rollback
+        - (*github.com/jackc/pgx/v5.Conn).Close
+        - (net.Conn).Close
+        - fmt.Fprintf
+        - fmt.Fprintln
+    gosec:
+      excludes:
+        - G104 # unchecked errors: revive's error-return and errcheck cover it
+        - G115 # integer conversions: checked where they matter
+        - G304 # config and migration files are read by a computed path by design
+  exclusions:
+    rules:
+      - linters: [gosec, bodyclose, forbidigo]
+        path: _test\.go
+      # Test infrastructure, commands and examples' main functions may read the environment, the
+      # system clock and start from context.Background.
+      - linters: [forbidigo, gosec]
+        path: (^|/)(fwtest|cmd|internal/conformance)/
+      - linters: [forbidigo]
+        path: (^|/)examples/[^/]+/main\.go$
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/flowcatalyst/framework/go

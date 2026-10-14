@@ -1,0 +1,1 @@
+# source (repository root)  copy (under go/), one pair per line; see sync-shared.sh

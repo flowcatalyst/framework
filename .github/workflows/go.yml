@@ -1,0 +1,75 @@
+# The Go framework (go/): format, lints, the framework's analyzers, NilAway, tests with -race, and
+# govulncheck. The Java build is separate (publish.yml runs it on tags); this workflow runs only when
+# the Go tree, the shared conformance vectors or this file change. The toolchain is Go 1.27.2 (the
+# go directive in go/go.mod); the lint tools are pinned in go/tools/go.mod and built by it.
+# Written in G0 and not run yet (docs/go/milestones.md).
+name: go
+
+on:
+  push:
+    branches: [main]
+    paths: ["go/**", "conformance/**", ".github/workflows/go.yml"]
+  pull_request:
+    paths: ["go/**", "conformance/**", ".github/workflows/go.yml"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: go
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.2"
+          cache-dependency-path: |
+            go/go.sum
+            go/tools/go.sum
+      - run: make fmt-check
+      - run: make lint
+      - run: make vet
+      - run: make nilaway
+
+  test:
+    runs-on: ubuntu-latest
+    # The tests' servers: fwtest uses these instead of starting an embedded PostgreSQL and a
+    # redis-server itself. Port 5432 is the service container, never the development database.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      FW_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      FW_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.2"
+          cache-dependency-path: go/go.sum
+      - run: make test
+
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.2"
+          cache-dependency-path: go/go.sum
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...

@@ -8,7 +8,8 @@
 #   2. every type named there is declared (class, interface, record or enum) somewhere under
 #      framework-*/src (main and test, because the test-jars publish helpers such as PostgresFixture);
 #      for the Rust pages under docs/guide/rust/, declared (struct, enum, trait, type or union) in a
-#      .rs file under rust/;
+#      .rs file under rust/; for the Go pages under docs/guide/go/, declared as a Go type
+#      ("type Name ..." or a member of a "type ( ... )" block) in a .go file under go/;
 #   3. every relative link to a .md file resolves to a file, and when it carries an #anchor (or is a
 #      bare #anchor within the page), the target page has a heading whose GitHub-style slug is that
 #      anchor (lowercase, punctuation other than - and _ removed, spaces to hyphens, a repeated
@@ -79,6 +80,14 @@ declared_rust() {
     "(struct|enum|trait|type|union)[[:space:]]+$1([^A-Za-z0-9_]|\$)" $rust_dirs 2>/dev/null
 }
 
+# The Go pages (docs/guide/go/) name Go types declared in a .go file under go/ (tests and examples
+# included): "type Name" (also generic, "type Name[T any]") or "Name struct|interface" inside a
+# grouped type declaration.
+declared_go() {
+  [ -d go ] && grep -rqE --include='*.go' \
+    "(^|[[:space:]])type[[:space:]]+$1([^A-Za-z0-9_]|\$)|^[[:space:]]+$1(\[[^]]*\])?[[:space:]]+(struct|interface)([^A-Za-z0-9_]|\$)" go 2>/dev/null
+}
+
 checked_pages=0
 checked_types=0
 
@@ -106,6 +115,11 @@ for page in $pages; do
         docs/guide/rust/*)
           if ! declared_rust "$name"; then
             fail "$page: Rust type '$name' is not declared under rust/ (renamed or removed? update the page)"
+          fi
+          ;;
+        docs/guide/go/*)
+          if ! declared_go "$name"; then
+            fail "$page: Go type '$name' is not declared under go/ (renamed or removed? update the page)"
           fi
           ;;
         *)
