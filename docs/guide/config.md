@@ -149,7 +149,6 @@ to code fails naming its replacement):
 |---|---|
 | `database.instances.<n>` | `url` (required), `username`, `password` (secret). The pool and migrations are code: `DatabaseModule.builder().pool(DatabasePool)`, `.pool(name, DatabasePool)`, `.migrate(boolean)` ([lifecycle](modules-and-lifecycle.md#the-database-module-and-migrations)) |
 | `redis.instances.<n>` | `url` (required, `redis://` or `rediss://`, may carry user, password and database number), `password` (secret, wins over the URL's). The timeout and pool are code: `RedisModule.builder().pool(RedisPool)`, `.pool(name, RedisPool)` |
-| `secrets.instances.<n>` | `driver` (required: `file`, `env`; `platform` fails start-up); `directory` and `max-bytes` (65536) for `file`; `prefix` for `env`; `cache-ttl` (5m), `cache-max` (10000) for both. See [Per-client secrets](secrets.md) |
 | `http-clients.instances.<n>` | `base-url` and the credentials of the client's `ClientAuth`; the client is named in code ([HTTP client](http-client.md#configured-clients)) |
 
 `<section>.default` names the default instance; with exactly one instance it may be omitted.

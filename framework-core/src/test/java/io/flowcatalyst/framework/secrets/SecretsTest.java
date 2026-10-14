@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -36,21 +37,17 @@ class SecretsTest {
   final ClientId acme = new ClientId("acme");
   final ClientId globex = new ClientId("globex");
 
-  private App start(String yaml, Map<String, String> env) throws IOException {
-    Files.writeString(dir.resolve("application.yaml"), yaml);
-    AppBuilder b = App.builder().configDirectory(dir).environment(env).module(new SecretsModule());
+  private App start(SecretsModule module, Map<String, String> env) {
+    AppBuilder b = App.builder().configDirectory(dir).environment(env).module(module);
     return b.start();
   }
 
-  private App files(String extra) throws IOException {
-    return start(
-        """
-        secrets:
-          instances:
-            files: { driver: file, directory: "%s"%s }
-        """
-            .formatted(secrets, extra),
-        Map.of());
+  private App files(UnaryOperator<SecretStores.FileStore> adjust) {
+    return start(SecretsModule.builder().store("files", adjust.apply(SecretStores.file(secrets))).build(), Map.of());
+  }
+
+  private App files() {
+    return files(f -> f);
   }
 
   private void write(String client, String name, String content) throws IOException {
@@ -87,7 +84,7 @@ class SecretsTest {
   void aFileIsReadForTheCallersClientOnlyWithOneTrailingNewlineRemoved() throws IOException {
     write("acme", "sftp-password", VALUE + "\n");
     write("globex", "sftp-password", "globex-value\r\n");
-    try (App app = files("")) {
+    try (App app = files()) {
       SecretResolver r = app.get(SecretResolver.class);
       assertThat(reveal(r.resolve(acme, SecretRef.parse("files:sftp-password")))).isEqualTo(VALUE);
       assertThat(reveal(r.resolve(globex, SecretRef.of("sftp-password")))).isEqualTo("globex-value");
@@ -100,7 +97,7 @@ class SecretsTest {
   @Test
   void clientIdsThatAreNotPlainDirectoryNamesAreRefused() throws IOException {
     write("acme", "x", VALUE);
-    try (App app = files("")) {
+    try (App app = files()) {
       SecretResolver r = app.get(SecretResolver.class);
       for (String client : new String[] {"..", ".", ".acme", "..acme"}) {
         assertThat(r.resolve(new ClientId(client), SecretRef.of("x")))
@@ -119,7 +116,7 @@ class SecretsTest {
     Files.writeString(outside.resolve("token"), VALUE);
     ByteArrayOutputStream err = new ByteArrayOutputStream();
     PrintStream old = System.err;
-    try (App app = files("")) {
+    try (App app = files()) {
       System.setErr(new PrintStream(err, true, StandardCharsets.UTF_8));
       SecretResolver r = app.get(SecretResolver.class);
       assertThat(r.resolve(acme, SecretRef.of("stolen"))).isInstanceOf(SecretResult.NotFound.class);
@@ -138,7 +135,7 @@ class SecretsTest {
     Files.writeString(dated.resolve("sftp-password"), VALUE);
     Files.createSymbolicLink(secrets.resolve("..data"), secrets.resolve("..2026_10_10"));
     Files.createSymbolicLink(secrets.resolve("acme"), Path.of("..data", "acme"));
-    try (App app = files("")) {
+    try (App app = files()) {
       assertThat(reveal(app.get(SecretResolver.class).resolve(acme, SecretRef.of("sftp-password"))))
           .isEqualTo(VALUE);
     }
@@ -150,7 +147,7 @@ class SecretsTest {
     Files.createDirectories(secrets.resolve("acme"));
     Files.createSymbolicLink(
         secrets.resolve("acme").resolve("api-key"), secrets.resolve("globex").resolve("api-key"));
-    try (App app = files("")) {
+    try (App app = files()) {
       assertThat(app.get(SecretResolver.class).resolve(acme, SecretRef.of("api-key")))
           .isInstanceOf(SecretResult.NotFound.class);
     }
@@ -159,7 +156,7 @@ class SecretsTest {
   @Test
   void aClientDifferingOnlyByCaseNeverReadsAnotherClientsFile() throws IOException {
     write("acme", "api-key", VALUE);
-    try (App app = files("")) {
+    try (App app = files()) {
       // On a case-insensitive file system ACME/api-key opens acme/api-key; the real-path check refuses it.
       assertThat(app.get(SecretResolver.class).resolve(new ClientId("ACME"), SecretRef.of("api-key")))
           .isInstanceOf(SecretResult.NotFound.class);
@@ -171,10 +168,10 @@ class SecretsTest {
     write("acme", "big", VALUE + "x".repeat(100));
     Files.createDirectories(secrets.resolve("acme"));
     Files.write(secrets.resolve("acme").resolve("binary"), new byte[] {'s', '3', (byte) 0xC3, (byte) 0x28});
-    try (App app = files(", max-bytes: 50")) {
+    try (App app = files(f -> f.withMaxBytes(50))) {
       SecretResolver r = app.get(SecretResolver.class);
       Throwable big = catchThrowable(() -> r.resolve(acme, SecretRef.of("big")));
-      assertThat(big).isInstanceOf(SecretStoreException.class).hasMessageContaining("max-bytes");
+      assertThat(big).isInstanceOf(SecretStoreException.class).hasMessageContaining("maxBytes");
       assertThat(big.getMessage()).doesNotContain(VALUE);
       Throwable bin = catchThrowable(() -> r.resolve(acme, SecretRef.of("binary")));
       assertThat(bin).isInstanceOf(SecretStoreException.class).hasMessageContaining("UTF-8");
@@ -186,7 +183,7 @@ class SecretsTest {
   void emptyFilesAndDirectoriesAreNotFound() throws IOException {
     write("acme", "empty", "\n");
     Files.createDirectories(secrets.resolve("acme").resolve("a-dir"));
-    try (App app = files("")) {
+    try (App app = files()) {
       SecretResolver r = app.get(SecretResolver.class);
       assertThat(r.resolve(acme, SecretRef.of("empty"))).isInstanceOf(SecretResult.NotFound.class);
       assertThat(r.resolve(acme, SecretRef.of("a-dir"))).isInstanceOf(SecretResult.NotFound.class);
@@ -194,16 +191,14 @@ class SecretsTest {
   }
 
   @Test
-  void theDirectoryMustExistAndBeAbsolute() throws IOException {
-    for (String directory : new String[] {"relative/path", outside.resolve("missing").toString()}) {
-      Files.writeString(
-          dir.resolve("application.yaml"),
-          "secrets:\n  instances:\n    files: { driver: file, directory: \"" + directory + "\" }\n");
-      Throwable t =
-          catchThrowable(
-              () -> App.builder().configDirectory(dir).environment(Map.of()).module(new SecretsModule()).start());
-      assertThat(t).isInstanceOf(StartupException.class).hasMessageContaining("directory");
-    }
+  void theDirectoryMustBeAbsoluteWhenBuiltAndExistAtStartUp() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> SecretStores.file(Path.of("relative/path")))
+        .withMessageContaining("directory");
+    Throwable t =
+        catchThrowable(
+            () -> start(SecretsModule.builder().store("files", SecretStores.file(outside.resolve("missing"))).build(), Map.of()));
+    assertThat(t).isInstanceOf(StartupException.class).hasMessageContaining("directory").hasMessageContaining("secret store 'files'");
   }
 
   // ---- env driver ------------------------------------------------------------------------
@@ -214,9 +209,7 @@ class SecretsTest {
     env.put("CLIENT_SECRET_ACME_CORP__SFTP_PASSWORD", VALUE);
     env.put("CLIENT_SECRET_ACME__CORP_SFTP_PASSWORD", "other");
     env.put("DATABASE_INSTANCES_MAIN_PASSWORD", "db-password");
-    try (App app =
-        start(
-            "secrets:\n  instances:\n    env: { driver: env, prefix: CLIENT_SECRET_ }\n", env)) {
+    try (App app = start(SecretsModule.builder().store("env", SecretStores.env("CLIENT_SECRET_")).build(), env)) {
       SecretResolver r = app.get(SecretResolver.class);
       assertThat(reveal(r.resolve(new ClientId("acme-corp"), SecretRef.of("sftp-password"))))
           .isEqualTo(VALUE);
@@ -251,15 +244,9 @@ class SecretsTest {
   }
 
   @Test
-  void envPrefixesThatReachFrameworkVariablesFailStartUp() throws IOException {
+  void envPrefixesThatReachFrameworkVariablesAreRefusedWhenBuilt() {
     for (String prefix : new String[] {"DATABASE_", "APP_X_", "FLOWCATALYST_", "X_", "lower_", "NO_UNDERSCORE"}) {
-      Files.writeString(
-          dir.resolve("application.yaml"),
-          "secrets:\n  instances:\n    env: { driver: env, prefix: \"" + prefix + "\" }\n");
-      Throwable t =
-          catchThrowable(
-              () -> App.builder().configDirectory(dir).environment(Map.of()).module(new SecretsModule()).start());
-      assertThat(t).as(prefix).isInstanceOf(StartupException.class).hasMessageContaining("prefix");
+      assertThatIllegalArgumentException().as(prefix).isThrownBy(() -> SecretStores.env(prefix)).withMessageContaining("prefix");
     }
   }
 
@@ -301,7 +288,7 @@ class SecretsTest {
   @Test
   void theResolverEvictsThroughToTheStore() throws IOException {
     write("acme", "k", "one");
-    try (App app = files(", cache-ttl: 1h")) {
+    try (App app = files(f -> f.withCache(CachePolicy.of(Duration.ofHours(1), 10_000)))) {
       SecretResolver r = app.get(SecretResolver.class);
       assertThat(reveal(r.resolve(acme, SecretRef.of("k")))).isEqualTo("one");
       write("acme", "k", "two");
@@ -320,18 +307,18 @@ class SecretsTest {
   void thePlatformDriverIsBlockedAndSaysSo() throws IOException {
     Throwable t =
         catchThrowable(
-            () -> start("secrets:\n  instances:\n    p: { driver: platform }\n", Map.of()));
+            () -> start(SecretsModule.builder().store("p", SecretStores.platform()).build(), Map.of()));
     assertThat(t).isInstanceOf(StartupException.class).hasMessageContaining("blocked on the platform");
   }
 
   @Test
   void withoutInstancesOrWithAnUnknownStoreResolvingFails() throws IOException {
-    try (App app = start("", Map.of())) {
+    try (App app = start(SecretsModule.builder().build(), Map.of())) {
       SecretResolver r = app.get(SecretResolver.class);
       assertThatIllegalStateException().isThrownBy(() -> r.resolve(acme, SecretRef.of("x")));
     }
     write("acme", "x", VALUE);
-    try (App app = files("")) {
+    try (App app = files()) {
       SecretResolver r = app.get(SecretResolver.class);
       assertThatIllegalArgumentException().isThrownBy(() -> r.resolve(acme, SecretRef.parse("nope:x")));
     }
@@ -340,7 +327,7 @@ class SecretsTest {
   @Test
   void requireNamesTheSecretButNeverShowsAValue() throws IOException {
     write("acme", "present", VALUE);
-    try (App app = files("")) {
+    try (App app = files()) {
       SecretResolver r = app.get(SecretResolver.class);
       assertThatThrownBy(() -> r.require(globex, SecretRef.of("present")))
           .isInstanceOf(SecretNotFoundException.class)
@@ -358,5 +345,118 @@ class SecretsTest {
     assertThat(s.matches(VALUE + "x")).isFalse();
     assertThat(s.matches("")).isFalse();
     assertThat(Secret.of("").matches("")).isTrue();
+  }
+
+  // ---- behaviour in code (config-and-code contract, section 3.7) ----------------------------
+
+  @Test
+  void cachePolicyDefaultsAndRanges() {
+    assertThat(CachePolicy.defaults()).isEqualTo(new CachePolicy(Duration.ofMinutes(5), 10_000));
+    assertThat(CachePolicy.none().ttl()).isZero();
+    assertThat(CachePolicy.of(Duration.ofHours(24), 1_000_000).maxEntries()).isEqualTo(1_000_000);
+    assertThatIllegalArgumentException().isThrownBy(() -> CachePolicy.of(Duration.ofMillis(-1), 1)).withMessageContaining("ttl");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> CachePolicy.of(Duration.ofHours(24).plusNanos(1), 1))
+        .withMessageContaining("ttl");
+    assertThatIllegalArgumentException().isThrownBy(() -> CachePolicy.of(Duration.ZERO, 0)).withMessageContaining("maxEntries");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> CachePolicy.of(Duration.ZERO, 1_000_001))
+        .withMessageContaining("maxEntries");
+    assertThat(SecretStores.file(secrets).maxBytes()).isEqualTo(65_536);
+    assertThat(SecretStores.file(secrets).cache()).isEqualTo(CachePolicy.defaults());
+    assertThat(SecretStores.env("CLIENT_SECRET_").cache()).isEqualTo(CachePolicy.defaults());
+    assertThatIllegalArgumentException().isThrownBy(() -> SecretStores.file(secrets).withMaxBytes(0)).withMessageContaining("maxBytes");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> SecretStores.file(secrets).withMaxBytes(1_048_577))
+        .withMessageContaining("maxBytes");
+  }
+
+  @Test
+  void withoutACacheARotatedFileIsReadAtOnce() throws IOException {
+    write("acme", "k", "one");
+    try (App app = files(f -> f.withCache(CachePolicy.none()))) {
+      SecretResolver r = app.get(SecretResolver.class);
+      assertThat(reveal(r.resolve(acme, SecretRef.of("k")))).isEqualTo("one");
+      write("acme", "k", "two");
+      assertThat(reveal(r.resolve(acme, SecretRef.of("k")))).isEqualTo("two");
+    }
+  }
+
+  @Test
+  void withTheDefaultCacheARotatedFileIsReadAfterTheTtl() throws IOException {
+    write("acme", "k", "one");
+    try (App app = files()) {
+      SecretResolver r = app.get(SecretResolver.class);
+      assertThat(reveal(r.resolve(acme, SecretRef.of("k")))).isEqualTo("one");
+      write("acme", "k", "two");
+      assertThat(reveal(r.resolve(acme, SecretRef.of("k")))).isEqualTo("one");
+    }
+  }
+
+  @Test
+  void theDefaultStoreRulesAreCheckedWhenBuilt() throws IOException {
+    write("acme", "x", VALUE);
+    SecretsModule.Builder two =
+        SecretsModule.builder().store("files", SecretStores.file(secrets)).store("env", SecretStores.env("CLIENT_SECRET_"));
+    assertThatIllegalArgumentException().isThrownBy(two::build).withMessageContaining("defaultStore");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> SecretsModule.builder().store("files", SecretStores.file(secrets)).defaultStore("nope").build())
+        .withMessageContaining("'nope'");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> SecretsModule.builder().store("files", SecretStores.file(secrets)).store("files", SecretStores.file(secrets)));
+    try (App app = start(two.defaultStore("files").build(), Map.of())) {
+      assertThat(reveal(app.get(SecretResolver.class).resolve(acme, SecretRef.of("x")))).isEqualTo(VALUE);
+    }
+  }
+
+  static final io.flowcatalyst.framework.config.Setting<String> DIRECTORY =
+      io.flowcatalyst.framework.config.Setting.string("demo.secrets-directory").asRequired();
+
+  @Test
+  void aDeploymentSpecificDirectoryIsTheApplicationsOwnSetting() throws IOException {
+    write("acme", "x", VALUE);
+    io.flowcatalyst.framework.core.Module demo =
+        new io.flowcatalyst.framework.core.Module() {
+          @Override
+          public String id() {
+            return "demo";
+          }
+
+          @Override
+          public void register(AppBuilder app) {
+            app.declare(DIRECTORY);
+          }
+        };
+    SecretStoreFactory fromSetting =
+        (name, lookup) ->
+            SecretStores.file(Path.of(lookup.get(io.flowcatalyst.framework.config.Config.class).get(DIRECTORY)))
+                .create(name, lookup);
+    try (App app =
+        App.builder()
+            .configDirectory(dir)
+            .environment(Map.of("DEMO_SECRETS_DIRECTORY", secrets.toString()))
+            .module(SecretsModule.builder().store("files", fromSetting).build())
+            .module(demo)
+            .start()) {
+      assertThat(reveal(app.get(SecretResolver.class).resolve(acme, SecretRef.of("x")))).isEqualTo(VALUE);
+    }
+  }
+
+  @Test
+  void aLeftoverSecretsSectionFailsStartUpNamingTheCode() throws IOException {
+    Files.writeString(
+        dir.resolve("application.yaml"),
+        "secrets:\n  default: env\n  instances:\n    env: { driver: env, prefix: CLIENT_SECRET_, cache-ttl: 1m }\n");
+    Throwable t = catchThrowable(() -> start(SecretsModule.builder().build(), Map.of("SECRETS_INSTANCES_ENV_CACHE_MAX", "5")));
+    assertThat(t).isInstanceOf(StartupException.class);
+    assertThat(((StartupException) t).problems())
+        .extracting(io.flowcatalyst.framework.core.Problem::key)
+        .containsExactlyInAnyOrder(
+            "secrets.default",
+            "secrets.instances.env.driver",
+            "secrets.instances.env.prefix",
+            "secrets.instances.env.cache-ttl",
+            "secrets.instances.env.cache-max");
+    assertThat(t.getMessage()).contains("SecretStores.env(prefix)");
   }
 }

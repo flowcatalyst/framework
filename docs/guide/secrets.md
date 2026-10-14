@@ -1,4 +1,4 @@
-<!-- types: SecretsModule, SecretResolver, SecretRef, SecretResult, SecretStore, SecretStoreException, SecretNotFoundException, Secret, EnvironmentVariables -->
+<!-- types: SecretsModule, SecretStores, SecretStoreFactory, CachePolicy, SecretResolver, SecretRef, SecretResult, SecretStore, SecretStoreException, SecretNotFoundException, Secret, EnvironmentVariables -->
 # Per-client secrets
 
 Some credentials belong to a **client**, not to the application: the SFTP password of a client's
@@ -18,22 +18,35 @@ The specification, with the threat model, is [contracts/secrets.md](../contracts
 
 ## Setting it up
 
-List `SecretsModule` (in `framework-core`) and configure one or more stores:
+List `SecretsModule` (in `framework-core`) with one or more stores, named in code with the driver
+each uses (there is no `secrets` configuration; behaviour is code,
+[Config](config.md#what-configuration-holds)). From `SecretsTest`:
 
-```yaml
-secrets:
-  default: files
-  instances:
-    files: { driver: file, directory: /run/secrets/clients, cache-ttl: 5m }
-    env:   { driver: env, prefix: CLIENT_SECRET_ }
+```java
+SecretsModule.Builder two =
+    SecretsModule.builder().store("files", SecretStores.file(secrets)).store("env", SecretStores.env("CLIENT_SECRET_"));
+App app = start(two.defaultStore("files").build(), Map.of());
 ```
 
-`app.get(SecretResolver.class)` is then available.
+`app.get(SecretResolver.class)` is then available. Store names match `[a-z][a-z0-9-]*`; with one
+store it is the default, with several `defaultStore(name)` must name one (`build()` throws
+otherwise). Each store has a `CachePolicy` (`withCache`):
 
-| Key (every driver) | Default | Meaning |
-|---|---|---|
-| `cache-ttl` | `5m` | how long a found value is reused; `0s` turns caching off; at most `24h` |
-| `cache-max` | `10000` | most cached entries; the least recently used goes first |
+| `CachePolicy` | Meaning |
+|---|---|
+| `defaults()` | found values reused for 5 minutes, at most 10 000 entries (the least recently used goes first) |
+| `of(ttl, maxEntries)` | ttl 0 to 24 h, entries 1 to 1 000 000 |
+| `none()` | no cache: every lookup reads the store |
+
+A `SecretStoreFactory` receives the lookup, so a directory or prefix that differs per deployment is
+a setting of your own, read there (from `SecretsTest`):
+
+```java
+SecretStoreFactory fromSetting =
+    (name, lookup) ->
+        SecretStores.file(Path.of(lookup.get(io.flowcatalyst.framework.config.Config.class).get(DIRECTORY)))
+            .create(name, lookup);
+```
 
 ### The `file` driver
 
@@ -44,8 +57,9 @@ A secret is the file `<directory>/<client>/<name>`:
 /run/secrets/clients/globex/sftp-password
 ```
 
-- `directory` (required) must be an absolute path to an existing directory. `max-bytes` (default
-  65 536) bounds a file; a larger one is an error.
+- `SecretStores.file(directory)`: the path must be absolute (checked when built) and a directory
+  at start-up. `withMaxBytes(int)` (default 65 536, 1 B to 1 MiB) bounds a file; a larger one is an
+  error.
 - Content is read as UTF-8; **one** trailing newline (`\n` or `\r\n`) is removed, so
   `echo secret > file` works. An empty file is "not found".
 - Symbolic links are followed (Kubernetes secret volumes use them), but the real file must be inside
@@ -61,7 +75,7 @@ A secret is the variable `prefix + CLIENT + "__" + NAME`, upper-cased with `-` t
 client `acme-corp`, name `sftp-password`, prefix `CLIENT_SECRET_` →
 `CLIENT_SECRET_ACME_CORP__SFTP_PASSWORD`.
 
-- `prefix` (required) matches `[A-Z][A-Z0-9_]*_`, at least 4 characters, and may not start with
+- `SecretStores.env(prefix)`: the prefix (checked when built) matches `[A-Z][A-Z0-9_]*_`, at least 4 characters, and may not start with
   `APP_`, `HTTP_`, `DATABASE_`, `REDIS_`, `LOCKS_`, `FLOWCATALYST_` or `SECRETS_`, so no reference can
   reach a framework setting.
 - Only client ids of lowercase letters, digits and single hyphens can be encoded; any other client is
@@ -72,8 +86,8 @@ client `acme-corp`, name `sftp-password`, prefix `CLIENT_SECRET_` →
 
 ### The `platform` driver: not available
 
-FlowCatalyst has no endpoint yet that returns a per-client secret to an application, so
-`driver: platform` fails start-up with a message saying so. What the platform needs to offer is in
+FlowCatalyst has no endpoint yet that returns a per-client secret to an application, so a store
+built with `SecretStores.platform()` fails start-up with a message saying so. What the platform needs to offer is in
 the contract, section 4.
 
 ## Using it

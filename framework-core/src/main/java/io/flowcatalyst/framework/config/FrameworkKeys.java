@@ -79,6 +79,16 @@ final class FrameworkKeys {
       l.add(k("http-clients.instances.*.auth." + s, "http-client", "HttpClientOptions.withAuth(ClientAuth)"));
     }
 
+    // secrets
+    String secretStores =
+        "SecretsModule.builder().store(name, SecretStores.env(prefix) | SecretStores.file(directory)),"
+            + " with a CachePolicy";
+    l.add(k("secrets.default", "secrets", "SecretsModule.builder().defaultStore(name)"));
+    for (String s : List.of("driver", "directory", "prefix", "max-bytes", "cache-ttl", "cache-max")) {
+      l.add(k("secrets.instances.*." + s, "secrets", secretStores));
+    }
+    l.add(k("secrets", "secrets", secretStores));
+
     // rate limits (MA item 10)
     String limiters = "MemoryRateLimiter.create or RedisRateLimiter.create, built in code";
     l.add(k("rate-limits.default", "rate-limit", limiters));

@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -130,6 +130,22 @@ Delete the section and `LocksRedisModule` from your module list; name the stores
 
 The database store now checks `fw_lock` on the default instance too: without `LocksDatabaseModule`
 start-up fails saying so (before, the first lock failed).
+
+## Secrets (`secrets.*`, the whole section)
+
+Delete the section; name the stores in code. `new SecretsModule()` is gone: use the builder.
+
+| Before | Now |
+|---|---|
+| `env: { driver: env, prefix: CLIENT_SECRET_ }` | `SecretsModule.builder().store("env", SecretStores.env("CLIENT_SECRET_"))` |
+| `files: { driver: file, directory: /run/secrets/clients, max-bytes: 4096 }` | `.store("files", SecretStores.file(Path.of("/run/secrets/clients")).withMaxBytes(4096))` |
+| `cache-ttl: 1m, cache-max: 500` | `.withCache(CachePolicy.of(Duration.ofMinutes(1), 500))`; `cache-ttl: 0s` is `CachePolicy.none()` |
+| `driver: platform` | `SecretStores.platform()` (still fails start-up: blocked on the platform) |
+| `secrets.default: files` | `.defaultStore("files")` |
+
+A directory or prefix that differs per deployment: declare a setting of your own and read it in a
+`SecretStoreFactory` lambda ([Per-client secrets](secrets.md#setting-it-up)). A relative directory
+and a forbidden prefix are now refused when the store is built, not at start-up.
 
 ## Rate limits (`rate-limits.*`)
 

@@ -87,7 +87,7 @@ final class FileSecretStore implements SecretStore {
       }
       if (bytes.length > maxBytes) {
         throw new SecretStoreException(
-            describe("is larger than max-bytes (" + maxBytes + ")", c, name), null);
+            describe("is larger than maxBytes (" + maxBytes + ")", c, name), null);
       }
       String text = decode(bytes, c, name);
       if (text.endsWith("\r\n")) {

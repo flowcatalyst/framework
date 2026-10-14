@@ -1,29 +1,27 @@
 package io.flowcatalyst.framework.secrets;
 
-import io.flowcatalyst.framework.config.EnvironmentVariables;
-import io.flowcatalyst.framework.config.InstanceConfig;
 import io.flowcatalyst.framework.core.AppBuilder;
-import io.flowcatalyst.framework.core.Instances;
 import io.flowcatalyst.framework.core.Module;
-import io.flowcatalyst.framework.core.MonotonicClock;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
+import io.flowcatalyst.framework.core.Problem;
+import io.flowcatalyst.framework.core.StartupException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 
 /**
- * The secrets module (id {@code secrets}): registers the {@code env} and {@code file} drivers, a
- * {@code platform} driver that fails start-up because the platform has no endpoint for it yet, and
- * provides {@link SecretResolver} over the configured instances.
+ * The secrets module (id {@code secrets}): provides {@link SecretResolver} over the stores named
+ * in code, each with the driver its factory chooses (config-and-code contract, section 3.7). There
+ * is no {@code secrets} configuration; the module claims the component.
  *
  * <pre>{@code
- * secrets:
- *   default: files
- *   instances:
- *     files: { driver: file, directory: /run/secrets/clients, cache-ttl: 5m }
- *     env:   { driver: env, prefix: CLIENT_SECRET_ }
+ * SecretsModule.builder()
+ *     .store("files", SecretStores.file(Path.of("/run/secrets/clients")))
+ *     .store("env", SecretStores.env("CLIENT_SECRET_").withCache(CachePolicy.none()))
+ *     .defaultStore("files")
+ *     .build()
  * }</pre>
  */
 public final class SecretsModule implements Module {
@@ -31,18 +29,94 @@ public final class SecretsModule implements Module {
   /** The module id. */
   public static final String ID = "secrets";
 
-  /** The driver reading environment variables. */
-  public static final String ENV = "env";
-
-  /** The driver reading files under a directory. */
-  public static final String FILE = "file";
-
-  /** The platform driver; blocked until the platform offers a secret endpoint. */
-  public static final String PLATFORM = "platform";
-
   static final String BLOCKED =
       "the platform driver is blocked on the platform: FlowCatalyst has no endpoint that resolves a"
           + " per-client secret for an application (secrets contract, section 4); use env or file";
+
+  private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9-]*");
+
+  private final Map<String, SecretStoreFactory> stores;
+  private final @Nullable String defaultStore;
+
+  private SecretsModule(Map<String, SecretStoreFactory> stores, @Nullable String defaultStore) {
+    this.stores = stores;
+    this.defaultStore = defaultStore;
+  }
+
+  /**
+   * Starts a module definition with no store.
+   *
+   * @return the builder
+   */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /** Builds a {@link SecretsModule}. */
+  public static final class Builder {
+    private final Map<String, SecretStoreFactory> stores = new LinkedHashMap<>();
+    private @Nullable String defaultStore;
+
+    private Builder() {}
+
+    /**
+     * Adds a named store. References name it as {@code name:secret}.
+     *
+     * @param name {@code [a-z][a-z0-9-]*}, unique
+     * @param factory builds it at start-up: {@link SecretStores#env}, {@link SecretStores#file}, or
+     *     your own
+     * @return this builder
+     * @throws IllegalArgumentException for an invalid or repeated name
+     */
+    public Builder store(String name, SecretStoreFactory factory) {
+      if (!NAME.matcher(name).matches()) {
+        throw new IllegalArgumentException("secret store name must match [a-z][a-z0-9-]*, was '" + name + "'");
+      }
+      if (stores.putIfAbsent(name, factory) != null) {
+        throw new IllegalArgumentException("secret store '" + name + "' is already given");
+      }
+      return this;
+    }
+
+    /**
+     * Names the store a reference without a store name uses. Needed with several stores; with
+     * one, that one is the default.
+     *
+     * @param name a store added with {@link #store}
+     * @return this builder
+     */
+    public Builder defaultStore(String name) {
+      this.defaultStore = name;
+      return this;
+    }
+
+    /**
+     * Builds the module.
+     *
+     * @return the module
+     * @throws IllegalArgumentException when the default names no store, or several stores have
+     *     no default
+     */
+    public SecretsModule build() {
+      String chosen = defaultStore;
+      if (chosen != null && !stores.containsKey(chosen)) {
+        throw new IllegalArgumentException(
+            "defaultStore '" + chosen + "' is not a store; stores: " + names());
+      }
+      if (chosen == null && stores.size() == 1) {
+        chosen = stores.keySet().iterator().next();
+      }
+      if (chosen == null && stores.size() > 1) {
+        throw new IllegalArgumentException(
+            "several secret stores (" + names() + "): name the default with defaultStore");
+      }
+      return new SecretsModule(new LinkedHashMap<>(stores), chosen);
+    }
+
+    private String names() {
+      return stores.isEmpty() ? "(none)" : String.join(", ", stores.keySet());
+    }
+  }
 
   @Override
   public String id() {
@@ -51,63 +125,32 @@ public final class SecretsModule implements Module {
 
   @Override
   public void register(AppBuilder app) {
-    app.drivers()
-        .register(
-            SecretStore.class,
-            ENV,
-            (name, config, lookup, built) ->
-                cached(
-                    new EnvSecretStore(
-                        name, config.string("prefix"), lookup.get(EnvironmentVariables.class)),
-                    config,
-                    lookup.get(MonotonicClock.class)));
-    app.drivers()
-        .register(
-            SecretStore.class,
-            FILE,
-            (name, config, lookup, built) -> {
-              Path directory = Path.of(config.string("directory"));
-              if (!directory.isAbsolute() || !Files.isDirectory(directory)) {
-                throw new IllegalArgumentException("directory must be an absolute path to a directory");
-              }
-              int maxBytes = config.integer("max-bytes", 65_536);
-              if (maxBytes < 1 || maxBytes > 1_048_576) {
-                throw new IllegalArgumentException("max-bytes must be 1 to 1048576");
-              }
-              Path root;
-              try {
-                root = directory.toRealPath();
-              } catch (IOException e) {
-                throw new IllegalArgumentException("directory cannot be resolved", e);
-              }
-              return cached(
-                  new FileSecretStore(name, root, maxBytes), config, lookup.get(MonotonicClock.class));
-            });
-    app.drivers()
-        .register(
-            SecretStore.class,
-            PLATFORM,
-            (name, config, lookup, built) -> {
-              throw new IllegalStateException(BLOCKED);
-            });
+    app.claimComponent("secrets");
     app.provide(
         SecretResolver.class,
         lookup -> {
-          Instances<SecretStore> instances = Instances.build(SecretStore.class, "secrets", lookup);
-          Map<String, SecretStore> stores = new LinkedHashMap<>(instances.all());
-          return SecretResolver.of(stores, instances.defaultName().orElse(null));
+          Map<String, SecretStore> built = new LinkedHashMap<>();
+          List<Problem> problems = new ArrayList<>();
+          for (Map.Entry<String, SecretStoreFactory> e : stores.entrySet()) {
+            try {
+              built.put(e.getKey(), e.getValue().create(e.getKey(), lookup));
+            } catch (StartupException se) {
+              problems.addAll(se.problems());
+            } catch (Exception ex) {
+              String m = ex.getMessage();
+              problems.add(
+                  new Problem(
+                      ID,
+                      "secret store '" + e.getKey() + "'",
+                      null,
+                      "failed: " + ex.getClass().getSimpleName() + (m == null ? "" : ": " + m),
+                      ex));
+            }
+          }
+          if (!problems.isEmpty()) {
+            throw new StartupException(problems);
+          }
+          return SecretResolver.of(built, defaultStore);
         });
-  }
-
-  private static SecretStore cached(SecretStore store, InstanceConfig config, MonotonicClock clock) {
-    Duration ttl = config.duration("cache-ttl", Duration.ofMinutes(5));
-    int max = config.integer("cache-max", 10_000);
-    if (ttl.isNegative() || ttl.compareTo(Duration.ofHours(24)) > 0) {
-      throw new IllegalArgumentException("cache-ttl must be zero to 24h");
-    }
-    if (max < 1 || max > 1_000_000) {
-      throw new IllegalArgumentException("cache-max must be 1 to 1000000");
-    }
-    return ttl.isZero() ? store : new CachingSecretStore(store, ttl, max, clock);
   }
 }
