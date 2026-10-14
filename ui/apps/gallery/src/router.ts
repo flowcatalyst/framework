@@ -11,6 +11,7 @@ const components: Readonly<Record<string, RouteRecordRaw["component"]>> = {
   "/values": () => import("./pages/ValuesPage.vue"),
   "/lists": () => import("./pages/ListsPage.vue"),
   "/shell": () => import("./pages/ShellPage.vue"),
+  "/fonts": () => import("./pages/FontsPage.vue"),
 };
 
 const routes: RouteRecordRaw[] = [
@@ -33,3 +34,12 @@ const routes: RouteRecordRaw[] = [
 ];
 
 export const router = createRouter({ history: createWebHistory(), routes });
+
+// The font comparison's `?font=` stays on while the reviewer moves between pages (src/fonts.ts).
+router.beforeEach((to, from) => {
+  const font = from.query["font"];
+  if (typeof font === "string" && to.query["font"] === undefined) {
+    return { path: to.path, query: { ...to.query, font }, hash: to.hash };
+  }
+  return true;
+});

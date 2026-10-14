@@ -12,11 +12,15 @@
     "e2e": "vite build && playwright test",
     "generate": "openapi-ts",
     "drift": "openapi-ts && node ../../scripts/api-drift.ts src/api",
-    "screenshots": "vite build && SCREENSHOTS=1 playwright test e2e/screenshots.spec.ts"
+    "screenshots": "vite build && SCREENSHOTS=1 playwright test e2e/screenshots.spec.ts",
+    "screenshots:fonts": "vite build --mode fonts && playwright test --config playwright.fonts.config.ts"
   },
   "dependencies": {
     "@flowcatalyst/api-runtime": "workspace:*",
     "@flowcatalyst/ui": "workspace:*",
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/ibm-plex-sans": "5.3.0",
+    "@fontsource-variable/source-sans-3": "5.3.0",
     "@iconify-json/lucide": "catalog:",
     "@internationalized/date": "catalog:",
     "@nuxt/ui": "catalog:",

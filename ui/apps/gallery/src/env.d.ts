@@ -6,3 +6,6 @@ declare module "*.vue" {
   const component: DefineComponent;
   export default component;
 }
+
+/** True in the dev server and in `vite build --mode fonts` (vite.config.ts): the font comparison's fonts load. */
+declare const __FONT_COMPARISON__: boolean;

@@ -15,6 +15,7 @@ export default defineConfig(
   {
     ignores: [
       "**/dist/**",
+      "**/dist-fonts/**",
       "**/node_modules/**",
       "**/test-results/**",
       "**/playwright-report/**",

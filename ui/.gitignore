@@ -5,3 +5,4 @@ playwright-report/
 *.tsbuildinfo
 openapi-ts-error-*.log
 screenshots/
+dist-fonts/

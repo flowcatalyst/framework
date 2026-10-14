@@ -7,8 +7,12 @@ import { RouterView, useRoute } from "vue-router";
 import { pages } from "./pages.ts";
 
 const route = useRoute();
+// Two section headings show the spacing of a grouped menu (the shell's sidebar).
 const navigation: FwNavItem[] = [
-  ...pages.map((page) => ({ label: page.title, to: page.path, icon: page.icon })),
+  { label: "Components", type: "label" },
+  ...pages.slice(0, 8).map((page) => ({ label: page.title, to: page.path, icon: page.icon })),
+  { label: "Application", type: "label" },
+  ...pages.slice(8).map((page) => ({ label: page.title, to: page.path, icon: page.icon })),
   // Never shown: the gallery's session holds no permission (FwAppShell hides what the user may not open).
   { label: "Administration", to: "/admin", icon: "i-lucide-shield", permission: "gallery:admin:manage" },
 ];

@@ -84,12 +84,15 @@ function signOut(): void {
 // for the current page on a 15 % white tint, the accent ring for focus.
 const sidebarUi = {
   root: "bg-navy-900 text-navy-100 border-white/10 dark:bg-navy-950",
+  // The phone's slideover is not the root: without this it is the page's white, under navy-100 text.
+  content: "bg-navy-900 text-navy-100 dark:bg-navy-950",
   header: "border-b border-white/10",
   footer: "border-t border-white/10",
 };
 const navUi = {
   link: "text-navy-100 hover:text-white hover:before:bg-white/10 data-active:text-white data-active:before:bg-white/15 focus-visible:before:ring-accent-300",
   linkLeadingIcon: "text-navy-200 group-hover:text-white group-data-active:text-white",
+  label: "text-navy-300",
 };
 </script>
 
@@ -103,7 +106,7 @@ const navUi = {
         <UNavigationMenu :items="visible" :collapsed="collapsed === true" orientation="vertical" color="neutral" :ui="navUi" aria-label="Main" />
       </template>
       <template #footer="{ collapsed }">
-        <div class="flex w-full items-center gap-1">
+        <div class="flex w-full gap-1" :class="collapsed === true ? 'flex-col items-center' : 'items-center'">
           <UDropdownMenu v-if="who !== undefined" :items="userItems" :content="{ side: 'top', align: 'start' }">
             <UButton
               v-bind="collapsed === true ? {} : { label: who.name }"

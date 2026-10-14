@@ -28,6 +28,9 @@ const REVIEWED: ReadonlyMap<string, readonly [string, string]> = new Map([
   ["lightningcss-linux-x64-gnu", ["MPL-2.0", "lightningcss's platform binary"]],
   ["lightningcss-linux-arm64-gnu", ["MPL-2.0", "lightningcss's platform binary"]],
   ["@fontsource-variable/inter", ["OFL-1.1", "the Inter font, shipped as woff2; OFL allows bundling (its notice goes with the app: THIRD-PARTY-NOTICES)"]],
+  ["@fontsource-variable/ibm-plex-sans", ["OFL-1.1", "font comparison only (apps/gallery, docs/ui/fonts.md): a gallery devDependency built into dist-fonts/ only, never into dist/ or an application's bundle; its notice joins THIRD-PARTY-NOTICES if the theme adopts it"]],
+  ["@fontsource-variable/source-sans-3", ["OFL-1.1", "font comparison only, as IBM Plex Sans above"]],
+  ["@fontsource-variable/geist", ["OFL-1.1", "font comparison only, as IBM Plex Sans above"]],
   ["vaul-vue", ["Unknown", "0.4.1's npm package has no licence field or file; the repository (unovue/vaul-vue) is MIT (THIRD-PARTY-NOTICES carries its text)"]],
 ]);
 
@@ -145,6 +148,12 @@ function shippedPackages(dist: string): Shipped[] {
     }
   }
   const result = [...dirs].map((dir) => describe(dir));
+  // Only the default font ships. A comparison font (apps/gallery/src/fonts.ts) in this bundle would
+  // need its notice and a decision; fail instead of omitting it silently.
+  const strayFonts = files.filter((file) => /\.woff2?$/.test(file) && !/^inter-/.test(file));
+  if (strayFonts.length > 0) {
+    throw new Error(`${dist} ships font files other than Inter's (${strayFonts.join(", ")}): the comparison fonts belong in the fonts build only`);
+  }
   if (files.some((file) => /^inter-.*\.woff2$/.test(file))) {
     result.push(describe(installed("@fontsource-variable/inter"), "the Inter font files (woff2) and their CSS"));
   }

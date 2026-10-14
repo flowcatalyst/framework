@@ -68,6 +68,12 @@ export const fcIcons = [
  *   default is a marketing header (4xl title, a rule, 2rem padding). The kit's is compact.
  * - alert: the description at full opacity. Nuxt UI draws it at 90 %, which takes the success and
  *   warning colours of an outline alert below 4.5:1 (4.17 and 4.42 on white).
+ * - navigationMenu (vertical) and dashboardSidebar: comfortable sidebar spacing (owner feedback
+ *   2026-10-14; Nuxt UI's defaults are tight). Item 30 -> 40 px high (py-1.5 -> py-2.5; the target
+ *   is 24 px at least, WCAG 2.2 SC 2.5.8), icon-to-label gap 6 -> 12 px, 4 px between items (0), 16 px
+ *   between groups (6), section headings spaced above and below, sidebar body 8 -> 16 px vertical;
+ *   collapsed: a 40 px square target in a 64 px rail (body padding 16 -> 12 px). Horizontal menus
+ *   keep Nuxt UI's defaults.
  */
 export const fcComponentTheme = {
   tabs: {
@@ -93,5 +99,26 @@ export const fcComponentTheme = {
   },
   alert: {
     slots: { description: "opacity-100" },
+  },
+  navigationMenu: {
+    variants: {
+      orientation: {
+        vertical: {
+          root: "gap-4",
+          list: "flex flex-col gap-1",
+          label: "px-3 pb-1.5 pt-2 text-xs/5 uppercase tracking-wide",
+          link: "gap-3 px-3 py-2.5",
+        },
+      },
+    },
+    compoundVariants: [{ orientation: "vertical" as const, collapsed: true, class: { link: "justify-center px-2.5" } }],
+  },
+  dashboardSidebar: {
+    slots: {
+      header: "px-6",
+      body: "gap-6 px-3 py-4",
+      footer: "px-3 py-3",
+    },
+    variants: { menu: { true: { header: "sm:px-6", body: "sm:px-3", footer: "sm:px-3" } } },
   },
 };

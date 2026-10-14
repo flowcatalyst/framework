@@ -105,5 +105,7 @@ the navy palette the sidebar uses (`bg-navy-900`, no hex in the shell any more).
 kit's (a unit test compares them with `ui-kit/theme/tokens.css`), except the one-shade contrast changes
 of [`u1.md`](u1.md). Component looks are Nuxt UI variants in `fcComponentTheme`, passed by
 `nuxtUiOptions()` to the Vite plugin's `ui` option: `tabs` (the kit's bordered tabs), `pageHeader`
-(compact), `alert` (description at full opacity). The kit's text scale is not applied (owner ruling:
-Nuxt UI's defaults).
+(compact), `alert` (description at full opacity), `navigationMenu` (vertical) and `dashboardSidebar`
+(comfortable sidebar spacing, 40 px items). The kit's text scale is not applied (owner ruling: Nuxt UI's
+defaults). The sidebar's before/after values and the font comparison (three candidate fonts, gallery
+only) are in [`fonts.md`](fonts.md).

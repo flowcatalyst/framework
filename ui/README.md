@@ -42,6 +42,7 @@ Node 24 and pnpm 10.27 (`packageManager`); nothing is installed globally. From `
 | `pnpm gallery:e2e` | builds the gallery, serves it with the strict CSP (port 4391) and runs Playwright + strict axe; fails when a row of the behaviour checklist is exercised by no passing test |
 | `pnpm check` | all of the above, in that order |
 | `pnpm gallery:dev` | Vite dev server for the gallery on 5174 (no CSP in development) |
+| `pnpm gallery:fonts` | the font comparison: builds `dist-fonts/` (the comparison fonts, gallery only), screenshots each font, light and dark, into `apps/gallery/screenshots/fonts/` ([`../docs/ui/fonts.md`](../docs/ui/fonts.md)) |
 | `pnpm gallery:screenshots` | every gallery page, light and dark, desktop and phone, into `apps/gallery/screenshots/` (git-ignored) for review |
 
 Playwright uses the Chromium build in the user cache; `pnpm --filter @flowcatalyst/gallery exec

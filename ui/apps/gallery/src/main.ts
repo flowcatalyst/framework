@@ -4,6 +4,7 @@ import ui from "@nuxt/ui/vue-plugin";
 import { flowcatalystUi } from "@flowcatalyst/ui";
 import { createApp } from "vue";
 import App from "./App.vue";
+import { applyComparisonFont, comparisonFontFor } from "./fonts.ts";
 import { client } from "./api/orders-demo/client.gen.ts";
 import { fakeFetch } from "./fake-server.ts";
 import { router } from "./router.ts";
@@ -20,6 +21,11 @@ const api = createApiRuntime({
     void router.push(url.startsWith("/auth/login") ? { path: "/signed-out", query: { from: url } } : url);
   },
   signedOutUrl: "/signed-out",
+});
+
+// The font comparison (dev server and `--mode fonts` only): `?font=<id>` swaps the font on <html>.
+router.afterEach((to) => {
+  void applyComparisonFont(comparisonFontFor(to.query["font"]));
 });
 
 createApp(App).use(router).use(ui).use(flowcatalystUi, { api }).mount("#app");
