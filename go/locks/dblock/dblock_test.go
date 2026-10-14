@@ -3,6 +3,7 @@ package dblock_test
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,5 +59,17 @@ func TestStoreFailureIsUnavailable(t *testing.T) {
 	_, _, err = store.TryAcquire(t.Context(), "svc:x", "owner", 1000)
 	if err == nil || !errorsIs(err, locks.ErrStoreUnavailable) {
 		t.Fatalf("err %v, want ErrStoreUnavailable", err)
+	}
+}
+
+func TestStoreWithoutDatabases(t *testing.T) {
+	t.Parallel()
+	_, err := dblock.Store(&database.Databases{})(t.Context(), nil)
+	if err == nil || !strings.Contains(err.Error(), "no database instance is configured") {
+		t.Errorf("%v", err)
+	}
+	_, err = dblock.Store(&database.Databases{}, dblock.Instance("nope"))(t.Context(), nil)
+	if err == nil || !strings.Contains(err.Error(), "no Database instance named 'nope'") {
+		t.Errorf("%v", err)
 	}
 }

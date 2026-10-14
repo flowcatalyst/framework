@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -310,4 +312,99 @@ func TestMigrationSetsInModuleOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = r.Shutdown()
+}
+
+func TestBootAccessors(t *testing.T) {
+	t.Parallel()
+	app := newApp(t, map[string]string{"APP_SHUTDOWN_DRAIN": "3s"})
+	var boot *fw.Boot
+	r, err := app.Start(t.Context(), func(_ context.Context, b *fw.Boot) (fw.Serve, error) {
+		boot = b
+		b.Health("thing", fw.Critical, func(context.Context) error { return errors.New("broken") })
+		if b.Ready() {
+			t.Error("ready during build")
+		}
+		return nil, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !boot.Ready() || !r.Ready() {
+		t.Error("not ready after Start")
+	}
+	if got := boot.ShutdownDrain(); got != 3*time.Second {
+		t.Errorf("drain %v", got)
+	}
+	rep := boot.HealthReport(t.Context())
+	if res, ok := rep.Result("thing"); !ok || res.Status != fw.Down || rep.IsReady() {
+		t.Errorf("%+v", rep)
+	}
+	if err := r.Shutdown(); err != nil {
+		t.Fatal(err)
+	}
+	if boot.Ready() {
+		t.Error("Boot.Ready after Shutdown")
+	}
+}
+
+func TestStartupRefusesRemovedAndUnknownKeys(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "application.yaml"),
+		[]byte("app:\n  shutdown:\n    drian: 1s\nlocks:\n  default: x\n  instances:\n    x: { driver: memory }\napp2: {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app := fw.New("demo", fw.WithEnvironment(map[string]string{"APP_ENV": "test"}), fw.WithConfigDir(dir),
+		fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
+	_, err := app.Start(t.Context(), func(context.Context, *fw.Boot) (fw.Serve, error) { return nil, nil })
+	se, ok := errors.AsType[*fw.StartupError](err)
+	if !ok {
+		t.Fatalf("%v", err)
+	}
+	var texts []string
+	for _, p := range se.Problems {
+		texts = append(texts, p.Key+": "+p.Message)
+	}
+	joined := strings.Join(texts, "\n")
+	for _, want := range []string{
+		"app.shutdown.drian: unknown key: component 'app' belongs to module 'core', which reads only app.health.critical",
+		"locks.default: moved to code: locks.DefaultStore(name)",
+		"locks.instances.x.driver: moved to code: locks.Build(",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing %q in\n%s", want, joined)
+		}
+	}
+}
+
+func TestMaxSeriesIsRangeChecked(t *testing.T) {
+	t.Parallel()
+	app := newApp(t, map[string]string{"APP_METRICS_MAX_SERIES": "0"})
+	_, err := app.Start(t.Context(), func(context.Context, *fw.Boot) (fw.Serve, error) { return nil, nil })
+	if err == nil || !strings.Contains(err.Error(), "must be 1 to 100000, was 0") {
+		t.Errorf("%v", err)
+	}
+}
+
+func TestInstancesAndClaimOnDeclarer(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "application.yaml"),
+		[]byte("things:\n  instances:\n    a: { url: u }\n    b: { url: v, extra: 1 }\nmine:\n  oops: 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app := fw.New("demo", fw.WithEnvironment(map[string]string{"APP_ENV": "test"}), fw.WithConfigDir(dir),
+		fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
+	d := app.Module("things")
+	d.Instances("things", "Things", config.String("url", "").Required())
+	d.ClaimComponent("mine")
+	_, err := app.Start(t.Context(), func(context.Context, *fw.Boot) (fw.Serve, error) { return nil, nil })
+	if err == nil {
+		t.Fatal("want problems")
+	}
+	for _, want := range []string{"key 'things.instances.b.extra'", "unknown key for Things instance 'b'", "key 'mine.oops'", "component 'mine' belongs to module 'things'"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("missing %q in\n%v", want, err)
+		}
+	}
 }

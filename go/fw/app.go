@@ -28,6 +28,7 @@ type App struct {
 	modules    []string
 	settings   []config.Declared
 	sections   []config.Section
+	claims     []config.ComponentClaim
 	migrations []MigrationSet
 
 	core coreSettings
@@ -138,11 +139,11 @@ func (d *Declarer) DeclareSetting(s config.Decl) {
 // the checked instances with it.
 type InstancesHandle struct{ path string }
 
-// Instances declares an instance section (core contract section 2): the instances at
-// path.instances.<name>, each using one of drivers, whose keys are checked when the application
-// is configured. capability names the capability in problems; defaultDriver is the driver of an
-// instance that names none ("" when every instance must name one).
-func (d *Declarer) Instances(path, capability, defaultDriver string, drivers ...config.Driver) InstancesHandle {
+// Instances declares an instance section (core contract section 2.1): the instances at
+// path.instances.<name>, each with the keys given (one schema for every instance; there is no
+// driver choice). They are checked when the application is configured: an unread key is an
+// unknown key. capability names the capability in problems.
+func (d *Declarer) Instances(path, capability string, keys ...config.Decl) InstancesHandle {
 	d.app.mu.Lock()
 	defer d.app.mu.Unlock()
 	d.app.mustNotBeSealed("Instances")
@@ -156,9 +157,20 @@ func (d *Declarer) Instances(path, capability, defaultDriver string, drivers ...
 		}
 	}
 	d.app.sections = append(d.app.sections, config.Section{
-		Module: d.module, Path: path, Capability: capability, DefaultDriver: defaultDriver, Drivers: drivers,
+		Module: d.module, Path: path, Capability: capability, Keys: keys,
 	})
 	return InstancesHandle{path: path}
+}
+
+// ClaimComponent claims a configuration component for the declarer's module (config-and-code
+// contract section 5): every key under it in a file must then be declared by some module, or is a
+// removed key; any other key, a misspelt one included, fails start-up as unknown. Two modules
+// claiming one component fail start-up.
+func (d *Declarer) ClaimComponent(component string) {
+	d.app.mu.Lock()
+	defer d.app.mu.Unlock()
+	d.app.mustNotBeSealed("ClaimComponent")
+	d.app.claims = append(d.app.claims, config.ComponentClaim{Module: d.module, Component: component})
 }
 
 // MigrationSet is the migrations one module contributes: files named V<version>__<description>.sql
@@ -241,6 +253,7 @@ type coreSettings struct {
 }
 
 func declareCore(d *Declarer) coreSettings {
+	d.ClaimComponent("app")
 	return coreSettings{
 		drain: config.Declare(d, config.Duration("app.shutdown.drain",
 			"Time each shutdown step may take before it is logged as overrun.").WithDefault(10*time.Second)),
@@ -253,6 +266,7 @@ func declareCore(d *Declarer) coreSettings {
 		metricsDriver: config.Declare(d, config.Enum("app.metrics.driver",
 			"Metrics driver: memory (readable, Prometheus endpoint) or noop.", MetricsMemory, MetricsNoop).WithDefault(MetricsMemory)),
 		maxSeries: config.Declare(d, config.Int("app.metrics.max-series",
-			"Most series one metric may hold (1 to 100000); further label combinations are dropped.").WithDefault(1000)),
+			"Most series one metric may hold (1 to 100000); further label combinations are dropped.").
+			WithDefault(1000).Checked(config.Between(1, 100_000))),
 	}
 }

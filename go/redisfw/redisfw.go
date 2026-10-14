@@ -26,13 +26,11 @@ import (
 // ModuleID is the Redis module's id.
 const ModuleID = "redis"
 
-// Driver is the only driver of the redis section; instances may leave it out.
-const Driver = "redis"
-
 var (
-	keyURL      = config.String("url", "redis://[user[:password]@]host[:port][/db] or rediss://...").Required()
-	keyTimeout  = config.Duration("timeout", "Connect, read and write timeout.").WithDefault(2 * time.Second)
-	keyPoolMax  = config.Int("pool.max", "Most connections in the pool.").WithDefault(16)
+	keyURL     = config.String("url", "redis://[user[:password]@]host[:port][/db] or rediss://...").Required()
+	keyTimeout = config.Duration("timeout", "Connect, read and write timeout (more than 0, at most 5m).").
+			WithDefault(2 * time.Second).Checked(config.Between(time.Nanosecond, 5*time.Minute))
+	keyPoolMax  = config.Int("pool.max", "Most connections in the pool (1 to 1000).").WithDefault(16).Checked(config.Between(1, 1000))
 	keyPassword = config.SecretValue("password", "Password; wins over one in the URL.")
 )
 
@@ -44,10 +42,7 @@ type Declared struct {
 // Declare declares the Redis module: the instance section "redis" with its keys.
 func Declare(app *fw.App) *Declared {
 	d := app.Module(ModuleID)
-	return &Declared{instances: d.Instances("redis", "Redis", Driver, config.Driver{
-		Name: Driver,
-		Keys: []config.Decl{keyURL, keyTimeout, keyPoolMax, keyPassword},
-	})}
+	return &Declared{instances: d.Instances("redis", "Redis", keyURL, keyTimeout, keyPoolMax, keyPassword)}
 }
 
 // Client is one Redis instance.

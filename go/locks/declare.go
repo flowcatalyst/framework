@@ -3,61 +3,61 @@ package locks
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/flowcatalyst/framework/go/background"
-	"github.com/flowcatalyst/framework/go/config"
 	"github.com/flowcatalyst/framework/go/fw"
 )
 
 // ModuleID is the locks module's id.
 const ModuleID = "locks"
 
-// MemoryDriverName is the memory driver's name in configuration.
-const MemoryDriverName = "memory"
+// StoreFactory makes one lock store. Which factory backs a store is a fact of the code (config-
+// and-code contract section 2): [Memory], dblock.Store, redislock.Store.
+type StoreFactory func(ctx context.Context, b *fw.Boot) (Store, error)
 
-// DriverSpec declares a driver of the locks section: its name and the keys an instance using it
-// may set, checked when the application is configured. Driver packages provide theirs
-// (dblock.Declare, redislock.Driver); [MemoryDriver] is the memory driver's.
-type DriverSpec struct {
-	Name string
-	Keys []config.Decl
+// Memory is the factory of the in-process store: for one process only (tests, a single replica).
+func Memory() StoreFactory {
+	return func(_ context.Context, b *fw.Boot) (Store, error) { return NewMemoryStore(b.Clock()), nil }
 }
 
-// MemoryDriver is the memory driver's spec (no keys).
-func MemoryDriver() DriverSpec { return DriverSpec{Name: MemoryDriverName} }
+// BuildOption names a store or the default one for [Build].
+type BuildOption func(*buildConfig)
 
-// Factory makes the store of one configured instance.
-type Factory func(ctx context.Context, b *fw.Boot, in config.Instance) (Store, error)
-
-// BuildOption gives [Build] the factory of a driver. Driver packages provide theirs
-// (dblock.With(dbs), redislock.With(clients)); the memory driver needs none.
-type BuildOption struct {
-	driver  string
-	factory Factory
+type buildConfig struct {
+	stores   []namedStore
+	defaultN string
 }
 
-// WithFactory returns the option that builds the instances of driver with f.
-func WithFactory(driver string, f Factory) BuildOption {
-	return BuildOption{driver: driver, factory: f}
+type namedStore struct {
+	name    string
+	factory StoreFactory
+}
+
+// WithStore adds a lock store named name ([a-z][a-z0-9-]*), made by f. A name given twice is an
+// error from [Build]. With exactly one store it is the default; with several, [DefaultStore]
+// must name one.
+func WithStore(name string, f StoreFactory) BuildOption {
+	return func(c *buildConfig) { c.stores = append(c.stores, namedStore{name: name, factory: f}) }
+}
+
+// DefaultStore names the default store: required when [Build] is given several stores.
+func DefaultStore(name string) BuildOption {
+	return func(c *buildConfig) { c.defaultN = name }
 }
 
 // Declared is the locks module's declaration, from [Declare].
-type Declared struct {
-	instances fw.InstancesHandle
-}
+type Declared struct{}
 
-// Declare declares the locks module: the instance section "locks", whose instances each name
-// one of drivers (there is no default driver).
-func Declare(app *fw.App, drivers ...DriverSpec) *Declared {
-	d := app.Module(ModuleID)
-	specs := make([]config.Driver, 0, len(drivers))
-	for _, s := range drivers {
-		specs = append(specs, config.Driver{Name: s.Name, Keys: s.Keys})
-	}
-	return &Declared{instances: d.Instances("locks", "lock store", "", specs...)}
+// Declare declares the locks module. It declares no setting: lock stores are code (config-and-
+// code contract section 3.7), given to [Build]. It claims the component "locks", so a leftover
+// `locks:` configuration section fails start-up naming where its content moved.
+func Declare(app *fw.App) *Declared {
+	app.Module(ModuleID).ClaimComponent("locks")
+	return &Declared{}
 }
 
 // Locks are the configured lock instances.
@@ -91,31 +91,57 @@ func (l *Locks) Default() (*Lock, bool) {
 // Names returns the instances' names in configuration order.
 func (l *Locks) Names() []string { return slices.Clone(l.names) }
 
-// Build makes every configured lock instance with its driver's factory.
-func Build(ctx context.Context, b *fw.Boot, d *Declared, opts ...BuildOption) (*Locks, error) {
-	factories := map[string]Factory{
-		MemoryDriverName: func(_ context.Context, b *fw.Boot, _ config.Instance) (Store, error) {
-			return NewMemoryStore(b.Clock()), nil
-		},
-	}
+// Build makes the lock stores given in code. Names must be unique and match [a-z][a-z0-9-]*;
+// exactly one store is the default, several need [DefaultStore]; no store at all is allowed (an
+// empty [Locks]).
+func Build(ctx context.Context, b *fw.Boot, _ *Declared, opts ...BuildOption) (*Locks, error) {
+	var cfg buildConfig
 	for _, o := range opts {
-		factories[o.driver] = o.factory
+		o(&cfg)
 	}
-	insts := b.Instances(d.instances)
-	out := &Locks{names: slices.Clone(insts.Names), def: insts.Default, byName: make(map[string]*Lock)}
-	for _, name := range insts.Names {
-		in := insts.ByName[name]
-		f, ok := factories[in.Driver]
-		if !ok {
-			return nil, fmt.Errorf("lock instance '%s': driver '%s' has no factory; pass its option to locks.Build (dblock.With, redislock.With)", name, in.Driver)
+	seen := map[string]bool{}
+	out := &Locks{byName: make(map[string]*Lock)}
+	for _, st := range cfg.stores {
+		if !storeName.MatchString(st.name) {
+			return nil, fmt.Errorf("lock store name '%s' must match [a-z][a-z0-9-]*", st.name)
 		}
-		store, err := f(ctx, b, in)
+		if seen[st.name] {
+			return nil, fmt.Errorf("lock store '%s' is given twice", st.name)
+		}
+		if st.factory == nil {
+			return nil, fmt.Errorf("lock store '%s' has no factory", st.name)
+		}
+		seen[st.name] = true
+		out.names = append(out.names, st.name)
+	}
+	switch {
+	case cfg.defaultN != "":
+		if !seen[cfg.defaultN] {
+			return nil, fmt.Errorf("default lock store '%s' is not one of the stores; known: %s", cfg.defaultN, listOrNone(out.names))
+		}
+		out.def = cfg.defaultN
+	case len(out.names) == 1:
+		out.def = out.names[0]
+	case len(out.names) > 1:
+		return nil, fmt.Errorf("several lock stores are given (%s) so locks.DefaultStore must name one", strings.Join(out.names, ", "))
+	}
+	for _, st := range cfg.stores {
+		store, err := st.factory(ctx, b)
 		if err != nil {
-			return nil, fmt.Errorf("lock instance '%s': driver '%s' failed: %w", name, in.Driver, err)
+			return nil, fmt.Errorf("lock store '%s' failed: %w", st.name, err)
 		}
-		out.byName[name] = New(store, WithClock(b.Clock()), WithLogger(b.Logger(ModuleID)))
+		out.byName[st.name] = New(store, WithClock(b.Clock()), WithLogger(b.Logger(ModuleID)))
 	}
 	return out, nil
+}
+
+var storeName = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+
+func listOrNone(names []string) string {
+	if len(names) == 0 {
+		return "(none)"
+	}
+	return strings.Join(names, ", ")
 }
 
 // Gate is a background loop gate that admits a run only to the holder of a lock: each run takes

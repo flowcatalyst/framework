@@ -27,36 +27,32 @@ import (
 // ModuleID is the database module's id.
 const ModuleID = "database"
 
-// Driver is the only driver of the database section: PostgreSQL through pgxpool. Instances may
-// leave it out.
-const Driver = "postgresql"
-
 // The keys of a database instance (database.instances.<name>.<key>).
 var (
 	keyURL = config.String("url",
 		"jdbc:postgresql://host:port/db or postgres://... (the jdbc: prefix is dropped)").Required()
 	keyUsername = config.String("username", "User name; wins over one in the URL.")
 	keyPassword = config.SecretValue("password", "Password; wins over one in the URL.")
-	keyPoolMax  = config.Int("pool.max", "Most connections in the pool.").WithDefault(10)
-	keyMinIdle  = config.Int("pool.min-idle", "Idle connections the pool keeps.").WithDefault(1)
+	keyPoolMax  = config.Int("pool.max", "Most connections in the pool (1 to 1000).").WithDefault(10).Checked(config.Between(1, 1000))
+	keyMinIdle  = config.Int("pool.min-idle", "Idle connections the pool keeps (0 to pool.max).").WithDefault(1)
 	keyTimeout  = config.Duration("pool.connect-timeout",
-		"Time to open a connection (at least 250ms).").WithDefault(5 * time.Second)
+		"Time to open a connection (250ms to 5m).").WithDefault(5 * time.Second).
+		Checked(config.Between(250*time.Millisecond, 5*time.Minute))
 	keyMigrate = config.Bool("migrate",
 		"Whether the migration sets are applied to this instance when it is the default one.").WithDefault(true)
 )
 
 // Declared is the database module's declaration, from [Declare].
 type Declared struct {
-	instances fw.InstancesHandle
+	instances    fw.InstancesHandle
+	instancePath string
 }
 
 // Declare declares the database module: the instance section "database" with its keys.
 func Declare(app *fw.App) *Declared {
 	d := app.Module(ModuleID)
-	return &Declared{instances: d.Instances("database", "Database", Driver, config.Driver{
-		Name: Driver,
-		Keys: []config.Decl{keyURL, keyUsername, keyPassword, keyPoolMax, keyMinIdle, keyTimeout, keyMigrate},
-	})}
+	return &Declared{instancePath: "database", instances: d.Instances("database", "database",
+		keyURL, keyUsername, keyPassword, keyPoolMax, keyMinIdle, keyTimeout, keyMigrate)}
 }
 
 // DB is one database instance: a pgxpool pool and its settings.
@@ -145,6 +141,20 @@ func (d *Databases) Names() []string { return slices.Clone(d.names) }
 func Connect(ctx context.Context, b *fw.Boot, d *Declared) (*Databases, error) {
 	insts := b.Instances(d.instances)
 	out := &Databases{names: slices.Clone(insts.Names), def: insts.Default, byName: make(map[string]*DB)}
+	// pool.min-idle against pool.max, before any pool opens: one problem per wrong value
+	var problems []fw.Problem
+	for _, name := range insts.Names {
+		in := insts.ByName[name]
+		if maxConns, minIdle := keyPoolMax.Get(in), keyMinIdle.Get(in); minIdle < 0 || minIdle > maxConns {
+			problems = append(problems, fw.Problem{
+				Module: ModuleID, Key: d.instancePath + ".instances." + name + ".pool.min-idle",
+				Message: fmt.Sprintf("must be 0 to pool.max (%d), was %d", maxConns, minIdle),
+			})
+		}
+	}
+	if len(problems) > 0 {
+		return nil, &fw.StartupError{Problems: problems}
+	}
 	for _, name := range insts.Names {
 		in := insts.ByName[name]
 		cfg, err := poolConfig(in)
@@ -202,16 +212,9 @@ func poolConfig(in config.Instance) (*pgxpool.Config, error) {
 	if pw, ok := keyPassword.Lookup(in); ok && pw.Reveal() != "" {
 		cfg.ConnConfig.Password = pw.Reveal()
 	}
-	maxConns, minIdle := keyPoolMax.Get(in), keyMinIdle.Get(in)
-	if maxConns < 1 {
-		return nil, errors.New("pool.max must be at least 1")
-	}
-	if minIdle < 0 || minIdle > maxConns {
-		return nil, errors.New("pool.min-idle must be 0 to pool.max")
-	}
-	cfg.MaxConns = int32(maxConns)    //nolint:gosec // checked by the int setting (32 bits)
-	cfg.MinIdleConns = int32(minIdle) //nolint:gosec // as above
-	cfg.ConnConfig.ConnectTimeout = max(250*time.Millisecond, keyTimeout.Get(in))
+	cfg.MaxConns = int32(keyPoolMax.Get(in))     //nolint:gosec // range-checked 1 to 1000 when configured
+	cfg.MinIdleConns = int32(keyMinIdle.Get(in)) //nolint:gosec // checked against pool.max in Connect
+	cfg.ConnConfig.ConnectTimeout = keyTimeout.Get(in)
 	return cfg, nil
 }
 

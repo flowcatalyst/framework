@@ -3,8 +3,12 @@
 // are packages of their own, compiled only when imported: the memory driver here, dblock
 // (PostgreSQL, the shared fw_lock table and statements) and redislock (the shared Lua scripts).
 //
-//	lk := locks.Declare(app, locks.MemoryDriver(), dblock.Declare(app), redislock.Driver()) // in main
-//	all, err := locks.Build(ctx, b, lk, dblock.With(dbs), redislock.With(clients))      // in build
+//	lk := locks.Declare(app)                    // in main (dblock.Declare(app) adds the fw_lock migration)
+//	all, err := locks.Build(ctx, b, lk,         // in build: the stores are code, not configuration
+//		locks.WithStore("main", dblock.Store(dbs)),
+//		locks.WithStore("shared", redislock.Store(clients, redislock.Prefix("fw:lock:"))),
+//		locks.WithStore("local", locks.Memory()),
+//		locks.DefaultStore("main"))
 //	res, err := locks.With(ctx, lock, key, 10*time.Second, 5*time.Second, work)
 package locks
 

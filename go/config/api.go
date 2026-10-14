@@ -3,7 +3,7 @@
 // declaration's default, config/application.yaml, config/application-{env}.yaml,
 // config/secrets.local.yaml (only when APP_ENV is local or test) and environment variables, in
 // that order; every problem reported at once; and instance sections (core contract section 2)
-// whose driver keys are declared too, so they are checked when the application is configured.
+// whose keys are declared too, so they are checked when the application is configured.
 //
 // The rules and the problem texts are the Java framework's, checked by
 // conformance/config/config.json. One difference is allowed: a YAML file with a duplicate key is
@@ -11,6 +11,7 @@
 package config
 
 import (
+	"cmp"
 	"fmt"
 	"net/url"
 	"os"
@@ -30,6 +31,7 @@ type Setting[T any] struct {
 	hasDefault  bool
 	required    bool
 	problem     string // set when the key or the secret rule is violated; Load reports it
+	check       func(T) string
 }
 
 // String declares a text setting.
@@ -84,6 +86,25 @@ func (s Setting[T]) Required() Setting[T] {
 	return s
 }
 
+// Checked returns a copy whose resolved value (from any source, the default included) must pass
+// f: f returns a problem message for a value out of range, "" for a good one. Out-of-range values
+// are start-up problems naming the key and its source, never corrected silently.
+func (s Setting[T]) Checked(f func(T) string) Setting[T] {
+	s.check = f
+	return s
+}
+
+// Between returns a check for [Setting.Checked]: lo to hi inclusive. The message is
+// "must be <lo> to <hi>, was <value>"; durations print as time.Duration does (250ms, 5m0s).
+func Between[T cmp.Ordered](lo, hi T) func(T) string {
+	return func(v T) string {
+		if v < lo || v > hi {
+			return fmt.Sprintf("must be %v to %v, was %v", lo, hi, v)
+		}
+		return ""
+	}
+}
+
 // Key returns the dotted key.
 func (s Setting[T]) Key() string { return s.key }
 
@@ -110,6 +131,8 @@ type Decl interface {
 	// expected-type description.
 	resolve(raw any) (any, error)
 	defaultValue() (any, bool)
+	// checkValue is the range check of a resolved value ("" when it passes).
+	checkValue(v any) string
 	isRequired() bool
 	describe() string
 }
@@ -121,7 +144,26 @@ func (s Setting[T]) resolve(raw any) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if msg := s.checkValue(v); msg != "" {
+		return nil, &checkError{msg: msg}
+	}
 	return v, nil
+}
+
+// checkError is a value that parsed but failed the setting's range check.
+type checkError struct{ msg string }
+
+func (e *checkError) Error() string { return e.msg }
+
+func (s Setting[T]) checkValue(v any) string {
+	if s.check == nil {
+		return ""
+	}
+	t, ok := v.(T)
+	if !ok {
+		return ""
+	}
+	return s.check(t)
 }
 
 func (s Setting[T]) defaultValue() (any, bool) {
@@ -204,26 +246,17 @@ type Declared struct {
 }
 
 // Section declares an instance section (core contract section 2): the capability at Path
-// ("locks", "database") reads its instances from Path.instances.<name>, the default instance's
-// name from Path.default, and each instance's keys as its driver declares them.
+// ("database", "redis") reads its instances from Path.instances.<name>, the default instance's
+// name from Path.default, and each instance's keys as Keys declare them. There is one key schema
+// for every instance of a section: no driver choice (config-and-code contract section 2.1).
 type Section struct {
 	// Module is the declaring module, named in problems.
 	Module string
-	// Path is the section's key ("locks").
+	// Path is the section's key ("database").
 	Path string
-	// Capability names the capability in problems ("lock store").
+	// Capability names the capability in problems ("database").
 	Capability string
-	// DefaultDriver is the driver of an instance without a driver key ("" when the key is
-	// required: capabilities with a real choice have no default driver).
-	DefaultDriver string
-	// Drivers are the registered drivers and the keys each reads.
-	Drivers []Driver
-}
-
-// Driver is one driver of an instance section and the keys of an instance using it, relative to
-// the instance ("url", "pool.max"). The "driver" key itself is not listed.
-type Driver struct {
-	Name string
+	// Keys are the keys of an instance, relative to it ("url", "pool.max").
 	Keys []Decl
 }
 
@@ -273,10 +306,11 @@ func (p Problem) String() string {
 	return sb.String()
 }
 
-// Load reads every source, resolves every declared setting and checks every instance section.
+// Load reads every source, resolves every declared setting, checks every instance section and
+// applies rules (the zero KeyRules applies none, as the conformance vector exercises the loader).
 // It returns the values, or every problem found.
-func Load(src Sources, settings []Declared, sections []Section) (*Values, []Problem) {
-	return load(src, settings, sections)
+func Load(src Sources, settings []Declared, sections []Section, rules KeyRules) (*Values, []Problem) {
+	return load(src, settings, sections, rules)
 }
 
 // Values are the resolved configuration. The methods of a nil *Values (what Load returns beside
@@ -324,19 +358,18 @@ type Instances struct {
 	ByName map[string]Instance
 }
 
-// Instance is one configured instance: its name, driver and the values of its driver's keys.
+// Instance is one configured instance: its name and the values of its section's keys.
 type Instance struct {
 	Name   string
-	Driver string
 	values map[string]any
 	keys   map[string]struct{} // the keys the driver declares
 }
 
-// Get returns the value of one of the driver's keys in the instance. It panics when the key has
+// Get returns the value of one of the section's keys in the instance. It panics when the key has
 // no value (an optional key without a default: use Lookup) or was not declared for the driver.
 func (s Setting[T]) Get(in Instance) T {
 	if _, declared := in.keys[s.key]; !declared {
-		panic("config: key '" + s.key + "' is not declared for driver '" + in.Driver + "' of instance '" + in.Name + "'")
+		panic("config: key '" + s.key + "' is not declared for the section of instance '" + in.Name + "'")
 	}
 	v, ok := s.Lookup(in)
 	if !ok {
@@ -345,8 +378,8 @@ func (s Setting[T]) Get(in Instance) T {
 	return v
 }
 
-// Lookup returns the value of one of the driver's keys in the instance, or false when it has none
-// (or the driver does not declare the key).
+// Lookup returns the value of one of the section's keys in the instance, or false when it has none
+// (or the section does not declare the key).
 func (s Setting[T]) Lookup(in Instance) (T, bool) {
 	var zero T
 	x, ok := in.values[s.key]

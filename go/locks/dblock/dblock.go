@@ -13,7 +13,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/flowcatalyst/framework/go/config"
 	"github.com/flowcatalyst/framework/go/database"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/internal/sqltext"
@@ -23,9 +22,6 @@ import (
 // ModuleID is the module that contributes the lock table's migration set (the Java module's id,
 // so the history rows are the same).
 const ModuleID = "locks-database"
-
-// DriverName is the driver's name in configuration.
-const DriverName = "database"
 
 //go:embed sql/acquire.sql
 var acquireSQL string
@@ -59,24 +55,33 @@ func Migrations() fs.FS {
 	return sub
 }
 
-var keyDatabase = config.String("database", "The database instance holding fw_lock (default: the default instance).")
-
-// Declare contributes the lock table's migration set (module locks-database) and returns the
-// driver's spec for locks.Declare.
-func Declare(app *fw.App) locks.DriverSpec {
+// Declare contributes the lock table's migration set (module locks-database), which the
+// framework runs on the default database instance.
+func Declare(app *fw.App) {
 	app.Module(ModuleID).Migrations(Migrations())
-	return locks.DriverSpec{Name: DriverName, Keys: []config.Decl{keyDatabase}}
 }
 
-// With returns the build option that makes the database driver's instances on dbs. An instance
-// on a database other than the default one checks at start-up that fw_lock exists there, since
-// migrations run on the default instance only.
-func With(dbs *database.Databases) locks.BuildOption {
-	return locks.WithFactory(DriverName, func(ctx context.Context, _ *fw.Boot, in config.Instance) (locks.Store, error) {
+// Option configures [Store].
+type Option func(*options)
+
+type options struct{ instance string }
+
+// Instance puts the store on the named database instance (default: the default instance). An
+// instance other than the default one is checked at start-up for fw_lock, since migrations run on
+// the default instance only.
+func Instance(name string) Option { return func(o *options) { o.instance = name } }
+
+// Store returns the factory of the database store on dbs, for locks.Store.
+func Store(dbs *database.Databases, opts ...Option) locks.StoreFactory {
+	var o options
+	for _, f := range opts {
+		f(&o)
+	}
+	return func(ctx context.Context, _ *fw.Boot) (locks.Store, error) {
 		def, hasDefault := dbs.Default()
 		db := def
-		if name, ok := keyDatabase.Lookup(in); ok {
-			named, err := dbs.Get(name)
+		if o.instance != "" {
+			named, err := dbs.Get(o.instance)
 			if err != nil {
 				return nil, err
 			}
@@ -86,24 +91,24 @@ func With(dbs *database.Databases) locks.BuildOption {
 			return nil, errors.New("no database instance is configured")
 		}
 		if !hasDefault || db != def {
-			if err := db.RequireTable(ctx, "fw_lock", fmt.Sprintf("the database lock driver (instance '%s')", in.Name)); err != nil {
+			if err := db.RequireTable(ctx, "fw_lock", fmt.Sprintf("the database lock store (instance '%s')", db.Name())); err != nil {
 				return nil, err
 			}
 		}
 		return NewStore(db), nil
-	})
+	}
 }
 
-// Store is the database driver.
-type Store struct {
+// Driver is the database lock driver.
+type Driver struct {
 	db *database.DB
 }
 
 // NewStore returns the driver on db (which must hold fw_lock).
-func NewStore(db *database.DB) *Store { return &Store{db: db} }
+func NewStore(db *database.DB) *Driver { return &Driver{db: db} }
 
 // TryAcquire implements locks.Store.
-func (s *Store) TryAcquire(ctx context.Context, key, owner string, leaseMillis int64) (int64, bool, error) {
+func (s *Driver) TryAcquire(ctx context.Context, key, owner string, leaseMillis int64) (int64, bool, error) {
 	var fence int64
 	err := s.db.Pool().QueryRow(ctx, acquire, key, owner, leaseMillis).Scan(&fence)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -116,7 +121,7 @@ func (s *Store) TryAcquire(ctx context.Context, key, owner string, leaseMillis i
 }
 
 // Refresh implements locks.Store.
-func (s *Store) Refresh(ctx context.Context, key, owner string, fence, leaseMillis int64) (bool, error) {
+func (s *Driver) Refresh(ctx context.Context, key, owner string, fence, leaseMillis int64) (bool, error) {
 	tag, err := s.db.Pool().Exec(ctx, refresh, leaseMillis, key, owner, fence)
 	if err != nil {
 		return false, unavailable("refresh", err)
@@ -125,7 +130,7 @@ func (s *Store) Refresh(ctx context.Context, key, owner string, fence, leaseMill
 }
 
 // Release implements locks.Store.
-func (s *Store) Release(ctx context.Context, key, owner string, fence int64) (bool, error) {
+func (s *Driver) Release(ctx context.Context, key, owner string, fence int64) (bool, error) {
 	tag, err := s.db.Pool().Exec(ctx, release, key, owner, fence)
 	if err != nil {
 		return false, unavailable("release", err)
@@ -134,7 +139,7 @@ func (s *Store) Release(ctx context.Context, key, owner string, fence int64) (bo
 }
 
 // ExpireNow ends a key's current lease at once (a test hook): expires_at in the past.
-func (s *Store) ExpireNow(ctx context.Context, key string) error {
+func (s *Driver) ExpireNow(ctx context.Context, key string) error {
 	_, err := s.db.Pool().Exec(ctx, "UPDATE fw_lock SET expires_at = clock_timestamp() - interval '1 second' WHERE lock_key = $1", key)
 	return err
 }

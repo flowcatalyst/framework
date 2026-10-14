@@ -1,4 +1,4 @@
-# Three lock instances, one per driver. Every value can be overridden by the environment variable
+# The lock stores (database, Redis, memory) are named in code, in demo.go; only the connections they use are configured here. Every value can be overridden by the environment variable
 # named after its path, for example DATABASE_INSTANCES_MAIN_URL or REDIS_INSTANCES_DEFAULT_URL.
 # Put the database password in config/secrets.local.yaml (never committed) or in
 # DATABASE_INSTANCES_MAIN_PASSWORD.
@@ -17,10 +17,3 @@ redis:
   default: default
   instances:
     default: { url: "redis://localhost:6379/0", timeout: 2s }
-
-locks:
-  default: main
-  instances:
-    main: { driver: database }
-    shared: { driver: redis, connection: default, prefix: "fw:lock:" }
-    local: { driver: memory }

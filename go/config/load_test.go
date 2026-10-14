@@ -127,7 +127,7 @@ func TestDuplicateDeclarationAndEnvironmentNameCollisions(t *testing.T) {
 		{Module: "other", Setting: config.String("other.instances.x.url", "")},
 		{Module: "web", Setting: config.String("mail.host.name", "")},
 	}
-	_, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, decls, nil)
+	_, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, decls, nil, config.KeyRules{})
 	want := []string{
 		"module 'other': key 'mail.host-name': declared twice (first by module 'mail')",
 		"module 'mail': key 'mail.host_name': reads environment variable MAIL_HOST_NAME, which key 'mail.host-name' (declared by module 'mail') reads too; keys may contain '_' and both '.' and '-' become '_', so rename one of them",
@@ -182,7 +182,7 @@ func TestEnvironmentReadsProcessEnvironment(t *testing.T) {
 	h := config.Declare(d, config.String("svc.from-process", ""))
 	var ds []config.Declared
 	ds = append(ds, config.Declared{Module: "svc", Setting: d.decls[0]})
-	v, ps := config.Load(config.Sources{Dir: filepath.Join(t.TempDir(), "none")}, ds, nil)
+	v, ps := config.Load(config.Sources{Dir: filepath.Join(t.TempDir(), "none")}, ds, nil, config.KeyRules{})
 	if len(ps) != 0 || h.Get(v) != "p" {
 		t.Errorf("nil Env: %v %v", ps, v)
 	}
@@ -199,7 +199,7 @@ func TestDefaultDirIsConfig(t *testing.T) {
 	t.Chdir(root)
 	d := &declarer{}
 	h := config.Declare(d, config.String("svc.a", ""))
-	v, ps := config.Load(config.Sources{Env: map[string]string{}}, []config.Declared{{Module: "svc", Setting: d.decls[0]}}, nil)
+	v, ps := config.Load(config.Sources{Env: map[string]string{}}, []config.Declared{{Module: "svc", Setting: d.decls[0]}}, nil, config.KeyRules{})
 	if len(ps) != 0 || h.Get(v) != "x" {
 		t.Errorf("got %v %v", ps, v)
 	}
@@ -207,7 +207,7 @@ func TestDefaultDirIsConfig(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "config", "application.yaml"), []byte("svc: [\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, ps = config.Load(config.Sources{Env: map[string]string{}}, nil, nil)
+	_, ps = config.Load(config.Sources{Env: map[string]string{}}, nil, nil, config.KeyRules{})
 	if len(ps) != 1 || ps[0].Source != "config/application.yaml" {
 		t.Errorf("source = %+v", ps)
 	}

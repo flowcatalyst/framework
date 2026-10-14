@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"slices"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/flowcatalyst/framework/go/background"
 	"github.com/flowcatalyst/framework/go/config"
@@ -23,6 +25,7 @@ type Boot struct {
 	metrics *metrics.Registry
 	loops   *background.Loops
 	health  *health
+	ready   atomic.Bool
 
 	mu       sync.Mutex
 	problems []Problem
@@ -85,6 +88,16 @@ func (b *Boot) MigrationSets() []MigrationSet {
 	})
 	return sets
 }
+
+// HealthReport runs every health check, each bounded by app.health.timeout, and reports.
+func (b *Boot) HealthReport(ctx context.Context) HealthReport { return b.health.run(ctx) }
+
+// Ready reports whether the application is ready: started, and not shutting down. The HTTP
+// layer answers /health/ready from it and the critical checks.
+func (b *Boot) Ready() bool { return b.ready.Load() }
+
+// ShutdownDrain returns app.shutdown.drain, the time each shutdown step may take.
+func (b *Boot) ShutdownDrain() time.Duration { return b.app.core.drain.Get(b) }
 
 // Clock returns the application's wall clock.
 func (b *Boot) Clock() Clock { return b.app.opts.clock }
@@ -189,9 +202,10 @@ func (a *App) newBoot() (*Boot, error) {
 	problems := slices.Clone(a.problems)
 	settings := slices.Clone(a.settings)
 	sections := slices.Clone(a.sections)
+	rules := config.KeyRules{Removed: config.FrameworkRemovedKeys(), Claims: slices.Clone(a.claims)}
 	a.mu.Unlock()
 
-	values, cfgProblems := config.Load(config.Sources{Dir: a.opts.configDir, Env: env}, settings, sections)
+	values, cfgProblems := config.Load(config.Sources{Dir: a.opts.configDir, Env: env}, settings, sections, rules)
 	problems = append(problems, cfgProblems...)
 	if values == nil || len(problems) > 0 {
 		return nil, &StartupError{Problems: problems}
@@ -209,9 +223,6 @@ func (a *App) newBoot() (*Boot, error) {
 		}
 	}
 	maxSeries := a.core.maxSeries.Get(b)
-	if maxSeries < 1 || maxSeries > 100_000 {
-		problems = append(problems, Problem{Module: coreModule, Key: "app.metrics.max-series", Message: "must be 1 to 100000"})
-	}
 	if len(problems) > 0 {
 		return nil, &StartupError{Problems: problems}
 	}

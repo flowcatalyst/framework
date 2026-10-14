@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"slices"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -127,7 +126,7 @@ func (a *App) start(ctx context.Context, b *Boot, serve Serve) (*Running, error)
 			slog.String("check", n))
 	}
 	b.loops.Start(context.WithoutCancel(ctx))
-	r.ready.Store(true)
+	b.ready.Store(true)
 	serveCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	r.cancelServe = cancel
 	go func() {
@@ -162,7 +161,6 @@ func callAction(ctx context.Context, act namedAction) (err error) {
 // Running is a started application.
 type Running struct {
 	boot        *Boot
-	ready       atomic.Bool
 	done        chan struct{}
 	cancelServe context.CancelFunc
 	serveErr    error
@@ -178,10 +176,10 @@ func (r *Running) Done() <-chan struct{} { return r.done }
 
 // Ready reports whether the application is ready: started and not shutting down. The HTTP
 // layer answers /health/ready from it and the critical checks.
-func (r *Running) Ready() bool { return r.ready.Load() }
+func (r *Running) Ready() bool { return r.boot.Ready() }
 
 // Health runs every health check.
-func (r *Running) Health(ctx context.Context) HealthReport { return r.boot.health.run(ctx) }
+func (r *Running) Health(ctx context.Context) HealthReport { return r.boot.HealthReport(ctx) }
 
 // Shutdown stops the application once (later calls return the first result): not ready from
 // now on; loops stopped first, each given up to app.shutdown.drain; serve cancelled and waited
@@ -190,7 +188,7 @@ func (r *Running) Health(ctx context.Context) HealthReport { return r.boot.healt
 // error, if any.
 func (r *Running) Shutdown() error {
 	r.once.Do(func() {
-		r.ready.Store(false)
+		r.boot.ready.Store(false)
 		drain := r.boot.app.core.drain.Get(r.boot)
 		log := r.boot.app.opts.logger
 		r.boot.loops.Stop(drain)

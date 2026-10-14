@@ -1,5 +1,5 @@
 // Command locks-demo is the Java framework's locks-demo on the Go framework: three lock
-// instances, one per driver (database, redis, memory), each taking the same service key through
+// stores, one per driver (database, redis, memory), each taking the same service key through
 // locks.With, then the health report. A loop gated by the default instance's lock shows the
 // shutdown order: loops stop first, then the shutdown actions run in reverse.
 //
@@ -29,13 +29,15 @@ type declared struct {
 	locks *locks.Declared
 }
 
-// declare declares what the demo uses: databases, Redis, and locks with three drivers.
+// declare declares what the demo uses: databases, Redis and locks (whose stores are code).
 func declare(app *fw.App) declared {
-	return declared{
+	d := declared{
 		db:    database.Declare(app),
 		redis: redisfw.Declare(app),
-		locks: locks.Declare(app, locks.MemoryDriver(), dblock.Declare(app), redislock.Driver()),
+		locks: locks.Declare(app),
 	}
+	dblock.Declare(app) // the fw_lock migration
+	return d
 }
 
 // deps are what a test replaces: where the report goes and a hook that sees lifecycle events.
@@ -61,7 +63,12 @@ func build(d declared, x deps) fw.BuildFunc {
 			return nil, err
 		}
 		b.OnShutdown("trace:redis-closed-next", func(context.Context) error { x.trace("shutdown: after redis"); return nil })
-		all, err := locks.Build(ctx, b, d.locks, dblock.With(dbs), redislock.With(clients))
+		// three stores, one per driver: the stores and their policies are a fact of the code
+		all, err := locks.Build(ctx, b, d.locks,
+			locks.WithStore("main", dblock.Store(dbs)),
+			locks.WithStore("shared", redislock.Store(clients, redislock.Connection("default"), redislock.Prefix("fw:lock:"))),
+			locks.WithStore("local", locks.Memory()),
+			locks.DefaultStore("main"))
 		if err != nil {
 			return nil, err
 		}

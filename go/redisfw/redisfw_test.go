@@ -75,3 +75,36 @@ func TestConnectThroughAnApplication(t *testing.T) {
 		t.Error("the client is still open after shutdown")
 	}
 }
+
+func TestRangesAreStartupProblems(t *testing.T) {
+	t.Parallel()
+	for env, want := range map[string]string{
+		"5000": "must be 1 to 1000, was 5000",
+		"0":    "must be 1 to 1000, was 0",
+	} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "application.yaml"), []byte("redis:\n  instances:\n    default: { url: redis://h }\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		app := fw.New("r", fw.WithEnvironment(map[string]string{"REDIS_INSTANCES_DEFAULT_POOL_MAX": env}),
+			fw.WithConfigDir(dir), fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
+		Declare(app)
+		_, err := app.Start(t.Context(), func(context.Context, *fw.Boot) (fw.Serve, error) { return nil, nil })
+		if err == nil || !strings.Contains(err.Error(), "key 'redis.instances.default.pool.max'") || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v", env, err)
+		}
+	}
+	for env, want := range map[string]string{"6m": "must be 1ns to 5m0s, was 6m0s", "0s": "must be 1ns to 5m0s, was 0s"} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "application.yaml"), []byte("redis:\n  instances:\n    default: { url: redis://h }\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		app := fw.New("r", fw.WithEnvironment(map[string]string{"REDIS_INSTANCES_DEFAULT_TIMEOUT": env}),
+			fw.WithConfigDir(dir), fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
+		Declare(app)
+		_, err := app.Start(t.Context(), func(context.Context, *fw.Boot) (fw.Serve, error) { return nil, nil })
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v", env, err)
+		}
+	}
+}

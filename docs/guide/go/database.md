@@ -19,7 +19,9 @@ database:
       migrate: true
 ```
 
-The driver is `postgresql` and may be left out. `url` accepts `jdbc:postgresql://` (the prefix is
+There is no `driver` key (PostgreSQL is the only database; giving one fails start-up). `pool.max` is
+1 to 1000, `pool.min-idle` 0 to `pool.max`, `pool.connect-timeout` 250ms to 5m, each checked at
+start-up. `url` accepts `jdbc:postgresql://` (the prefix is
 dropped), `postgres://` and `postgresql://`; pgx's `key=value` form is refused, because the Java
 framework cannot read it either (the G1 ruling the design asked for). `username` and `password` win
 over credentials in the URL. `database.Connect(ctx, b, declared)` opens a pool per instance, pings

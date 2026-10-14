@@ -1,4 +1,4 @@
-<!-- types: Key, Lease, Acquisition, Acquired, Busy, Store, Lock, Outcome, WithResult, Locks, DriverSpec, BuildOption, Factory, Gate, MemoryStore, Harness, Env, OffsetClock -->
+<!-- types: Key, Lease, Acquisition, Acquired, Busy, Store, Lock, Outcome, WithResult, Locks, StoreFactory, BuildOption, Declared, Gate, MemoryStore, Harness, Env, OffsetClock -->
 # Go: locks
 
 Package `locks` implements the [locks contract](../../contracts/locks.md): a key held by one holder
@@ -6,27 +6,29 @@ at a time for a lease, with a fencing token that grows with each acquisition. Th
 packages compiled only when imported: the memory driver in `locks`, `locks/dblock` (PostgreSQL) and
 `locks/redislock` (Redis).
 
-## Configuring
+## Declaring and building
 
-```yaml
-locks:
-  default: main
-  instances:
-    main: { driver: database }
-    shared: { driver: redis, connection: default, prefix: "fw:lock:" }
-    local: { driver: memory }
-```
-
-Each driver declares its keys, so a typo is a configuration problem at start-up. Declare and build
-(from `examples/locks-demo`):
+Lock stores are code, not configuration (config-and-code contract section 3.7): there is no `locks`
+section, and a leftover one fails start-up naming where it moved. Declare the module, then name
+the stores where they are built (from `examples/locks-demo`):
 
 ```go
-locks: locks.Declare(app, locks.MemoryDriver(), dblock.Declare(app), redislock.Driver()),
+d := declared{locks: locks.Declare(app)}
+dblock.Declare(app) // the fw_lock migration
 ```
 
 ```go
-all, err := locks.Build(ctx, b, d.locks, dblock.With(dbs), redislock.With(clients))
+all, err := locks.Build(ctx, b, d.locks,
+	locks.WithStore("main", dblock.Store(dbs)),
+	locks.WithStore("shared", redislock.Store(clients, redislock.Connection("default"), redislock.Prefix("fw:lock:"))),
+	locks.WithStore("local", locks.Memory()),
+	locks.DefaultStore("main"))
 ```
+
+Names match `[a-z][a-z0-9-]*` and are unique. One store is the default; with several,
+`locks.DefaultStore` must name one. The database and Redis instances a store uses are
+configuration (`database.instances.*`, `redis.instances.*`). The Redis prefix defaults to
+`fw:lock:`, is not blank and has at most 100 characters.
 
 `dblock.Declare` also contributes the lock table's migration set (module `locks-database`, the Java
 file byte for byte). A database instance other than the default one is checked for `fw_lock` at

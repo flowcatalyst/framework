@@ -33,7 +33,7 @@ func load(t *testing.T, dir string, env map[string]string, decls ...config.Decl)
 	if env == nil {
 		env = map[string]string{}
 	}
-	v, ps := config.Load(config.Sources{Dir: dir, Env: env}, ds, nil)
+	v, ps := config.Load(config.Sources{Dir: dir, Env: env}, ds, nil, config.KeyRules{})
 	return v, problemTexts(ps)
 }
 

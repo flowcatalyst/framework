@@ -2,6 +2,7 @@ package redislock_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -80,5 +81,24 @@ func TestKeysAndValueFormat(t *testing.T) {
 	_ = c.Close()
 	if _, _, err := store.TryAcquire(t.Context(), "svc:x", "o", 1000); !errors.Is(err, locks.ErrStoreUnavailable) {
 		t.Errorf("closed client: err %v, want ErrStoreUnavailable", err)
+	}
+}
+
+func TestStoreOptionsAreChecked(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		opts []redislock.Option
+		want string
+	}{
+		"blank prefix":    {[]redislock.Option{redislock.Prefix("  ")}, "must not be blank"},
+		"long prefix":     {[]redislock.Option{redislock.Prefix(strings.Repeat("x", 101))}, "at most 100 characters"},
+		"default prefix":  {nil, "no redis instance is configured"},
+		"max prefix":      {[]redislock.Option{redislock.Prefix(strings.Repeat("x", 100))}, "no redis instance is configured"},
+		"unknown connect": {[]redislock.Option{redislock.Connection("nope")}, "no Redis instance named 'nope'"},
+	} {
+		_, err := redislock.Store(&redisfw.Clients{}, c.opts...)(t.Context(), nil)
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: %v, want %q", name, err, c.want)
+		}
 	}
 }

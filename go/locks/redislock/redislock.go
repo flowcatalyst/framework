@@ -12,20 +12,21 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/flowcatalyst/framework/go/config"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/locks"
 	"github.com/flowcatalyst/framework/go/redisfw"
 )
 
-// DriverName is the driver's name in configuration.
-const DriverName = "redis"
-
-// DefaultPrefix is the key prefix unless an instance sets prefix.
+// DefaultPrefix is the key prefix unless [Prefix] sets one.
 const DefaultPrefix = "fw:lock:"
+
+// MaxPrefixLength is the longest prefix accepted.
+const MaxPrefixLength = 100
 
 //go:embed lua/acquire.lua
 var acquireLua string
@@ -39,22 +40,38 @@ var releaseLua string
 // Scripts returns the shared scripts as embedded, for the conformance tests.
 func Scripts() (acquire, refresh, release string) { return acquireLua, refreshLua, releaseLua }
 
-var (
-	keyConnection = config.String("connection", "The Redis instance (default: the default instance).")
-	keyPrefix     = config.String("prefix", "Key prefix.").WithDefault(DefaultPrefix)
-)
+// Option configures [Store].
+type Option func(*options)
 
-// Driver returns the driver's spec for locks.Declare.
-func Driver() locks.DriverSpec {
-	return locks.DriverSpec{Name: DriverName, Keys: []config.Decl{keyConnection, keyPrefix}}
+type options struct {
+	connection string
+	prefix     string
 }
 
-// With returns the build option that makes the redis driver's instances on clients.
-func With(clients *redisfw.Clients) locks.BuildOption {
-	return locks.WithFactory(DriverName, func(ctx context.Context, _ *fw.Boot, in config.Instance) (locks.Store, error) {
+// Connection uses the named Redis instance (default: the default instance).
+func Connection(name string) Option { return func(o *options) { o.connection = name } }
+
+// Prefix sets the key prefix (default [DefaultPrefix]; not blank, at most [MaxPrefixLength]
+// characters).
+func Prefix(p string) Option { return func(o *options) { o.prefix = p } }
+
+// Store returns the factory of the Redis store on clients, for locks.Store. Options are checked
+// when the factory runs.
+func Store(clients *redisfw.Clients, opts ...Option) locks.StoreFactory {
+	o := options{prefix: DefaultPrefix}
+	for _, f := range opts {
+		f(&o)
+	}
+	return func(ctx context.Context, _ *fw.Boot) (locks.Store, error) {
+		if strings.TrimSpace(o.prefix) == "" {
+			return nil, errors.New("the Redis lock prefix must not be blank")
+		}
+		if n := utf8.RuneCountInString(o.prefix); n > MaxPrefixLength {
+			return nil, fmt.Errorf("the Redis lock prefix must be at most %d characters, was %d", MaxPrefixLength, n)
+		}
 		c, ok := clients.Default()
-		if name, set := keyConnection.Lookup(in); set {
-			named, err := clients.Get(name)
+		if o.connection != "" {
+			named, err := clients.Get(o.connection)
 			if err != nil {
 				return nil, err
 			}
@@ -63,12 +80,12 @@ func With(clients *redisfw.Clients) locks.BuildOption {
 		if !ok {
 			return nil, errors.New("no redis instance is configured")
 		}
-		return NewStore(ctx, c.Redis(), keyPrefix.Get(in))
-	})
+		return NewStore(ctx, c.Redis(), o.prefix)
+	}
 }
 
-// Store is the Redis driver.
-type Store struct {
+// Driver is the Redis lock driver.
+type Driver struct {
 	client  *redis.Client
 	prefix  string
 	counter string
@@ -78,8 +95,8 @@ type Store struct {
 }
 
 // NewStore returns the driver on client with a key prefix, loading the scripts.
-func NewStore(ctx context.Context, client *redis.Client, prefix string) (*Store, error) {
-	s := &Store{
+func NewStore(ctx context.Context, client *redis.Client, prefix string) (*Driver, error) {
+	s := &Driver{
 		client: client, prefix: prefix, counter: prefix + "__fence",
 		acquire: redis.NewScript(acquireLua), refresh: redis.NewScript(refreshLua), release: redis.NewScript(releaseLua),
 	}
@@ -92,7 +109,7 @@ func NewStore(ctx context.Context, client *redis.Client, prefix string) (*Store,
 }
 
 // TryAcquire implements locks.Store.
-func (s *Store) TryAcquire(ctx context.Context, key, owner string, leaseMillis int64) (int64, bool, error) {
+func (s *Driver) TryAcquire(ctx context.Context, key, owner string, leaseMillis int64) (int64, bool, error) {
 	v, err := s.acquire.Run(ctx, s.client, []string{s.prefix + key, s.counter}, owner, strconv.FormatInt(leaseMillis, 10)).Result()
 	if errors.Is(err, redis.Nil) {
 		return 0, false, nil
@@ -108,7 +125,7 @@ func (s *Store) TryAcquire(ctx context.Context, key, owner string, leaseMillis i
 }
 
 // Refresh implements locks.Store.
-func (s *Store) Refresh(ctx context.Context, key, owner string, fence, leaseMillis int64) (bool, error) {
+func (s *Driver) Refresh(ctx context.Context, key, owner string, fence, leaseMillis int64) (bool, error) {
 	v, err := s.refresh.Run(ctx, s.client, []string{s.prefix + key},
 		owner+":"+strconv.FormatInt(fence, 10), strconv.FormatInt(leaseMillis, 10)).Int64()
 	if err != nil {
@@ -118,7 +135,7 @@ func (s *Store) Refresh(ctx context.Context, key, owner string, fence, leaseMill
 }
 
 // Release implements locks.Store.
-func (s *Store) Release(ctx context.Context, key, owner string, fence int64) (bool, error) {
+func (s *Driver) Release(ctx context.Context, key, owner string, fence int64) (bool, error) {
 	v, err := s.release.Run(ctx, s.client, []string{s.prefix + key}, owner+":"+strconv.FormatInt(fence, 10)).Int64()
 	if err != nil {
 		return false, unavailable(err)
@@ -127,7 +144,7 @@ func (s *Store) Release(ctx context.Context, key, owner string, fence int64) (bo
 }
 
 // ExpireNow ends a key's current lease at once (a test hook): the key is deleted.
-func (s *Store) ExpireNow(ctx context.Context, key string) error {
+func (s *Driver) ExpireNow(ctx context.Context, key string) error {
 	return s.client.Del(ctx, s.prefix+key).Err()
 }
 

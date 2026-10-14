@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -277,5 +278,64 @@ func TestFilter(t *testing.T) {
 	var empty database.Filter
 	if empty.Where() != "" {
 		t.Error("an empty filter has a WHERE")
+	}
+}
+
+func TestPoolRangesAreStartupProblems(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		env  map[string]string
+		want []string
+	}{
+		"pool.max too large": {
+			map[string]string{"DATABASE_INSTANCES_MAIN_POOL_MAX": "5000"},
+			[]string{"key 'database.instances.main.pool.max' (from environment variable DATABASE_INSTANCES_MAIN_POOL_MAX): must be 1 to 1000, was 5000"},
+		},
+		"connect-timeout too short, not raised silently": {
+			map[string]string{"DATABASE_INSTANCES_MAIN_POOL_CONNECT_TIMEOUT": "100ms"},
+			[]string{"key 'database.instances.main.pool.connect-timeout'", "must be 250ms to 5m0s, was 100ms"},
+		},
+		"connect-timeout too long": {
+			map[string]string{"DATABASE_INSTANCES_MAIN_POOL_CONNECT_TIMEOUT": "6m"},
+			[]string{"must be 250ms to 5m0s, was 6m0s"},
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			env := map[string]string{"DATABASE_INSTANCES_MAIN_URL": "postgres://u@127.0.0.1:1/x"}
+			maps.Copy(env, c.env)
+			app := fw.New("db-demo", fw.WithEnvironment(env), fw.WithConfigDir(configDir(t)), fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
+			database.Declare(app)
+			_, err := app.Start(t.Context(), func(context.Context, *fw.Boot) (fw.Serve, error) { return nil, nil })
+			if err == nil {
+				t.Fatal("want a start-up problem")
+			}
+			for _, w := range c.want {
+				if !strings.Contains(err.Error(), w) {
+					t.Errorf("missing %q in %v", w, err)
+				}
+			}
+		})
+	}
+}
+
+func TestMinIdleAboveMaxIsOneProblemBeforeAnyConnection(t *testing.T) {
+	t.Parallel()
+	env := map[string]string{
+		"DATABASE_INSTANCES_MAIN_URL":           "postgres://u@127.0.0.1:1/x", // nobody answers: a connection attempt would say so
+		"DATABASE_INSTANCES_MAIN_POOL_MAX":      "3",
+		"DATABASE_INSTANCES_MAIN_POOL_MIN_IDLE": "9",
+	}
+	app := fw.New("db-demo", fw.WithEnvironment(env), fw.WithConfigDir(configDir(t)), fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
+	declared := database.Declare(app)
+	_, err := app.Start(t.Context(), func(ctx context.Context, b *fw.Boot) (fw.Serve, error) {
+		_, err := database.Connect(ctx, b, declared)
+		return nil, err
+	})
+	se, ok := errors.AsType[*fw.StartupError](err)
+	if !ok || len(se.Problems) != 1 || se.Problems[0].Key != "database.instances.main.pool.min-idle" ||
+		se.Problems[0].Message != "must be 0 to pool.max (3), was 9" {
+		t.Fatalf("%v", err)
 	}
 }

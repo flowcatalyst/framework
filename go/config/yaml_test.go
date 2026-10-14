@@ -139,7 +139,7 @@ func TestYAMLFileProblems(t *testing.T) {
 	}
 	for text, want := range cases {
 		dir := files(t, map[string]string{"application.yaml": text})
-		_, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil)
+		_, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil, config.KeyRules{})
 		if len(ps) != 1 {
 			t.Errorf("%q: %+v; want one problem", text, ps)
 			continue
@@ -154,7 +154,7 @@ func TestYAMLFileProblems(t *testing.T) {
 	// empty and comment-only files are fine
 	for _, text := range []string{"", "# nothing\n", "---\n", "~\n"} {
 		dir := files(t, map[string]string{"application.yaml": text})
-		if _, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil); len(ps) != 0 {
+		if _, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil, config.KeyRules{}); len(ps) != 0 {
 			t.Errorf("%q: %v", text, ps)
 		}
 	}
@@ -165,7 +165,7 @@ func TestYAMLFileProblems(t *testing.T) {
 func TestYAMLDuplicateKeyIsRefused(t *testing.T) {
 	t.Parallel()
 	dir := files(t, map[string]string{"application.yaml": "svc:\n  a: 1\n  a: 2\n"})
-	_, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil)
+	_, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil, config.KeyRules{})
 	if len(ps) != 1 || !strings.HasPrefix(ps[0].String(), dir+"/application.yaml: invalid YAML: ") || !strings.Contains(ps[0].Message, "already defined") {
 		t.Errorf("problems = %+v", ps)
 	}
@@ -174,7 +174,7 @@ func TestYAMLDuplicateKeyIsRefused(t *testing.T) {
 func TestMissingFilesAreFineAndDirectoriesIgnored(t *testing.T) {
 	t.Parallel()
 	dir := files(t, nil)
-	if _, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil); len(ps) != 0 {
+	if _, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, nil, config.KeyRules{}); len(ps) != 0 {
 		t.Error(ps)
 	}
 }

@@ -21,6 +21,9 @@ func (l *loader) checkSection(sec Section) Instances {
 		if !ok || rest == "default" || rest == "instances" || strings.HasPrefix(rest, "instances.") {
 			continue
 		}
+		if _, removed := l.removedMatch(full); removed {
+			continue
+		}
 		add(full, l.sourceOf(full), "unknown key in section '"+sec.Path+"'")
 	}
 
@@ -36,16 +39,8 @@ func (l *loader) checkSection(sec Section) Instances {
 		}
 	}
 
-	drivers := map[string]Driver{}
-	var registered []string
-	for _, d := range sec.Drivers {
-		drivers[d.Name] = d
-		registered = append(registered, d.Name)
-	}
-	slices.Sort(registered)
-
 	for _, name := range names {
-		if in, ok := l.checkInstance(sec, name, drivers, registered, add); ok {
+		if in, ok := l.checkInstance(sec, name, add); ok {
 			result.ByName[name] = in
 		}
 	}
@@ -88,31 +83,11 @@ func (l *loader) readString(key string, add func(key, source, msg string)) (stri
 	return text, true
 }
 
-func (l *loader) checkInstance(sec Section, name string, drivers map[string]Driver, registered []string,
-	add func(key, source, msg string),
-) (Instance, bool) {
+func (l *loader) checkInstance(sec Section, name string, add func(key, source, msg string)) (Instance, bool) {
 	path := sec.Path + ".instances." + name
-	driverKey := path + ".driver"
-	driver, ok := l.readString(driverKey, add)
-	if !ok {
-		if _, _, found := l.find(driverKey); found {
-			return Instance{}, false // a malformed driver key was reported
-		}
-		if sec.DefaultDriver == "" {
-			add(driverKey, "", "missing required key; set it in a config file or as environment variable "+EnvName(driverKey))
-			return Instance{}, false
-		}
-		driver = sec.DefaultDriver
-	}
-	d, known := drivers[driver]
-	if !known {
-		add(driverKey, "", "unknown driver '"+driver+"' for "+sec.Capability+"; registered: "+listOrNone(registered))
-		return Instance{}, false
-	}
-
-	in := Instance{Name: name, Driver: driver, values: map[string]any{}, keys: map[string]struct{}{}}
+	in := Instance{Name: name, values: map[string]any{}, keys: map[string]struct{}{}}
 	failed := false
-	for _, k := range d.Keys {
+	for _, k := range sec.Keys {
 		rel := k.Key()
 		full := path + "." + rel
 		in.keys[rel] = struct{}{}
@@ -135,13 +110,18 @@ func (l *loader) checkInstance(sec Section, name string, drivers map[string]Driv
 	}
 	for _, full := range l.leaves.order {
 		rest, ok := strings.CutPrefix(full, path+".")
-		if !ok || rest == "driver" {
+		if !ok {
 			continue
 		}
-		if _, read := in.keys[rest]; !read {
-			add(full, l.sourceOf(full), "unknown key for driver '"+driver+"'")
-			failed = true
+		if _, read := in.keys[rest]; read {
+			continue
 		}
+		if _, removed := l.removedMatch(full); removed {
+			failed = true // reported once, as a removed key
+			continue
+		}
+		add(full, l.sourceOf(full), "unknown key for "+sec.Capability+" instance '"+name+"'")
+		failed = true
 	}
 	return in, !failed
 }

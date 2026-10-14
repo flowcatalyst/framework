@@ -172,7 +172,7 @@ func TestConfigVectorValues(t *testing.T) {
 		cas := c.Type + " " + strconv.Quote(c.Text)
 		tp := newTyped(t, conformance.Where(configVector, cas, "declaration"), c.Type, "x", nil, nil, false)
 		v, ps := config.Load(config.Sources{Dir: filepath.Join(t.TempDir(), "none"), Env: map[string]string{"X": c.Text}},
-			[]config.Declared{{Module: "m", Setting: tp.decl}}, nil)
+			[]config.Declared{{Module: "m", Setting: tp.decl}}, nil, config.KeyRules{})
 
 		if c.Error != nil {
 			where := conformance.Where(configVector, cas, "error")
@@ -244,7 +244,7 @@ func runConfigScenario(t *testing.T, sc configScenario) {
 	if env == nil {
 		env = map[string]string{}
 	}
-	values, problems := config.Load(config.Sources{Dir: "config", Env: env}, declared, nil)
+	values, problems := config.Load(config.Sources{Dir: "config", Env: env}, declared, nil, config.KeyRules{})
 
 	if sc.Problems != nil {
 		where := conformance.Where(configVector, sc.Name, "problems")

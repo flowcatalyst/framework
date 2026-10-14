@@ -1,4 +1,4 @@
-<!-- types: App, Declarer, Boot, BuildFunc, Serve, ServeFunc, Running, StartupError, InstancesHandle, MigrationSet, CommandFunc, Criticality, HealthCheck, HealthReport, HealthResult, Setting, Handle, Secret, Values, Instances, Instance, Section, Driver, Problem, Context, Options, Tick, Gate, Ran, Skipped, Lost, Loops, Registry, Counter, Gauge, Timer -->
+<!-- types: App, Declarer, Boot, BuildFunc, Serve, ServeFunc, Running, StartupError, InstancesHandle, MigrationSet, CommandFunc, Criticality, HealthCheck, HealthReport, HealthResult, Setting, Handle, Secret, Values, Instances, Instance, Section, Problem, Context, Options, Tick, Gate, Ran, Skipped, Lost, Loops, Registry, Counter, Gauge, Timer -->
 # Go: the application and config
 
 Packages `fw`, `config`, `background` and `metrics` are the Go counterpart of `framework-core`: the
@@ -17,11 +17,13 @@ its dependencies, so a missing dependency is a compile error (from `examples/loc
 
 ```go
 func declare(app *fw.App) declared {
-	return declared{
+	d := declared{
 		db:    database.Declare(app),
 		redis: redisfw.Declare(app),
-		locks: locks.Declare(app, locks.MemoryDriver(), dblock.Declare(app), redislock.Driver()),
+		locks: locks.Declare(app),
 	}
+	dblock.Declare(app) // the fw_lock migration
+	return d
 }
 ```
 
@@ -37,13 +39,16 @@ clients, err := redisfw.Connect(ctx, b, d.redis)
 if err != nil {
 	return nil, err
 }
-all, err := locks.Build(ctx, b, d.locks, dblock.With(dbs), redislock.With(clients))
+all, err := locks.Build(ctx, b, d.locks,
+	locks.WithStore("main", dblock.Store(dbs)),
+	locks.WithStore("shared", redislock.Store(clients)),
+	locks.DefaultStore("main"))
 ```
 
 `App.Launch(ctx, args, build)` runs, and returns the exit code:
 
-1. **configure**: every declared setting and every instance section (each instance's driver and
-   its keys, declared as `config.Driver`) is checked; every problem is reported at once as a
+1. **configure**: every declared setting and every instance section (its keys, declared
+   with `fw.Declarer.Instances`) is checked, as are the removed keys and claimed components below; every problem is reported at once as a
    `*fw.StartupError` (exit 1);
 2. **build**: the `BuildFunc` constructs the services and registers lifecycle work on the `*fw.Boot`
    (`Health`, `Loop`, `OnStarted`, `OnShutdown`, `Command`); it returns what to serve (`fw.Serve`,
@@ -89,10 +94,19 @@ refused.
 encoded as JSON; `Reveal` gives the value, `Matches` compares SHA-256 digests in constant time.
 
 **Instance sections are checked at configure time**, which Java does when building: a capability
-declares its drivers and their keys (`fw.Declarer.Instances`), so an unknown driver, an unknown or
-malformed key, a missing default and so on are reported with the other configuration problems. An
+declares the keys of its instances (`fw.Declarer.Instances`; there is no driver registry, one
+schema for every instance), so an unknown or malformed key, a missing default and so on are reported with the other configuration problems. An
 instance exists only when a file names it; its values may then come from the environment
 (`DATABASE_INSTANCES_MAIN_URL`).
+
+**Removed keys and claimed components** (config-and-code contract section 5). A key whose
+behaviour moved to code (`locks.*`, `database.instances.*.driver`, `http-clients.instances.*.retry`,
+and the rest of `config.FrameworkRemovedKeys()`) fails start-up with `moved to code: ...`, in a file
+or as the environment variable derived from it. A module claims a component with
+`Declarer.ClaimComponent` (the core claims `app`): any key under it that no module declares fails
+start-up as unknown, listing the declared ones. Range checks are part of a setting
+(`Setting.Checked(config.Between(lo, hi))`): a value out of range is a problem naming the key, never
+corrected silently.
 
 **Allowed difference:** a YAML file with a duplicate key is refused (`invalid YAML: ... mapping key
 "k" already defined ...`), where the Java reader keeps the last value. No config vector case has a

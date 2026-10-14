@@ -9,11 +9,12 @@ import (
 // loader holds the merged sources while one Load runs.
 type loader struct {
 	env      map[string]string
+	rules    KeyRules
 	leaves   *leafSet
 	problems []Problem
 }
 
-func load(src Sources, settings []Declared, sections []Section) (*Values, []Problem) {
+func load(src Sources, settings []Declared, sections []Section, rules KeyRules) (*Values, []Problem) {
 	env := src.Env
 	if env == nil {
 		env = Environment()
@@ -27,7 +28,7 @@ func load(src Sources, settings []Declared, sections []Section) (*Values, []Prob
 		environment = "local"
 	}
 
-	l := &loader{env: env, leaves: newLeafSet()}
+	l := &loader{env: env, leaves: newLeafSet(), rules: rules}
 	names := []string{"application.yaml", "application-" + environment + ".yaml"}
 	if environment == "local" || environment == "test" {
 		names = append(names, "secrets.local.yaml")
@@ -55,6 +56,7 @@ func load(src Sources, settings []Declared, sections []Section) (*Values, []Prob
 	}
 
 	l.checkEnvironmentNames(settings)
+	l.checkKeyRules(declaredBy)
 
 	instances := map[string]Instances{}
 	for _, sec := range sections {
@@ -101,12 +103,18 @@ func (l *loader) read(key string, d Decl) (value any, ok bool, source, failure s
 		return v, true, src, ""
 	}
 	if v, has := d.defaultValue(); has {
+		if msg := d.checkValue(v); msg != "" {
+			return nil, false, "", msg
+		}
 		return v, true, "", ""
 	}
 	return nil, false, "", ""
 }
 
 func failureText(d Decl, raw any, err error) string {
+	if ce, ok := errors.AsType[*checkError](err); ok {
+		return ce.msg
+	}
 	expected := err.Error()
 	if fe, ok := errors.AsType[*formatError](err); ok {
 		expected = fe.expected
