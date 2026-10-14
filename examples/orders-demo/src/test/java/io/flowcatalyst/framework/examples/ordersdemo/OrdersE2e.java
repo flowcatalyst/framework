@@ -24,7 +24,7 @@ import java.util.concurrent.CountDownLatch;
  * small control server on its own port lets the suite change who signs in, empty the data and end
  * every session. Nothing here touches a developer's database or port 8080.
  *
- * <p>{@code java -cp ... OrdersE2e <app-port> <control-port>}, from {@code examples/orders-demo}
+ * <p>{@code java -cp ... OrdersE2e <app-port> <control-port> [<public-origin>]}, from {@code examples/orders-demo}
  * (it reads {@code config/application.yaml}). It prints {@code READY} when both servers answer.
  *
  * <p>Control endpoints (all {@code POST} except {@code GET /control/ready}):
@@ -50,7 +50,9 @@ public final class OrdersE2e {
   public static void main(String[] args) throws Exception {
     int appPort = Integer.parseInt(args[0]);
     int controlPort = Integer.parseInt(args[1]);
-    String origin = "http://127.0.0.1:" + appPort;
+    // The origin the browser sees: the application's own, or (development) the Vite dev server's,
+    // which proxies to it (static-assets contract section 9).
+    String origin = args.length > 2 ? args[2] : "http://127.0.0.1:" + appPort;
 
     PostgresFixture pg = PostgresFixture.start();
     TestOidcProvider provider = TestOidcProvider.start(Instant::now);
@@ -118,7 +120,7 @@ public final class OrdersE2e {
                   provider.close();
                   pg.close();
                 }));
-    System.out.println("READY app=" + origin + " control=http://127.0.0.1:" + controlPort);
+    System.out.println("READY app=http://127.0.0.1:" + appPort + " public=" + origin + " control=http://127.0.0.1:" + controlPort);
     new CountDownLatch(1).await();
   }
 

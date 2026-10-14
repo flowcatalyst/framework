@@ -2,7 +2,7 @@
 // (examples/orders-demo, OrdersE2e in its tests) serving the SPA that `vite build` just wrote to
 // examples/orders-demo/web/dist, against Testcontainers PostgreSQL and a test OIDC provider.
 //
-//   node scripts/start-backend.ts --port 4392 --control 4393
+//   node scripts/start-backend.ts --port 4392 --control 4393 [--public http://127.0.0.1:5175]
 //
 // 1. `./mvnw test-compile` for the demo and what it depends on (Maven copies web/dist into the
 //    classes under fw-spa) and the test classpath is written to a file;
@@ -15,7 +15,12 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 const { values } = parseArgs({
-  options: { port: { type: "string", default: "4392" }, control: { type: "string", default: "4393" } },
+  options: {
+    port: { type: "string", default: "4392" },
+    control: { type: "string", default: "4393" },
+    // The origin the browser sees when something else fronts the backend (the Vite dev server).
+    public: { type: "string" },
+  },
 });
 const repo = resolve(import.meta.dirname, "../../../..");
 const demo = join(repo, "examples/orders-demo");
@@ -44,7 +49,7 @@ const classpath = [join(demo, "target/classes"), join(demo, "target/test-classes
 const java = process.env["JAVA_HOME"] === undefined ? "java" : join(process.env["JAVA_HOME"], "bin/java");
 const child = spawn(
   java,
-  ["-Dorg.slf4j.simpleLogger.defaultLogLevel=warn", "-cp", classpath, "io.flowcatalyst.framework.examples.ordersdemo.OrdersE2e", values.port, values.control],
+  ["-Dorg.slf4j.simpleLogger.defaultLogLevel=warn", "-cp", classpath, "io.flowcatalyst.framework.examples.ordersdemo.OrdersE2e", values.port, values.control, ...(values.public === undefined ? [] : [values.public])],
   { cwd: demo, stdio: "inherit" },
 );
 for (const signal of ["SIGTERM", "SIGINT"] as const) {

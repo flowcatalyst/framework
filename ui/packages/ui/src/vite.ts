@@ -135,9 +135,16 @@ const REVIEWED_RUNTIME_PLUGINS = new Set(["colors"]);
 export function flowcatalystUi(options: NuxtUIOptions): Plugin {
   const colors: ColorMap = { ...(options.ui?.colors ?? fcColors) };
   const lifted = new Map<string, string>();
+  // The strict CSP is enforced by the server that serves a build; the dev server sends none, and its
+  // pre-bundled dependencies are reshaped by the bundler (U3 found the dev server failing on vaul-vue
+  // with "a block in an unknown shape"), so the lift is for production builds only.
+  let building = false;
   return {
     name: "flowcatalyst:ui",
     enforce: "pre",
+    configResolved(config) {
+      building = config.command === "build";
+    },
     config() {
       return {
         resolve: { dedupe: ["vue", "vue-router", "@nuxt/ui", "@vueuse/core"] },
@@ -169,7 +176,7 @@ export function flowcatalystUi(options: NuxtUIOptions): Plugin {
       return undefined;
     },
     transform(code, id) {
-      if (!id.includes("/node_modules/")) {
+      if (!building || !id.includes("/node_modules/")) {
         return undefined;
       }
       let split: { css: string; code: string } | undefined;
