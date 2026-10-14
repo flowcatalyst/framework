@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.context.Context;
+import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.context.PrincipalKind;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Module;
@@ -226,6 +228,56 @@ class ScheduledJobReceiverTest {
     assertThat(ctx.application().value()).isEqualTo("orders");
     assertThat(ctx.correlationId().value()).isEqualTo("corr-i1");
     assertThat(ctx.executionId()).isEqualTo("i1");
+    // contract section 4b: the service principal acts; the delivered instance is the cause
+    assertThat(ctx.principal()).isEqualTo(new PrincipalId(FakePlatform.SERVICE_PRINCIPAL));
+    assertThat(ctx.principalKind()).isEqualTo(PrincipalKind.SERVICE);
+    assertThat(ctx.causationId()).isEqualTo("i1");
+    assertThat(ctx.permissions()).isEmpty();
+  }
+
+  @Test
+  void withoutTheServicePrincipalTheFiringIs503AndNothingRunsOrIsReported() throws Exception {
+    platform.tokenPrincipal("prn_0HUMANUSER001", "USER");
+    AtomicInteger calls = new AtomicInteger();
+    TestClient client =
+        start(
+            (ctx, f) -> {
+              calls.incrementAndGet();
+              return JobResult.success();
+            });
+    TestResponse r = fire(client, envelope("i1"));
+    assertThat(r.status()).isEqualTo(503);
+    assertThat(r.tree().path("error").asString()).isEqualTo("UNAVAILABLE");
+    assertThat(r.tree().path("message").asString()).isEqualTo(DispatchReceiver.NO_PRINCIPAL);
+    Thread.sleep(100);
+    assertThat(calls).hasValue(0);
+    assertThat(platform.instanceCalls("complete")).isEmpty();
+    assertThat(logs.text()).contains("instance i1").contains("type claim is not SERVICE");
+  }
+
+  @Test
+  void aPlatformThatIssuesNoTokenGets503ForTheFiringAndTheRedeliveryRuns() throws Exception {
+    platform.failTokens(503);
+    AtomicInteger calls = new AtomicInteger();
+    TestClient client =
+        start(
+            (ctx, f) -> {
+              calls.incrementAndGet();
+              return JobResult.success();
+            });
+    assertThat(fire(client, envelope("i1")).status()).isEqualTo(503);
+    assertThat(calls).hasValue(0);
+    platform.failTokens(0);
+    assertThat(fire(client, envelope("i1")).status()).isEqualTo(202);
+    assertThat(completion(0).get("status").asString()).isEqualTo("SUCCESS");
+    assertThat(calls).hasValue(1);
+  }
+
+  @Test
+  void anUnknownJobIs404EvenWithoutTheServicePrincipal() {
+    platform.failTokens(503);
+    TestClient client = start(r -> r.onScheduledJob("other-job", (ctx, f) -> JobResult.success()));
+    assertThat(fire(client, envelope("i1")).status()).isEqualTo(404);
   }
 
   @Test

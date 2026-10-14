@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.flowcatalyst;
 
 import io.flowcatalyst.framework.context.CorrelationId;
+import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.framework.http.Handler;
 import io.flowcatalyst.framework.http.HttpErrors;
 import io.flowcatalyst.framework.http.Request;
@@ -11,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -20,8 +22,9 @@ import tools.jackson.databind.JsonNode;
 /**
  * {@code POST {prefix}/scheduled-jobs}: the platform firing a scheduled job (flowcatalyst
  * contract, section 4). Authenticates (401), validates the envelope as the TypeScript runner does
- * (400), finds the handler (404), starts the run in the background and answers {@code 202
- * {"ok":true}} at once: the platform's HTTP timeout is 10 s.
+ * (400), finds the handler (404), resolves the application's service principal (503 when it
+ * cannot, so the platform redelivers; section 4b), starts the run in the background and answers
+ * {@code 202 {"ok":true}} at once: the platform's HTTP timeout is 10 s.
  */
 final class ScheduledJobReceiver implements Handler {
 
@@ -33,6 +36,7 @@ final class ScheduledJobReceiver implements Handler {
   private final ReceiverGate gate;
   private final ScheduledJobRunner runner;
   private final PlatformClient platform;
+  private final Supplier<PrincipalId> servicePrincipal;
   private final String route;
 
   ScheduledJobReceiver(
@@ -40,11 +44,13 @@ final class ScheduledJobReceiver implements Handler {
       ReceiverGate gate,
       ScheduledJobRunner runner,
       PlatformClient platform,
+      Supplier<PrincipalId> servicePrincipal,
       String route) {
     this.receivers = receivers;
     this.gate = gate;
     this.runner = runner;
     this.platform = platform;
+    this.servicePrincipal = servicePrincipal;
     this.route = route;
   }
 
@@ -74,7 +80,21 @@ final class ScheduledJobReceiver implements Handler {
           firing.instanceId());
       return HttpErrors.notFound("no handler for scheduled job " + firing.jobCode());
     }
-    if (!runner.start(firing, handler.get())) {
+    // Before the 202: a firing that cannot run as the service principal is redelivered.
+    PrincipalId principal;
+    try {
+      principal = servicePrincipal.get();
+    } catch (RuntimeException e) {
+      LOG.error(
+          "flowcatalyst: scheduled job {} instance {} was not run: {} ({}); answered 503, the"
+              + " platform redelivers",
+          firing.jobCode(),
+          firing.instanceId(),
+          DispatchReceiver.NO_PRINCIPAL,
+          e.getMessage());
+      return DispatchReceiver.unavailable(DispatchReceiver.NO_PRINCIPAL);
+    }
+    if (!runner.start(firing, handler.get(), principal)) {
       return DispatchReceiver.unavailable("the application is stopping");
     }
     return Response.json(202, Map.of("ok", true));

@@ -93,7 +93,8 @@ class DefinitionSyncTest {
       assertThat(platform.syncedResources()).isEqualTo(ALL_RESOURCES);
       for (FakePlatform.Recorded r : platform.syncRequests()) {
         assertThat(r.path()).startsWith("/api/applications/orders/");
-        assertThat(r.headers().get("authorization")).startsWith("Bearer tok-");
+        assertThat(r.headers().get("authorization")).startsWith("Bearer ");
+        assertThat(platform.issued(r.headers().get("authorization").substring("Bearer ".length()))).isTrue();
         if (!r.isSyncOf("scheduled-jobs")) {
           assertThat(r.query()).isEqualTo("removeUnlisted=false");
         }

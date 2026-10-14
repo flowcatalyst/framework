@@ -10,7 +10,10 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.Context;
+import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.context.PrincipalKind;
 import io.flowcatalyst.framework.core.App;
+import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.http.Routes;
@@ -398,7 +401,131 @@ class DispatchReceiverTest {
     assertThat(ctx.application().value()).isEqualTo("orders");
     assertThat(ctx.correlationId().value()).isEqualTo("corr-1");
     assertThat(ctx.executionId()).isEqualTo(JOB);
-    assertThat(ctx.principal()).isNull();
+    // contract section 4b: the application's service principal acts, the job is the cause
+    assertThat(ctx.principal()).isEqualTo(new PrincipalId(FakePlatform.SERVICE_PRINCIPAL));
+    assertThat(ctx.principalKind()).isEqualTo(PrincipalKind.SERVICE);
+    assertThat(ctx.causationId()).isEqualTo(JOB);
+    assertThat(ctx.permissions()).isEmpty();
+  }
+
+  // ---- the service principal (contract section 4b) -----------------------------------------
+
+  /** Starts with a handler for {@link #TYPE} that counts its calls. */
+  private TestClient startCounting(AtomicInteger calls) {
+    return start(
+        (ctx, d) -> {
+          calls.incrementAndGet();
+          return DispatchResult.ack();
+        });
+  }
+
+  @Test
+  void aTokenForAUserRunsNoHandlerAndAnswers503() {
+    platform.tokenPrincipal("prn_0HUMANUSER001", "USER");
+    AtomicInteger calls = new AtomicInteger();
+    TestResponse r = deliver(startCounting(calls));
+    assertThat(r.status()).isEqualTo(503);
+    assertThat(r.tree().path("error").asString()).isEqualTo("UNAVAILABLE");
+    assertThat(r.tree().path("message").asString()).isEqualTo(DispatchReceiver.NO_PRINCIPAL);
+    assertThat(calls).hasValue(0);
+    assertThat(logs.text()).contains(JOB).contains("type claim is not SERVICE");
+  }
+
+  @Test
+  void anOpaqueTokenRunsNoHandlerAndAnswers503() {
+    platform.opaqueTokens(true);
+    AtomicInteger calls = new AtomicInteger();
+    TestResponse r = deliver(startCounting(calls));
+    assertThat(r.status()).isEqualTo(503);
+    assertThat(calls).hasValue(0);
+    assertThat(logs.text()).contains("not a JWT").doesNotContain("tok-");
+  }
+
+  @Test
+  void aPlatformThatIssuesNoTokenRunsNoHandlerAndAnswers503() {
+    platform.failTokens(401);
+    AtomicInteger calls = new AtomicInteger();
+    TestResponse r = deliver(startCounting(calls));
+    assertThat(r.status()).isEqualTo(503);
+    assertThat(r.tree().path("message").asString()).isEqualTo(DispatchReceiver.NO_PRINCIPAL);
+    assertThat(calls).hasValue(0);
+    // once the platform answers again, the next delivery runs
+    platform.failTokens(0);
+    assertThat(deliver(Receiving.client(app)).status()).isEqualTo(200);
+    assertThat(calls).hasValue(1);
+  }
+
+  @Test
+  void refusalsBeforeTheHandlerDoNotNeedThePrincipal() {
+    platform.failTokens(503);
+    AtomicInteger calls = new AtomicInteger();
+    TestClient client = startCounting(calls);
+    // no handler for the type: still the terminal reject, not a retried 503
+    String other = "orders:billing:invoice:voided";
+    String body = "{\"id\":\"" + JOB + "\",\"type\":\"" + other + "\",\"attemptNumber\":1}";
+    TestResponse noHandler =
+        unsigned(client, other)
+            .header("X-FlowCatalyst-Signature", sign(SECRET, TS, body))
+            .header("X-FlowCatalyst-Timestamp", TS)
+            .body(body)
+            .send();
+    assertThat(noHandler.status()).isEqualTo(422);
+    // a bad signature: 401
+    assertThat(unsigned(client, TYPE).body(ENVELOPE).send().status()).isEqualTo(401);
+    // a malformed envelope: 400
+    String malformed = "{\"id\":\"" + JOB + "\",\"type\":\"" + TYPE + "\",\"attemptNumber\":0}";
+    assertThat(deliver(client, malformed).status()).isEqualTo(400);
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  void withHandlersTheHealthCheckReportsAMissingServicePrincipal() throws InterruptedException {
+    platform.tokenPrincipal("prn_0HUMANUSER001", "USER");
+    startCounting(new AtomicInteger());
+    HealthResult result = app.health().check().results().get("flowcatalyst");
+    assertThat(result).isInstanceOf(HealthResult.Down.class);
+    assertThat(((HealthResult.Down) result).reason()).contains("type claim is not SERVICE");
+    // and start-up said so once, in the background
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (!logs.text().contains("cannot run receiver handlers") && System.nanoTime() < deadline) {
+      Thread.sleep(5);
+    }
+    assertThat(logs.text()).contains("cannot run receiver handlers");
+  }
+
+  @Test
+  void withHandlersAndAServiceTokenTheHealthCheckIsUpAndStartUpNamesThePrincipal() throws InterruptedException {
+    startCounting(new AtomicInteger());
+    assertThat(app.health().check().results().get("flowcatalyst")).isEqualTo(new HealthResult.Up());
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (!logs.text().contains(FakePlatform.SERVICE_PRINCIPAL) && System.nanoTime() < deadline) {
+      Thread.sleep(5);
+    }
+    assertThat(logs.text()).contains("receiver handlers run as service principal " + FakePlatform.SERVICE_PRINCIPAL);
+  }
+
+  @Test
+  void aNewTokenBringsItsPrincipal() {
+    List<Context> seen = new java.util.concurrent.CopyOnWriteArrayList<>();
+    TestClient client =
+        start(
+            (ctx, d) -> {
+              seen.add(ctx);
+              return DispatchResult.ack();
+            });
+    assertThat(deliver(client).status()).isEqualTo(200);
+    assertThat(deliver(client).status()).isEqualTo(200);
+    platform.tokenPrincipal("prn_0ROTATEDSVC01", "SERVICE");
+    // still the cached token: still the first principal
+    assertThat(deliver(client).status()).isEqualTo(200);
+    app.get(PlatformClient.class).clearToken();
+    assertThat(deliver(client).status()).isEqualTo(200);
+    assertThat(seen.stream().map(c -> c.principal().value()).toList())
+        .containsExactly(
+            FakePlatform.SERVICE_PRINCIPAL,
+            FakePlatform.SERVICE_PRINCIPAL,
+            FakePlatform.SERVICE_PRINCIPAL,
+            "prn_0ROTATEDSVC01");
   }
 
   @Test
@@ -685,6 +812,7 @@ class DispatchReceiverTest {
             receivers,
             new ReceiverGate(io.flowcatalyst.framework.config.Secret.of(SECRET), null, true, () -> NOW),
             new io.flowcatalyst.framework.context.ApplicationCode("orders"),
+            () -> new io.flowcatalyst.framework.context.PrincipalId(FakePlatform.SERVICE_PRINCIPAL),
             Duration.ofSeconds(5),
             "/fc/dispatch"));
     TestClient client = TestClient.of(routes);

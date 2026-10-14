@@ -42,6 +42,13 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
+    <!-- The conformance vector helpers (conformance/receivers). -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
     <!-- Calling a platform API with the HTTP client and the platform token (guide example). -->
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>

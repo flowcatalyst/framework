@@ -81,7 +81,8 @@ service.principalKind(); // SERVICE
 A kind is never present without a principal (the constructor refuses it), and `withPrincipal(id)`
 without a kind **clears** any kind the context had, so a kind never describes another principal.
 The framework sets it wherever it knows it: `AuthModule`'s resolver from the session or the bearer
-token's `type` (`SERVICE`, else `USER`). Check it in `authorize` when an operation
+token's `type` (`SERVICE`, else `USER`), and the [receivers](receivers.md#who-runs-the-handler)
+always `SERVICE`, the application's own service account. Check it in `authorize` when an operation
 is for people only, or for the service only. It is not written to the outbox (the platform has no
 field for it).
 

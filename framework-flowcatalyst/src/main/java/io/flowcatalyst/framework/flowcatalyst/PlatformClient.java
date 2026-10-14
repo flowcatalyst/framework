@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.flowcatalyst;
 
 import io.flowcatalyst.framework.config.Secret;
 import io.flowcatalyst.framework.context.ApplicationCode;
+import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.sdk.FlowCatalystClient;
 import io.flowcatalyst.sdk.error.FlowCatalystException;
 import io.flowcatalyst.sdk.generated.model.CompleteInstanceRequest;
@@ -24,6 +25,16 @@ public final class PlatformClient {
   private final @Nullable FlowCatalystClient sdk;
   private final @Nullable FlowCatalystClient reporting;
   private final @Nullable ApplicationCode application;
+
+  /** The service principal, with the token it was read from (contract section 4b). */
+  private record Resolved(String token, PrincipalId principal) {
+    @Override
+    public String toString() {
+      return "Resolved[" + principal + "]"; // never the token
+    }
+  }
+
+  private volatile @Nullable Resolved resolved;
 
   private PlatformClient(
       @Nullable FlowCatalystClient sdk,
@@ -123,6 +134,29 @@ public final class PlatformClient {
       String message = e.getMessage();
       throw new PlatformException(message == null ? "platform call failed" : message, e);
     }
+  }
+
+  /**
+   * The application's service principal: the {@code sub} of the client-credentials token, which
+   * must be a {@code SERVICE} token (flowcatalyst contract section 4b). The id is kept with the
+   * token it was read from and read again only when the token changes (a refresh shortly before
+   * it expires, or after {@link #clearToken()}), so this makes no request of its own beyond
+   * {@link #accessToken()}. The receivers run every handler as this principal.
+   *
+   * @return the principal id, for example {@code prn_0HZXEQ5Y8JY5Z}
+   * @throws PlatformException when no token can be fetched, or the token does not identify a
+   *     service principal (not a JWT, no {@code sub}, {@code type} not {@code SERVICE})
+   * @throws IllegalStateException when the module is disabled
+   */
+  public PrincipalId servicePrincipal() {
+    String token = accessToken();
+    Resolved last = resolved;
+    if (last != null && last.token().equals(token)) {
+      return last.principal();
+    }
+    PrincipalId principal = ServiceTokens.servicePrincipal(token);
+    resolved = new Resolved(token, principal);
+    return principal;
   }
 
   /**

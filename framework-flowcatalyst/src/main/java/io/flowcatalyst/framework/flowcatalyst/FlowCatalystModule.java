@@ -277,7 +277,19 @@ public final class FlowCatalystModule implements Module {
     }
     // Informational: the platform is not on the request path, so an outage must not take every
     // replica out of rotation. app.health.critical can make it decide readiness again.
-    app.health().add(ID, client::verifyCredentials, Criticality.INFORMATIONAL);
+    // With receiver handlers open it also needs the service principal (contract section 4b): a
+    // token that does not name one runs no handler, and this is where an operator sees why.
+    Receivers receivers = app.get(Receivers.class);
+    app.health()
+        .add(
+            ID,
+            () -> {
+              client.verifyCredentials();
+              if (receivers.isReady() && (receivers.hasDispatchHandlers() || receivers.hasJobHandlers())) {
+                client.servicePrincipal();
+              }
+            },
+            Criticality.INFORMATIONAL);
     addOutboxCheck(app);
     runner = ReceiverMount.mount(app, client);
     purge = ReceiverMount.startOncePurge(app);

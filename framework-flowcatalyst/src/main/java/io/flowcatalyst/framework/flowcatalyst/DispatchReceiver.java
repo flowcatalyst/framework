@@ -4,6 +4,8 @@ import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.context.CorrelationId;
+import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.context.PrincipalKind;
 import io.flowcatalyst.framework.http.Handler;
 import io.flowcatalyst.framework.http.HttpErrors;
 import io.flowcatalyst.framework.http.Request;
@@ -13,10 +15,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -33,6 +37,8 @@ import tools.jackson.databind.JsonNode;
  *   <li>Validate the job headers and, for an envelope, its fields; malformed: 400. Nothing
  *       malformed reaches a handler.
  *   <li>Find the handler; none: 422 reject.
+ *   <li>Resolve the application's service principal (contract section 4b); unavailable: 503, the
+ *       platform retries, and no handler runs without it.
  *   <li>Run it on its own virtual thread, bounded by {@code dispatch-timeout}; a throw or a
  *       timeout (the thread is interrupted) is 503, the platform retries.
  *   <li>Map the result: ack 200, defer 200 with {@code ack:false}, reject 422 with
@@ -54,9 +60,13 @@ final class DispatchReceiver implements Handler {
   /** Printable ASCII without spaces: safe in a log line and a context. */
   static final Pattern CORRELATION = Pattern.compile("[\\x21-\\x7E]{1,200}");
 
+  /** The 503 message when the service principal cannot be resolved (contract section 4b). */
+  static final String NO_PRINCIPAL = "the application's service principal is not available";
+
   private final Receivers receivers;
   private final ReceiverGate gate;
   private final ApplicationCode application;
+  private final Supplier<PrincipalId> servicePrincipal;
   private final Duration timeout;
   private final String route;
 
@@ -64,11 +74,13 @@ final class DispatchReceiver implements Handler {
       Receivers receivers,
       ReceiverGate gate,
       ApplicationCode application,
+      Supplier<PrincipalId> servicePrincipal,
       Duration timeout,
       String route) {
     this.receivers = receivers;
     this.gate = gate;
     this.application = application;
+    this.servicePrincipal = servicePrincipal;
     this.timeout = timeout;
     this.route = route;
   }
@@ -117,14 +129,29 @@ final class DispatchReceiver implements Handler {
       LOG.warn("flowcatalyst: no dispatch handler for {} (job {}); rejected", type, jobId);
       return reject(new DispatchResult.Reject("no handler for " + type));
     }
+    // Never run a handler without the application's service principal (owner ruling 2026-10-12).
+    PrincipalId principal;
+    try {
+      principal = servicePrincipal.get();
+    } catch (RuntimeException e) {
+      LOG.error(
+          "flowcatalyst: dispatch job {} ({}) was not run: {} ({}); answered 503, the platform retries",
+          jobId,
+          type,
+          NO_PRINCIPAL,
+          e.getMessage());
+      return unavailable(NO_PRINCIPAL);
+    }
     Context ctx =
         new Context(
             client == null ? Receivers.PLATFORM_CLIENT : client.code(),
-            null,
+            principal,
+            PrincipalKind.SERVICE,
             application,
             delivery.correlationId(),
-            null,
-            jobId);
+            jobId, // the delivered job caused this work
+            jobId,
+            Set.of());
     return run(handler.get(), ctx, delivery);
   }
 

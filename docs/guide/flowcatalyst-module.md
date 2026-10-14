@@ -53,9 +53,11 @@ still starts; the failure is logged and the `flowcatalyst` health check reports 
 fetches a token with the service-account credentials; it uses the SDK's cached token, so it can
 stay `Up` briefly after the platform goes down.
 
-**Readiness does not depend on it by default.** The `flowcatalyst` check is `Down` exactly when
-fetching a token fails: the platform refuses the credentials or cannot be reached, and the cached
-token (the SDK refreshes it about a minute before it expires) has run out. Both the `flowcatalyst`
+**Readiness does not depend on it by default.** The `flowcatalyst` check is `Down` when fetching a
+token fails: the platform refuses the credentials or cannot be reached, and the cached token (the
+SDK refreshes it about a minute before it expires) has run out. While a receiver has handlers it is
+also `Down` when the token does not name the application's service principal, because then no
+handler can run ([who runs the handler](receivers.md#who-runs-the-handler)). Both the `flowcatalyst`
 check and the `outbox` check below are **informational**
 ([criticality](modules-and-lifecycle.md#critical-and-informational-checks)): `/health/ready`
 reports them (top-level `DEGRADED`, still `200`) but they do not make it answer `503`, so a
@@ -71,7 +73,9 @@ app:
 
 A provided service wrapping the SDK client built with client credentials. Today it offers
 `isEnabled()`, `application()` (an `ApplicationCode`), `verifyCredentials()`, `accessToken()`
-(a bearer token, cached by the SDK; never log it) and `clearToken()`. The receivers use two more,
+(a bearer token, cached by the SDK; never log it), `clearToken()` and `servicePrincipal()` (the
+`sub` of that token when its `type` is `SERVICE`: the principal the receivers run handlers as; read
+once per token). The receivers use two more,
 `completeJobInstance(instanceId, Completion, result)` and `logJobInstance(instanceId, level,
 message)`, to report a scheduled-job instance. Failures are the unchecked `PlatformException`. SDK types do not appear in its API.
 

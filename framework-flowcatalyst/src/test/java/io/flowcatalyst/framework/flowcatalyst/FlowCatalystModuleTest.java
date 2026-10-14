@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.Criticality;
 import io.flowcatalyst.framework.core.HealthReport;
@@ -163,6 +164,32 @@ class FlowCatalystModuleTest {
   }
 
   @Test
+  void theServicePrincipalIsTheSubOfTheClientCredentialsToken() {
+    try (App app = start(env(platform.baseUrl()))) {
+      PlatformClient client = app.get(PlatformClient.class);
+      assertThat(client.servicePrincipal()).isEqualTo(new PrincipalId(FakePlatform.SERVICE_PRINCIPAL));
+    }
+  }
+
+  @Test
+  void aUserTokenIsNoServicePrincipal() {
+    platform.tokenPrincipal("prn_0HUMANUSER001", "USER");
+    try (App app = start(env(platform.baseUrl()))) {
+      Throwable t = catchThrowable(app.get(PlatformClient.class)::servicePrincipal);
+      assertThat(t).isInstanceOf(PlatformException.class).hasMessageContaining("type claim is not SERVICE");
+    }
+  }
+
+  @Test
+  void withoutReceiverHandlersTheHealthCheckDoesNotAskForTheServicePrincipal() {
+    // a token-only application (an ingestor) keeps its health whatever kind its token is
+    platform.tokenPrincipal("prn_0HUMANUSER001", "USER");
+    try (App app = start(env(platform.baseUrl()))) {
+      assertThat(app.health().check().results().get("flowcatalyst")).isEqualTo(new HealthResult.Up());
+    }
+  }
+
+  @Test
   void disabledNeedsNoSettingsAndAddsNoHealthCheck() {
     try (App app = start(Map.of("FLOWCATALYST_ENABLED", "false"))) {
       PlatformClient client = app.get(PlatformClient.class);
@@ -170,6 +197,7 @@ class FlowCatalystModuleTest {
       assertThat(app.health().check().results()).doesNotContainKey("flowcatalyst");
       assertThatIllegalStateException().isThrownBy(client::application).withMessageContaining("disabled");
       assertThatIllegalStateException().isThrownBy(client::accessToken).withMessageContaining("disabled");
+      assertThatIllegalStateException().isThrownBy(client::servicePrincipal).withMessageContaining("disabled");
     }
   }
 

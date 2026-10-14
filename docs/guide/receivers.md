@@ -1,4 +1,4 @@
-<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, Database, Databases, FlowCatalystModule, PlatformClient, Context, Locks, LockStore -->
+<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, Database, Databases, FlowCatalystModule, PlatformClient, PlatformException, Context, PrincipalKind, Locks, LockStore -->
 # Receivers: dispatch jobs and scheduled jobs
 
 The platform delivers work **to** your application over HTTP: dispatch jobs (an event, fanned out by
@@ -23,7 +23,7 @@ token](#applications-that-only-want-the-token). A disabled module (`flowcatalyst
 mounts nothing either.
 
 Read this page with [The FlowCatalyst module](flowcatalyst-module.md) (settings, definitions) and
-[Locks](locks.md) (the overlap lock). The specification is section 4 and 4a of
+[Locks](locks.md) (the overlap lock). The specification is sections 4, 4a and 4b of
 [contracts/flowcatalyst.md](../contracts/flowcatalyst.md).
 
 ## Registering handlers
@@ -74,7 +74,58 @@ or `Receivers.PLATFORM_CLIENT` (`_platform`, which no real client
 identifier can equal) for a platform-scoped dispatch job and for every scheduled job; the
 application is `flowcatalyst.application`; the correlation id is the envelope's when it is
 printable ASCII without spaces and at most 200 characters, else generated; the execution id is the
-dispatch job id, or the scheduled-job instance id.
+dispatch job id, or the scheduled-job instance id. The principal is your application's service
+account, and the delivered message is the cause: next section.
+
+## Who runs the handler
+
+Every handler runs as the **application's service principal**, kind `PrincipalKind.SERVICE`, and the
+delivered message is the **cause** (owner ruling 2026-10-12). So a use case a handler runs writes
+events and an audit row that say who did it and why:
+
+| `Context` field | Dispatch job | Scheduled-job firing |
+|---|---|---|
+| `principal()` | the service principal, for example `prn_0HZXEQ5Y8JY5Z` | the same |
+| `principalKind()` | `SERVICE` | `SERVICE` |
+| `causationId()` | the job id (`X-Dispatch-Job-Id`) | the instance id |
+| `executionId()` | the job id | the instance id |
+| `permissions()` | empty | empty |
+
+In the outbox that becomes each event's `causationId` and its `contextData` entries `principalId`
+and `executionId`, and the audit row's `principalId`. The platform refuses an audit entry without a
+principal, so before this rule such audit rows were lost. The platform's audit entry has no
+causation field: the job id reaches the events, not the audit row.
+
+**Where the id comes from.** The `sub` of the client-credentials token the module already fetches
+with `flowcatalyst.client-id` and `client-secret`: the platform puts the service account's principal
+id there and `type: SERVICE` beside it. `PlatformClient.servicePrincipal()` returns it; it is read
+once per token (no extra request) and picked up again when the token is renewed. The token came
+straight from the platform's token endpoint, so its signature is not checked.
+
+**No principal, no handler.** When the token cannot be fetched, or does not name a service principal
+(its `type` is `USER` because the configured credentials are a person's developer credentials, it
+has no `sub`, or it is not a JWT), the receivers run **nothing**:
+
+- a dispatch job is answered `503 UNAVAILABLE` (`the application's service principal is not
+  available`), and the platform retries it;
+- a scheduled-job firing is answered the same `503` instead of `202`, so the platform delivers it
+  again; no completion is reported;
+- the reason is logged at ERROR with the job id (never the token); at start-up the module logs the
+  principal it will use at INFO, or the reason it has none at WARN;
+- the `flowcatalyst` health check is `Down` with the reason while a receiver has handlers
+  (informational unless you list it in `app.health.critical`). An application without receiver
+  handlers is not affected.
+
+A use case can admit receiver runs by the kind, as the framework's end-to-end test does:
+
+```java
+UseCase.named("send-invoice", SendInvoice.class, InvoiceSent.class)
+    .authorize(
+        (ctx, cmd) ->
+            ctx.principalKind() == PrincipalKind.SERVICE
+                ? Optional.empty()
+                : Optional.of(UseCaseError.authorization("NOT_A_SERVICE", "only the service sends invoices")))
+```
 
 ## Settings
 
@@ -150,6 +201,7 @@ It returns a `DispatchResult`:
 | Bad or missing signature, or bearer | `401 UNAUTHENTICATED` with `details.reason` | the platform treats 401 and 403 as terminal, so a wrong secret shows at once |
 | Malformed headers or envelope | `400 VALIDATION` | |
 | Receivers not yet ready, or stopping | `503 UNAVAILABLE` | retried |
+| The service principal cannot be resolved ([who runs the handler](#who-runs-the-handler)) | `503 UNAVAILABLE`, no handler runs | retried. Signature, validation and the no-handler reject come first and need no principal |
 
 A handler that wants a terminal failure returns `reject` explicitly; throwing is how it says "try
 again". On a timeout the handler's virtual thread is interrupted, but the request does not wait for
@@ -193,7 +245,8 @@ platform's retry horizon.
 The platform's HTTP timeout for a firing is 10 s, so the receiver answers `202 {"ok":true}`
 **immediately** and runs the handler in the background on a virtual thread. An unknown job code is
 `404 NOT_FOUND`; a malformed envelope is `400 VALIDATION` (types and patterns are checked, stricter
-than the TypeScript runner); `503` while starting or stopping.
+than the TypeScript runner); `503` while starting or stopping, and `503` when the service principal
+cannot be resolved ([who runs the handler](#who-runs-the-handler)).
 
 A `ScheduledJobHandler` receives the `Context` and a `ScheduledJobFiring` (`jobId()`, `jobCode()`,
 `instanceId()`, `scheduledFor()`, `firedAt()`, `triggerKind()`, `correlationId()`, `payload()`,

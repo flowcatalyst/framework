@@ -14,4 +14,13 @@ public final class PlatformException extends RuntimeException {
   public PlatformException(String message, Throwable cause) {
     super(message, cause);
   }
+
+  /**
+   * Creates the exception without an underlying failure.
+   *
+   * @param message what failed
+   */
+  public PlatformException(String message) {
+    super(message);
+  }
 }

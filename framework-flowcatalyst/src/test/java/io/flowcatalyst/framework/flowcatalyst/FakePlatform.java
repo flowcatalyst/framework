@@ -8,9 +8,11 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -29,7 +31,10 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>Every request is recorded. A sync call answers with the platform's shape for a success, built
  * from the request body, unless a response was set for that resource with {@link #respond}. An
  * instance callback can be made to fail a number of times with {@link #failInstanceCalls}.
- * Tokens are accepted only for {@link #CLIENT_ID} and {@link #CLIENT_SECRET}.
+ * Tokens are accepted only for {@link #CLIENT_ID} and {@link #CLIENT_SECRET}. Like the platform's,
+ * a token is a JWT whose {@code sub} is the service account's principal ({@link
+ * #SERVICE_PRINCIPAL} unless changed with {@link #tokenPrincipal}) and whose {@code type} is
+ * {@code SERVICE}; its signature is a placeholder. Only tokens it issued are accepted as bearers.
  */
 public final class FakePlatform implements AutoCloseable {
 
@@ -38,6 +43,9 @@ public final class FakePlatform implements AutoCloseable {
 
   /** The client secret the token endpoint accepts. */
   public static final String CLIENT_SECRET = "fake-secret";
+
+  /** The principal id the issued tokens name in {@code sub}, by default. */
+  public static final String SERVICE_PRINCIPAL = "prn_0FAKEAPPSVC01";
 
   private static final JsonMapper JSON = JsonMapper.builder().build();
   private static final Pattern SYNC = Pattern.compile("/api/applications/([^/]+)/([a-z-]+)/sync");
@@ -87,6 +95,10 @@ public final class FakePlatform implements AutoCloseable {
   private final AtomicInteger tokens = new AtomicInteger();
   private final Map<String, Failing> failing = new ConcurrentHashMap<>();
   private volatile int tokenFailure;
+  private final Set<String> issued = ConcurrentHashMap.newKeySet();
+  private volatile String tokenSub = SERVICE_PRINCIPAL;
+  private volatile String tokenType = "SERVICE";
+  private volatile boolean opaqueTokens;
 
   private FakePlatform(HttpServer server) {
     this.server = server;
@@ -178,6 +190,37 @@ public final class FakePlatform implements AutoCloseable {
   }
 
   /**
+   * Sets the {@code sub} and {@code type} claims of the tokens issued from now on.
+   *
+   * @param sub the principal id, or null to leave the claim out
+   * @param type {@code SERVICE} for a service account, {@code USER} for a person, or null to leave
+   *     the claim out
+   */
+  public void tokenPrincipal(String sub, String type) {
+    this.tokenSub = sub;
+    this.tokenType = type;
+  }
+
+  /**
+   * Makes the token endpoint issue opaque tokens ({@code tok-N}) instead of JWTs.
+   *
+   * @param opaque true for opaque tokens
+   */
+  public void opaqueTokens(boolean opaque) {
+    this.opaqueTokens = opaque;
+  }
+
+  /**
+   * Whether a token was issued by this fake.
+   *
+   * @param token the token
+   * @return true when the token endpoint issued it
+   */
+  public boolean issued(String token) {
+    return issued.contains(token);
+  }
+
+  /**
    * Makes the sync of one resource answer with a fixed response.
    *
    * @param resource the resource path segment, such as {@code roles}
@@ -256,7 +299,7 @@ public final class FakePlatform implements AutoCloseable {
       }
       Matcher instance = INSTANCE.matcher(path);
       if (instance.matches() && "POST".equals(ex.getRequestMethod())) {
-        if (!headers.getOrDefault("authorization", "").startsWith("Bearer tok-")) {
+        if (!bearer(headers)) {
           reply(ex, 401, "{\"error\":\"unauthorized\"}");
           return;
         }
@@ -273,8 +316,7 @@ public final class FakePlatform implements AutoCloseable {
         reply(ex, 404, "{\"error\":\"not found\"}");
         return;
       }
-      String auth = headers.getOrDefault("authorization", "");
-      if (!auth.startsWith("Bearer tok-")) {
+      if (!bearer(headers)) {
         reply(ex, 401, "{\"error\":\"unauthorized\"}");
         return;
       }
@@ -310,10 +352,37 @@ public final class FakePlatform implements AutoCloseable {
       reply(ex, 401, "{\"error\":\"invalid_client\"}");
       return;
     }
-    reply(
-        ex,
-        200,
-        "{\"access_token\":\"tok-" + tokens.get() + "\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
+    String token = mint("tok-" + tokens.get());
+    issued.add(token);
+    reply(ex, 200, "{\"access_token\":\"" + token + "\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
+  }
+
+  /** A JWT as the platform shapes a client-credentials token, or the opaque id. */
+  private String mint(String jti) {
+    if (opaqueTokens) {
+      return jti;
+    }
+    Map<String, Object> claims = new LinkedHashMap<>();
+    claims.put("iss", baseUrl());
+    if (tokenSub != null) {
+      claims.put("sub", tokenSub);
+    }
+    if (tokenType != null) {
+      claims.put("type", tokenType);
+    }
+    claims.put("tier", "ANCHOR");
+    claims.put("jti", jti);
+    claims.put("token_use", "api");
+    Base64.Encoder b64 = Base64.getUrlEncoder().withoutPadding();
+    return b64.encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8))
+        + "."
+        + b64.encodeToString(JSON.writeValueAsBytes(claims))
+        + ".ZmFrZS1zaWduYXR1cmU";
+  }
+
+  private boolean bearer(Map<String, String> headers) {
+    String auth = headers.getOrDefault("authorization", "");
+    return auth.startsWith("Bearer ") && issued.contains(auth.substring(7));
   }
 
   /** The platform's success response for a sync, built from the request body. */

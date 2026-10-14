@@ -148,7 +148,8 @@ final class ReceiverMount {
     String dispatch = prefix + "/dispatch";
     own.post(
         dispatch,
-        new DispatchReceiver(receivers, dispatchGate, client.application(), dispatchTimeout, dispatch));
+        new DispatchReceiver(
+            receivers, dispatchGate, client.application(), client::servicePrincipal, dispatchTimeout, dispatch));
     ScheduledJobRunner runner =
         new ScheduledJobRunner(
             client,
@@ -158,7 +159,8 @@ final class ReceiverMount {
             lease,
             retryDelay);
     String jobs = prefix + "/scheduled-jobs";
-    own.post(jobs, new ScheduledJobReceiver(receivers, jobsGate, runner, client, jobs));
+    own.post(
+        jobs, new ScheduledJobReceiver(receivers, jobsGate, runner, client, client::servicePrincipal, jobs));
     receivers.markMounted();
     return runner;
   }
@@ -273,6 +275,30 @@ final class ReceiverMount {
       LOG.info("flowcatalyst: scheduled-job handlers for {}", receivers.jobCodes().stream().sorted().toList());
     }
     receivers.markReady();
+    if (any) {
+      reportServicePrincipal(client);
+    }
+  }
+
+  /**
+   * Resolves the service principal once in the background and logs it (contract section 4b), so a
+   * token that names none is visible at start-up, not only on the first delivery. Never blocks or
+   * fails start-up: deliveries resolve it again and answer 503 while it is missing.
+   */
+  private static void reportServicePrincipal(PlatformClient client) {
+    Thread.ofVirtual()
+        .name("flowcatalyst-service-principal")
+        .start(
+            () -> {
+              try {
+                LOG.info("flowcatalyst: receiver handlers run as service principal {}", client.servicePrincipal());
+              } catch (RuntimeException e) {
+                LOG.warn(
+                    "flowcatalyst: cannot run receiver handlers yet: {}; deliveries are answered 503"
+                        + " until the platform token names the application's service principal",
+                    e.getMessage());
+              }
+            });
   }
 
   private static Problem missingSecret(Setting<Secret> own, String receiver) {

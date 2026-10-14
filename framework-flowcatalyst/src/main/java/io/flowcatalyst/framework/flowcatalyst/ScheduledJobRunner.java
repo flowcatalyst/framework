@@ -2,6 +2,8 @@ package io.flowcatalyst.framework.flowcatalyst;
 
 import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.context.Context;
+import io.flowcatalyst.framework.context.PrincipalId;
+import io.flowcatalyst.framework.context.PrincipalKind;
 import io.flowcatalyst.framework.locks.LockKey;
 import io.flowcatalyst.framework.locks.LockStore;
 import io.flowcatalyst.framework.locks.LockStoreUnavailableException;
@@ -82,11 +84,11 @@ final class ScheduledJobRunner {
   }
 
   /**
-   * Starts a firing in the background.
+   * Starts a firing in the background, run as the application's service principal.
    *
    * @return false when the application is shutting down and nothing was started
    */
-  boolean start(ScheduledJobFiring firing, Receivers.JobRegistration registration) {
+  boolean start(ScheduledJobFiring firing, Receivers.JobRegistration registration, PrincipalId principal) {
     if (stopping) {
       return false;
     }
@@ -96,7 +98,7 @@ final class ScheduledJobRunner {
             .unstarted(
                 () -> {
                   try {
-                    run(firing, registration);
+                    run(firing, registration, principal);
                   } catch (RuntimeException | Error e) {
                     LOG.error(
                         "flowcatalyst: scheduled job {} instance {} ended unexpectedly",
@@ -149,16 +151,19 @@ final class ScheduledJobRunner {
 
   // ---- one firing --------------------------------------------------------------------------
 
-  private void run(ScheduledJobFiring firing, Receivers.JobRegistration registration) {
+  private void run(ScheduledJobFiring firing, Receivers.JobRegistration registration, PrincipalId principal) {
     ScheduledJobHandler handler = registration.handler();
+    // Contract section 4b: the service principal acts; the delivered instance is the cause.
     Context ctx =
         new Context(
             Receivers.PLATFORM_CLIENT,
-            null,
+            principal,
+            PrincipalKind.SERVICE,
             application,
             firing.correlationId(),
-            null,
-            firing.instanceId());
+            firing.instanceId(),
+            firing.instanceId(),
+            Set.of());
     Duration timeout = firing.timeout().orElse(defaultTimeout);
     Report report = new Report(firing);
     if (firing.concurrent()) {

@@ -1,0 +1,314 @@
+{
+  "description" : "The Context a FlowCatalyst receiver hands its handler (flowcatalyst contract section 4b), or the answer when it runs none. Setup: application 'orders'; a dispatch handler for orders:billing:invoice:created only; a scheduled-job handler for nightly-export registered always-concurrent; signing secret and clock below. token: what the platform's token endpoint answers the application's client-credentials request: a JWT with these claims (other claims and the signature are irrelevant), an opaque string, or an error status. expect.context is null when no handler ran. correlationId <generated> means generated: any non-blank value other than the envelope's.",
+  "application" : "orders",
+  "signingSecret" : "whsec-test-only",
+  "now" : "2026-10-09T12:00:00Z",
+  "cases" : [ {
+    "name" : "dispatch envelope with a client",
+    "receiver" : "dispatch",
+    "token" : {
+      "claims" : {
+        "sub" : "prn_0FAKEAPPSVC01",
+        "type" : "SERVICE"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "257e2fe8816ac7419063db0db2da284b6768c9863a59f1eb793f889500fa4db3",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":3,\"correlationId\":\"corr-1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 200,
+      "context" : {
+        "client" : "acme",
+        "principal" : "prn_0FAKEAPPSVC01",
+        "principalKind" : "SERVICE",
+        "application" : "orders",
+        "correlationId" : "corr-1",
+        "causationId" : "dj_0HZXEQ5Y8JY5Z",
+        "executionId" : "dj_0HZXEQ5Y8JY5Z",
+        "permissions" : [ ]
+      }
+    }
+  }, {
+    "name" : "dispatch data-only body, no client header",
+    "receiver" : "dispatch",
+    "token" : {
+      "claims" : {
+        "sub" : "prn_0FAKEAPPSVC01",
+        "type" : "SERVICE"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Signature" : "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"n\":1}"
+    },
+    "expect" : {
+      "status" : 200,
+      "context" : {
+        "client" : "_platform",
+        "principal" : "prn_0FAKEAPPSVC01",
+        "principalKind" : "SERVICE",
+        "application" : "orders",
+        "correlationId" : "<generated>",
+        "causationId" : "dj_0HZXEQ5Y8JY5Z",
+        "executionId" : "dj_0HZXEQ5Y8JY5Z",
+        "permissions" : [ ]
+      }
+    }
+  }, {
+    "name" : "dispatch envelope whose correlation id has a space",
+    "receiver" : "dispatch",
+    "token" : {
+      "claims" : {
+        "sub" : "prn_0FAKEAPPSVC01",
+        "type" : "SERVICE"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "2d09053b21a645864bbb84debf2419ebca251a7ffb6eda4660ea11d283cc92fe",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":3,\"correlationId\":\"corr 1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 200,
+      "context" : {
+        "client" : "acme",
+        "principal" : "prn_0FAKEAPPSVC01",
+        "principalKind" : "SERVICE",
+        "application" : "orders",
+        "correlationId" : "<generated>",
+        "causationId" : "dj_0HZXEQ5Y8JY5Z",
+        "executionId" : "dj_0HZXEQ5Y8JY5Z",
+        "permissions" : [ ]
+      }
+    }
+  }, {
+    "name" : "scheduled-job firing",
+    "receiver" : "scheduled-job",
+    "token" : {
+      "claims" : {
+        "sub" : "prn_0FAKEAPPSVC01",
+        "type" : "SERVICE"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/scheduled-jobs",
+      "headers" : {
+        "X-FlowCatalyst-Signature" : "f2a136664f6ca2ff9ac0f5722467a54681f8fbf76fa7fc1a44a34bd4661e4bbb",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"jobId\":\"sj_1\",\"jobCode\":\"nightly-export\",\"instanceId\":\"sji_0HZXEQ5Y8JY5Z\",\"firedAt\":\"2026-10-09T12:00:00Z\",\"triggerKind\":\"CRON\",\"correlationId\":\"corr-2\",\"tracksCompletion\":false,\"concurrent\":true}"
+    },
+    "expect" : {
+      "status" : 202,
+      "context" : {
+        "client" : "_platform",
+        "principal" : "prn_0FAKEAPPSVC01",
+        "principalKind" : "SERVICE",
+        "application" : "orders",
+        "correlationId" : "corr-2",
+        "causationId" : "sji_0HZXEQ5Y8JY5Z",
+        "executionId" : "sji_0HZXEQ5Y8JY5Z",
+        "permissions" : [ ]
+      }
+    }
+  }, {
+    "name" : "token for a user: no handler runs",
+    "receiver" : "dispatch",
+    "token" : {
+      "claims" : {
+        "sub" : "prn_0HUMANUSER001",
+        "type" : "USER"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "257e2fe8816ac7419063db0db2da284b6768c9863a59f1eb793f889500fa4db3",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":3,\"correlationId\":\"corr-1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 503,
+      "error" : "UNAVAILABLE",
+      "message" : "the application's service principal is not available",
+      "context" : null
+    }
+  }, {
+    "name" : "token without sub: no handler runs",
+    "receiver" : "dispatch",
+    "token" : {
+      "claims" : {
+        "type" : "SERVICE"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "257e2fe8816ac7419063db0db2da284b6768c9863a59f1eb793f889500fa4db3",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":3,\"correlationId\":\"corr-1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 503,
+      "error" : "UNAVAILABLE",
+      "message" : "the application's service principal is not available",
+      "context" : null
+    }
+  }, {
+    "name" : "token without type: no handler runs",
+    "receiver" : "dispatch",
+    "token" : {
+      "claims" : {
+        "sub" : "prn_0FAKEAPPSVC01"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "257e2fe8816ac7419063db0db2da284b6768c9863a59f1eb793f889500fa4db3",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":3,\"correlationId\":\"corr-1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 503,
+      "error" : "UNAVAILABLE",
+      "message" : "the application's service principal is not available",
+      "context" : null
+    }
+  }, {
+    "name" : "opaque token: no handler runs",
+    "receiver" : "dispatch",
+    "token" : {
+      "opaque" : true
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "257e2fe8816ac7419063db0db2da284b6768c9863a59f1eb793f889500fa4db3",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":3,\"correlationId\":\"corr-1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 503,
+      "error" : "UNAVAILABLE",
+      "message" : "the application's service principal is not available",
+      "context" : null
+    }
+  }, {
+    "name" : "token endpoint refuses: no handler runs",
+    "receiver" : "dispatch",
+    "token" : {
+      "tokenEndpointStatus" : 401
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:created",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "257e2fe8816ac7419063db0db2da284b6768c9863a59f1eb793f889500fa4db3",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":3,\"correlationId\":\"corr-1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 503,
+      "error" : "UNAVAILABLE",
+      "message" : "the application's service principal is not available",
+      "context" : null
+    }
+  }, {
+    "name" : "scheduled job, token for a user: not accepted",
+    "receiver" : "scheduled-job",
+    "token" : {
+      "claims" : {
+        "sub" : "prn_0HUMANUSER001",
+        "type" : "USER"
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/scheduled-jobs",
+      "headers" : {
+        "X-FlowCatalyst-Signature" : "f2a136664f6ca2ff9ac0f5722467a54681f8fbf76fa7fc1a44a34bd4661e4bbb",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"jobId\":\"sj_1\",\"jobCode\":\"nightly-export\",\"instanceId\":\"sji_0HZXEQ5Y8JY5Z\",\"firedAt\":\"2026-10-09T12:00:00Z\",\"triggerKind\":\"CRON\",\"correlationId\":\"corr-2\",\"tracksCompletion\":false,\"concurrent\":true}"
+    },
+    "expect" : {
+      "status" : 503,
+      "error" : "UNAVAILABLE",
+      "message" : "the application's service principal is not available",
+      "context" : null
+    }
+  }, {
+    "name" : "no handler for the type: rejected without asking for the principal",
+    "receiver" : "dispatch",
+    "token" : {
+      "tokenEndpointStatus" : 503
+    },
+    "request" : {
+      "method" : "POST",
+      "path" : "/fc/dispatch",
+      "headers" : {
+        "X-Dispatch-Job-Id" : "dj_0HZXEQ5Y8JY5Z",
+        "X-Event-Type" : "orders:billing:invoice:voided",
+        "X-FlowCatalyst-Client" : "clt_1:acme",
+        "X-FlowCatalyst-Signature" : "29817550662f446add53170ed238f8052c05ec46f4a1fb1435abfcade4de1e7a",
+        "X-FlowCatalyst-Timestamp" : "2026-10-09T12:00:00.000Z"
+      },
+      "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:voided\",\"attemptNumber\":3,\"correlationId\":\"corr-1\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"n\":1}}"
+    },
+    "expect" : {
+      "status" : 422,
+      "error" : "REJECTED",
+      "message" : "no handler for orders:billing:invoice:voided",
+      "context" : null
+    }
+  } ]
+}

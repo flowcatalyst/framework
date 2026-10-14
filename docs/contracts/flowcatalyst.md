@@ -1,6 +1,7 @@
 # Contract: the FlowCatalyst module, client side and receivers (M4a, M4b)
 
-Status: M4a and M4b built (2026-10-09; section 4a records where the build differs). Facts come from `docs/research/m4-platform-facts.md` (each with a
+Status: M4a and M4b built (2026-10-09; section 4a records where the build differs; section 4b,
+the receiver principal, added and built 2026-10-14). Facts come from `docs/research/m4-platform-facts.md` (each with a
 file reference); where this contract and that sheet disagree, the sheet's source wins and this
 file is wrong. Sessions and login are M4c and have their own contract.
 
@@ -127,7 +128,8 @@ receivers.onDispatch("orders:billing:invoice:created", (ctx, delivery) -> Dispat
 - `delivery` carries job id, type, attempt number, subject, message group, parsed `data`
   (`JsonNode`, or raw bytes when `dataOnly`), raw body, and the client from
   `X-FlowCatalyst-Client`. `ctx` is a `Context` built from that client header, the configured
-  application, and the job's correlation id (generated when absent).
+  application, and the job's correlation id (generated when absent). *Amended by section 4b:* it
+  also carries the application's service principal (kind `SERVICE`) and the job id as causation.
 - Results (sealed): `Ack` → `200 {"ack":true}`. `Defer(delay)` → `200 {"ack":false,
   "delaySeconds":n}` (the platform reschedules without spending retry budget; default 30 s).
   `Reject(reason)` → `422` with header `FlowCatalyst-Outcome: reject` (terminal; the reason is
@@ -267,6 +269,8 @@ As built in slice 4 (signature check and the dispatch receiver, 2026-10-09):
   (`_platform`, which no platform client identifier can equal) for a platform-scoped job.
   Application: `flowcatalyst.application`. Correlation id: the envelope's when it is printable
   ASCII without spaces, at most 200 characters, else generated. Execution id: the job id.
+  *Amended by section 4b:* principal = the service principal, kind `SERVICE`, causation = the job
+  id. (As first built, principal and causation were empty.)
 - **Results.** `Ack` → `200 {"ack":true}`. `Defer(delay)` → `200
   {"ack":false,"delaySeconds":n}` with `n` the delay rounded up to whole seconds, 0 to 2^32-1.
   `Reject(reason)` → `422 {"error":"REJECTED","message":reason}` with `FlowCatalyst-Outcome:
@@ -307,7 +311,8 @@ As built in slice 5 (the scheduled-job receiver, 2026-10-09):
   of the optional fields), never looser. Unknown `jobCode`: `404 NOT_FOUND`. Accepted: `202
   {"ok":true}`; `503 UNAVAILABLE` while starting or stopping.
 - **Context.** Client `Receivers.PLATFORM_CLIENT` (the envelope names no client), application,
-  correlation id as above, execution id = instance id. The firing exposes every envelope field,
+  correlation id as above, execution id = instance id. *Amended by section 4b:* principal = the
+  service principal, kind `SERVICE`, causation = the instance id. The firing exposes every envelope field,
   `fencingToken()` (the overlap lock's, empty for a concurrent job) and `log(level, message)`.
 - **Run.** A virtual thread per firing takes the lock with `LockStore.withLock(key, lease, 0)` from
   the default lock instance and runs the handler on a second virtual thread bounded by the
@@ -395,6 +400,97 @@ As built in slice 5 (the scheduled-job receiver, 2026-10-09):
 6. **Docs.** The guide has a Receivers page (`docs/guide/receivers.md`) documenting all of the
    above; STATUS rows M4a and M4b are Built.
 
+## 4b. The receiver principal (owner ruling 2026-10-12, re-confirmed 2026-10-14)
+
+A use case run by a receiver always has a principal: the **application's service principal**, kind
+`SERVICE` (core contract section 3), the principal the module's own credentials
+(`flowcatalyst.client-id` / `client-secret`) identify. The delivered message is the **cause**. No
+handler ever runs without that principal.
+
+**Where the id comes from (decided 2026-10-14).** The `sub` claim of the client-credentials access
+token `PlatformClient` already fetches. Evidence (platform Go source, read 2026-10-14):
+
+- The `client_credentials` grant loads the OAuth client's linked principal and refuses a client
+  without one (`internal/platform/auth/oauthapi/token.go`, `handleClientCredentialsGrant`, lines
+  496-585) and mints the token for that principal (`mintClientCredentialsToken`, 643-), whose
+  `sub` is the principal's id and `type` its type (`internal/platform/auth/authservice/authservice.go`
+  `mintAccessToken`, 531 and 537; `subjectOf`, 482). A service account's principal has type
+  `SERVICE` (`internal/platform/principal/entity.go`, 30) and an id with the `prn` prefix
+  (`internal/tsid/tsid.go`, 102), such as `prn_0HZXEQ5Y8JY5Z`.
+- The platform itself treats `sub` as the acting principal: its API middleware sets the caller's
+  principal id from it (`internal/platform/shared/middleware/middleware.go`, 175 and 213).
+- `GET /api/me` answers `principalId` from the same token (`internal/platform/shared/me/me.go`,
+  67), so it would give the same id for one more request per token and a dependency on an
+  endpoint the SDK does not wrap. Not used.
+
+**How it is read.** The token is the one the module received **directly from the platform's token
+endpoint** (the configured `flowcatalyst.base-url`) in answer to its own credentials; that
+connection is what makes it trustworthy, as for every other answer from the platform (OpenID
+Connect Core 3.1.3.7, item 6, allows the same for an id_token from the token endpoint). The
+signature is not checked: this module has no JWKS client and does not depend on `framework-auth`.
+The token must be a JWT: three `.`-separated segments, the second base64url (padding optional)
+decoding to one JSON object with unique keys, with `sub` a string matching
+`[A-Za-z0-9._:-]{1,128}` and `type` exactly `SERVICE`. Anything else does not identify a service
+principal.
+
+**Cached with the token.** `PlatformClient.servicePrincipal()` returns the id for the current
+token (the SDK's cache, refreshed 60 s before expiry or after `clearToken()`). The id is kept with
+the token it came from and decoded again only when the token changes, so a delivery makes no extra
+request and a new token (rotated credentials, a different account) is picked up with it.
+
+**Fail closed.** When the token cannot be fetched, or does not identify a service principal (not a
+JWT, no or malformed `sub`, `type` not `SERVICE`: for example a developer's own credentials, whose
+token is `type` `USER`), **no handler runs**:
+
+- dispatch: `503 {"error":"UNAVAILABLE","message":"the application's service principal is not
+  available"}`; transient, the platform retries the job with its backoff;
+- scheduled job: the same `503` **instead of** `202`, so the platform redelivers the firing (until
+  its delivery attempts run out) and no completion is reported;
+- an ERROR log naming the job id (or job code and instance id) and the reason, never the token.
+
+The principal is resolved after the signature check, the validation and the handler lookup (so
+`401`, `400`, the no-handler `422` and the unknown-job `404` never contact the platform), and
+before the handler runs; for scheduled jobs before the `202`.
+
+**Health signal.** Once the receivers are open with at least one handler, the `flowcatalyst` health
+check also resolves the service principal and is `Down` with the reason when it cannot (it stays
+informational by default, section 1). At that point the module also resolves it once in the
+background and logs the id at INFO, or the reason at WARN. Applications without receiver handlers
+(token-only users such as an ingestor) see no change.
+
+**The contexts.**
+
+| Field | Dispatch job | Scheduled-job firing |
+|---|---|---|
+| client | the code from `X-FlowCatalyst-Client`, else `_platform` | `_platform` |
+| principal | the service principal id | the service principal id |
+| principal kind | `SERVICE` | `SERVICE` |
+| application | `flowcatalyst.application` | `flowcatalyst.application` |
+| correlation id | the envelope's when well formed, else generated (section 4a) | the envelope's when well formed, else generated |
+| causation id | the job id (`X-Dispatch-Job-Id`) | the **instance id** |
+| execution id | the job id | the instance id |
+| permissions | empty | empty |
+
+Rulings taken here: the scheduled-job cause is the **instance id**, because the instance is the
+message that was delivered, while the job id names the definition, which fires many times and
+would make every run look like one cause. Permissions stay empty: the service account's platform
+permissions (`scope`) are the platform's (`platform:application-service:...`), not the
+application's; a use case that must admit receiver runs checks the principal kind.
+
+**What reaches the outbox** (write-path contract sections 6 and 7): each event's `causationId` is
+the job (or instance) id and its `contextData` holds `principalId` = the service principal and
+`executionId`; the audit row's `principalId` is the service principal. Before this change those
+audit rows had no `principalId`, and the platform refuses such an item terminally
+(`internal/platform/shared/sdk/audit_batch.go`, 36-38 and 181-183: `BAD_REQUEST "principalId is
+required"`), so every audit row written by a receiver-run use case was lost. The platform's audit
+item has **no causation (or correlation) field** (`AuditBatchItem`, same file, 31-42; unknown keys
+are ignored), so the audit row cannot carry the job id; the events do. Platform work: section 5,
+item 6.
+
+Conformance: `conformance/receivers/context.json` (written by the Java test
+`ReceiverContextConformanceTest`): for given deliveries and token claims, the `Context` a receiver
+hands its handler, or the refusal when the service principal cannot be resolved.
+
 ## 5. Platform work found by the survey (not framework code)
 
 1. **Scoped reads.** `GET /api/events` and `GET /api/dispatch-jobs` scope by client only; the
@@ -410,6 +506,10 @@ As built in slice 5 (the scheduled-job receiver, 2026-10-09):
    invitations; the `application-service` role lacks `user:view`, `user:create` and config
    permissions (M4e).
 5. Java SDK: docs sync; read methods for events and dispatch jobs.
+6. **Audit causation** (found 2026-10-14, section 4b): `POST /api/audit-logs/batch` items have no
+   `causationId` or `correlationId`, so an audit entry cannot be linked to the dispatch job or the
+   request that caused it; the framework's audit payload already sends `correlationId` and the
+   platform drops it.
 
 ## 6. Tests
 
