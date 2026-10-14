@@ -97,8 +97,8 @@ framework's own route table. Section 7 compares this with the framework writing 
 | UI library | **Nuxt UI v4** (`@nuxt/ui`), through its Vite plugin `@nuxt/ui/vite` and Vue plugin `@nuxt/ui/vue-plugin` | v4 is current; the installation page documents options up to 4.11; exact version pinned at U0 |
 | Under it | Reka UI (headless, accessible primitives), Tailwind CSS 4, TanStack Table (in `UTable`), `@vueuse/core` (colour mode), `@iconify/vue` | brought by Nuxt UI |
 | Framework | Vue 3.5+, vue-router 4 (history mode), Vite | no Nuxt, no Nitro, no SSR |
-| Language | TypeScript, exact pin, the newest release `vue-tsc` supports | the native TypeScript 7 compiler only when `vue-tsc` supports it |
-| Type check | `vue-tsc --build` | templates checked (`strictTemplates`) |
+| Language | **TypeScript 7** (owner ruling 2026-10-14), exact pins: `typescript` 7.0.2 as the compiler, the TypeScript 6.0.3 API beside it for the tools that need one | section 3.3 |
+| Type check | `tsc --build` (TypeScript 7) for `.ts`-only projects, `vue-tsc --build` (on TypeScript 6) for projects with `.vue` files | templates checked (`strictTemplates`) |
 | Lint | ESLint flat config, **typescript-eslint type-aware** (`strictTypeChecked`) with `eslint-plugin-vue` | section 3.2 |
 | Format | oxfmt, as the platform | a development tool only |
 | API client | `@hey-api/openapi-ts` (exact pin; it is 0.x and changes between minors): `@hey-api/typescript`, `@hey-api/sdk`, `@hey-api/client-fetch`, `zod` | section 6 |
@@ -183,6 +183,28 @@ typescript-eslint `strictTypeChecked` with type information (`parserOptions.proj
 
 `make ui-check` runs: `pnpm install --frozen-lockfile`, OpenAPI and client drift checks, `vite build`,
 `vue-tsc --build`, `eslint .`, `vitest run`, Playwright (section 12).
+
+### 3.3 TypeScript 7 and the TypeScript 6 API
+
+The owner ruled for TypeScript 7 (2026-10-14). TypeScript 7.0 is the Go port: the `typescript` 7.0.2
+package is a `tsc` for a native binary and has **no programmatic API** (one is announced for 7.1).
+vue-tsc (it patches the JavaScript `tsc` to read `.vue` files), typescript-eslint's type-aware rules
+(the checker in-process; peer `typescript <6.1.0` in every release up to 8.71.2) and hey-api (its
+printer) need the TypeScript 6 API. The workspace therefore installs both, as the TypeScript 7.0
+release notes describe: `"@typescript/native": "npm:typescript@7.0.2"` provides `tsc`, and the name
+`typescript` is `npm:@typescript/typescript6@6.0.2` (Microsoft's compatibility package, re-exporting
+`typescript` 6.0.3, pinned by an override), so every peer dependency on `typescript` gets the 6 API.
+
+- **TypeScript 7:** every `.ts`-only project (the tooling, `@flowcatalyst/api-runtime`, the Node
+  configs and scripts of the Vue packages, the OpenAPI sample).
+- **TypeScript 6.0.3:** `vue-tsc --build` for the projects with `.vue` files, and the type-aware lint
+  of every file. Section 3.1's settings and section 3.2's rules apply unchanged to both; breaking
+  types on purpose fails both (`../ui/u0.md`, "TypeScript 7").
+- **The 6 goes** when typescript-eslint ships type-aware rules on TypeScript 7 (draft
+  typescript-eslint#12803, on the 7.1 API), vue-tsc type-checks `.vue` files on TypeScript 7, and
+  hey-api works without the 6 API. Then `typescript` is pinned to 7.x and the alias, the
+  compatibility package and its override are removed. The table of tools is in `ui/README.md`
+  ("Which TypeScript runs where").
 
 ## 4. Packages and layout
 
