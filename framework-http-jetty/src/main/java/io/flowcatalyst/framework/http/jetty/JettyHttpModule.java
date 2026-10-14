@@ -70,7 +70,7 @@ public final class JettyHttpModule implements Module {
   /** {@code http.shutdown-grace}: how long in-flight requests may finish on shutdown. */
   public static final Setting<Duration> SHUTDOWN_GRACE =
       Setting.duration("http.shutdown-grace")
-          .describedAs("Time in-flight requests may take on shutdown; defaults to app.shutdown.drain.");
+          .describedAs("Time in-flight requests may take on shutdown; defaults to the shutdown drain (AppBuilder.shutdownDrain).");
 
   /** {@code http.metrics.enabled}: whether the Prometheus endpoint is mounted. */
   public static final Setting<Boolean> METRICS_ENABLED =
@@ -160,7 +160,7 @@ public final class JettyHttpModule implements Module {
       }
       Metrics metrics = app.get(Metrics.class);
       if (!metrics.readable()) {
-        LOG.warn("http: the metrics endpoint is enabled but app.metrics.driver records nothing");
+        LOG.warn("http: the metrics endpoint is enabled but the metrics driver (MetricsOptions) records nothing");
       }
       own.get(path, MetricsEndpoint.handler(metrics, token));
     }

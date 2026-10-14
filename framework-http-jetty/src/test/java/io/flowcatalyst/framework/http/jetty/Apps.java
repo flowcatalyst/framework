@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 /** Starts applications with a real server on port 0. */
 final class Apps {
@@ -40,7 +41,17 @@ final class Apps {
   }
 
   static App start(Path dir, Map<String, String> env, Consumer<Routes> registrar, Module... more) {
-    AppBuilder b = App.builder().configDirectory(dir).environment(env);
+    return start(dir, env, b -> b, registrar, more);
+  }
+
+  /** As above, with the builder adjusted first (behaviour in code: drain, health policy). */
+  static App start(
+      Path dir,
+      Map<String, String> env,
+      UnaryOperator<AppBuilder> adjust,
+      Consumer<Routes> registrar,
+      Module... more) {
+    AppBuilder b = adjust.apply(App.builder().configDirectory(dir).environment(env));
     b.module(routes("test", registrar));
     for (Module m : more) {
       b.module(m);

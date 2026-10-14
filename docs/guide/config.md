@@ -1,8 +1,23 @@
-<!-- types: Config, Setting, SettingType, Secret, InstanceConfig, ConfigProblem, ConfigException, StartupException, AppBuilder -->
+<!-- types: Config, Setting, SettingType, Secret, InstanceConfig, ConfigProblem, ConfigException, StartupException, AppBuilder, KeyRules, RemovedKey, ComponentClaim -->
 # Config
 
 Every setting is declared once, in code, by the module that reads it. Values come from files and
 the environment; there is no object binding and no reflection.
+
+## What configuration holds
+
+Configuration holds **connections and secrets only**: URLs, hosts, ports, user names, client ids,
+your application's code on the platform, its public URLs, passwords, tokens and keys. Everything
+else the framework does (timeouts, sizes, pools, retries, cache policies, health criticality,
+switches, route paths, which driver backs a capability) is **code**: typed options records with
+validated ranges, given to modules when you assemble the application (owner ruling 2026-10-14,
+[config-and-code contract](../contracts/config-and-code.md)). A deployment varies connections and
+secrets, nothing else. If you want a number to differ per deployment, declare a setting of your own
+and pass its value in code ([below](#making-a-number-tunable)).
+
+A key whose behaviour moved to code **fails start-up** when it is still in a file or in the
+environment, naming where it went ([removed keys](#removed-keys-and-claimed-components)). The
+migration, key by key, is in [Migrating configuration to code](migrating-config-to-code.md).
 
 ## Declaring and reading a setting
 
@@ -153,14 +168,65 @@ unknown):
 
 | Key | Type | Default | Module |
 |---|---|---|---|
-| `app.shutdown.drain` | duration | `10s` | core |
-| `app.health.timeout` | duration | `2s` | core |
-| `app.health.critical`, `app.health.informational` | string list | empty | core; check names whose criticality configuration decides ([health checks](modules-and-lifecycle.md#critical-and-informational-checks)) |
-| `app.metrics.driver` | enum `memory`, `noop` | `memory` | core ([metrics](background-and-metrics.md#drivers)) |
-| `app.metrics.max-series` | integer | `1000` | core |
 | `http.host`, `http.port`, `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace` | see [HTTP](http.md#the-jetty-module-and-its-settings) | | `http` |
 | `http.metrics.enabled`, `http.metrics.path`, `http.metrics.bearer-token` | see [the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) | `false`, `/metrics`, none | `http` |
 | `flowcatalyst.*` | see [The FlowCatalyst module](flowcatalyst-module.md#settings) | | `flowcatalyst` |
+
+The core declares no setting. The shutdown drain, the health policy and the metrics driver are
+`App.builder().shutdownDrain(Duration)`, `.health(HealthPolicy)` and `.metrics(MetricsOptions)`
+([lifecycle](modules-and-lifecycle.md#critical-and-informational-checks),
+[metrics](background-and-metrics.md#drivers)).
+
+## Making a number tunable
+
+Every option the framework takes as a single value also accepts a function of `Config`, resolved
+once configuration is loaded. Declare your own setting, in your own component, and read it there.
+From `BehaviourInCodeTest`:
+
+```java
+static final Setting<Duration> APP_HEALTH = Setting.duration("demo.health-timeout").withDefault(Duration.ofSeconds(1));
+
+App app =
+    builder(Map.of("DEMO_HEALTH_TIMEOUT", "250ms"))
+        .health(config -> HealthPolicy.defaults().withTimeout(config.get(APP_HEALTH)))
+        .shutdownDrain(config -> config.get(APP_HEALTH).multipliedBy(4))
+        .metrics(config -> MetricsOptions.noop())
+        .module(Mod.of("demo").register(b -> b.declare(APP_HEALTH)))
+        .start();
+```
+
+A value out of range, or a setting nobody declared, fails start-up as a problem of the module
+that resolved it.
+
+## Removed keys and claimed components
+
+**Removed keys.** The framework keeps one list of the keys whose behaviour moved to code
+(`KeyRules.frameworkRemovedKeys()`; the table is in the
+[contract](../contracts/config-and-code.md), section 8). Start-up fails when one of them is
+
+- in a file: the key or anything under it (`locks` covers every `locks.*` key; a `*` in a pattern
+  stands for an instance name), or
+- in the environment: the variable named after the key; a `*` is replaced by each instance name
+  your files have there. Patterns of one segment (`locks`) are not looked up in the environment.
+
+The problem says where the behaviour went, for example
+`key 'app.shutdown.drain' (from environment variable APP_SHUTDOWN_DRAIN): moved to code: AppBuilder.shutdownDrain(Duration)`.
+The list applies whatever modules you list, so a leftover section of a module you dropped still
+fails. A key that some module **declares** is never treated as removed.
+
+**Claimed components.** A module may claim a component (the first segment of keys) in `register`
+with `app.claimComponent("mail")`. Every key under it in your files must then be declared by some
+module, or start-up fails naming the keys the component has; a typo such as `mail.hots` no longer
+passes silently. The framework claims `app` (core) and, as each module moves to this rule, its own
+component. Two modules claiming one component fail start-up. Environment variables are not checked
+for unknown keys (they are never listed). From `BehaviourInCodeTest`:
+
+```java
+failure(builder().module(Mod.of("mail").register(b -> {
+  b.declare(host);
+  b.claimComponent("mail");
+})));
+```
 
 ## Secrets
 
@@ -184,8 +250,10 @@ plan item MA-5 and M5).
 
 Config problems are collected and thrown together from `start()` as one `StartupException`: an
 unparseable value, a missing required setting, an unknown key in an instance section, an unknown
-driver, a duplicate declaration, two keys that read one environment variable, an invalid YAML file. Each names the key and the source, for
+driver, a duplicate declaration, two keys that read one environment variable, an invalid YAML file,
+a removed key, an unknown key under a claimed component. Each names the key and the source, for
 example the file or `environment variable MAIL_HOST`.
 
-The specification is [contracts/core.md](../contracts/core.md) section 4 and
+The specification is [contracts/core.md](../contracts/core.md) section 4,
+[contracts/config-and-code.md](../contracts/config-and-code.md) and
 [contracts/database-and-redis.md](../contracts/database-and-redis.md).

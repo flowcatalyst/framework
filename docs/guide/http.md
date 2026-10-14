@@ -308,7 +308,7 @@ request execution. The server header, version and stack traces are never sent.
 | `http.port` | integer | `8080` (`0` = any free port) |
 | `http.max-body-bytes` | long | `1048576` |
 | `http.request-timeout` | duration | `30s` (idle timeout of reads and writes) |
-| `http.shutdown-grace` | duration | falls back to `app.shutdown.drain` |
+| `http.shutdown-grace` | duration | falls back to the shutdown drain (`AppBuilder.shutdownDrain`) |
 | `http.metrics.enabled` | boolean | `false`; mounts the [Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) |
 | `http.metrics.path` | string | `/metrics` |
 | `http.metrics.bearer-token` | secret | none; when set, scrapes need it |

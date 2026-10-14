@@ -113,7 +113,7 @@ has no `sub`, or it is not a JWT), the receivers run **nothing**:
 - the reason is logged at ERROR with the job id (never the token); at start-up the module logs the
   principal it will use at INFO, or the reason it has none at WARN;
 - the `flowcatalyst` health check is `Down` with the reason while a receiver has handlers
-  (informational unless you list it in `app.health.critical`). An application without receiver
+  (informational unless your `HealthPolicy` lists it with `withCritical`). An application without receiver
   handlers is not affected.
 
 A use case can admit receiver runs by the kind, as the framework's end-to-end test does:
@@ -298,7 +298,7 @@ is reported. Outcomes:
 | lock store unavailable | handler not run (no exclusion means no run); `FAILURE` |
 | lock lost while running | handler interrupted; `FAILURE` |
 | timeout (`timeoutSeconds`, else `job-timeout`) | handler interrupted; `FAILURE {error:"timed out after 10s"}` at once, while the lock stays held until the handler really returns |
-| application stopping | handler interrupted; `FAILURE`; the module waits up to `app.shutdown.drain` |
+| application stopping | handler interrupted; `FAILURE`; the module waits up to the shutdown drain (`AppBuilder.shutdownDrain`) |
 
 **The completion call** (`PlatformClient.completeJobInstance`) is retried by the runner itself: 3
 retries after the first attempt, so at most **4 calls**, waiting `completion-retry-delay` (1 s by

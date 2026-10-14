@@ -35,7 +35,7 @@ class BackgroundTest {
   }
 
   private App start(Mod... modules) {
-    AppBuilder b = builder(Map.of("APP_SHUTDOWN_DRAIN", "300ms"));
+    AppBuilder b = builder(Map.of()).shutdownDrain(Duration.ofMillis(300));
     for (Mod m : modules) {
       b.module(m);
     }

@@ -468,7 +468,7 @@ class AppLifecycleTest {
                 });
     Mod fast = Mod.of("fast").shutdown(app -> log.add("fast done"));
     // slow is registered last, so it shuts down first.
-    App app = builder(Map.of("APP_SHUTDOWN_DRAIN", "100ms")).module(fast).module(slow).start();
+    App app = builder().shutdownDrain(Duration.ofMillis(100)).module(fast).module(slow).start();
     long t0 = System.nanoTime();
     app.close();
     assertThat(Duration.ofNanos(System.nanoTime() - t0)).isLessThan(Duration.ofSeconds(5));
@@ -495,7 +495,7 @@ class AppLifecycleTest {
                   app.health().add("bad", () -> { throw new IllegalStateException("broken"); });
                   app.health().add("hang", () -> Thread.sleep(Duration.ofSeconds(30)));
                 });
-    App app = builder(Map.of("APP_HEALTH_TIMEOUT", "200ms")).module(m).start();
+    App app = builder().health(HealthPolicy.defaults().withTimeout(Duration.ofMillis(200))).module(m).start();
     HealthReport report = app.health().check();
     assertThat(report.results().keySet()).containsExactly("ok", "bad", "hang");
     assertThat(report.results().get("ok")).isInstanceOf(HealthResult.Up.class);
@@ -551,14 +551,14 @@ class AppLifecycleTest {
                   app.health().add("info", () -> {}, Criticality.INFORMATIONAL);
                   app.health().add("hang", () -> Thread.sleep(Duration.ofSeconds(30)));
                 });
-    App app = builder(Map.of("APP_HEALTH_TIMEOUT", "200ms")).module(m).start();
+    App app = builder().health(HealthPolicy.defaults().withTimeout(Duration.ofMillis(200))).module(m).start();
     HealthReport report = app.health().check();
     assertThat(report.results().get("hang")).isInstanceOf(HealthResult.TimedOut.class);
     assertThat(report.isReady()).isFalse();
   }
 
   @Test
-  void configurationOverridesTheCriticalityAModuleAskedFor() {
+  void theHealthPolicyOverridesTheCriticalityAModuleAskedFor() {
     Mod m =
         Mod.of("m")
             .boot(
@@ -568,7 +568,8 @@ class AppLifecycleTest {
                   app.health().add("other", () -> {});
                 });
     App app =
-        builder(Map.of("APP_HEALTH_CRITICAL", "platform", "APP_HEALTH_INFORMATIONAL", "cache"))
+        builder()
+            .health(HealthPolicy.defaults().withCritical("platform").withInformational("cache"))
             .module(m)
             .start();
     assertThat(app.health().criticality("platform")).isEqualTo(Criticality.CRITICAL);
@@ -579,18 +580,17 @@ class AppLifecycleTest {
   }
 
   @Test
-  void aCheckNamedInBothOverrideListsFailsStartUp() {
-    StartupException e =
-        failure(builder(Map.of("APP_HEALTH_CRITICAL", "a,b", "APP_HEALTH_INFORMATIONAL", "b")));
-    assertThat(e.problems()).hasSize(1);
-    assertThat(e.problems().get(0).key()).isEqualTo("app.health.informational");
-    assertThat(e.problems().get(0).message()).contains("'b'");
+  void aCheckNamedInBothOverrideListsIsRefused() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> HealthPolicy.defaults().withCritical("a", "b").withInformational("b"))
+        .withMessageContaining("'b'");
   }
 
   @Test
   void overrideNamesThatMatchNoCheckAreReportedNotFatal() {
     App app =
-        builder(Map.of("APP_HEALTH_INFORMATIONAL", "typo,x"))
+        builder()
+            .health(HealthPolicy.defaults().withInformational("typo", "x"))
             .module(Mod.of("m").boot(a -> a.health().add("x", () -> {})))
             .start();
     assertThat(app.health().unmatchedOverrides()).containsExactly("typo");

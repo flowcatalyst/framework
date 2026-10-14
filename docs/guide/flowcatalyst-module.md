@@ -280,7 +280,8 @@ check, and an INFO line says why. It reports `Down` when the oldest undelivered 
 `flowcatalyst.outbox.stale-after`, measured with the application's `InstantSource`. It runs two
 `min(created_at)` queries and writes nothing. A failing lookup reports the database error.
 The check is informational: a stale backlog is reported (`DEGRADED`) but does not make
-`/health/ready` answer `503` unless `app.health.critical` lists `outbox`.
+`/health/ready` answer `503` unless the application's `HealthPolicy` lists `outbox` as critical
+(`HealthPolicy.defaults().withCritical("outbox")`).
 
 ## Receivers
 

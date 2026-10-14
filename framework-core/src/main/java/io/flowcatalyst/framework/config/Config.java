@@ -66,6 +66,22 @@ public final class Config {
    */
   public static Loaded load(
       Path directory, Map<String, String> env, List<Declaration> declarations) {
+    return load(directory, env, declarations, KeyRules.none());
+  }
+
+  /**
+   * Loads and validates configuration, then applies the key rules (config-and-code contract,
+   * section 5): a removed key given in a file or in the environment, and a key under a claimed
+   * component that no module declares, are problems.
+   *
+   * @param directory the config directory, normally {@code config/}
+   * @param env the process environment (injected so tests do not touch the real one)
+   * @param declarations every declared setting, in registration order
+   * @param rules the removed keys and the claimed components
+   * @return the configuration, or every problem found
+   */
+  public static Loaded load(
+      Path directory, Map<String, String> env, List<Declaration> declarations, KeyRules rules) {
     List<ConfigProblem> problems = new ArrayList<>();
 
     String environment = env.get("APP_ENV");
@@ -102,6 +118,7 @@ public final class Config {
     }
 
     checkEnvironmentNames(declarations, leaves, problems);
+    KeyChecks.check(rules, declaredBy, leaves, sources.env(), problems);
 
     if (!problems.isEmpty()) {
       return new Failed(problems);

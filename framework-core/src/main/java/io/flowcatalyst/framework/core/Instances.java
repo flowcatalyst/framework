@@ -53,7 +53,7 @@ public final class Instances<T> implements AutoCloseable {
    * @throws StartupException listing every problem found
    */
   public static <T> Instances<T> build(Class<T> capability, String section, Lookup lookup) {
-    return build(capability, section, lookup, null);
+    return build(capability, section, lookup, (String) null);
   }
 
   /**
@@ -188,6 +188,120 @@ public final class Instances<T> implements AutoCloseable {
       throw new StartupException(problems);
     }
     return new Instances<>(capability.getSimpleName(), built, resolvedDefault);
+  }
+
+  /**
+   * Builds every instance configured under {@code <section>.instances} with one factory (no driver
+   * names: config-and-code contract, section 2.1). Reads {@code <section>.default}; reports as
+   * start-up problems a factory failure, a key the factory did not read, a stray key in the
+   * section, a missing or unknown default. Instances already built are closed when any problem is
+   * found.
+   *
+   * @param <T> the capability type
+   * @param capability the capability
+   * @param section the configuration section, for example {@code database}
+   * @param lookup the lookup of the provider calling this
+   * @param factory builds one instance from its section
+   * @return the instances; empty when nothing is configured
+   * @throws StartupException listing every problem found
+   */
+  public static <T> Instances<T> build(
+      Class<T> capability, String section, Lookup lookup, InstanceFactory<T> factory) {
+    Config config = lookup.get(Config.class);
+    String module = lookup.moduleId();
+    List<Problem> problems = new ArrayList<>();
+
+    InstanceConfig top = config.section(section);
+    String defaultName = null;
+    try {
+      defaultName = top.findString("default").orElse(null);
+    } catch (ConfigException e) {
+      problems.add(Problem.fromConfig(e.problem(), module));
+    }
+    InstanceConfig instances = top.section("instances");
+    List<String> names = new ArrayList<>(instances.keys());
+    for (String stray : top.unreadKeys()) {
+      if (!stray.equals("instances") && !stray.startsWith("instances.")) {
+        problems.add(
+            new Problem(
+                module,
+                section + "." + stray,
+                top.sourceOf(stray),
+                "unknown key in section '" + section + "'",
+                null));
+      }
+    }
+
+    Map<String, T> built = new LinkedHashMap<>();
+    for (String name : names) {
+      String path = section + ".instances." + name;
+      InstanceConfig ic = instances.section(name);
+      T instance;
+      try {
+        instance = factory.create(name, ic, lookup, Collections.unmodifiableMap(new LinkedHashMap<>(built)));
+      } catch (ConfigException e) {
+        problems.add(Problem.fromConfig(e.problem(), module));
+        continue;
+      } catch (StartupException e) {
+        problems.addAll(e.problems());
+        continue;
+      } catch (Exception e) {
+        problems.add(new Problem(module, path, null, "failed: " + chain(e), e));
+        continue;
+      }
+      built.put(name, instance);
+      for (String unknown : ic.unreadKeys()) {
+        problems.add(
+            new Problem(
+                module,
+                path + "." + unknown,
+                ic.sourceOf(unknown),
+                "unknown key in " + capability.getSimpleName() + " instance '" + name + "'",
+                null));
+      }
+    }
+
+    String resolvedDefault = resolveDefault(section, module, names, defaultName, problems);
+    if (!problems.isEmpty()) {
+      closeAll(built.values());
+      throw new StartupException(problems);
+    }
+    return new Instances<>(capability.getSimpleName(), built, resolvedDefault);
+  }
+
+  private static @Nullable String resolveDefault(
+      String section,
+      String module,
+      List<String> names,
+      @Nullable String defaultName,
+      List<Problem> problems) {
+    if (defaultName != null) {
+      if (names.contains(defaultName)) {
+        return defaultName;
+      }
+      problems.add(
+          Problem.of(
+              module,
+              section + ".default",
+              "names instance '"
+                  + defaultName
+                  + "', which is not configured; known: "
+                  + (names.isEmpty() ? "(none)" : String.join(", ", names))));
+      return null;
+    }
+    if (names.size() == 1) {
+      return names.get(0);
+    }
+    if (names.size() > 1) {
+      problems.add(
+          Problem.of(
+              module,
+              section + ".default",
+              "missing; several instances are configured ("
+                  + String.join(", ", names)
+                  + ") so one must be named as the default"));
+    }
+    return null;
   }
 
   /**

@@ -37,7 +37,7 @@ class PrometheusTextTest {
             # TYPE app_requests_total counter
             app_requests_total{route="/a \\"quoted\\"\\nline\\\\",status="500"} 1
             app_requests_total{route="/b",status="200"} 2
-            # HELP fw_metrics_dropped_series_total Recordings dropped because a metric reached app.metrics.max-series.
+            # HELP fw_metrics_dropped_series_total Recordings dropped because a metric reached its series limit (MetricsOptions.maxSeries).
             # TYPE fw_metrics_dropped_series_total counter
             """);
   }

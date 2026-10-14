@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
+import io.flowcatalyst.framework.core.HealthPolicy;
 import io.flowcatalyst.framework.core.Criticality;
 import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
@@ -80,7 +81,12 @@ class OutboxHealthCheckTest {
   }
 
   private App start(boolean withDatabase, boolean withOutbox, Map<String, String> env) {
-    AppBuilder b = App.builder().configDirectory(dir).environment(env).instantSource(() -> NOW);
+    return start(withDatabase, withOutbox, env, HealthPolicy.defaults());
+  }
+
+  private App start(boolean withDatabase, boolean withOutbox, Map<String, String> env, HealthPolicy health) {
+    AppBuilder b =
+        App.builder().configDirectory(dir).environment(env).instantSource(() -> NOW).health(health);
     if (withDatabase) {
       b.module(new DatabaseModule());
     }
@@ -152,7 +158,7 @@ class OutboxHealthCheckTest {
       assertThat(report.results().get("outbox")).isInstanceOf(HealthResult.Down.class);
       assertThat(report.isReady()).isTrue();
     }
-    try (App app = start(true, true, env("APP_HEALTH_CRITICAL", "outbox"))) {
+    try (App app = start(true, true, env(), HealthPolicy.defaults().withCritical("outbox"))) {
       HealthReport report = app.health().check();
       assertThat(report.criticality("outbox")).isEqualTo(Criticality.CRITICAL);
       assertThat(report.isReady()).isFalse();

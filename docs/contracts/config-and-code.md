@@ -266,6 +266,9 @@ keys (they cannot be listed without scanning).
   checks is to be added together with the Go port of this contract (adding it now would fail the
   Go comparison).
 - Health check names, metric names, routes, log messages other than those naming a moved key.
+  One exposition text changes: the `HELP` of `fw_metrics_dropped_series_total` named
+  `app.metrics.max-series` and now reads "Recordings dropped because a metric reached its series
+  limit (MetricsOptions.maxSeries)." (Go's registry still writes the old text.)
 
 ## 7. Migration
 

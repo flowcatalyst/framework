@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.Criticality;
+import io.flowcatalyst.framework.core.HealthPolicy;
 import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Problem;
@@ -47,9 +48,14 @@ class FlowCatalystModuleTest {
   }
 
   private App start(Map<String, String> env) {
+    return start(env, HealthPolicy.defaults());
+  }
+
+  private App start(Map<String, String> env, HealthPolicy health) {
     return App.builder()
         .configDirectory(dir)
         .environment(env)
+        .health(health)
         .module(new FlowCatalystModule())
         .start();
   }
@@ -136,14 +142,13 @@ class FlowCatalystModuleTest {
   }
 
   @Test
-  void thePlatformCheckCanBeMadeCriticalByConfiguration() throws IOException {
+  void thePlatformCheckCanBeMadeCriticalByTheHealthPolicy() throws IOException {
     int closedPort;
     try (ServerSocket s = new ServerSocket(0)) {
       closedPort = s.getLocalPort();
     }
     Map<String, String> env = env("http://127.0.0.1:" + closedPort);
-    env.put("APP_HEALTH_CRITICAL", "flowcatalyst");
-    try (App app = start(env)) {
+    try (App app = start(env, HealthPolicy.defaults().withCritical("flowcatalyst"))) {
       HealthReport report = app.health().check();
       assertThat(report.criticality("flowcatalyst")).isEqualTo(Criticality.CRITICAL);
       assertThat(report.isReady()).isFalse();

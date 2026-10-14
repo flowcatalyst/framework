@@ -1,4 +1,4 @@
-<!-- types: Background, LoopOptions, LoopTask, LoopTick, LoopGate, LockGate, Metrics, Counter, Gauge, Timer, MetricsSnapshot, PrometheusText, MetricsEndpoint -->
+<!-- types: Background, LoopOptions, LoopTask, LoopTick, LoopGate, LockGate, Metrics, MetricsOptions, Counter, Gauge, Timer, MetricsSnapshot, PrometheusText, MetricsEndpoint -->
 # Background work and metrics
 
 Two things every service needs and the framework now owns: **loops** that run work again and again
@@ -36,7 +36,7 @@ app.get(Background.class)
 - **A failed run** (an exception) is logged at ERROR and counted; the loop carries on. An `Error`
   (out of memory, stack overflow) ends the loop.
 - **Shutdown:** `App.close()` stops loops **first**, before any module's `shutdown` hook. A waiting
-  loop ends at once; a running task gets `app.shutdown.drain`, then its thread is interrupted and
+  loop ends at once; a running task gets the shutdown drain (`AppBuilder.shutdownDrain`), then its thread is interrupted and
   left behind with a WARN.
 
 ### Health
@@ -46,7 +46,7 @@ Each loop adds the check `background:<name>`. It is `Down` when the last `downAf
 lasts longer than `d`. The reason names the exception **class** only, never its message, because
 health is served without authentication. The check is **informational** by default (reported, never
 makes the application not ready); `.critical()` makes it decide readiness, and
-`app.health.critical` / `app.health.informational` override either way
+the application's `HealthPolicy` (`withCritical`, `withInformational`) overrides either way
 ([health checks](modules-and-lifecycle.md#critical-and-informational-checks)).
 
 ### One replica at a time: the lock gate
@@ -106,19 +106,28 @@ Checked when the instrument is created (an `IllegalArgumentException` means a bu
 At run time recording **never throws** for a label *value*: `null` becomes empty and values longer
 than 200 characters are cut. Only a wrong *number* of values throws.
 
-**Cardinality is bounded.** A family holds at most `app.metrics.max-series` series (default 1000).
+**Cardinality is bounded.** A family holds at most `MetricsOptions.maxSeries` series (default 1000).
 Past that, recordings for new label combinations are dropped, counted in
 `fw_metrics_dropped_series_total{metric="..."}`, and logged once. So never use ids, request paths,
 user input or exception messages as label values.
 
 ### Drivers
 
-| `app.metrics.driver` | Behaviour |
-|---|---|
-| `memory` (default) | in-process; `metrics.snapshot()` and the Prometheus endpoint read it |
-| `noop` | records nothing; names are still checked |
+The driver is chosen in code, `App.builder().metrics(MetricsOptions)` (the `app.metrics.*` settings
+are gone):
 
-`app.metrics.max-series` is 1 to 100 000. In tests, `AppBuilder.override(Metrics.class,
+| `MetricsOptions` | Behaviour |
+|---|---|
+| `defaults()`, `memory(maxSeries)` | in-process; `metrics.snapshot()` and the Prometheus endpoint read it; `defaults()` is `memory(1000)` |
+| `noop()` | records nothing; names are still checked |
+
+`maxSeries` is 1 to 100 000, checked by the constructor. From `BehaviourInCodeTest`:
+
+```java
+Metrics metrics = builder().metrics(MetricsOptions.memory(2)).start().get(Metrics.class);
+```
+
+In tests, `AppBuilder.override(Metrics.class,
 Metrics.memory(...))` gives you a registry to inspect ([Testing](testing.md#replacing-a-service)).
 
 ### Built-in metrics

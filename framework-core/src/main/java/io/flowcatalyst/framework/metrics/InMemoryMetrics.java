@@ -77,7 +77,7 @@ final class InMemoryMetrics implements Metrics {
         recording
             ? register(
                 DROPPED,
-                "Recordings dropped because a metric reached app.metrics.max-series.",
+                "Recordings dropped because a metric reached its series limit (MetricsOptions.maxSeries).",
                 MetricsSnapshot.Type.COUNTER,
                 new String[] {"metric"},
                 List.of(),
@@ -358,7 +358,7 @@ final class InMemoryMetrics implements Metrics {
     private void dropped() {
       if (warned.compareAndSet(false, true)) {
         LOG.warn(
-            "metric {} reached app.metrics.max-series ({}); new label combinations are dropped",
+            "metric {} reached its series limit ({}, MetricsOptions.maxSeries); new label combinations are dropped",
             name,
             maxSeries);
       }

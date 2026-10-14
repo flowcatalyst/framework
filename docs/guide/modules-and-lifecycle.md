@@ -1,4 +1,4 @@
-<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceConfig, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
+<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceFactory, InstanceConfig, HealthPolicy, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
 # Modules and the application lifecycle
 
 An application is a list of **modules** given to a builder, in code. Everything the framework
@@ -50,8 +50,9 @@ thrown. `StartupException.problems()` lists them.
 tests leave no hooks behind. Closing first stops the [background loops](background-and-metrics.md),
 then runs each booted module's `shutdown` in reverse module order,
 then closes every built service that is `AutoCloseable`, in reverse build order. A failure in one
-step is logged and does not stop the rest. Each step runs on its own virtual thread and gets
-`app.shutdown.drain` (default `10s`). A step that is still running after that is logged as an
+step is logged and does not stop the rest. Each step runs on its own virtual thread and gets the
+**shutdown drain**, set in code with `App.builder().shutdownDrain(Duration)` (default `10s`, more
+than 0 and at most 1 h; it was the setting `app.shutdown.drain`, which now fails start-up). A step that is still running after that is logged as an
 overrun, **interrupted, and left behind**: shutdown moves on to the next step without waiting for
 it, so a `shutdown` hook that ignores interruption can still be running while later steps (and
 the closing of services it uses) proceed. Write hooks that stop promptly and notice
@@ -197,8 +198,8 @@ app.health().add("mail", () -> {
 ```
 
 `HealthCheck.check()` returns normally for up and throws for down; the message becomes the reason.
-`app.health().check()` runs all checks in parallel on virtual threads, each limited by
-`app.health.timeout` (default `2s`), and returns a `HealthReport`: a map of name to `HealthResult`
+`app.health().check()` runs all checks in parallel on virtual threads, each limited by the
+`HealthPolicy` timeout (default `2s`, more than 0 and at most 5 min), and returns a `HealthReport`: a map of name to `HealthResult`
 (`Up`, `Down(reason)`, `TimedOut`). With the Jetty module, `/health/ready` serves this
 ([HTTP](http.md#health-endpoints)).
 
@@ -217,16 +218,21 @@ report, `isUp()` is true when every check is up, `isReady()` when every critical
 `criticality(name)` says which a check ran with. `app.health().criticality(name)` returns the same
 for a registered check (null for an unknown name).
 
-Configuration changes a check's criticality by name and wins over the module:
+The `HealthPolicy` given to the builder changes a check's criticality by name and wins over the
+module. It is code, not configuration (the `app.health.*` settings are gone,
+[config and code](config.md#what-configuration-holds)). From `BehaviourInCodeTest`:
 
-```yaml
-app:
-  health:
-    critical: [flowcatalyst]          # the platform decides readiness again
-    informational: ["database:reporting"]
+```java
+App app =
+    builder()
+        .health(HealthPolicy.defaults().withCritical("platform").withInformational("cache", "typo"))
+        .module(m)
+        .start();
 ```
 
-A name in both lists fails start-up. A name that matches no check is logged at WARN once start-up
+`HealthPolicy.defaults()` is a 2 second timeout and no overrides; `withTimeout(Duration)`,
+`withCritical(String...)` and `withInformational(String...)` return copies. A name in both lists,
+or a blank name, is refused by the constructor (`IllegalArgumentException`). A name that matches no check is logged at WARN once start-up
 finishes, not refused, because some checks exist only in some deployments (the `outbox` check
 needs the table).
 

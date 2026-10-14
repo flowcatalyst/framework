@@ -16,6 +16,7 @@
   items:
     - { title: Modules and lifecycle, path: guide/modules-and-lifecycle.md }
     - { title: Config, path: guide/config.md }
+    - { title: Migrating config to code, path: guide/migrating-config-to-code.md }
     - { title: Context, path: guide/context.md }
     - { title: Locks, path: guide/locks.md }
     - { title: The write path, path: guide/write-path.md }
