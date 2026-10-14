@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes, Spa, Csp, SpaTesting, Operation, OpenApi, OpenApiTesting, DeclarationCommand -->
 # Status
 
-Last verified against commit d91242b (2026-10-14). `verify.sh` fails if that commit is not an
+Last verified against commit 7de03a0 (2026-10-14). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
