@@ -1,16 +1,19 @@
 <script setup lang="ts" generic="T extends object">
-// ui-kit data-table.md (the SPA's list pages): page header, table toolbar, the table, an empty state,
-// a pager slot and a drawer outlet. Data in through props, intent out through events: the page that
-// uses it owns the calls (useListState for the URL, useCursorPagination or offset paging) and renders
-// its drawer route in the `drawer` slot (`<RouterView />`).
+// A list page (ui-kit data-table.md; the SPA's list pages): Nuxt UI's UPageHeader, the table toolbar,
+// UTable, UEmpty when there are no rows (with Clear filters while filtered, in a status region so a
+// filter that empties the list is read out), a pager slot and a drawer outlet. Data in through props,
+// intent out through events: the page owns the calls (useListState for the URL, useCursorPagination or
+// offset paging) and renders its drawer route in the `drawer` slot (`<RouterView />`).
+// `searchLoadedRows` hands the search box to UTable's global filter (TanStack): for operations without
+// a search parameter, it narrows the rows already loaded.
 //
 // UTable's `v-model:sorting` cannot be typed under exactOptionalPropertyTypes (docs/ui/u0.md), so the
 // sorting is split into the prop and an event here, once.
 import type { TableColumn, TableRow } from "@nuxt/ui";
+import UEmpty from "@nuxt/ui/components/Empty.vue";
+import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import UTable from "@nuxt/ui/components/Table.vue";
 import { computed } from "vue";
-import FwEmptyState from "../components/FwEmptyState.vue";
-import FwPageHeader from "../components/FwPageHeader.vue";
 import FwTableToolbar from "../components/FwTableToolbar.vue";
 import type { SortingState } from "../composables/useListState.ts";
 
@@ -26,6 +29,7 @@ const {
   rowKey,
   selectedKey,
   searchPlaceholder = "Search…",
+  searchLoadedRows = false,
 } = defineProps<{
   title: string;
   subtitle?: string;
@@ -40,6 +44,8 @@ const {
   /** The key of the record the drawer shows (highlighted). */
   selectedKey?: string | undefined;
   searchPlaceholder?: string;
+  /** The search narrows the loaded rows (UTable's global filter) instead of going to the server. */
+  searchLoadedRows?: boolean;
 }>();
 
 const search = defineModel<string>("search", { default: "" });
@@ -65,6 +71,11 @@ const slots = defineSlots<{
 
 const rows = computed(() => [...data]);
 const filtered = computed(() => search.value !== "" || activeFilterCount > 0);
+const emptyActions = computed(() =>
+  filtered.value
+    ? [{ label: "Clear filters", color: "primary" as const, variant: "link" as const, onClick: () => { emit("clear"); } }]
+    : [],
+);
 const meta = computed(() => ({
   class: {
     tr: (row: TableRow<T>) => (selectedKey !== undefined && rowKey(row.original) === selectedKey ? "bg-elevated [&>td]:text-highlighted" : ""),
@@ -82,9 +93,9 @@ function onSorting(next: SortingState | undefined): void {
 
 <template>
   <div class="flex flex-col" data-testid="fw-list-page">
-    <FwPageHeader :title="title" v-bind="subtitle === undefined ? {} : { subtitle }">
-      <template #actions><slot name="actions" /></template>
-    </FwPageHeader>
+    <UPageHeader :title="title" v-bind="subtitle === undefined ? {} : { description: subtitle }">
+      <template v-if="slots.actions !== undefined" #links><slot name="actions" /></template>
+    </UPageHeader>
     <div class="overflow-hidden rounded-[2px] border border-default bg-default">
       <FwTableToolbar
         v-model:search="search"
@@ -107,13 +118,16 @@ function onSorting(next: SortingState | undefined): void {
         :meta="meta"
         :caption="title"
         :get-row-id="(row: T) => rowKey(row)"
+        v-bind="searchLoadedRows ? { globalFilter: search } : {}"
         class="w-full"
         :ui="{ root: 'overflow-visible' }"
         @update:sorting="onSorting"
         @select="onSelect"
       >
         <template #empty>
-          <FwEmptyState :message="emptyMessage" :filtered="filtered" announce @clear="emit('clear')" />
+          <div role="status" data-testid="fw-list-empty">
+            <UEmpty :description="emptyMessage" icon="i-lucide-inbox" :actions="emptyActions" variant="naked" />
+          </div>
         </template>
       </UTable>
       </div>

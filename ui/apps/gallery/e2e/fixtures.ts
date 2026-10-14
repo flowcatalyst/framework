@@ -2,7 +2,8 @@
 // before any page script runs), each console message about the Content Security Policy, each request
 // to another origin (the Iconify API, a font host, ...) and each uncaught page error. The tests
 // assert all four are empty.
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Page, type TestDetails } from "@playwright/test";
+import type { BehaviourId } from "../src/behaviours.ts";
 
 export interface CspMonitor {
   /** Violations seen so far in the current document. */
@@ -80,4 +81,13 @@ export { expect };
 export async function openPage(page: Page, path: string, heading: string): Promise<void> {
   await page.goto(path);
   await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+}
+
+/**
+ * The checklist rows (src/behaviours.ts) a test exercises, as its details:
+ * `test("...", covers("drawer-focus", "drawer-discard"), async ({ page }) => { ... })`. The behaviour
+ * reporter (behaviour-reporter.ts) fails a full run in which a row is claimed by no passing test.
+ */
+export function covers(...ids: readonly BehaviourId[]): TestDetails {
+  return { annotation: ids.map((id) => ({ type: "behaviour", description: id })) };
 }

@@ -6,7 +6,8 @@
 import { useToast } from "@nuxt/ui/composables";
 import { announce } from "./useAnnouncer.ts";
 
-export type FlashKind = "success" | "info" | "warn" | "error";
+/** Nuxt UI's colour names for the four kinds. */
+export type FlashKind = "success" | "info" | "warning" | "error";
 
 export interface FlashOptions {
   readonly detail?: string;
@@ -21,7 +22,7 @@ export type Flash = Readonly<Record<FlashKind, (summary: string, options?: Flash
 const STYLE = {
   success: { color: "success", icon: "i-lucide-circle-check", duration: 3000 },
   info: { color: "info", icon: "i-lucide-info", duration: 5000 },
-  warn: { color: "warning", icon: "i-lucide-triangle-alert", duration: 0 },
+  warning: { color: "warning", icon: "i-lucide-triangle-alert", duration: 0 },
   error: { color: "error", icon: "i-lucide-circle-x", duration: 0 },
 } as const;
 
@@ -43,7 +44,7 @@ export function useFlash(): Flash {
         duration: stays ? Number.POSITIVE_INFINITY : style.duration,
         progress: !stays,
       });
-      announce(options.detail === undefined ? summary : `${summary} ${options.detail}`, kind === "warn" || kind === "error");
+      announce(options.detail === undefined ? summary : `${summary} ${options.detail}`, kind === "warning" || kind === "error");
     };
-  return { success: show("success"), info: show("info"), warn: show("warn"), error: show("error") };
+  return { success: show("success"), info: show("info"), warning: show("warning"), error: show("error") };
 }

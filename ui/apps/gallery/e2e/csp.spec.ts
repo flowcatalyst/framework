@@ -1,8 +1,8 @@
 // U0 open question 1 (docs/go/ui.md sections 9 and 18): does Nuxt UI run under the strict CSP,
 // without 'unsafe-inline' for styles? Every interaction below must produce no violation.
-import { expect, openPage, test } from "./fixtures.ts";
+import { covers, expect, openPage, test } from "./fixtures.ts";
 
-test("the response carries the strict policy", async ({ page, csp }) => {
+test("the response carries the strict policy", covers("strict-csp"), async ({ page, csp }) => {
   const response = await page.goto("/");
   const policy = response?.headers()["content-security-policy"] ?? "";
   expect(policy).toContain("style-src 'self';");
@@ -11,7 +11,7 @@ test("the response carries the strict policy", async ({ page, csp }) => {
   await csp.expectClean();
 });
 
-test("overview: shell, navigation and colour mode", async ({ page, csp }) => {
+test("overview: shell, navigation and colour mode", covers("colour-mode", "strict-csp"), async ({ page, csp }) => {
   await openPage(page, "/", "FlowCatalyst UI gallery");
   const toggle = page.getByTestId("color-mode");
   // No stored choice: "system" (light emulated) -> light -> dark -> system.
@@ -25,7 +25,7 @@ test("overview: shell, navigation and colour mode", async ({ page, csp }) => {
   await csp.expectClean();
 });
 
-test("a stored dark choice applies before the first paint (the hashed snippet runs)", async ({ page, csp }) => {
+test("a stored dark choice applies before the first paint (the hashed snippet runs)", covers("colour-mode", "strict-csp"), async ({ page, csp }) => {
   await page.goto("/");
   await page.evaluate(() => {
     localStorage.setItem("fc-color-mode", "dark");
@@ -37,14 +37,14 @@ test("a stored dark choice applies before the first paint (the hashed snippet ru
   await csp.expectClean();
 });
 
-test("system dark mode is followed without a stored choice", async ({ page, csp }) => {
+test("system dark mode is followed without a stored choice", covers("colour-mode"), async ({ page, csp }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await openPage(page, "/", "FlowCatalyst UI gallery");
   await expect(page.locator("html")).toHaveClass(/dark/);
   await csp.expectClean();
 });
 
-test("overlays: modal, slideover, popover, hover card", async ({ page, csp }) => {
+test("overlays: modal, slideover, popover, hover card", covers("strict-csp"), async ({ page, csp }) => {
   await openPage(page, "/overlays", "Overlays");
 
   await page.getByTestId("open-modal").click();
@@ -69,7 +69,7 @@ test("overlays: modal, slideover, popover, hover card", async ({ page, csp }) =>
   await csp.expectClean();
 });
 
-test("actions: tooltip and dropdown menu", async ({ page, csp }) => {
+test("actions: tooltip and dropdown menu", covers("strict-csp"), async ({ page, csp }) => {
   await openPage(page, "/actions", "Actions");
   await page.getByTestId("tooltip-trigger").hover();
   await expect(page.locator("[data-slot=content]", { hasText: "Copies the order id" })).toBeVisible();
@@ -81,7 +81,7 @@ test("actions: tooltip and dropdown menu", async ({ page, csp }) => {
   await csp.expectClean();
 });
 
-test("forms: select, select menu, validation errors, submit, date range", async ({ page, csp }) => {
+test("forms: select, select menu, validation errors, submit, date range", covers("form-field-errors", "strict-csp"), async ({ page, csp }) => {
   await openPage(page, "/forms", "Forms");
 
   await page.getByTestId("status").click();
@@ -96,6 +96,8 @@ test("forms: select, select menu, validation errors, submit, date range", async 
   await page.getByTestId("submit").click();
   const form = page.getByTestId("order-form");
   await expect(form.getByText("Not an email address")).toBeVisible();
+  await expect(page.getByTestId("email")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByTestId("email")).toHaveAccessibleDescription(/Not an email address/);
 
   await page.getByTestId("email").fill("orders@acme.example");
   // Wait for the field's re-validation to finish: UForm 4.11.3 drops a submit made while the
@@ -110,10 +112,10 @@ test("forms: select, select menu, validation errors, submit, date range", async 
   await csp.expectClean();
 });
 
-test("data display: table, pagination, tabs, accordion", async ({ page, csp }) => {
+test("data display: table, pagination, tabs, accordion", covers("strict-csp"), async ({ page, csp }) => {
   await openPage(page, "/data", "Data display");
-  await expect(page.getByTestId("orders-table").locator("tbody tr")).toHaveCount(4);
-  await page.getByRole("button", { name: "Page 2" }).click();
+  await expect(page.getByTestId("orders-table").locator("tbody tr")).toHaveCount(5);
+  await page.getByTestId("table-pagination").getByRole("button", { name: "Page 2" }).click();
   await page.getByRole("tab", { name: "History" }).click();
   await expect(page.getByText("Placed on 2026-10-01.")).toBeVisible();
   await page.getByRole("button", { name: "Shipping" }).click();
@@ -131,7 +133,7 @@ test("UForm's dirty flag means 'had input', not 'differs from the initial values
   await csp.expectClean();
 });
 
-test("UInputDate in range mode edits a start and an end", async ({ page, csp }) => {
+test("UInputDate in range mode edits a start and an end", covers("date-range"), async ({ page, csp }) => {
   await openPage(page, "/forms", "Forms");
   const period = page.getByTestId("period");
   await expect(period.getByRole("spinbutton")).toHaveCount(6);

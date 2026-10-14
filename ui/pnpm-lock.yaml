@@ -27,6 +27,9 @@ catalogs:
     '@playwright/test':
       specifier: 1.63.0
       version: 1.63.0
+    '@tanstack/vue-table':
+      specifier: 8.21.3
+      version: 8.21.3
     '@types/node':
       specifier: 24.19.1
       version: 24.19.1
@@ -122,6 +125,9 @@ importers:
       '@nuxt/ui':
         specifier: 'catalog:'
         version: 4.11.3(5381d10818b58c56bd228d2558632d50)
+      '@tanstack/vue-table':
+        specifier: 'catalog:'
+        version: 8.21.3(vue@3.5.43(@typescript/typescript6@6.0.2))
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3

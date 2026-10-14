@@ -11,17 +11,17 @@ import FwCodeBlock from "../src/components/FwCodeBlock.vue";
 import FwCodeChips from "../src/components/FwCodeChips.vue";
 import FwCursorPager from "../src/components/FwCursorPager.vue";
 import FwDetailField from "../src/components/FwDetailField.vue";
-import FwEmptyState from "../src/components/FwEmptyState.vue";
 import FwFormSection from "../src/components/FwFormSection.vue";
 import FwJsonBlock from "../src/components/FwJsonBlock.vue";
 import FwLocalTime from "../src/components/FwLocalTime.vue";
 import FwPaginator from "../src/components/FwPaginator.vue";
 import FwPickList from "../src/components/FwPickList.vue";
 import FwRowActions from "../src/components/FwRowActions.vue";
-import FwSpinner from "../src/components/FwSpinner.vue";
 import FwStatusBadge from "../src/components/FwStatusBadge.vue";
 import FwTableToolbar from "../src/components/FwTableToolbar.vue";
-import FwTag from "../src/components/FwTag.vue";
+import FwToggleGroup from "../src/components/FwToggleGroup.vue";
+import FwAlertDialog from "../src/components/FwAlertDialog.vue";
+import FwListPage from "../src/partials/FwListPage.vue";
 import { announce } from "../src/composables/useAnnouncer.ts";
 import { useDrawerRoute } from "../src/composables/useDrawerRoute.ts";
 import { flowcatalystUi } from "../src/plugin.ts";
@@ -32,14 +32,6 @@ import { createBrowserSession } from "@flowcatalyst/api-runtime";
 const global = { plugins: [ui] };
 
 describe("small built components", () => {
-  it("FwSpinner: an image named Loading, or decorative", () => {
-    const named = mount(FwSpinner, { global });
-    expect(named.get("[role=img]").attributes("aria-label")).toBe("Loading");
-    const decorative = mount(FwSpinner, { props: { decorative: true }, global });
-    expect(decorative.find("[role=img][aria-label]").exists()).toBe(false);
-    expect(decorative.html()).toContain('aria-hidden="true"');
-  });
-
   it("FwDetailField: text, slot, or an em dash", () => {
     expect(mount(FwDetailField, { props: { label: "Customer", value: "Acme" } }).get("dd").text()).toBe("Acme");
     expect(mount(FwDetailField, { props: { label: "Lines", value: 0 } }).get("dd").text()).toBe("0");
@@ -98,22 +90,58 @@ describe("small built components", () => {
   });
 });
 
-describe("tags and badges", () => {
-  it("FwTag maps the kit's severities onto the colour aliases", () => {
-    const colour = (severity: "success" | "info" | "warn" | "danger" | "secondary" | "primary"): string =>
-      mount(FwTag, { props: { label: severity, severity }, global }).get("[data-testid=fw-tag]").classes().join(" ");
-    expect(colour("success")).toContain("bg-success");
-    expect(colour("warn")).toContain("bg-warning");
-    expect(colour("danger")).toContain("bg-error");
-    expect(colour("primary")).toContain("bg-primary");
-    expect(colour("secondary")).not.toContain("bg-primary");
+describe("status badges", () => {
+  it("FwStatusBadge: a solid UBadge in the mapped colour, a sentence-case label; unmapped is neutral", () => {
+    const colors = { OPEN: "info", PLACED: "success", FAILED: "error" } as const;
+    const badge = (status: string): string =>
+      mount(FwStatusBadge, { props: { status, colors }, global }).get("[data-testid=fw-status-badge]").classes().join(" ");
+    expect(badge("OPEN")).toContain("bg-info");
+    expect(badge("PLACED")).toContain("bg-success");
+    expect(badge("FAILED")).toContain("bg-error");
+    const unmapped = mount(FwStatusBadge, { props: { status: "IN_REVIEW", colors }, global });
+    expect(unmapped.text()).toBe("In review");
+    expect(unmapped.get("[data-testid=fw-status-badge]").attributes("data-color")).toBe("neutral");
+    expect(mount(FwStatusBadge, { props: { status: "OPEN", colors, label: "Open now" }, global }).text()).toBe("Open now");
+    const outline = mount(FwStatusBadge, { props: { status: "OPEN", colors, variant: "outline" }, global });
+    expect(outline.get("[data-testid=fw-status-badge]").classes().join(" ")).toContain("ring-info");
+  });
+});
+
+describe("FwAlertDialog and FwToggleGroup on Nuxt UI parts", () => {
+  it("FwAlertDialog: role alertdialog, named and described; confirm emits confirm and close(true), Cancel close(false)", async () => {
+    const dialog = mount(FwAlertDialog, {
+      props: { open: true, title: "Revoke the key?", description: "Apps stop at once.", confirmLabel: "Revoke", color: "error" },
+      global,
+      attachTo: document.body,
+    });
+    await nextTick();
+    const root = document.body.querySelector("[data-testid=fw-alert-dialog]");
+    expect(root?.getAttribute("role")).toBe("alertdialog");
+    const labelledBy = root?.getAttribute("aria-labelledby") ?? "none";
+    const describedBy = root?.getAttribute("aria-describedby") ?? "none";
+    expect(document.getElementById(labelledBy)?.textContent).toBe("Revoke the key?");
+    expect(document.getElementById(describedBy)?.textContent).toBe("Apps stop at once.");
+    document.body.querySelector<HTMLButtonElement>("[data-testid=fw-alert-confirm]")?.click();
+    expect(dialog.emitted("confirm")).toHaveLength(1);
+    expect(dialog.emitted("close")).toEqual([[true]]);
+    document.body.querySelector<HTMLButtonElement>("[data-testid=fw-alert-cancel]")?.click();
+    expect(dialog.emitted("cancel")).toHaveLength(1);
+    expect(dialog.emitted("close")).toEqual([[true], [false]]);
+    expect(dialog.emitted("update:open")).toEqual([[false]]);
+    dialog.unmount();
   });
 
-  it("FwStatusBadge: the mapped severity and a sentence-case label; unmapped is secondary", () => {
-    const badge = mount(FwStatusBadge, { props: { status: "IN_REVIEW", severities: { OPEN: "info" } }, global });
-    expect(badge.text()).toBe("In review");
-    expect(badge.get("[data-testid=fw-tag]").attributes("data-severity")).toBe("secondary");
-    expect(mount(FwStatusBadge, { props: { status: "OPEN", severities: { OPEN: "info" }, label: "Open now" }, global }).text()).toBe("Open now");
+  it("FwToggleGroup: a named group of UButtons with aria-pressed; exclusive keeps one", async () => {
+    const options = [
+      { value: "table", label: "Table" },
+      { value: "cards", label: "Cards" },
+    ];
+    const group = mount(FwToggleGroup, { props: { options, label: "View", modelValue: ["table"] }, global });
+    expect(group.get("[data-testid=fw-toggle-group]").attributes("aria-label")).toBe("View");
+    const buttons = group.findAll("button");
+    expect(buttons.map((b) => b.attributes("aria-pressed"))).toEqual(["true", "false"]);
+    await buttons[1]?.trigger("click");
+    expect(group.emitted("update:modelValue")?.at(-1)).toEqual([["cards"]]);
   });
 });
 
@@ -191,11 +219,24 @@ describe("list parts", () => {
     expect(reason.text()).toBe("Already paused");
   });
 
-  it("FwEmptyState: Clear filters only when filtered; a status region when announced", async () => {
-    expect(mount(FwEmptyState, { props: { message: "None" }, global }).find("button").exists()).toBe(false);
-    const filtered = mount(FwEmptyState, { props: { message: "None match", filtered: true, announce: true }, global });
-    expect(filtered.get("[data-testid=fw-empty-state]").attributes("role")).toBe("status");
-    await filtered.get("button").trigger("click");
+  it("FwListPage: one h1 (UPageHeader); no rows is a status region (UEmpty) with Clear filters only while filtered", async () => {
+    const props = {
+      title: "Orders",
+      subtitle: "Every open order",
+      data: [],
+      columns: [{ accessorKey: "id", header: "Order" }],
+      // mount() does not carry the generic row type: the rows are plain objects here.
+      rowKey: (row: object) => JSON.stringify(row),
+      emptyMessage: "No orders match.",
+    };
+    const unfiltered = mount(FwListPage, { props, global });
+    expect(unfiltered.findAll("h1").map((h) => h.text())).toEqual(["Orders"]);
+    expect(unfiltered.text()).toContain("Every open order");
+    expect(unfiltered.get("[data-testid=fw-list-empty]").attributes("role")).toBe("status");
+    expect(unfiltered.get("[data-testid=fw-list-empty]").text()).toContain("No orders match.");
+    expect(unfiltered.get("[data-testid=fw-list-empty]").find("button").exists()).toBe(false);
+    const filtered = mount(FwListPage, { props: { ...props, activeFilterCount: 1 }, global });
+    await filtered.get("[data-testid=fw-list-empty] button").trigger("click");
     expect(filtered.emitted("clear")).toHaveLength(1);
   });
 });

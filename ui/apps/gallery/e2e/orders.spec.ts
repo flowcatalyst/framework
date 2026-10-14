@@ -1,13 +1,14 @@
 // The partials (U2) on the generated orders client, against the gallery's in-page fake server:
-// FwListPage + useListState (URL state), FwCursorPager + useCursorPagination, FwRecordDrawer +
-// useDrawerRoute (child route, Back closes, discard guard), FwFormDialog (client and server errors,
-// busy, discard question, the lost-submit case) and the int64 field that must reach the server as JSON.
+// FwListPage + useListState (URL state, UTable's global filter, UEmpty), FwCursorPager +
+// useCursorPagination, FwRecordDrawer + useDrawerRoute (child route, Back closes, discard guard),
+// FwFormDialog (client and server errors, busy, discard question, the lost-submit case) and the int64
+// field that must reach the server as JSON.
 import type { Page } from "@playwright/test";
-import { expect, openPage, test } from "./fixtures.ts";
+import { covers, expect, openPage, test } from "./fixtures.ts";
 
 const rows = (page: Page) => page.getByTestId("fw-list-table").locator("tbody tr");
 
-test("list: URL-backed filters, Clear all, cursor paging", async ({ page, csp }) => {
+test("list: URL-backed filters, Clear all, cursor paging, search of the loaded rows, empty state", covers("list-url-state", "list-filter-count", "list-clear-all", "list-page-search", "list-empty-clear", "cursor-paging"), async ({ page, csp }) => {
   await openPage(page, "/orders", "Orders");
   await expect(rows(page)).toHaveCount(8);
   await expect(rows(page).first()).toContainText("ord_1042");
@@ -35,19 +36,24 @@ test("list: URL-backed filters, Clear all, cursor paging", async ({ page, csp })
   await expect(page).toHaveURL(/q=globex/);
   await expect(rows(page)).toHaveCount(1);
   await page.getByRole("searchbox", { name: "Search" }).fill("zzz");
-  await expect(page.getByTestId("fw-empty-state")).toContainText("No orders match.");
-  await page.getByTestId("fw-empty-state").getByRole("button", { name: "Clear filters" }).click();
+  const empty = page.getByTestId("fw-list-empty");
+  await expect(empty).toContainText("No orders match.");
+  await expect(empty).toHaveAttribute("role", "status");
+  await empty.getByRole("button", { name: "Clear filters" }).click();
   await expect(rows(page)).toHaveCount(8);
+  await expect(page.getByRole("searchbox", { name: "Search" })).toHaveValue("");
   await csp.expectClean();
 });
 
-test("drawer: a child route, focus on its heading, non-modal, Escape and Back close it, the list query survives", async ({ page, csp }) => {
+test("drawer: a child route, focus on its heading, non-modal, Escape and Back close it, the list query survives", covers("drawer-child-route", "drawer-non-modal", "drawer-focus", "list-row-open"), async ({ page, csp }) => {
   await openPage(page, "/orders?status=OPEN", "Orders");
   await rows(page).filter({ hasText: "ord_1041" }).getByRole("link", { name: "ord_1041" }).click();
   await expect(page).toHaveURL(/\/orders\/ord_1041\?status=OPEN$/);
   const drawer = page.getByRole("dialog", { name: "ord_1041" });
   await expect(drawer).toBeVisible();
   await expect(page.getByTestId("fw-drawer-title")).toBeFocused();
+  // The open record's row is highlighted.
+  await expect(rows(page).filter({ hasText: "ord_1041" })).toHaveClass(/bg-elevated/);
   await expect(drawer.getByTestId("lines")).toContainText("NUT-M8");
 
   // Non-modal: the list stays usable and another row switches the record.
@@ -69,10 +75,17 @@ test("drawer: a child route, focus on its heading, non-modal, Escape and Back cl
   await page.goto("/orders/ord_1039?status=OPEN");
   await expect(page.getByRole("dialog", { name: "ord_1039" })).toBeVisible();
   await expect(rows(page).first()).toBeVisible();
+
+  // A row opens by a click anywhere on it, and by Enter on the focused row.
+  await rows(page).filter({ hasText: "ord_1040" }).getByRole("cell").nth(1).click();
+  await expect(page).toHaveURL(/\/orders\/ord_1040\?status=OPEN$/);
+  await rows(page).filter({ hasText: "ord_1041" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/orders\/ord_1041\?status=OPEN$/);
   await csp.expectClean();
 });
 
-test("drawer: leaving or switching rows with a changed note asks to discard", async ({ page, csp }) => {
+test("drawer: leaving or switching rows with a changed note asks to discard", covers("drawer-discard"), async ({ page, csp }) => {
   await openPage(page, "/orders", "Orders");
   await rows(page).filter({ hasText: "ord_1042" }).getByRole("link", { name: "ord_1042" }).click();
   await page.getByTestId("note").fill("call the customer");
@@ -99,7 +112,7 @@ test("drawer: leaving or switching rows with a changed note asks to discard", as
   await csp.expectClean();
 });
 
-test("form dialog: first field focused, client errors focus the field, int64 posted as a JSON number", async ({ page, csp }) => {
+test("form dialog: first field focused, client errors focus the field, int64 posted as a JSON number", covers("form-schema", "form-number-commit", "form-int64"), async ({ page, csp }) => {
   await openPage(page, "/orders/ord_1042", "Orders");
   await page.getByTestId("add-line").click();
   const dialog = page.getByRole("dialog", { name: "Add a line" });
@@ -125,7 +138,7 @@ test("form dialog: first field focused, client errors focus the field, int64 pos
   await csp.expectClean();
 });
 
-test("form dialog: a 400's details land on the field, busy state, Escape on a changed form asks first", async ({ page, csp }) => {
+test("form dialog: a 400's details land on the field, busy state, Escape on a changed form asks first", covers("form-server-errors", "form-busy", "form-discard"), async ({ page, csp }) => {
   await openPage(page, "/orders/ord_1041", "Orders");
   await page.getByTestId("add-line").click();
   const dialog = page.getByRole("dialog", { name: "Add a line" });
@@ -155,7 +168,7 @@ test("form dialog: a 400's details land on the field, busy state, Escape on a ch
   await csp.expectClean();
 });
 
-test("new order: the server's validation, then the drawer of the created order", async ({ page, csp }) => {
+test("new order: the server's validation, then the drawer of the created order", covers("record-create", "form-schema"), async ({ page, csp }) => {
   await openPage(page, "/orders", "Orders");
   await page.getByTestId("new-order").click();
   const dialog = page.getByRole("dialog", { name: "New order" });
@@ -170,13 +183,16 @@ test("new order: the server's validation, then the drawer of the created order",
   await csp.expectClean();
 });
 
-test("cancelling an order is confirmed first; a cancelled order cannot take lines", async ({ page, csp }) => {
+test("cancelling an order is confirmed first; a cancelled order cannot take lines", covers("destructive-confirmed", "status-badge"), async ({ page, csp }) => {
   await openPage(page, "/orders/ord_1040", "Orders");
   await page.getByTestId("cancel-order").click();
   const ask = page.getByRole("alertdialog", { name: "Cancel ord_1040?" });
   await expect(ask.getByRole("button", { name: "Keep order" })).toBeFocused();
   await ask.getByRole("button", { name: "Cancel order" }).click();
   await expect(page.getByRole("dialog", { name: "ord_1040" })).toContainText("Cancelled");
+  // The status badge follows: CANCELLED is mapped to neutral, OPEN to info.
+  await expect(page.getByRole("dialog", { name: "ord_1040" }).getByTestId("fw-status-badge")).toHaveAttribute("data-color", "neutral");
+  await expect(rows(page).filter({ hasText: "ord_1041" }).getByTestId("fw-status-badge")).toHaveAttribute("data-color", "info");
   await expect(page.getByTestId("add-line")).toBeDisabled();
   await expect(page.getByTestId("cancel-order")).toBeDisabled();
   await csp.expectClean();

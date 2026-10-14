@@ -4,20 +4,23 @@ The shared UI of the FlowCatalyst Java and Go frameworks: **Nuxt UI v4 on plain 
 Nuxt, no Nitro), strict TypeScript. Design: [`../docs/go/ui.md`](../docs/go/ui.md). Results with the
 evidence: U0 [`../docs/ui/u0.md`](../docs/ui/u0.md), U1 (components)
 [`../docs/ui/u1.md`](../docs/ui/u1.md), U2 (partials, composables, `@flowcatalyst/api-runtime`)
-[`../docs/ui/u2.md`](../docs/ui/u2.md).
+[`../docs/ui/u2.md`](../docs/ui/u2.md). Which Nuxt UI component to use directly and why each `Fw*` part
+exists: [`../docs/ui/nuxt-native.md`](../docs/ui/nuxt-native.md) (Nuxt UI first; a `Fw*` part only for
+FlowCatalyst behaviour).
 
 ```
 ui/
   pnpm-workspace.yaml   catalog (exact versions), minimumReleaseAge 7 days, no install scripts
   tsconfig.base.json    the strict settings every project extends
   eslint.config.ts      typescript-eslint strictTypeChecked + eslint-plugin-vue, one config for all
-  scripts/              check-licences.ts, api-drift.ts
-  packages/ui/          @flowcatalyst/ui: theme preset, Vite plugin, Vue plugin, Fw* components, partials,
+  scripts/              check-licences.ts (and the THIRD-PARTY-NOTICES it writes), api-drift.ts
+  THIRD-PARTY-NOTICES   the licences of the shipped bundle, generated from the gallery build
+  packages/ui/          @flowcatalyst/ui: theme (Nuxt UI tokens and variants), Vite plugin, Vue plugin, Fw* parts, partials,
                         FwAppShell, composables (source only)
   packages/api-runtime/ @flowcatalyst/api-runtime: the configured hey-api client, the error envelope, the
                         browser session and its guard, Zod's CSP setting, the shared openapi-ts config,
                         and the generated client of the framework's own endpoints (auth.json)
-  apps/gallery/         @flowcatalyst/gallery: every spec of ui-kit/components in the gallery, on FwAppShell,
+  apps/gallery/         @flowcatalyst/gallery: the platform behaviour checklist (src/behaviours.ts), on FwAppShell,
                         a generated orders client against an in-page fake server; strict-CSP server, Playwright
   samples/openapi/      a hand-written OpenAPI 3.1 document and the hey-api client generated from it (U0 check)
 ```
@@ -34,8 +37,9 @@ Node 24 and pnpm 10.27 (`packageManager`); nothing is installed globally. From `
 | `pnpm lint` | ESLint, type-aware |
 | `pnpm test` | vitest (components, composables, api-runtime, the generated clients' checks) |
 | `pnpm api:drift` | regenerates every generated client (api-runtime, gallery, sample) and fails on a modified or new file |
-| `pnpm licences` | fails on a dependency licence that is not permissive and not reviewed |
-| `pnpm gallery:e2e` | builds the gallery, serves it with the strict CSP (port 4391) and runs Playwright + axe |
+| `pnpm licences` | fails on a dependency licence that is not permissive and not reviewed, or when `THIRD-PARTY-NOTICES` does not match the gallery build (run after `pnpm build`) |
+| `pnpm licences:write` | rewrites `THIRD-PARTY-NOTICES` from the gallery build (an application: `node scripts/check-licences.ts --write --dist <dist> --out <file>`) |
+| `pnpm gallery:e2e` | builds the gallery, serves it with the strict CSP (port 4391) and runs Playwright + strict axe; fails when a row of the behaviour checklist is exercised by no passing test |
 | `pnpm check` | all of the above, in that order |
 | `pnpm gallery:dev` | Vite dev server for the gallery on 5174 (no CSP in development) |
 | `pnpm gallery:screenshots` | every gallery page, light and dark, desktop and phone, into `apps/gallery/screenshots/` (git-ignored) for review |
@@ -82,7 +86,7 @@ createApp(App).use(router).use(ui).use(flowcatalystUi, { api }).mount("#app");
 /* the one CSS entry */
 @import "tailwindcss";
 @import "@nuxt/ui";
-@import "@flowcatalyst/ui/theme/kit.css";
+@import "@flowcatalyst/ui/theme.css";
 ```
 
 The application's `tsconfig` maps `#build/ui` and `#build/ui/*` to its own `node_modules/.nuxt-ui/ui`

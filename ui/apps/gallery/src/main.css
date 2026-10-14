@@ -1,3 +1,3 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
-@import "@flowcatalyst/ui/theme/kit.css";
+@import "@flowcatalyst/ui/theme.css";

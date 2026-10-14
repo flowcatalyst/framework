@@ -62,8 +62,11 @@ catalog:
   "@fontsource-variable/inter": 5.3.0
   "@vueuse/core": 14.4.0
   "@internationalized/date": 3.12.4
-  # The version @nuxt/ui 4.11.3 pins; @flowcatalyst/ui builds FwAlertDialog and FwToggleGroup on it.
+  # The version @nuxt/ui 4.11.3 pins; @flowcatalyst/ui builds FwToggleGroup on its ToggleGroup.
   "reka-ui": 2.10.5
+  # The version @nuxt/ui 4.11.3 resolves; the gallery imports getPaginationRowModel for UTable's
+  # pagination, as Nuxt UI's documentation does.
+  "@tanstack/vue-table": 8.21.3
   "vitest": 5.0.3
   "@vue/test-utils": 2.5.1
   "happy-dom": 20.14.5

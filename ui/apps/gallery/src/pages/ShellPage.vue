@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { FwPageHeader } from "@flowcatalyst/ui";
+import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import GallerySection from "../components/GallerySection.vue";
 </script>
 
 <template>
   <div class="space-y-6">
-    <FwPageHeader title="Application shell" subtitle="The gallery itself runs in FwAppShell" />
-    <GallerySection spec="app-shell sidebar" title="FwAppShell" description="The page around this text: the navy sidebar (UDashboardSidebar; collapsible on desktop, a drawer on phones), navigation filtered by the session's permissions (the 'Administration' entry needs a permission the session lacks, so it is not shown), the account menu with Sign out, the colour-mode button, the navbar with the page title as text (the page's one h1 is FwPageHeader's), and request-failure toasts.">
+    <UPageHeader title="Application shell" description="The gallery itself runs in FwAppShell" />
+    <GallerySection
+      :behaviours="['shell-nav-permissions', 'shell-current-page', 'shell-sign-out', 'shell-phone-sidebar', 'colour-mode']"
+      title="FwAppShell"
+      description="The page around this text: Nuxt UI's dashboard layout with the navy sidebar (collapsible on desktop, a slideover on phones), navigation filtered by the session's permissions (the 'Administration' entry needs a permission the session lacks, so it is not shown), the account menu with Sign out, the colour-mode button, the navbar with the page title as text (the page's one h1 is its UPageHeader), and request-failure toasts."
+    >
       <ul class="list-disc space-y-1 pl-5 text-sm">
-        <li>Collapse the sidebar with the button in the navbar; on a phone it opens as a drawer.</li>
+        <li>Collapse the sidebar with the button in the navbar; on a phone it opens as a slideover.</li>
         <li>The account menu at the bottom of the sidebar signs out through the runtime (POST /auth/logout).</li>
         <li>Navigation links mark the current page with aria-current.</li>
+        <li>The colour-mode button cycles light, dark and system; the choice is stored and applied before the first paint.</li>
       </ul>
     </GallerySection>
   </div>

@@ -2,31 +2,27 @@
 // (docs/go/ui.md). Consumed as TypeScript and Vue source; the application's Vite build compiles it.
 export { flowcatalystUi, type FlowcatalystUiOptions } from "./plugin.ts";
 
-// Components (docs/go/ui.md section 10: the built and composed rows).
+// Components: FlowCatalyst behaviour on Nuxt UI parts (docs/ui/nuxt-native.md says which Nuxt UI
+// component to use directly instead of a wrapper, and why each of these exists).
 export { default as FwAlertDialog } from "./components/FwAlertDialog.vue";
 export { default as FwAnnouncer } from "./components/FwAnnouncer.vue";
 export { default as FwCodeBlock } from "./components/FwCodeBlock.vue";
 export { default as FwCodeChips } from "./components/FwCodeChips.vue";
 export { default as FwColorModeButton } from "./components/FwColorModeButton.vue";
-export { default as FwConfirmDialog } from "./components/FwConfirmDialog.vue";
 export { default as FwCursorPager } from "./components/FwCursorPager.vue";
 export { default as FwDetailField } from "./components/FwDetailField.vue";
 export { default as FwDetailList } from "./components/FwDetailList.vue";
-export { default as FwEmptyState } from "./components/FwEmptyState.vue";
 export { default as FwFormSection } from "./components/FwFormSection.vue";
 export { default as FwJsonBlock } from "./components/FwJsonBlock.vue";
 export { default as FwLocalTime } from "./components/FwLocalTime.vue";
-export { default as FwPageHeader } from "./components/FwPageHeader.vue";
 export { default as FwPaginator } from "./components/FwPaginator.vue";
 export { default as FwPickList } from "./components/FwPickList.vue";
 export { default as FwRowActions } from "./components/FwRowActions.vue";
-export { default as FwSpinner } from "./components/FwSpinner.vue";
 export { default as FwStatusBadge } from "./components/FwStatusBadge.vue";
 export { default as FwTableToolbar } from "./components/FwTableToolbar.vue";
-export { default as FwTag } from "./components/FwTag.vue";
 export { default as FwToggleGroup } from "./components/FwToggleGroup.vue";
 
-export type { AlertTone, DrawerSize, FwNavItem, PickItem, RowAction, TagSeverity, ToggleOption } from "./types.ts";
+export type { AlertColor, DrawerSize, FwNavItem, PickItem, RowAction, StatusColor, ToggleOption } from "./types.ts";
 
 // Partials and the layout (U2).
 export { default as FwFormDialog } from "./partials/FwFormDialog.vue";

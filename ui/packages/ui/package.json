@@ -12,7 +12,7 @@
     ".": "./src/index.ts",
     "./csp": "./src/csp.ts",
     "./theme": "./src/theme/index.ts",
-    "./theme/kit.css": "./src/theme/kit.css",
+    "./theme.css": "./src/theme/theme.css",
     "./vite": "./src/vite.ts",
     "./package.json": "./package.json"
   },

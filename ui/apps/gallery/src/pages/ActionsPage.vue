@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { FwPageHeader, FwRowActions, FwToggleGroup, useConfirm, useFlash, type RowAction, type ToggleOption } from "@flowcatalyst/ui";
+import { FwRowActions, FwToggleGroup, useConfirm, useFlash, type RowAction, type ToggleOption } from "@flowcatalyst/ui";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UDropdownMenu from "@nuxt/ui/components/DropdownMenu.vue";
 import type { DropdownMenuItem } from "@nuxt/ui/components/DropdownMenu.vue";
 import UKbd from "@nuxt/ui/components/Kbd.vue";
+import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import UTooltip from "@nuxt/ui/components/Tooltip.vue";
 import { shallowRef } from "vue";
 import GallerySection from "../components/GallerySection.vue";
@@ -64,7 +65,7 @@ function actionsFor(row: (typeof rows)[number]): { inline: RowAction[]; menu: Ro
 }
 
 async function remove(name: string): Promise<void> {
-  const confirmed = await confirm({ title: `Delete ${name}?`, message: "Its dispatch history is kept; the pool stops at once.", confirmLabel: "Delete pool", tone: "danger" });
+  const confirmed = await confirm({ title: `Delete ${name}?`, description: "Its dispatch history is kept; the pool stops at once.", confirmLabel: "Delete pool", color: "error" });
   lastAction.value = confirmed ? `deleted ${name}` : `kept ${name}`;
   if (confirmed) {
     flash.success(`${name} deleted.`);
@@ -74,9 +75,9 @@ async function remove(name: string): Promise<void> {
 
 <template>
   <div class="space-y-6">
-    <FwPageHeader title="Actions" subtitle="Buttons, menus, toggles, row actions, tooltips and keyboard hints" />
+    <UPageHeader title="Actions" description="Buttons, menus, toggles, row actions, tooltips and keyboard hints" />
 
-    <GallerySection spec="button" title="Button" description="Every variant in the primary, neutral and error colours; sizes; loading; disabled; icon only.">
+    <GallerySection title="Button (UButton)" description="Every variant in the primary, neutral and error colours; sizes; loading; disabled; icon only.">
       <div v-for="color in colors" :key="color" class="flex flex-wrap items-center gap-2">
         <UButton v-for="variant in variants" :key="variant" :label="`${variant} ${color}`" :color="color" :variant="variant" />
       </div>
@@ -90,7 +91,7 @@ async function remove(name: string): Promise<void> {
       </div>
     </GallerySection>
 
-    <GallerySection spec="dropdown-menu" title="Dropdown menu" description="Groups, icons, a destructive item last.">
+    <GallerySection :behaviours="['menu-keyboard']" title="Dropdown menu (UDropdownMenu)" description="Groups, icons, a destructive item last; arrow keys move, Enter chooses, Escape closes.">
       <div class="flex items-center gap-3">
         <UDropdownMenu :items="menuItems">
           <UButton label="Actions" trailing-icon="i-lucide-chevron-down" color="neutral" variant="outline" data-testid="open-menu" />
@@ -99,7 +100,7 @@ async function remove(name: string): Promise<void> {
       </div>
     </GallerySection>
 
-    <GallerySection spec="toggle" title="Toggle group (FwToggleGroup)" description="Exclusive (one pressed) and independent; arrow keys move, Space toggles.">
+    <GallerySection :behaviours="['toggle-group']" title="Toggle group (FwToggleGroup)" description="Nuxt UI buttons in a field group with Reka's toggle-group behaviour: exclusive (one pressed) and independent; arrow keys move, Space toggles.">
       <div class="flex flex-wrap items-center gap-4">
         <FwToggleGroup v-model="view" :options="views" label="View" kind="exclusive" data-testid="toggle-view" />
         <FwToggleGroup v-model="formatting" :options="formats" label="Formatting" kind="independent" icon-only size="sm" />
@@ -107,7 +108,7 @@ async function remove(name: string): Promise<void> {
       </div>
     </GallerySection>
 
-    <GallerySection spec="row-actions" title="Row actions (FwRowActions)" description="Two inline actions at most, the rest in a menu; a disabled action keeps focus and says why; destructive last, confirmed first.">
+    <GallerySection :behaviours="['row-actions', 'row-action-disabled', 'destructive-confirmed']" title="Row actions (FwRowActions)" description="Two inline actions at most, the rest in a menu; a disabled action keeps focus and says why; destructive last, confirmed first.">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left text-muted"><th class="py-2 font-medium">Pool</th><th class="py-2 font-medium">State</th><th class="py-2 text-right font-medium">Actions</th></tr>
@@ -124,13 +125,13 @@ async function remove(name: string): Promise<void> {
       </table>
     </GallerySection>
 
-    <GallerySection spec="tooltip" title="Tooltip">
+    <GallerySection :behaviours="['tooltip-focus']" title="Tooltip (UTooltip)" description="On hover and on keyboard focus.">
       <UTooltip text="Copies the order id">
         <UButton icon="i-lucide-clipboard" aria-label="Copy order id" color="neutral" variant="ghost" data-testid="tooltip-trigger" />
       </UTooltip>
     </GallerySection>
 
-    <GallerySection spec="kbd" title="Keyboard hint">
+    <GallerySection title="Keyboard hint (UKbd)">
       <p class="text-sm">Search with <UKbd value="meta" /> <UKbd value="K" />, close with <UKbd value="Esc" />.</p>
     </GallerySection>
   </div>

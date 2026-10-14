@@ -9,7 +9,8 @@ export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
   forbidOnly: process.env["CI"] !== undefined,
-  reporter: [["list"]],
+  // The behaviour reporter fails a full run that leaves a checklist row unexercised (src/behaviours.ts).
+  reporter: [["list"], ["./e2e/behaviour-reporter.ts"]],
   use: {
     baseURL: `http://127.0.0.1:${String(port)}`,
     trace: "retain-on-failure",

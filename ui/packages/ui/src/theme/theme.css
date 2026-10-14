@@ -1,0 +1,82 @@
+/* @flowcatalyst/ui theme: Nuxt UI's design tokens with the FlowCatalyst palette
+   (docs/ui/nuxt-native.md, "Theme"). Import it after Nuxt UI, in the application's one CSS entry:
+
+     @import "tailwindcss";
+     @import "@nuxt/ui";
+     @import "@flowcatalyst/ui/theme.css";
+
+   Only Nuxt UI's own variables are set here (--ui-*), plus the font and the navy palette of the
+   shell's sidebar. Component looks are Nuxt UI variants, set in the Vite plugin options
+   (`fcComponentTheme` in ./index.ts; Nuxt's app.config `ui` key). The values start from the ui-kit
+   tokens (ui-kit/theme/tokens.css): test/theme-css.test.ts fails when a value differs from the kit's
+   other than by the shade changes it lists. The variables are set outside any cascade layer, so they
+   win over Nuxt UI's `@layer theme` defaults and the generated colour stylesheet. */
+
+/* Self-hosted Inter (font-src 'self'; no third-party font host). */
+@import "@fontsource-variable/inter";
+
+/* Tailwind scans the package's own components, wherever the package is installed or linked from. */
+@source "../";
+
+@theme {
+  --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+
+  /* FlowCatalyst brand palette (the kit's `@theme inline`), for the shell's sidebar. */
+  --color-navy-50: #f0f4f8;
+  --color-navy-100: #d9e2ec;
+  --color-navy-200: #bcccdc;
+  --color-navy-300: #9fb3c8;
+  --color-navy-400: #829ab1;
+  --color-navy-500: #627d98;
+  --color-navy-600: #486581;
+  --color-navy-700: #334e68;
+  --color-navy-800: #243b53;
+  --color-navy-900: #102a43;
+  --color-navy-950: #0a1929;
+  --color-accent-300: #47a3f3;
+  --color-accent-500: #0967d2;
+  --color-accent-600: #0552b5;
+}
+
+:root {
+  /* Colour aliases. One shade darker than the kit's 600s (owner ruling 2026-10-14), same hue: each
+     failed WCAG AA 4.5:1 in the gallery (white on the fill, the colour as text on white, on its 10 %
+     tint or at 90 % opacity). */
+  --ui-primary: #047857; /* emerald-700; kit emerald-600 #059669 */
+  --ui-success: #15803d; /* green-700; kit green-600 #16a34a */
+  --ui-info: #0369a1; /* sky-700; kit sky-600 #0284c7 */
+  --ui-warning: #c2410c; /* orange-700; kit orange-600 #ea580c */
+  --ui-error: #b91c1c; /* red-700; kit red-600 #dc2626 */
+
+  /* Text, backgrounds and borders: the kit's values. */
+  --ui-text: #1e293b;
+  --ui-text-muted: #64748b;
+  --ui-text-toned: #475569;
+  --ui-bg: #ffffff;
+  --ui-bg-muted: #f8fafc;
+  --ui-border: #e2e8f0;
+  --ui-border-accented: #94a3b8;
+
+  --ui-radius: 2px;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ui-primary: #10b981;
+  --ui-success: #22c55e;
+  --ui-info: #0ea5e9;
+  --ui-warning: #f97316;
+  /* red-400; kit red-500 #ef4444 read 3.9:1 on the card. On the dark background "one shade" toward
+     contrast is the lighter one. */
+  --ui-error: #f87171;
+
+  --ui-text: #e2e8f0;
+  --ui-text-muted: #94a3b8;
+  --ui-text-toned: #cbd5e1;
+  --ui-bg: #1e293b;
+  --ui-bg-muted: #0f172a;
+  --ui-border: #334155;
+  --ui-border-accented: #475569;
+}

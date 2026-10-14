@@ -1,23 +1,24 @@
 // A confirmation as a promise (ui-kit confirm-dialog.md; the platform SPA's useConfirm +
-// confirmDiscardChanges shape), on Nuxt UI's overlay manager, so it needs UApp (which renders the
-// overlays) somewhere above the caller.
+// confirmDiscardChanges shape): FwAlertDialog opened through Nuxt UI's overlay manager, so it needs
+// UApp (which renders the overlays) somewhere above the caller.
 //
 //   const confirm = useConfirm();
-//   if (await confirm({ title: "Cancel order 1042?", message: "...", confirmLabel: "Cancel order", tone: "danger" })) { ... }
+//   if (await confirm({ title: "Cancel order 1042?", description: "...", confirmLabel: "Cancel order", color: "error" })) { ... }
 import { useOverlay } from "@nuxt/ui/composables";
 import type { Component } from "vue";
-import FwConfirmDialog from "../components/FwConfirmDialog.vue";
-import type { AlertTone } from "../types.ts";
+import FwAlertDialog from "../components/FwAlertDialog.vue";
+import type { AlertColor } from "../types.ts";
 
 // Widened to Component: the overlay manager's typing of a .vue import is not readable by the lint.
-const confirmDialog: Component = FwConfirmDialog;
+const alertDialog: Component = FwAlertDialog;
 
 export interface ConfirmOptions {
   readonly title: string;
-  readonly message: string;
+  readonly description: string;
   readonly confirmLabel: string;
   readonly cancelLabel?: string;
-  readonly tone?: AlertTone;
+  /** The confirm button's colour (default primary; `error` for a destructive action). */
+  readonly color?: AlertColor;
 }
 
 export type Confirm = (options: ConfirmOptions) => Promise<boolean>;
@@ -27,13 +28,13 @@ export function useConfirm(): Confirm {
   const overlay = useOverlay();
   return async (options) => {
     // One overlay per question, destroyed when its close animation ends.
-    const dialog = overlay.create(confirmDialog, { destroyOnClose: true });
+    const dialog = overlay.create(alertDialog, { destroyOnClose: true });
     const result: unknown = await dialog.open({
       title: options.title,
-      message: options.message,
+      description: options.description,
       confirmLabel: options.confirmLabel,
       ...(options.cancelLabel === undefined ? {} : { cancelLabel: options.cancelLabel }),
-      ...(options.tone === undefined ? {} : { tone: options.tone }),
+      ...(options.color === undefined ? {} : { color: options.color }),
     });
     return result === true;
   };
@@ -43,9 +44,9 @@ export function useConfirm(): Confirm {
 export function confirmDiscardChanges(confirm: Confirm): Promise<boolean> {
   return confirm({
     title: "Discard changes?",
-    message: "You have unsaved changes. Discard them?",
+    description: "You have unsaved changes. Discard them?",
     confirmLabel: "Discard",
     cancelLabel: "Keep editing",
-    tone: "danger",
+    color: "error",
   });
 }

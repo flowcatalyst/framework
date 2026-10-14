@@ -1,26 +1,11 @@
+// FwColorModeButton (FwPageHeader's tests went with it: the page title is Nuxt UI's UPageHeader, and
+// "one h1 per page" is a Playwright check on every gallery page).
 import ui from "@nuxt/ui/vue-plugin";
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
 import { nextTick } from "vue";
 import FwColorModeButton from "../src/components/FwColorModeButton.vue";
-import FwPageHeader from "../src/components/FwPageHeader.vue";
 import { COLOR_MODE_STORAGE_KEY } from "../src/csp.ts";
-
-describe("FwPageHeader", () => {
-  it("renders one h1, the subtitle and the actions slot", () => {
-    const wrapper = mount(FwPageHeader, {
-      props: { title: "Orders", subtitle: "Every open order" },
-      slots: { actions: "<button type='button'>New order</button>" },
-    });
-    expect(wrapper.findAll("h1").map((h) => h.text())).toEqual(["Orders"]);
-    expect(wrapper.find("p").text()).toBe("Every open order");
-    expect(wrapper.find("button").text()).toBe("New order");
-  });
-
-  it("leaves the subtitle out when absent", () => {
-    expect(mount(FwPageHeader, { props: { title: "Orders" } }).find("p").exists()).toBe(false);
-  });
-});
 
 describe("FwColorModeButton", () => {
   afterEach(() => {

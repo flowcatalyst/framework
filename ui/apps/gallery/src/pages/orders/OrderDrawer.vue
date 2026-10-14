@@ -26,7 +26,7 @@ import { addOrderLine, cancelOrder, getOrder } from "../../api/orders-demo/sdk.g
 import type { AddLineBody, OrderView } from "../../api/orders-demo/types.gen.ts";
 import { zAddLineBody } from "../../api/orders-demo/zod.gen.ts";
 import { requests } from "../../fake-server.ts";
-import { money, REFRESH_ORDERS, STATUS_SEVERITY } from "./orders.ts";
+import { money, REFRESH_ORDERS, STATUS_COLORS } from "./orders.ts";
 
 const refreshList = inject(REFRESH_ORDERS, () => Promise.resolve());
 const confirm = useConfirm();
@@ -95,10 +95,10 @@ async function cancel(): Promise<void> {
   }
   const confirmed = await confirm({
     title: `Cancel ${current.id}?`,
-    message: "The customer is told at once. A cancelled order cannot change.",
+    description: "The customer is told at once. A cancelled order cannot change.",
     confirmLabel: "Cancel order",
     cancelLabel: "Keep order",
-    tone: "danger",
+    color: "error",
   });
   if (!confirmed) {
     return;
@@ -117,7 +117,7 @@ async function cancel(): Promise<void> {
 <template>
   <FwRecordDrawer :open="true" :title="title" :subtitle="order?.customer ?? ''" @close="drawer.close">
     <template #extras>
-      <FwStatusBadge v-if="order !== undefined" :status="order.status" :severities="STATUS_SEVERITY" />
+      <FwStatusBadge v-if="order !== undefined" :status="order.status" :colors="STATUS_COLORS" />
     </template>
     <p v-if="loadError !== undefined" class="text-sm text-error" role="alert">{{ loadError }}</p>
     <template v-if="order !== undefined">

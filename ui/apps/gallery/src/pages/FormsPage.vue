@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FwPageHeader, useDirtyForm } from "@flowcatalyst/ui";
+import { useDirtyForm } from "@flowcatalyst/ui";
 import { CalendarDate } from "@internationalized/date";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UCheckbox from "@nuxt/ui/components/Checkbox.vue";
@@ -11,6 +11,7 @@ import UInputDate from "@nuxt/ui/components/InputDate.vue";
 import type { InputDateProps } from "@nuxt/ui/components/InputDate.vue";
 import UInputMenu from "@nuxt/ui/components/InputMenu.vue";
 import UInputNumber from "@nuxt/ui/components/InputNumber.vue";
+import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import URadioGroup from "@nuxt/ui/components/RadioGroup.vue";
 import USelect from "@nuxt/ui/components/Select.vue";
 import USelectMenu from "@nuxt/ui/components/SelectMenu.vue";
@@ -108,9 +109,9 @@ function discardProfile(): void {
 
 <template>
   <div class="space-y-6">
-    <FwPageHeader title="Forms" subtitle="UForm with a Zod 4 schema and every input the kit maps" />
+    <UPageHeader title="Forms" description="Nuxt UI's form, fields and inputs used directly, with a Zod 4 schema" />
 
-    <GallerySection spec="field form-field label input textarea select radio-group checkbox switch multi-select" title="A form" description="UForm, a Zod schema, UFormField (label, hint, description, help, required marker, error) around each input.">
+    <GallerySection :behaviours="['form-field-errors', 'select-keyboard']" title="A form (UForm)" description="UForm, a Zod schema, UFormField (label, hint, description, help, required marker, error) around each input.">
       <UForm ref="form" :schema="schema" :state="state" class="grid max-w-xl gap-4" novalidate data-testid="order-form" @submit="onSubmit" @error="onError">
         <UFormField label="Customer" name="customer" required>
           <UInput v-model="state.customer" class="w-full" data-testid="customer" />
@@ -157,32 +158,34 @@ function discardProfile(): void {
       </dl>
     </GallerySection>
 
-    <GallerySection spec="filter-select" title="Filter select" description="A select with a clear button for 'any'.">
-      <USelectMenu v-model="statusFilter" :items="statusItems" value-key="value" placeholder="Any status" clear class="w-56" aria-label="Status filter" />
+    <GallerySection :behaviours="['select-keyboard']" title="Filter select (USelectMenu)" description="A select with a clear button for 'any'.">
+      <USelectMenu v-model="statusFilter" :items="statusItems" value-key="value" placeholder="Any status" clear class="w-56" aria-label="Status filter" data-testid="status-filter" />
+      <p class="text-sm text-muted">Filter: <span data-testid="status-filter-value">{{ statusFilter ?? "any" }}</span></p>
     </GallerySection>
 
-    <GallerySection spec="autocomplete" title="Autocomplete" description="UInputMenu: type to narrow, arrow keys to choose.">
+    <GallerySection :behaviours="['autocomplete']" title="Autocomplete (UInputMenu)" description="Type to narrow, arrow keys to choose.">
       <UFormField label="Customer">
-        <UInputMenu v-model="customer" :items="customers" placeholder="Start typing" class="w-56" />
+        <UInputMenu v-model="customer" :items="customers" placeholder="Start typing" class="w-56" data-testid="customer-autocomplete" />
       </UFormField>
+      <p class="text-sm text-muted">Chosen: <span data-testid="customer-chosen">{{ customer }}</span></p>
     </GallerySection>
 
-    <GallerySection spec="search-input" title="Search input" description="A search box (the table toolbar's; debounced by useListState).">
+    <GallerySection title="Search input (UInput)" description="A search box (the table toolbar's; debounced by useListState).">
       <UInput v-model="search" type="search" icon="i-lucide-search" placeholder="Search orders…" aria-label="Search orders" class="w-64" />
     </GallerySection>
 
-    <GallerySection spec="checkbox" title="Checkbox group">
+    <GallerySection title="Checkbox group (UCheckboxGroup)">
       <UCheckboxGroup v-model="channels" legend="Notify by" :items="['email', 'sms', 'webhook']" />
     </GallerySection>
 
-    <GallerySection spec="date-range" title="Date range" description="UInputDate in range mode, edited by keyboard.">
+    <GallerySection :behaviours="['date-range']" title="Date range (UInputDate)" description="Range mode, edited segment by segment by keyboard.">
       <UFormField label="Period" name="period">
         <UInputDate v-model="period" range data-testid="period" />
       </UFormField>
       <p class="text-sm text-muted">Selected: <span data-testid="period-text">{{ periodText }}</span></p>
     </GallerySection>
 
-    <GallerySection spec="dirty-form" title="Dirty form (useDirtyForm)" description="Save stays disabled until a value differs from the loaded one; typing it back disables it again; Discard restores.">
+    <GallerySection :behaviours="['dirty-snapshot']" title="Dirty form (useDirtyForm)" description="Save stays disabled until a value differs from the loaded one; typing it back disables it again; Discard restores. UForm's own `dirty` means 'had input', so it is not used for this.">
       <form class="grid max-w-md gap-3" data-testid="profile-form" @submit.prevent="saveProfile">
         <UFormField label="Name"><UInput v-model="profile.name" class="w-full" data-testid="profile-name" /></UFormField>
         <UFormField label="Team"><UInput v-model="profile.team" class="w-full" /></UFormField>

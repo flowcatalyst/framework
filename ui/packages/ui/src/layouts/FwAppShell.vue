@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// ui-kit app-shell.md: Nuxt UI's dashboard layout with the kit's navy sidebar (collapsible, a drawer on
-// phones), navigation filtered by the session's permissions (show/hide only), the signed-in user's
-// menu with Sign out, the colour-mode button, and the page in a `<main>`. The navbar shows the page's
-// title as text only: the page's one `<h1>` is FwPageHeader's (UDashboardNavbar's `title` would add a
-// second). Request failures (403, 5xx, offline) of the provided runtime become toasts here.
+// The application shell (ui-kit app-shell.md) on Nuxt UI's dashboard layout (UDashboardGroup, -Sidebar,
+// -Panel, -Navbar, UNavigationMenu): the kit's navy sidebar (collapsible, a slideover on phones),
+// navigation filtered by the session's permissions (show/hide only), the signed-in user's menu with
+// Sign out, the colour-mode button, and the page in a `<main>`. The navbar shows the page's title as
+// text only: the page's one `<h1>` is its UPageHeader (UDashboardNavbar's `title` would add a second).
+// Request failures (403, 5xx, offline) of the provided runtime become toasts, announced (FwAnnouncer).
 import type { DropdownMenuItem } from "@nuxt/ui/components/DropdownMenu.vue";
 import type { NavigationMenuItem } from "@nuxt/ui/components/NavigationMenu.vue";
 import UButton from "@nuxt/ui/components/Button.vue";
@@ -49,11 +50,15 @@ const runtime = useApiRuntime();
 const permissions = usePermissions();
 useRequestFailureToasts(runtime);
 
-const visible = computed<NavigationMenuItem[]>(() =>
-  navigation
+// Nuxt UI's navigation items as given, minus the entries (and children) the session may not open.
+// `permission` stays on the item: UNavigationMenu passes only link, aria-* and data-* keys on.
+function permitted(items: readonly FwNavItem[]): NavigationMenuItem[] {
+  return items
     .filter((item) => item.permission === undefined || permissions.can(item.permission))
-    .map((item) => ({ label: item.label, to: item.to, ...(item.icon === undefined ? {} : { icon: item.icon }) })),
-);
+    .map((item) => (item.children === undefined ? item : { ...item, children: permitted(item.children) }));
+}
+
+const visible = computed(() => permitted(navigation));
 
 const who = computed(() => {
   if (user !== undefined) {
@@ -75,16 +80,16 @@ function signOut(): void {
   }
 }
 
-// The kit's navy sidebar (ui-kit tokens --sidebar*): navy-900 (dark: navy-950), navy-100 text, white
-// for the current page on a 15% white tint.
+// The kit's navy sidebar (the theme's navy palette): navy-900 (dark: navy-950), navy-100 text, white
+// for the current page on a 15 % white tint, the accent ring for focus.
 const sidebarUi = {
-  root: "bg-[#102a43] text-[#d9e2ec] border-[rgb(255_255_255/0.1)] dark:bg-[#0a1929]",
-  header: "border-b border-[rgb(255_255_255/0.1)]",
-  footer: "border-t border-[rgb(255_255_255/0.1)]",
+  root: "bg-navy-900 text-navy-100 border-white/10 dark:bg-navy-950",
+  header: "border-b border-white/10",
+  footer: "border-t border-white/10",
 };
 const navUi = {
-  link: "text-[#d9e2ec] hover:text-white hover:before:bg-white/10 data-active:text-white data-active:before:bg-white/15 focus-visible:before:ring-[#47a3f3]",
-  linkLeadingIcon: "text-[#bcccdc] group-hover:text-white group-data-active:text-white",
+  link: "text-navy-100 hover:text-white hover:before:bg-white/10 data-active:text-white data-active:before:bg-white/15 focus-visible:before:ring-accent-300",
+  linkLeadingIcon: "text-navy-200 group-hover:text-white group-data-active:text-white",
 };
 </script>
 
@@ -105,12 +110,12 @@ const navUi = {
               icon="i-lucide-circle-user"
               color="neutral"
               variant="ghost"
-              class="min-w-0 flex-1 text-[#d9e2ec] hover:bg-white/10 hover:text-white"
+              class="min-w-0 flex-1 text-navy-100 hover:bg-white/10 hover:text-white"
               :aria-label="`Account: ${who.name}`"
               data-testid="fw-user-menu"
             />
           </UDropdownMenu>
-          <FwColorModeButton class="text-[#d9e2ec] hover:bg-white/10 hover:text-white" />
+          <FwColorModeButton class="text-navy-100 hover:bg-white/10 hover:text-white" />
         </div>
       </template>
     </UDashboardSidebar>

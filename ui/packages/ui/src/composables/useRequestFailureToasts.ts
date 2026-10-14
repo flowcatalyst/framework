@@ -14,7 +14,7 @@ export function useRequestFailureToasts(runtime: ApiRuntime | undefined): void {
   const flash = useFlash();
   const stop = runtime.onFailure((failure) => {
     const text = REQUEST_FAILURE_TEXT[failure.kind];
-    const show = failure.kind === "refused" ? flash.warn : flash.error;
+    const show = failure.kind === "refused" ? flash.warning : flash.error;
     show(text.summary, { detail: text.detail, id: `fw-request-${failure.kind}` });
   });
   onScopeDispose(stop);

@@ -1,9 +1,9 @@
-// The FlowCatalyst theme preset for Nuxt UI (docs/go/ui.md section 11).
+// The FlowCatalyst theme preset for Nuxt UI (docs/ui/nuxt-native.md, "Theme").
 //
-// In plain Vue the Nuxt UI Vite plugin's `ui` option plays the part of Nuxt's `app.config.ts`.
-// `fcTheme` holds the colour aliases and the alias list; `kit.css` (next to this file) holds the
-// token values copied from ui-kit/theme/tokens.css. Both are data: no imports, safe to load in the
-// Vite config (Node) and in the browser.
+// In plain Vue the Nuxt UI Vite plugin's `ui` option plays the part of Nuxt's `app.config.ts`: the
+// colour aliases and the component variants below go there (nuxtUiOptions() in ../vite.ts).
+// `theme.css` (next to this file) sets Nuxt UI's design tokens (--ui-*) from the kit's values. Both
+// are data: no imports, safe to load in the Vite config (Node) and in the browser.
 
 /** Nuxt UI colour aliases mapped to Tailwind palettes (ui-kit tokens: section 11 of docs/go/ui.md). */
 export const fcColors = {
@@ -32,7 +32,8 @@ export const fcColorAliases = [
 /**
  * Icons used by @flowcatalyst/ui's own components. The Nuxt UI icon scan only reads the
  * application's own files, so the package lists its icons here and `nuxtUiOptions()` adds them to
- * the client bundle (a unit test checks the list against the sources).
+ * the client bundle (a unit test checks the list against the sources). Nuxt UI's own icons (its
+ * app config's `ui.icons`: loading, close, chevrons, ...) are bundled by its plugin.
  */
 export const fcIcons = [
   "i-lucide-check",
@@ -48,7 +49,6 @@ export const fcIcons = [
   "i-lucide-inbox",
   "i-lucide-info",
   "i-lucide-list-filter",
-  "i-lucide-loader-circle",
   "i-lucide-log-out",
   "i-lucide-monitor",
   "i-lucide-moon",
@@ -60,12 +60,14 @@ export const fcIcons = [
 ] as const;
 
 /**
- * Per-component theme overrides (Nuxt UI's `ui` option, app.config's `ui` key in Nuxt), where Nuxt
- * UI's default look departs from the kit:
- * - tabs: the kit's tabs (ui-kit tabs.md) are a bordered list whose current tab sits on a neutral
- *   tint with foreground text. Nuxt UI's default (a grey list, the current tab filled with primary)
- *   puts muted text on `bg-elevated` (4.34:1) and white on emerald-600 (3.76:1), two of the U0
- *   light-theme contrast failures; the kit's look passes.
+ * Per-component variants (Nuxt UI's `ui` option, app.config's `ui` key in Nuxt), where Nuxt UI's
+ * default look departs from the kit or fails the gallery's accessibility checks:
+ * - tabs: the kit's tabs (a bordered list, the current tab on a neutral tint with foreground text).
+ *   Nuxt UI's default put muted text on `bg-elevated` (4.34:1) and white on the primary fill.
+ * - pageHeader: UPageHeader is the page's title block (its `<h1>`, description and links); Nuxt UI's
+ *   default is a marketing header (4xl title, a rule, 2rem padding). The kit's is compact.
+ * - alert: the description at full opacity. Nuxt UI draws it at 90 %, which takes the success and
+ *   warning colours of an outline alert below 4.5:1 (4.17 and 4.42 on white).
  */
 export const fcComponentTheme = {
   tabs: {
@@ -78,5 +80,18 @@ export const fcComponentTheme = {
         class: { indicator: "bg-accented rounded-[2px] shadow-none", trigger: "data-[state=active]:text-highlighted" },
       },
     ],
+  },
+  pageHeader: {
+    slots: {
+      root: "mb-4 border-b-0 py-0",
+      wrapper: "flex flex-row flex-wrap items-start justify-between gap-x-4 gap-y-2",
+      title: "text-2xl sm:text-2xl font-semibold",
+      description: "text-sm text-muted",
+      links: "flex flex-wrap items-center gap-2",
+    },
+    variants: { title: { true: { description: "mt-1" } } },
+  },
+  alert: {
+    slots: { description: "opacity-100" },
   },
 };

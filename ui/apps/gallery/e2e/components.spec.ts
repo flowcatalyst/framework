@@ -1,10 +1,10 @@
-// The Behaviour and Accessibility sections of the ui-kit specs, checked on the gallery's Fw*
-// components (docs/go/ui.md section 12: keyboard operation, focus trap and return, Escape, discard
-// question, live announcements). Every test also asserts the strict CSP stayed clean.
-import { expect, openPage, test } from "./fixtures.ts";
+// The behaviours of the FlowCatalyst parts (src/behaviours.ts; docs/go/ui.md section 12: keyboard
+// operation, focus trap and return, Escape, live announcements). Each test names the checklist rows it
+// exercises (`covers`); every test also asserts the strict CSP stayed clean.
+import { covers, expect, openPage, test } from "./fixtures.ts";
 
 test.describe("table toolbar (FwTableToolbar)", () => {
-  test("filters popover, active count in the button's name, Clear all moves focus to the search box", async ({ page, csp }) => {
+  test("filters popover, active count in the button's name, Clear all moves focus to the search box", covers("list-filter-count", "list-clear-all"), async ({ page, csp }) => {
     await openPage(page, "/lists", "List parts");
     const state = page.getByTestId("toolbar-state");
     await expect(page.getByTestId("fw-toolbar-clear")).toHaveCount(0);
@@ -34,7 +34,7 @@ test.describe("table toolbar (FwTableToolbar)", () => {
 });
 
 test.describe("cursor pager (FwCursorPager + useCursorPagination)", () => {
-  test("Older, Newer and Newest; an unusable control is aria-disabled and keeps focus", async ({ page, csp }) => {
+  test("Older, Newer and Newest; an unusable control is aria-disabled and keeps focus", covers("cursor-paging"), async ({ page, csp }) => {
     await openPage(page, "/lists", "List parts");
     const items = page.getByTestId("pager-items");
     const older = page.getByTestId("fw-pager-older");
@@ -62,7 +62,7 @@ test.describe("cursor pager (FwCursorPager + useCursorPagination)", () => {
 });
 
 test.describe("paginator (FwPaginator)", () => {
-  test("report, page links and rows per page", async ({ page, csp }) => {
+  test("report, page links and rows per page", covers("offset-paging"), async ({ page, csp }) => {
     await openPage(page, "/lists", "List parts");
     const report = page.getByTestId("fw-paginator-report");
     await expect(report).toHaveText("Showing 1 to 50 of 1234 orders");
@@ -76,7 +76,7 @@ test.describe("paginator (FwPaginator)", () => {
 });
 
 test.describe("pick list (FwPickList)", () => {
-  test("filter, tick by keyboard, mirror with a count, remove from the right", async ({ page, csp }) => {
+  test("filter, tick by keyboard, mirror with a count, remove from the right", covers("pick-list"), async ({ page, csp }) => {
     await openPage(page, "/lists", "List parts");
     const available = page.getByTestId("fw-pick-available");
     const count = page.getByTestId("fw-pick-count");
@@ -99,7 +99,7 @@ test.describe("pick list (FwPickList)", () => {
 });
 
 test.describe("toggle group (FwToggleGroup)", () => {
-  test("a named group of pressed buttons; arrow keys move, Space presses; exclusive keeps one", async ({ page, csp }) => {
+  test("a named group of pressed buttons; arrow keys move, Space presses; exclusive keeps one", covers("toggle-group"), async ({ page, csp }) => {
     await openPage(page, "/actions", "Actions");
     const group = page.getByRole("group", { name: "View" });
     const table = group.getByRole("button", { name: "Table" });
@@ -118,7 +118,7 @@ test.describe("toggle group (FwToggleGroup)", () => {
 });
 
 test.describe("row actions (FwRowActions)", () => {
-  test("names include the row; a disabled action says why; destructive is confirmed first", async ({ page, csp }) => {
+  test("names include the row; a disabled action says why; destructive is confirmed first", covers("row-actions", "row-action-disabled", "destructive-confirmed", "alert-dialog"), async ({ page, csp }) => {
     await openPage(page, "/actions", "Actions");
     await page.getByRole("button", { name: "Edit Orders pool" }).click();
     await expect(page.getByTestId("last-action")).toHaveText("edit pool-orders");
@@ -151,7 +151,7 @@ test.describe("row actions (FwRowActions)", () => {
 });
 
 test.describe("alert dialog and confirmations (FwAlertDialog, useConfirm)", () => {
-  test("alertdialog: Cancel focused, focus trapped, the mask does not dismiss, Escape cancels, focus returns", async ({ page, csp }) => {
+  test("alertdialog: Cancel focused, focus trapped, the mask does not dismiss, Escape cancels, focus returns", covers("alert-dialog"), async ({ page, csp }) => {
     await openPage(page, "/overlays", "Overlays");
     const trigger = page.getByTestId("open-alert");
     await trigger.click();
@@ -172,7 +172,7 @@ test.describe("alert dialog and confirmations (FwAlertDialog, useConfirm)", () =
     await csp.expectClean();
   });
 
-  test("alertdialog: the confirmed action keeps it open while busy", async ({ page, csp }) => {
+  test("alertdialog: the confirmed action keeps it open while busy", covers("alert-busy"), async ({ page, csp }) => {
     await openPage(page, "/overlays", "Overlays");
     await page.getByTestId("open-alert").click();
     const confirm = page.getByTestId("fw-alert-confirm");
@@ -183,26 +183,27 @@ test.describe("alert dialog and confirmations (FwAlertDialog, useConfirm)", () =
     await csp.expectClean();
   });
 
-  test("useConfirm resolves true or false and returns focus to the button", async ({ page, csp }) => {
+  test("useConfirm resolves true or false and returns focus to the button", covers("confirm-promise"), async ({ page, csp }) => {
     await openPage(page, "/overlays", "Overlays");
-    for (const tone of ["danger", "warn", "primary"] as const) {
-      const button = page.getByTestId(`confirm-${tone}`);
+    for (const color of ["error", "warning", "primary"] as const) {
+      const button = page.getByTestId(`confirm-${color}`);
       await button.click();
       const dialog = page.getByRole("alertdialog", { name: "Cancel order 1042?" });
+      await expect(dialog).toHaveAccessibleDescription("The customer is told at once. A cancelled order cannot be reopened.");
       await expect(dialog.getByRole("button", { name: "Keep order" })).toBeFocused();
       await dialog.getByRole("button", { name: "Cancel order" }).click();
-      await expect(page.getByTestId("confirm-result")).toHaveText(`confirmed (${tone})`);
+      await expect(page.getByTestId("confirm-result")).toHaveText(`confirmed (${color})`);
       await expect(button).toBeFocused();
     }
-    await page.getByTestId("confirm-danger").click();
+    await page.getByTestId("confirm-error").click();
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("confirm-result")).toHaveText("cancelled (danger)");
+    await expect(page.getByTestId("confirm-result")).toHaveText("cancelled (error)");
     await csp.expectClean();
   });
 });
 
 test.describe("flash messages (useFlash, useRequestFailureToasts)", () => {
-  test("announced; success leaves after 3 s, an error stays; request failures show once per kind", async ({ page, csp }) => {
+  test("announced; success leaves after 3 s, an error stays; request failures show once per kind", covers("flash-announced", "flash-timing", "request-failures"), async ({ page, csp }) => {
     await openPage(page, "/feedback", "Feedback");
     await page.getByTestId("flash-success").click();
     await page.getByTestId("flash-error").click();
@@ -230,8 +231,8 @@ test.describe("flash messages (useFlash, useRequestFailureToasts)", () => {
   });
 });
 
-test.describe("values (FwCodeBlock, FwLocalTime, FwEmptyState, FwDetailField)", () => {
-  test("code block: a named, focusable scroll region; Copy writes the clipboard and says so", async ({ page, context, csp }) => {
+test.describe("values (FwCodeBlock, FwLocalTime, FwDetailField) and empty states", () => {
+  test("code block: a named, focusable scroll region; Copy writes the clipboard and says so", covers("code-copy"), async ({ page, context, csp }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await openPage(page, "/values", "Values and code");
     const block = page.getByTestId("code-json");
@@ -247,7 +248,7 @@ test.describe("values (FwCodeBlock, FwLocalTime, FwEmptyState, FwDetailField)", 
     await csp.expectClean();
   });
 
-  test("local time: the viewer's zone in the text, UTC in the title; empty and absent values", async ({ page, csp }) => {
+  test("local time: the viewer's zone in the text, UTC in the title; empty and absent values", covers("local-time", "detail-fields"), async ({ page, csp }) => {
     await openPage(page, "/values", "Values and code");
     const fixed = page.getByTestId("local-time-fixed");
     await expect(fixed).toHaveAttribute("datetime", "2026-10-06T08:30:00Z");
@@ -257,16 +258,18 @@ test.describe("values (FwCodeBlock, FwLocalTime, FwEmptyState, FwDetailField)", 
     await csp.expectClean();
   });
 
-  test("empty state: Clear filters when filtered", async ({ page, csp }) => {
+  test("empty state (UEmpty): what is missing and the next step", covers("empty-state"), async ({ page, csp }) => {
     await openPage(page, "/feedback", "Feedback");
-    await page.getByTestId("empty-filtered").getByRole("button", { name: "Clear filters" }).click();
-    await expect(page.getByText("Filters cleared.")).toBeVisible();
+    const empty = page.getByTestId("empty-jobs");
+    await expect(empty).toContainText("No dispatch jobs yet");
+    await empty.getByRole("button", { name: "Import jobs" }).click();
+    await expect(page.getByText("Import started")).toBeVisible();
     await csp.expectClean();
   });
 });
 
 test.describe("dirty form (useDirtyForm)", () => {
-  test("Save is enabled only while the values differ from the snapshot", async ({ page, csp }) => {
+  test("Save is enabled only while the values differ from the snapshot", covers("dirty-snapshot"), async ({ page, csp }) => {
     await openPage(page, "/forms", "Forms");
     const save = page.getByTestId("profile-save");
     const name = page.getByTestId("profile-name");
@@ -284,7 +287,7 @@ test.describe("dirty form (useDirtyForm)", () => {
 });
 
 test.describe("application shell (FwAppShell)", () => {
-  test("navigation hides what the session may not open; the current page is marked; Sign out", async ({ page, csp }) => {
+  test("navigation hides what the session may not open; the current page is marked; Sign out", covers("shell-nav-permissions", "shell-current-page", "shell-sign-out", "one-h1"), async ({ page, csp }) => {
     await openPage(page, "/shell", "Application shell");
     const nav = page.getByRole("navigation", { name: "Main" });
     await expect(nav.getByRole("link", { name: "Shell" })).toHaveAttribute("aria-current", "page");

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { FwEmptyState, FwPageHeader, FwSpinner, FwStatusBadge, FwTag, useFlash, type TagSeverity } from "@flowcatalyst/ui";
+import { FwStatusBadge, useFlash, type StatusColor } from "@flowcatalyst/ui";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import UBadge from "@nuxt/ui/components/Badge.vue";
 import UButton from "@nuxt/ui/components/Button.vue";
+import UEmpty from "@nuxt/ui/components/Empty.vue";
+import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import UProgress from "@nuxt/ui/components/Progress.vue";
 import USkeleton from "@nuxt/ui/components/Skeleton.vue";
 import { shallowRef } from "vue";
@@ -10,10 +12,9 @@ import { getOrder } from "../api/orders-demo/sdk.gen.ts";
 import GallerySection from "../components/GallerySection.vue";
 
 const flash = useFlash();
-const severities: TagSeverity[] = ["success", "info", "warn", "danger", "secondary", "primary"];
 const badgeColors = ["primary", "success", "info", "warning", "error", "neutral"] as const;
-const statusMap: Readonly<Record<string, TagSeverity>> = { OPEN: "info", PLACED: "success", CANCELLED: "secondary", FAILED: "danger" };
-const filtered = shallowRef(true);
+const statusColors: Readonly<Record<string, StatusColor>> = { OPEN: "info", PLACED: "success", ON_HOLD: "warning", CANCELLED: "neutral", FAILED: "error" };
+const imported = shallowRef(false);
 
 /** Calls the fake server with ids that answer 403, 500 or a network failure (src/fake-server.ts). */
 async function fail(id: "fail-403" | "fail-500" | "fail-network"): Promise<void> {
@@ -23,20 +24,25 @@ async function fail(id: "fail-403" | "fail-500" | "fail-network"): Promise<void>
 
 <template>
   <div class="space-y-6">
-    <FwPageHeader title="Feedback" subtitle="Alerts, toasts, badges and tags, progress, skeletons, spinners and empty states" />
+    <UPageHeader title="Feedback" description="Alerts, toasts, badges, progress, skeletons and empty states" />
 
-    <GallerySection spec="alert flash-banner" title="Alert and flash banner" description="An inline banner rendered with the page (after a redirect, a form-level error).">
+    <GallerySection title="Alert (UAlert)" description="An inline banner rendered with the page (after a redirect, a form-level error). Descriptions at full opacity (fcComponentTheme).">
       <UAlert title="Order saved" description="Order 1042 was saved." color="success" variant="outline" icon="i-lucide-circle-check" />
       <UAlert title="The import is running" description="New orders appear when it finishes." color="info" variant="outline" icon="i-lucide-info" />
+      <UAlert title="Two lines could not be priced" description="Check the price list." color="warning" variant="outline" icon="i-lucide-triangle-alert" />
       <UAlert title="Validation failed" description="Two fields need attention." color="error" variant="outline" icon="i-lucide-circle-x" />
       <UAlert title="Neutral note" description="Dismissible." color="neutral" variant="subtle" close />
     </GallerySection>
 
-    <GallerySection spec="flash-stack" title="Flash messages (useFlash) and request failures" description="Success and info leave after 3 s and 5 s; warnings and errors stay until dismissed. A refused, failed or unreachable call shows the fallback message once.">
+    <GallerySection
+      :behaviours="['flash-announced', 'flash-timing', 'request-failures']"
+      title="Flash messages (useFlash) and request failures (useRequestFailureToasts)"
+      description="UToast, announced through FwAnnouncer. Success and info leave after 3 s and 5 s; warnings and errors stay until dismissed. A refused, failed or unreachable call shows the fallback message once."
+    >
       <div class="flex flex-wrap gap-2">
         <UButton label="Success" color="neutral" variant="outline" data-testid="flash-success" @click="flash.success('Order 1042 was saved.')" />
         <UButton label="Info" color="neutral" variant="outline" data-testid="flash-info" @click="flash.info('The export started.', { detail: 'You will get an email.' })" />
-        <UButton label="Warning" color="neutral" variant="outline" data-testid="flash-warn" @click="flash.warn('Two lines could not be priced.')" />
+        <UButton label="Warning" color="neutral" variant="outline" data-testid="flash-warning" @click="flash.warning('Two lines could not be priced.')" />
         <UButton label="Error" color="neutral" variant="outline" data-testid="flash-error" @click="flash.error('Could not save order 1042.', { detail: 'The order was changed by someone else.' })" />
       </div>
       <div class="flex flex-wrap gap-2">
@@ -46,16 +52,13 @@ async function fail(id: "fail-403" | "fail-500" | "fail-network"): Promise<void>
       </div>
     </GallerySection>
 
-    <GallerySection spec="tag" title="Tag (FwTag) and status badge (FwStatusBadge)" description="The kit's six severities; a status mapped once per application.">
-      <div class="flex flex-wrap gap-2">
-        <FwTag v-for="severity in severities" :key="severity" :label="severity" :severity="severity" />
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <FwStatusBadge v-for="status in ['OPEN', 'PLACED', 'CANCELLED', 'FAILED', 'IN_REVIEW']" :key="status" :status="status" :severities="statusMap" />
+    <GallerySection :behaviours="['status-badge']" title="Status badge (FwStatusBadge)" description="A domain status on UBadge: the application maps its statuses to colours once; the label is sentence case; an unmapped status (IN_REVIEW) is neutral.">
+      <div class="flex flex-wrap gap-2" data-testid="status-badges">
+        <FwStatusBadge v-for="status in ['OPEN', 'PLACED', 'ON_HOLD', 'CANCELLED', 'FAILED', 'IN_REVIEW']" :key="status" :status="status" :colors="statusColors" />
       </div>
     </GallerySection>
 
-    <GallerySection spec="badge" title="Badge" description="UBadge colours in the solid and outline variants.">
+    <GallerySection title="Badge (UBadge)" description="Every colour, solid and outline: the variants FlowCatalyst uses (docs/ui/u1.md, contrast).">
       <div class="flex flex-wrap gap-2">
         <UBadge v-for="color in badgeColors" :key="color" :label="color" :color="color" />
       </div>
@@ -64,30 +67,33 @@ async function fail(id: "fail-403" | "fail-500" | "fail-network"): Promise<void>
       </div>
     </GallerySection>
 
-    <GallerySection spec="progress skeleton" title="Progress and skeleton">
-      <UProgress :model-value="40" class="w-60" aria-label="Import progress" />
+    <GallerySection :behaviours="['loading-named']" title="Progress, loading and skeleton (UProgress, UButton, USkeleton)" description="A named progress bar, an indeterminate one, a busy button; skeletons for content still loading.">
+      <!-- UProgress puts attributes on its wrapper: the progress bar is named by getValueLabel. -->
+      <UProgress :model-value="40" class="w-60" :get-value-label="(value) => `Import progress, ${String(value ?? 0)}%`" />
+      <UProgress class="w-60" :get-value-label="() => 'Loading orders'" />
+      <UButton label="Saving" loading color="neutral" variant="outline" data-testid="busy-button" />
       <div class="space-y-2">
         <USkeleton class="h-4 w-60" />
         <USkeleton class="h-4 w-40" />
       </div>
     </GallerySection>
 
-    <GallerySection spec="spinner" title="Spinner (FwSpinner)" description="Alone it is an image named 'Loading'; inside a labelled button it is decorative.">
-      <div class="flex items-center gap-4">
-        <FwSpinner />
-        <FwSpinner size="size-4" label="Loading orders" />
-        <UButton disabled color="neutral" variant="outline">
-          <FwSpinner decorative size="size-4" /> Saving
-        </UButton>
-      </div>
-    </GallerySection>
-
-    <GallerySection spec="empty-state" title="Empty state (FwEmptyState)" description="With a filter active it offers Clear filters.">
+    <GallerySection :behaviours="['empty-state']" title="Empty state (UEmpty)" description="What is missing and the next step. A list's empty state (FwListPage) adds Clear filters while filtered.">
       <div class="grid gap-4 sm:grid-cols-2">
-        <div class="rounded-[2px] border border-default"><FwEmptyState message="No dispatch jobs yet." /></div>
         <div class="rounded-[2px] border border-default">
-          <FwEmptyState v-if="filtered" message="No orders match these filters." :filtered="true" icon="i-lucide-search-x" data-testid="empty-filtered" @clear="filtered = false" />
-          <FwEmptyState v-else message="Filters cleared." icon="i-lucide-check" />
+          <UEmpty
+            v-if="!imported"
+            icon="i-lucide-inbox"
+            title="No dispatch jobs yet"
+            description="Jobs appear when the first event is dispatched."
+            :actions="[{ label: 'Import jobs', color: 'neutral', variant: 'outline', onClick: () => { imported = true; } }]"
+            variant="naked"
+            data-testid="empty-jobs"
+          />
+          <UEmpty v-else icon="i-lucide-check" title="Import started" variant="naked" />
+        </div>
+        <div class="rounded-[2px] border border-default">
+          <UEmpty icon="i-lucide-search-x" description="No orders match these filters." variant="naked" />
         </div>
       </div>
     </GallerySection>

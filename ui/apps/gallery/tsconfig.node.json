@@ -18,6 +18,6 @@
     "scripts/**/*.ts",
     "e2e/**/*.ts",
     "src/pages.ts",
-    "src/catalog.ts"
+    "src/behaviours.ts"
   ]
 }

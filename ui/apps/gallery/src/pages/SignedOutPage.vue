@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Where the gallery's runtime "navigates" after logout or a 401 (U4 builds the real signed-out page).
-import { FwPageHeader } from "@flowcatalyst/ui";
+import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 
@@ -13,7 +13,7 @@ const from = computed(() => {
 
 <template>
   <div>
-    <FwPageHeader title="Signed out" subtitle="The gallery's stand-in for the signed-out page" />
+    <UPageHeader title="Signed out" description="The gallery's stand-in for the signed-out page" />
     <p class="text-sm" data-testid="signed-out-from">{{ from === "" ? "You signed out." : `Sign-in requested: ${from}` }}</p>
   </div>
 </template>

@@ -213,7 +213,7 @@ async function submitForm(): Promise<void> {
     description="You have unsaved changes. Discard them?"
     confirm-label="Discard"
     cancel-label="Keep editing"
-    tone="danger"
+    color="error"
     @confirm="discard"
   />
 </template>

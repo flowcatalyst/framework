@@ -1,12 +1,13 @@
 // Types shared by the package's components, in a .ts module so that both vue-tsc and the type-aware
 // lint (which sees .vue imports only through the `*.vue` shim) can read them.
+import type { NavigationMenuItem } from "@nuxt/ui";
 import type { RouteLocationRaw } from "vue-router";
 
-/** ui-kit tag.md severities. */
-export type TagSeverity = "success" | "info" | "warn" | "danger" | "secondary" | "primary";
+/** Nuxt UI's colour aliases, as UBadge and UButton take them (the theme's palette). */
+export type StatusColor = "primary" | "secondary" | "success" | "info" | "warning" | "error" | "neutral";
 
-/** ui-kit confirm-dialog.md tones. */
-export type AlertTone = "primary" | "danger" | "warn";
+/** The colours of a confirmation (FwAlertDialog, useConfirm): the confirm button's. */
+export type AlertColor = "primary" | "warning" | "error";
 
 /** ui-kit drawer.md sizes. */
 export type DrawerSize = "default" | "wide" | "two-thirds";
@@ -44,11 +45,12 @@ export interface PickItem {
   readonly note?: string;
 }
 
-/** One entry of FwAppShell's navigation. */
-export interface FwNavItem {
-  readonly label: string;
-  readonly to: RouteLocationRaw;
-  readonly icon?: string;
-  /** Shown only when the session holds it (the server still checks every operation). */
+/**
+ * One entry of FwAppShell's navigation: Nuxt UI's navigation item (label, icon, `to`, badge, children,
+ * ...) and the permission that shows it. An entry (or child) whose permission the session does not
+ * hold is left out; the server still checks every operation.
+ */
+export interface FwNavItem extends NavigationMenuItem {
   readonly permission?: string;
+  children?: FwNavItem[];
 }

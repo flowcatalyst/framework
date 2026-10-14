@@ -24,7 +24,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { listOrders, placeOrder } from "../../api/orders-demo/sdk.gen.ts";
 import type { OrderSummaryView, PlaceOrderBody } from "../../api/orders-demo/types.gen.ts";
 import { zPlaceOrderBody } from "../../api/orders-demo/zod.gen.ts";
-import { money, REFRESH_ORDERS, STATUS_SEVERITY } from "./orders.ts";
+import { money, REFRESH_ORDERS, STATUS_COLORS } from "./orders.ts";
 
 const route = useRoute();
 const router = useRouter();
@@ -50,11 +50,6 @@ onMounted(() => {
   void pager.loadFirst();
 });
 
-// The document has no search parameter: the search narrows the loaded page.
-const rows = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  return q === "" ? pager.items.value : pager.items.value.filter((o) => `${o.id} ${o.customer}`.toLowerCase().includes(q));
-});
 const selected = computed(() => {
   const id = route.params["id"];
   return typeof id === "string" ? id : undefined;
@@ -67,7 +62,7 @@ const columns: TableColumn<OrderSummaryView>[] = [
     cell: ({ row }) => h(RouterLink, { to: { path: `/orders/${row.original.id}`, query: route.query }, class: "font-medium text-highlighted underline-offset-2 hover:underline" }, () => row.original.id),
   },
   { accessorKey: "customer", header: "Customer" },
-  { accessorKey: "status", header: "Status", cell: ({ row }) => h(FwStatusBadge, { status: row.original.status, severities: STATUS_SEVERITY }) },
+  { accessorKey: "status", header: "Status", cell: ({ row }) => h(FwStatusBadge, { status: row.original.status, colors: STATUS_COLORS }) },
   { accessorKey: "lineCount", header: "Lines", meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
   { accessorKey: "totalCents", header: "Total", cell: ({ row }) => money(row.original.totalCents), meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
 ];
@@ -111,7 +106,7 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
     v-model:search="search"
     title="Orders"
     subtitle="FwListPage, FwTableToolbar, FwCursorPager, FwRecordDrawer and FwFormDialog on the generated client"
-    :data="rows"
+    :data="pager.items.value"
     :columns="columns"
     :loading="pager.loading.value"
     :active-filter-count="status === null ? 0 : 1"
@@ -119,7 +114,8 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
     :selected-key="selected"
     empty-message="No orders match."
     search-placeholder="Search this page…"
-    data-spec="data-table"
+    search-loaded-rows
+    data-behaviour="list-url-state list-empty-clear list-page-search list-row-open"
     @select="open"
     @refresh="pager.refresh"
     @clear="list.clearFilters"
@@ -144,7 +140,10 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
       />
     </template>
     <template #drawer>
-      <p class="mt-2 text-sm text-muted" data-spec="drawer form-dialog">
+      <p
+        class="mt-2 text-sm text-muted"
+        data-behaviour="drawer-child-route drawer-non-modal drawer-focus drawer-discard form-schema form-server-errors form-busy form-discard form-number-commit form-int64 record-create"
+      >
         Open an order for its record drawer (a child route: Back closes it); New order and Add line are form dialogs.
       </p>
       <RouterView />

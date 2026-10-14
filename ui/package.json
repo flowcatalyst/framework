@@ -16,6 +16,7 @@
     "api:drift": "pnpm -r --if-present drift",
     "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm api:drift && pnpm licences && pnpm gallery:e2e",
     "licences": "node scripts/check-licences.ts",
+    "licences:write": "node scripts/check-licences.ts --write",
     "gallery:screenshots": "pnpm --filter @flowcatalyst/gallery screenshots"
   },
   "devDependencies": {
