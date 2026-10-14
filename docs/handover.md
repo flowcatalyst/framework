@@ -248,7 +248,8 @@ clean `pnpm install --frozen-lockfile` (84 vitest tests, 68 Playwright tests). F
 - Tabs follow the kit's look, which removed two of the four U0 contrast pairs; the kit's light 600
   shades and the dark destructive red still fail AA in several places (exact list in `ui/u1.md`).
 - The orders example's page type has no `hasMore` and `listOrders` no search parameter (`ui/u2.md`).
-- Next: U3, the Java `examples/orders-demo/web` on its generated client (`fwOpenApiConfig`), served by MS.
+- **U3 built 2026-10-15** (`ui/apps/orders`, `docs/ui/u3.md`): list, drawer, create, add line, cancel with confirm, sign-in/out, permissions and error paths on the real Java demo (`OrdersSpaModule`, strict CSP, `OrdersE2e` launcher with Testcontainers PostgreSQL and `TestOidcProvider`); 28 Playwright tests, strict axe. Found and fixed: the Vite dev server could not run (CSS lift), Zod's developer messages in forms. Open: FwAppShell user menu modal (axe), `Spa` default still baseline, phone list strategy, licence notices for the app (u3.md G1 to G14).
+- Next (after U3): U4.
 
 **U1 revised: Nuxt UI used natively (2026-10-14, owner rulings A to D; audit in
 [`ui/nuxt-native.md`](ui/nuxt-native.md), results in [`ui/u1.md`](ui/u1.md)).** The ui-kit specs are a

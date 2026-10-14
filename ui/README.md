@@ -4,7 +4,8 @@ The shared UI of the FlowCatalyst Java and Go frameworks: **Nuxt UI v4 on plain 
 Nuxt, no Nitro), strict TypeScript. Design: [`../docs/go/ui.md`](../docs/go/ui.md). Results with the
 evidence: U0 [`../docs/ui/u0.md`](../docs/ui/u0.md), U1 (components)
 [`../docs/ui/u1.md`](../docs/ui/u1.md), U2 (partials, composables, `@flowcatalyst/api-runtime`)
-[`../docs/ui/u2.md`](../docs/ui/u2.md). Which Nuxt UI component to use directly and why each `Fw*` part
+[`../docs/ui/u2.md`](../docs/ui/u2.md), U3 (the orders application on a real backend, and the gaps it found)
+[`../docs/ui/u3.md`](../docs/ui/u3.md). Which Nuxt UI component to use directly and why each `Fw*` part
 exists: [`../docs/ui/nuxt-native.md`](../docs/ui/nuxt-native.md) (Nuxt UI first; a `Fw*` part only for
 FlowCatalyst behaviour).
 
@@ -22,6 +23,8 @@ ui/
                         and the generated client of the framework's own endpoints (auth.json)
   apps/gallery/         @flowcatalyst/gallery: the platform behaviour checklist (src/behaviours.ts), on FwAppShell,
                         a generated orders client against an in-page fake server; strict-CSP server, Playwright
+  apps/orders/          @flowcatalyst/orders-web (U3): the orders application on the Java examples/orders-demo, built into its
+                        web/dist, Playwright against the real backend (../docs/ui/u3.md)
   samples/openapi/      a hand-written OpenAPI 3.1 document and the hey-api client generated from it (U0 check)
 ```
 
@@ -40,6 +43,8 @@ Node 24 and pnpm 10.27 (`packageManager`); nothing is installed globally. From `
 | `pnpm licences` | fails on a dependency licence that is not permissive and not reviewed, or when `THIRD-PARTY-NOTICES` does not match the gallery build (run after `pnpm build`) |
 | `pnpm licences:write` | rewrites `THIRD-PARTY-NOTICES` from the gallery build (an application: `node scripts/check-licences.ts --write --dist <dist> --out <file>`) |
 | `pnpm gallery:e2e` | builds the gallery, serves it with the strict CSP (port 4391) and runs Playwright + strict axe; fails when a row of the behaviour checklist is exercised by no passing test |
+| `pnpm orders:e2e` | builds the orders application into `examples/orders-demo/web/dist` and runs Playwright against the real Java demo (Maven, Docker for PostgreSQL; ports 4392 and 4393); `MAVEN_ARGS=-o` builds offline |
+| `pnpm orders:dev` | Vite dev server for the orders application on 5175, proxying `/api` and `/auth` to `ORDERS_BACKEND` |
 | `pnpm check` | all of the above, in that order |
 | `pnpm gallery:dev` | Vite dev server for the gallery on 5174 (no CSP in development) |
 | `pnpm gallery:fonts` | the font comparison: builds `dist-fonts/` (the comparison fonts, gallery only), screenshots each font, light and dark, into `apps/gallery/screenshots/fonts/` ([`../docs/ui/fonts.md`](../docs/ui/fonts.md)) |
