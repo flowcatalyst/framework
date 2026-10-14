@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules -->
+<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -40,6 +40,37 @@ App.builder()
     .shutdownDrain(Duration.ofSeconds(30))
     .health(HealthPolicy.defaults().withCritical("flowcatalyst"))
 ```
+
+## Database (`database.instances.<n>`)
+
+`url`, `username`, `password` and `database.default` stay.
+
+| Key | Default | Now |
+|---|---|---|
+| `pool.max` | `10` | `DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(int))` (1 to 1000) |
+| `pool.min-idle` | `1` | `DatabasePool.withMinIdle(int)` (0 to `maxSize`) |
+| `pool.connect-timeout` | `5s` | `DatabasePool.withConnectTimeout(Duration)` (250 ms to 5 min; values under 250 ms used to be raised silently, now they are refused) |
+| `migrate: false` | `true` | `DatabaseModule.builder().migrate(false)` |
+| `driver: postgresql` | | delete it |
+
+A pool for one instance: `.pool("reporting", DatabasePool...)`. Several instances with different
+`migrate` values are no longer expressible: migrations only ever ran on the default instance, so
+only its value mattered.
+
+```java
+// before: database.instances.main: { url: ..., pool: { max: 20 }, migrate: false }
+DatabaseModule.builder().pool(DatabasePool.defaults().withMaxSize(20)).migrate(false).build()
+```
+
+## Redis (`redis.instances.<n>`)
+
+`url`, `password` and `redis.default` stay.
+
+| Key | Default | Now |
+|---|---|---|
+| `timeout` | `2s` | `RedisModule.builder().pool(RedisPool.defaults().withTimeout(Duration))` (more than 0, at most 5 min) |
+| `pool.max` | `16` | `RedisPool.withMaxSize(int)` (1 to 1000) |
+| `driver: redis` | | delete it |
 
 ## Rate limits (`rate-limits.*`)
 

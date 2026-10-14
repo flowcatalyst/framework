@@ -1,4 +1,5 @@
-# Three lock instances, one per driver. Every value can be overridden by the environment variable
+# Connections only: the pools are code (LocksDemo.builder()). Three lock instances, one per driver.
+# Every value can be overridden by the environment variable
 # named after its path, for example DATABASE_INSTANCES_MAIN_URL or REDIS_INSTANCES_DEFAULT_URL.
 # Put the database password in config/secrets.local.yaml (never committed) or in
 # DATABASE_INSTANCES_MAIN_PASSWORD.
@@ -10,13 +11,11 @@ database:
       url: jdbc:postgresql://localhost:5432/app
       username: app
       password: ""
-      pool: { max: 10, min-idle: 1, connect-timeout: 5s }
-      migrate: true
 
 redis:
   default: default
   instances:
-    default: { url: "redis://localhost:6379/0", timeout: 2s }
+    default: { url: "redis://localhost:6379/0" }
 
 locks:
   default: main

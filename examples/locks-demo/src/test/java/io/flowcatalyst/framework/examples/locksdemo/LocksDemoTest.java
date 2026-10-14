@@ -60,7 +60,6 @@ class LocksDemoTest {
     Map<String, String> bad = Map.of(
         "DATABASE_INSTANCES_MAIN_URL", "jdbc:postgresql://127.0.0.1:1/none",
         "DATABASE_INSTANCES_MAIN_PASSWORD", "x",
-        "DATABASE_INSTANCES_MAIN_POOL_CONNECT_TIMEOUT", "1s",
         "REDIS_INSTANCES_DEFAULT_URL", redis.url());
     Throwable t = catchThrowable(() -> LocksDemo.builder().configDirectory(Path.of("config")).environment(bad).start());
     assertThat(t).isInstanceOf(StartupException.class);

@@ -26,6 +26,20 @@ final class FrameworkKeys {
       l.add(k("app.metrics." + s, "core", "AppBuilder.metrics(MetricsOptions)"));
     }
 
+    // database and redis
+    String pool = "DatabaseModule.builder().pool(DatabasePool)";
+    for (String s : List.of("max", "min-idle", "connect-timeout")) {
+      l.add(k("database.instances.*.pool." + s, "database", pool));
+    }
+    l.add(k("database.instances.*.pool", "database", pool));
+    l.add(k("database.instances.*.migrate", "database", "DatabaseModule.builder().migrate(boolean)"));
+    l.add(k("database.instances.*.driver", "database", "nothing: PostgreSQL is the only database driver"));
+    String redisPool = "RedisModule.builder().pool(RedisPool)";
+    l.add(k("redis.instances.*.timeout", "redis", redisPool));
+    l.add(k("redis.instances.*.pool.max", "redis", redisPool));
+    l.add(k("redis.instances.*.pool", "redis", redisPool));
+    l.add(k("redis.instances.*.driver", "redis", "nothing: one Redis driver"));
+
     // rate limits (MA item 10)
     String limiters = "MemoryRateLimiter.create or RedisRateLimiter.create, built in code";
     l.add(k("rate-limits.default", "rate-limit", limiters));

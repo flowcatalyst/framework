@@ -1,4 +1,4 @@
-<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceFactory, InstanceConfig, HealthPolicy, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
+<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceFactory, InstanceConfig, HealthPolicy, DatabaseModule, DatabasePool, RedisModule, RedisPool, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
 # Modules and the application lifecycle
 
 An application is a list of **modules** given to a builder, in code. Everything the framework
@@ -123,14 +123,32 @@ the SQL files (your module class is the natural choice). The database module col
 
 `DatabaseModule` provides `Databases` (the registry) and a `Database` per configured instance, each
 a HikariCP pool over the PostgreSQL JDBC driver, with a `database:<name>` health check.
-Configuration is in [Config](config.md#named-instances). `Database` has `dataSource()` and `name()`.
+The connections are configuration ([Config](config.md#named-instances)); the pools and migrations
+are code. `new DatabaseModule()` is the defaults (`DatabasePool.defaults()`: 10 connections, 1
+idle, a 5 s connect timeout; migrations on). From `DatabaseModuleTest`:
+
+```java
+DatabaseModule module =
+    DatabaseModule.builder()
+        .pool(DatabasePool.defaults().withMaxSize(7))
+        .pool("second", DatabasePool.defaults().withMaxSize(2).withMinIdle(0))
+        .build();
+```
+
+`DatabasePool` checks its ranges when built (`maxSize` 1 to 1000, `minIdle` 0 to `maxSize`,
+`connectTimeout` 250 ms to 5 min; `IllegalArgumentException`). A pool named for an instance that
+is not configured fails start-up. `.migrate(false)` stops migrations from running at start-up (a
+separate job applies them). Each option also takes a function of `Config` (`pool(config -> ...)`,
+`migrate(config -> ...)`) to read a setting of your own ([Config](config.md#making-a-number-tunable)).
+`RedisModule` works the same way with `RedisPool` (`timeout` 2 s, more than 0 and at most 5 min;
+`maxSize` 16, 1 to 1000). `Database` has `dataSource()` and `name()`.
 
 Migrations are plain SQL files, forward only, named `V<version>__<description>.sql` with a
 positive integer version (for example `V0001__create_orders.sql`). Each module contributes at most
 one set (its module id plus a classpath location, found through the class loader of the class the
 module passes to `MigrationSet.contribute`); your application's module contributes its own the
 same way. Sets are applied to the **default** database instance, in module registration order,
-and by version within a set, only when that instance's `migrate` is true (the default). Each file
+and by version within a set, unless the module was built with `.migrate(false)`. Each file
 runs in its own transaction together with its row in `fw_schema_history`, under a PostgreSQL
 advisory lock so instances starting together apply each file once. A changed checksum of an
 applied file, a missing applied file, or a skipped lower version fails start-up.

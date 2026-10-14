@@ -1,5 +1,6 @@
-# One PostgreSQL. Every value can be overridden by the environment variable named after its path,
-# for example DATABASE_INSTANCES_MAIN_URL. Put the password in config/secrets.local.yaml (never
+# One PostgreSQL: its connection only. The pool and migrations are code (DatabaseModule's
+# defaults). Every value can be overridden by the environment variable named after its path, for
+# example DATABASE_INSTANCES_MAIN_URL. Put the password in config/secrets.local.yaml (never
 # committed) or in DATABASE_INSTANCES_MAIN_PASSWORD.
 
 database:
@@ -9,5 +10,3 @@ database:
       url: jdbc:postgresql://localhost:5432/app
       username: app
       password: ""
-      pool: { max: 10, min-idle: 1, connect-timeout: 5s }
-      migrate: true
