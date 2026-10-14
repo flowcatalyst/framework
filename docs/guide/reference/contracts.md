@@ -11,6 +11,7 @@ end of [STATUS](../STATUS.md#where-the-guide-and-the-contracts-can-differ).
 | Contract | Covers | Guide page |
 |---|---|---|
 | [core](../../contracts/core.md) | modules and the application lifecycle, named instances and drivers, `Context`, config, commands | [Modules and lifecycle](../modules-and-lifecycle.md), [Config](../config.md), [Context](../context.md) |
+| [config and code](../../contracts/config-and-code.md) | configuration holds connections and secrets only; every behavioural setting is code (options records, drivers chosen in code), removed keys fail start-up, claimed components (owner ruling 2026-10-14; **breaking**) | [Config](../config.md) |
 | [database and Redis](../../contracts/database-and-redis.md) | database instances, migrations, Redis connections | [Modules and lifecycle](../modules-and-lifecycle.md#the-database-module-and-migrations), [Config](../config.md) |
 | [locks](../../contracts/locks.md) | keys, leases, fencing tokens, `withLock`, the three drivers, the contract test suite | [Locks](../locks.md) |
 | [write path](../../contracts/write-path.md) | aggregates, repositories, use cases, optimistic locking, events, the outbox, ids | [The write path](../write-path.md) |

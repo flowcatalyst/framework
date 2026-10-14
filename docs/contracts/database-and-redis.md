@@ -5,6 +5,11 @@ own contract.
 
 ## 1. Database instances
 
+*Amended 2026-10-14 ([config and code](config-and-code.md), sections 3.2 and 3.3): `pool.*`, `migrate`, Redis `timeout` and
+`pool.max`, and `driver` are no longer configuration. They are `DatabaseModule.builder().pool(..)`
+and `.migrate(..)`, `RedisModule.builder().pool(..)`, with the same defaults; an instance section
+holds `url`, `username` and `password` (Redis: `url`, `password`).*
+
 PostgreSQL only in M1. Named instances, configured like any capability:
 
 ```yaml

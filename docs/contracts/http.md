@@ -199,6 +199,10 @@ CreateOrder body = request.json(CreateOrder.V);
 
 ## 8. Server (Jetty)
 
+*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.5): `http.max-body-bytes`, `http.request-timeout` and
+`http.shutdown-grace` are `HttpOptions` given to `new JettyHttpModule(options)`, with the same
+defaults; the settings table below keeps `http.host` and `http.port` only.*
+
 `JettyHttpModule` (module id `http`) provides `Routes`, registers the health endpoints in `boot`, compiles the route
 table and starts the server in `started` (after every module's `boot`), and stops it in
 `shutdown`. **Module order is irrelevant**: the module may be listed before or after the modules

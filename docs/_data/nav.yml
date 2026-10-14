@@ -59,6 +59,7 @@
 - group: Design documents
   items:
     - { title: Core contract, path: contracts/core.md }
+    - { title: Config and code contract, path: contracts/config-and-code.md }
     - { title: Database and Redis, path: contracts/database-and-redis.md }
     - { title: Locks contract, path: contracts/locks.md }
     - { title: Write path contract, path: contracts/write-path.md }

@@ -107,6 +107,11 @@ can pass the fencing token on to what it writes.
 
 ## 5. Drivers
 
+*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.4): lock stores are wired in code,
+`LocksModule.builder().store(name, LockStores.memory() | DatabaseLockStores.database(..) |
+RedisLockStores.redis(..)).defaultStore(name)`; there is no `locks` configuration. Where a driver
+below names a config key (`database`, `connection`, `prefix`), read the factory's argument.*
+
 ### `memory`
 
 Locks only within one process: for a single instance, local development and tests. Two

@@ -77,6 +77,12 @@ provides the type. `find(Class<T>)` is the same read returning `Optional<T>` (no
 optional collaborators. No reflection. Only one
 provider per type; named variants are reached through their capability's registry (section 2).
 
+*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.1): the settings `app.shutdown.drain`,
+`app.health.timeout`, `app.health.critical`, `app.health.informational`, `app.metrics.driver` and
+`app.metrics.max-series` below moved to code: `AppBuilder.shutdownDrain(Duration)`,
+`AppBuilder.health(HealthPolicy)` and `AppBuilder.metrics(MetricsOptions)`, with the same defaults.
+Where this section says "configuration wins", read "the `HealthPolicy` wins".*
+
 **Shutdown** (`App.close()`, idempotent, also run from a JVM shutdown hook the builder may
 install): module `shutdown` hooks in reverse module order (for every module whose `boot` ran, which
 includes any whose `started` ran or failed), then every built service that is
@@ -107,6 +113,12 @@ check is up, `criticality(name)` says which a check ran with.
 - The HTTP side (http contract section 8) answers `/health/ready` from `isReady()`.
 
 ## 2. Named instances and drivers
+
+*Amended 2026-10-14 ([config and code](config-and-code.md), section 2.1): driver names are gone from configuration. `Drivers`,
+`DriverFactory` and `AppBuilder.drivers()` are removed; a capability whose instances come from
+configuration (database, Redis) builds each with one `InstanceFactory` (`Instances.build(capability,
+section, lookup, factory)`), and capabilities with a driver choice (locks, secret stores) are wired
+in code. The text below holds for instance sections otherwise; read `driver` as removed.*
 
 A capability with drivers (locks now; cache, storage, mail later) works the same way:
 
@@ -188,6 +200,10 @@ and `SERVICE` (a service account), the platform's `type` claim. Rules:
   this work belongs to.
 
 ## 4. Config
+
+*Amended 2026-10-14 ([config and code](config-and-code.md)): configuration holds connection and secret settings only.
+Removed keys fail start-up with the place their behaviour moved to, and a module may claim a
+component so that unknown keys under it fail (sections 5 and 8 there).*
 
 ### Declarations
 

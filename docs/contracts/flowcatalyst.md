@@ -10,6 +10,13 @@ each application delivers its own outbox with its own credentials (2026-10-08).
 
 ## 1. Module, settings, client
 
+*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.8): `flowcatalyst.enabled`, `timeout`, `sync.on-boot`,
+`outbox.stale-after` and every behavioural `flowcatalyst.receivers.*` key (`enabled`, `path`,
+`require-signature`, the timeouts, lease, retry delay, retention and purge interval) are
+`FlowCatalystOptions` and `ReceiverOptions`, given to `new FlowCatalystModule(options)`, with the
+same defaults and ranges. Configuration keeps the platform connection (`base-url`, `application`,
+`client-id`, `client-secret`, `subscription-target-base-url`) and the receiver secrets.*
+
 Module `flowcatalyst` (artifact `framework-flowcatalyst`, depends on the Java SDK
 `io.flowcatalyst:flowcatalyst-sdk` and on `framework-http`, `framework-locks`,
 `framework-database`). The framework does not depend on FlowCatalyst (plumbing 9a): this module

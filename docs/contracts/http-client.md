@@ -123,6 +123,12 @@ clientSecret)` with `scope`, `audience`, `method` (`POST`, the default: `client_
 
 ## 5. The framework adapter
 
+*Amended 2026-10-14 ([config and code](config-and-code.md), section 3.6): clients are named in code,
+`HttpClientModule.builder().client(name, HttpClientOptions)`, with timeouts, size limit, retry
+and the auth strategy (`ClientAuth`) as code. Configuration keeps, per client,
+`http-clients.instances.<name>.base-url` and the credentials of its auth strategy; the engine
+settings `http-client.*` are builder calls.*
+
 `HttpClientModule` provides `HttpClients` (closed at shutdown) and `ServiceClients`, a registry
 of configured clients (core contract section 2, default driver `http`):
 
