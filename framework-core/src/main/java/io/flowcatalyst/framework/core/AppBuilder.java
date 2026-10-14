@@ -52,6 +52,7 @@ public final class AppBuilder {
   private final Map<Class<?>, ServiceGraph.Entry> providers = new LinkedHashMap<>();
   private final Map<Class<?>, List<Object>> contributions = new LinkedHashMap<>();
   private final Map<String, Command> commands = new LinkedHashMap<>();
+  private final Map<String, DeclarationCommand> declarationCommands = new LinkedHashMap<>();
   private final Map<String, String> commandModules = new LinkedHashMap<>();
   private final List<Module> registeredModules = new ArrayList<>();
   private final Map<Class<?>, Object> overrides = new LinkedHashMap<>();
@@ -244,17 +245,39 @@ public final class AppBuilder {
    */
   public void command(Command command) {
     String module = requireRegistering("claim a command");
-    String name = command.name();
+    if (claim(module, command.name())) {
+      commands.put(command.name(), command);
+    }
+  }
+
+  /**
+   * Claims a declaration-phase command for {@link #launch}: it runs after every module's {@code
+   * register} only, with no configuration loaded and no service built (core contract section 5).
+   * Command names are one namespace with {@link #command(Command)}; two modules claiming one name
+   * fails start-up.
+   *
+   * @param command the command
+   */
+  public void command(DeclarationCommand command) {
+    String module = requireRegistering("claim a command");
+    if (claim(module, command.name())) {
+      declarationCommands.put(command.name(), command);
+    }
+  }
+
+  private boolean claim(String module, String name) {
     if (!MODULE_ID.matcher(name).matches()) {
       problems.add(Problem.of(module, name, "command name must match [a-z][a-z0-9-]*"));
-    } else if (commandModules.containsKey(name)) {
+      return false;
+    }
+    if (commandModules.containsKey(name)) {
       problems.add(
           Problem.of(
               module, name, "command already claimed by module '" + commandModules.get(name) + "'"));
-    } else {
-      commands.put(name, command);
-      commandModules.put(name, module);
+      return false;
     }
+    commandModules.put(name, module);
+    return true;
   }
 
   /**
@@ -280,12 +303,14 @@ public final class AppBuilder {
   }
 
   /**
-   * Runs a module's {@link Command} when the first program argument names one, otherwise starts
-   * the application exactly as {@link #start()} does. Unknown arguments are not an error: they fall
-   * through to a normal start.
+   * Runs a module's {@link Command} or {@link DeclarationCommand} when the first program argument
+   * names one, otherwise starts the application exactly as {@link #start()} does. Unknown arguments
+   * are not an error: they fall through to a normal start.
    *
-   * <p>A command runs after registration, configuration and building services (steps 1 to 3 of
-   * the lifecycle) and before any {@code boot}; the application is closed afterwards.
+   * <p>A {@link DeclarationCommand} runs after registration (step 1) only: no configuration is
+   * loaded, no service is built. A {@link Command} runs after registration, configuration and
+   * building services (steps 1 to 3) and before any {@code boot}; the application is closed
+   * afterwards.
    *
    * <pre>{@code
    * switch (App.builder().module(...).launch(args)) {
@@ -299,7 +324,23 @@ public final class AppBuilder {
    * @throws StartupException listing every problem found while assembling or starting
    */
   public Launch launch(String... args) {
-    App app = assemble();
+    registerAll();
+    @Nullable DeclarationCommand declared = args.length == 0 ? null : declarationCommands.get(args[0]);
+    if (declared != null) {
+      if (!problems.isEmpty()) {
+        throw new StartupException(problems);
+      }
+      PrintStream out = System.out;
+      try {
+        int code = declared.run(snapshot(), List.of(args).subList(1, args.length), out);
+        out.flush();
+        return new Launch.Ran(code);
+      } catch (Exception e) {
+        LOG.error("command '{}' failed: {}", declared.name(), describe(e), e);
+        return new Launch.Ran(1);
+      }
+    }
+    App app = configureAndBuild();
     @Nullable Command command = args.length == 0 ? null : commands.get(args[0]);
     if (command == null) {
       return new Launch.Started(bootAndStart(app));
@@ -317,8 +358,38 @@ public final class AppBuilder {
     }
   }
 
+  /**
+   * Runs every module's {@code register} (start-up step 1) and nothing else, and returns what they
+   * declared. No configuration is loaded and no service is built. For tools and tests, for example
+   * {@code OpenApiTesting.assertCommitted}; the builder cannot be used afterwards.
+   *
+   * @return the declarations
+   * @throws StartupException listing every problem found while registering
+   */
+  public Declarations declarations() {
+    registerAll();
+    if (!problems.isEmpty()) {
+      throw new StartupException(problems);
+    }
+    return snapshot();
+  }
+
+  private Declarations snapshot() {
+    List<String> ids = new ArrayList<>();
+    for (Module m : registeredModules) {
+      ids.add(m.id());
+    }
+    return new Declarations(ids, declarations, contributions);
+  }
+
   /** Steps 1 to 3: register, load configuration, build services. Nothing is booted. */
   private App assemble() {
+    registerAll();
+    return configureAndBuild();
+  }
+
+  /** Step 1: register every module, in the order listed. Problems are collected, not thrown. */
+  private void registerAll() {
     requireNotStarted();
     started = true;
     requireTestModeForOverrides();
@@ -350,7 +421,11 @@ public final class AppBuilder {
         registering = null;
       }
     }
+  }
 
+  /** Steps 2 and 3, after {@link #registerAll}: load configuration, build services. */
+  private App configureAndBuild() {
+    List<Module> registered = registeredModules;
     // 2. Load and validate configuration.
     Config config = null;
     switch (Config.load(configDirectory, environment, declarations)) {

@@ -268,10 +268,17 @@ no `boot`) and closes the application, returning `Launch.Ran(exitCode)`; anythin
 normally and returns `Launch.Started(app)`. Two modules claiming one name fail start-up. `start()`
 is unchanged for callers that do not use commands.
 
-*Amended 2026-10-14 (not built; [OpenAPI contract](openapi.md) section 9):* a module may also
+*Amended 2026-10-14 ([OpenAPI contract](openapi.md) section 9; built with MO the same day):* a module may also
 claim a **declaration-phase command** (`app.command(DeclarationCommand)`: a name and
 `run(Declarations, List<String> args, PrintStream out)`). `launch` runs it after step 1 (register)
 only: no configuration is loaded or validated, no service is built, no `boot` runs, so it works
 without a database or the environment. `Declarations` is a read-only view of the registered
 contributions and declared settings. Command names are one namespace across both kinds. The first
 user is `framework-http`'s `openapi` command.
+
+*As built (MO):* `DeclarationCommand` (`name()`, `run(Declarations, List<String>, PrintStream)`),
+claimed with the `AppBuilder.command(DeclarationCommand)` overload. `Declarations` has
+`moduleIds()`, `settings()` (the `Declaration`s) and `contributions(Class)`. A register-phase problem
+(two modules with one id, a register hook that threw) still fails with `StartupException` before the
+command runs; a command that throws exits 1. For tools and tests, `AppBuilder.declarations()` runs
+the register phase only and returns the same view (the builder is used up).

@@ -1,7 +1,7 @@
 <!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes, Spa, Csp, SpaTesting -->
 # Status
 
-Last verified against commit 59ab98c (2026-10-14). `verify.sh` fails if that commit is not an
+Last verified against commit 160313a (2026-10-14). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -136,8 +136,9 @@ against the code. Known differences at the last verification:
   enables it"; the plugin has no such switch, and the example binds it unconditionally.
 - Contract amendments of 2026-10-14 not built yet (contract first): `contracts/sessions-and-login.md`
   section 4.4 now says `endSessionUrl` is omitted when unknown, the code still writes `null`; section
-  4.5 (the two endpoints as typed operations); `contracts/core.md` section 5 (declaration-phase
-  commands). They are built with MO. (`contracts/http.md` section 4, `nosniff` and the SPA fallback,
+  4.5 (the two endpoints as typed operations). They are built with MO. (`contracts/core.md` section 5,
+  declaration-phase commands, is built: `DeclarationCommand`, `Declarations`,
+  `AppBuilder.declarations()`; [lifecycle](modules-and-lifecycle.md#declaration-phase-commands).) (`contracts/http.md` section 4, `nosniff` and the SPA fallback,
   was built with MS.)
 - `contracts/static-assets-and-spa.md` section 7 (amended 2026-10-14 after U0) makes the strict CSP the default; `Spa` still defaults to the baseline, strict opt-in. The flip is a follow-up in the Java `Spa` class.
 - `contracts/static-assets-and-spa.md` section 4 says an unclean path answers `404`; over Jetty most

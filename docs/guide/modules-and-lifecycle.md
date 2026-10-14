@@ -1,4 +1,4 @@
-<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceConfig, Command, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
+<!-- types: Module, AppBuilder, App, Provider, Lookup, Drivers, DriverFactory, Instances, InstanceConfig, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
 # Modules and the application lifecycle
 
 An application is a list of **modules** given to a builder, in code. Everything the framework
@@ -263,6 +263,20 @@ switch (App.builder().module(/* ... */).launch(args)) {
 
 Because a command skips `boot`, it has no routes registered, no health checks, and (with the Jetty
 module) no server. `start()` is unchanged for callers that do not use commands.
+
+### Declaration-phase commands
+
+Some commands need only what modules declared, not configuration or services: writing the OpenAPI
+document is the first (`java -jar app.jar openapi`, built with MO). A module claims one with the
+`app.command(DeclarationCommand)` overload; its `run(Declarations, args, out)` gets a read-only
+`Declarations` view (`moduleIds()`, `settings()`, `contributions(Type.class)`). `launch` runs it
+after every `register` and stops there: no configuration file is read and no required setting is
+checked, no provider runs, nothing connects, so it works in a build without a database. A problem
+from `register` (two modules with one id) still fails it. Names are one namespace with ordinary
+commands.
+
+Tests and tools call `builder.declarations()` for the same view without a command (the builder is
+then used up).
 
 ## Builder options
 
