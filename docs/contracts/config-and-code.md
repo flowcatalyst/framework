@@ -156,7 +156,9 @@ the defaults and checks it gives: `enabled` (`true`), `base-url`, `application`,
 `completion-retry-delay` (`1s`, 0 to 1 min), `once-retention` (`30d`, positive),
 `once-purge-interval` (`1h`, positive).
 
-Code: nothing (`new FlowCatalystModule()`). `PlatformClient.timeout()` returns `flowcatalyst.timeout`.
+Code: nothing (`new FlowCatalystModule()`). Read the timeout as any setting,
+`config.get(FlowCatalystModule.TIMEOUT)` (the over-reach's `PlatformClient.timeout()` is removed
+with it).
 
 ### 3.6 Sessions and login (`auth.*`, claimed)
 
@@ -206,6 +208,11 @@ the credentials its `ClientAuth` reads: `auth.token` (secret, `bearer`), `auth.u
 strategy does not read, a section for a client the code does not name and a stray key under
 `http-clients` fail start-up. A client's section must be in a file; the environment overrides
 single values (`HTTP_CLIENTS_INSTANCES_BILLING_BASE_URL`). The module claims `http-client`.
+
+*Open for the owner:* `eventLoops` and `maxConnectionsPerHost` are one setting each of the engine
+all clients share, so the decision test (section 1) points at configuration
+(`http-client.event-loops`, `http-client.max-connections-per-host`, as before 2026-10-14). They
+stay code as built, with the rest of the HTTP client module, until ruled.
 
 ### 3.10 Rate limiting, background loops, use cases
 
@@ -339,6 +346,12 @@ environment with its message.
   once configuration is loaded; the module reads the section like an instance section instead.
 - `Instances.build(capability, section, lookup, InstanceFactory)`; `Drivers`, `DriverFactory`,
   `AppBuilder.drivers()` removed.
+- The reversal (section 11): `cab9acb` (core), `47e8411` (http), `e57a790` (database, Redis), then
+  the FlowCatalyst module with this text's final pass. Each module declares its keys again with
+  the old names and defaults; `app`, `http` and `flowcatalyst` stay claimed, now with keys declared,
+  so a misspelt key fails start-up listing the module's keys. The database and Redis range checks
+  are start-up problems raised by the instance factory, before any connection opens, one problem
+  per wrong value.
 - Not done: the conformance vector for the key rules (section 6); the Go and Rust ports.
 
 ## 11. The reversal (2026-10-14)
@@ -348,7 +361,7 @@ policy and metrics driver (`HealthPolicy`, `MetricsOptions`, `AppBuilder.shutdow
 `.health`, `.metrics`), the HTTP server's limits (`HttpOptions`), database and Redis pools and
 `migrate` (`DatabasePool`, `RedisPool`, `DatabaseModule.builder()`, `RedisModule.builder()`) and
 the FlowCatalyst module's switches, timeouts and receiver settings (`FlowCatalystOptions`,
-`ReceiverOptions`), each with a `Function<Config, T>` form so a deployment could still tune them
+`ReceiverOptions`, `PlatformClient.timeout()`), each with a `Function<Config, T>` form so a deployment could still tune them
 through an application setting. That was the tell: a service setting that every deployment may
 need to vary had become an application-declared setting passed through code, two ways to do one
 thing, while the owner's concern was only things that can have many instances (pollers, limiters,

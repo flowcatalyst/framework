@@ -7,7 +7,6 @@ import static io.flowcatalyst.framework.flowcatalyst.Receiving.sign;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.flowcatalyst.framework.core.App;
-import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.http.TestClient;
 import io.flowcatalyst.framework.http.TestResponse;
 import io.flowcatalyst.framework.locks.LockStores;
@@ -16,7 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,19 +63,9 @@ class ReceiversEnabledTest {
   }
 
   private TestClient start(Consumer<Receivers> registrar, String... env) {
-    return start(registrar, UnaryOperator.identity(), env);
-  }
-
-  private TestClient start(Consumer<Receivers> registrar, UnaryOperator<ReceiverOptions> options, String... env) {
     app =
         Receiving.start(
-            dir,
-            Receiving.env(platform, env),
-            () -> NOW,
-            MonotonicClock.system(),
-            Receiving.receivers(options),
-            LocksModule.builder().store("local", LockStores.memory()).build(),
-            Receiving.handlers(registrar));
+            dir, Receiving.env(platform, env), () -> NOW, LocksModule.builder().store("local", LockStores.memory()).build(), Receiving.handlers(registrar));
     return Receiving.client(app);
   }
 
@@ -135,18 +123,18 @@ class ReceiversEnabledTest {
 
   @Test
   void disabledReceiversMountNothingEvenWithHandlers() {
-    TestClient client = start(BOTH, o -> o.withEnabled(false));
+    TestClient client = start(BOTH, "FLOWCATALYST_RECEIVERS_ENABLED", "false");
     assertThat(dispatch(client).status()).isEqualTo(404);
     assertThat(job(client).status()).isEqualTo(404);
     // A route that does not exist has no Allow header either (an existing one would answer 405).
     assertThat(client.get("/fc/dispatch").send().status()).isEqualTo(404);
-    assertThat(logs.text()).contains("handlers are registered").contains("disabled (ReceiverOptions)");
+    assertThat(logs.text()).contains("handlers are registered").contains("flowcatalyst.receivers.enabled");
   }
 
   @Test
   void disabledReceiversNeedNoSecretAndNoWarningWithoutHandlers() {
     TestClient client =
-        start(r -> {}, o -> o.withEnabled(false), "FLOWCATALYST_RECEIVERS_SIGNING_SECRET", null);
+        start(r -> {}, "FLOWCATALYST_RECEIVERS_ENABLED", "false", "FLOWCATALYST_RECEIVERS_SIGNING_SECRET", null);
     assertThat(dispatch(client).status()).isEqualTo(404);
     assertThat(logs.text()).doesNotContain("handlers are registered");
     assertThat(logs.text()).contains("receiver routes are not mounted");
@@ -158,7 +146,8 @@ class ReceiversEnabledTest {
     TestClient client =
         start(
             DISPATCH_ONLY,
-            o -> ReceiverOptions.disabled(),
+            "FLOWCATALYST_RECEIVERS_ENABLED",
+            "false",
             "FLOWCATALYST_RECEIVERS_SIGNING_SECRET",
             null);
     assertThat(unsignedProbe(client, "/fc/dispatch").status()).isEqualTo(404);

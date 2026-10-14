@@ -42,26 +42,18 @@ class SyncCommandTest {
   }
 
   private AppBuilder builder(Map<String, String> env) {
-    return builder(env, FlowCatalystOptions.defaults());
-  }
-
-  private AppBuilder builder(Map<String, String> env, FlowCatalystOptions options) {
     return App.builder()
         .configDirectory(dir)
         .environment(env)
-        .module(new FlowCatalystModule(options))
+        .module(new FlowCatalystModule())
         .module(orders());
   }
 
   private record Outcome(int code, String output) {}
 
   private Outcome run(Map<String, String> env, String... args) {
-    return run(env, FlowCatalystOptions.defaults(), args);
-  }
-
-  private Outcome run(Map<String, String> env, FlowCatalystOptions options, String... args) {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-    try (App app = builder(env, options).start();
+    try (App app = builder(env).start();
         PrintStream out = new PrintStream(bytes, true, StandardCharsets.UTF_8)) {
       int code = new SyncCommand().run(app, List.of(args), out);
       return new Outcome(code, bytes.toString(StandardCharsets.UTF_8));
@@ -108,7 +100,7 @@ class SyncCommandTest {
 
   @Test
   void disabledExitsWithTwo() {
-    Outcome o = run(Map.of(), FlowCatalystOptions.disabled());
+    Outcome o = run(Map.of("FLOWCATALYST_ENABLED", "false"));
 
     assertThat(o.code()).isEqualTo(2);
     assertThat(o.output()).contains("disabled");

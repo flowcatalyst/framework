@@ -63,30 +63,6 @@ final class FrameworkKeys {
     }
     l.add(k("secrets", "secrets", secretStores));
 
-    // flowcatalyst
-    String fc = ", given to new FlowCatalystModule(options)";
-    l.add(k("flowcatalyst.enabled", "flowcatalyst", "FlowCatalystOptions.disabled() or withEnabled(boolean)" + fc));
-    l.add(k("flowcatalyst.timeout", "flowcatalyst", "FlowCatalystOptions.withTimeout(Duration)" + fc));
-    l.add(k("flowcatalyst.sync.on-boot", "flowcatalyst", "FlowCatalystOptions.withSyncOnBoot(boolean)" + fc));
-    l.add(k("flowcatalyst.outbox.stale-after", "flowcatalyst", "FlowCatalystOptions.withOutboxStaleAfter(Duration)" + fc));
-    String rc = ", given with FlowCatalystOptions.withReceivers(options)";
-    l.add(k("flowcatalyst.receivers.enabled", "flowcatalyst", "ReceiverOptions.disabled()" + rc));
-    l.add(k("flowcatalyst.receivers.path", "flowcatalyst", "ReceiverOptions.withPath(String)" + rc));
-    l.add(k("flowcatalyst.receivers.require-signature", "flowcatalyst", "ReceiverOptions.withRequireSignature(boolean)" + rc));
-    l.add(k("flowcatalyst.receivers.dispatch-timeout", "flowcatalyst", "ReceiverOptions.withDispatchTimeout(Duration)" + rc));
-    l.add(k("flowcatalyst.receivers.job-timeout", "flowcatalyst", "ReceiverOptions.withJobTimeout(Duration)" + rc));
-    l.add(k("flowcatalyst.receivers.job-lock-lease", "flowcatalyst", "ReceiverOptions.withJobLockLease(Duration)" + rc));
-    l.add(
-        k(
-            "flowcatalyst.receivers.completion-retry-delay",
-            "flowcatalyst",
-            "ReceiverOptions.withCompletionRetryDelay(Duration)" + rc));
-    l.add(k("flowcatalyst.receivers.once-retention", "flowcatalyst", "ReceiverOptions.withOnceRetention(Duration)" + rc));
-    l.add(
-        k(
-            "flowcatalyst.receivers.once-purge-interval",
-            "flowcatalyst",
-            "ReceiverOptions.withOncePurgeInterval(Duration)" + rc));
     // rate limits (MA item 10)
     String limiters = "MemoryRateLimiter.create or RedisRateLimiter.create, built in code";
     l.add(k("rate-limits.default", "rate-limit", limiters));

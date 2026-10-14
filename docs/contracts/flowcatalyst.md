@@ -12,8 +12,7 @@ each application delivers its own outbox with its own credentials (2026-10-08).
 
 *Note 2026-10-14 ([config and code](config-and-code.md), sections 3.5 and 11): every setting below is
 configuration, as written here (it was briefly `FlowCatalystOptions` and `ReceiverOptions`). The
-module claims the `flowcatalyst` component, so a misspelt key under it fails start-up.
-`PlatformClient.timeout()` returns `flowcatalyst.timeout`.*
+module claims the `flowcatalyst` component, so a misspelt key under it fails start-up.*
 
 Module `flowcatalyst` (artifact `framework-flowcatalyst`, depends on the Java SDK
 `io.flowcatalyst:flowcatalyst-sdk` and on `framework-http`, `framework-locks`,

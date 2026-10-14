@@ -15,7 +15,8 @@ The specification is [contracts/http-client.md](../contracts/http-client.md).
 ## Configured clients
 
 Name each client in code with how it behaves; configuration gives its base URL and the credentials
-of its auth strategy (behaviour is code, [Config](config.md#what-configuration-holds)). From
+of its auth strategy (an application can have many clients, each with its own policy, so they are
+code, [Config](config.md#what-configuration-holds)). From
 `HttpClientModuleTest`:
 
 ```java

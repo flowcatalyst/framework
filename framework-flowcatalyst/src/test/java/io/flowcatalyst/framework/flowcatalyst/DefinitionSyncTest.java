@@ -71,11 +71,7 @@ class DefinitionSyncTest {
   }
 
   private App start(Map<String, String> env, Contributor... contributors) {
-    return start(env, FlowCatalystOptions.defaults(), contributors);
-  }
-
-  private App start(Map<String, String> env, FlowCatalystOptions options, Contributor... contributors) {
-    var builder = App.builder().configDirectory(dir).environment(env).module(new FlowCatalystModule(options));
+    var builder = App.builder().configDirectory(dir).environment(env).module(new FlowCatalystModule());
     for (Contributor c : contributors) {
       builder.module(c);
     }
@@ -256,7 +252,7 @@ class DefinitionSyncTest {
 
   @Test
   void runWhileDisabledIsRefused() {
-    try (App app = start(Map.of(), FlowCatalystOptions.disabled())) {
+    try (App app = start(Map.of("FLOWCATALYST_ENABLED", "false"))) {
       assertThatIllegalStateException()
           .isThrownBy(() -> app.get(DefinitionSync.class).run(Mode.APPLY))
           .withMessageContaining("disabled");
@@ -266,7 +262,7 @@ class DefinitionSyncTest {
   @Test
   void syncOnBootIsOffByDefault() {
     try (App app = start(Contributor.env(platform), orders())) {
-      assertThat(app.get(FlowCatalystOptions.class).syncOnBoot()).isFalse();
+      assertThat(app.config().get(FlowCatalystModule.SYNC_ON_BOOT)).isFalse();
       assertThat(platform.syncRequests()).isEmpty();
     }
   }
@@ -274,7 +270,8 @@ class DefinitionSyncTest {
   @Test
   void syncOnBootSyncsWhenAsked() {
     Map<String, String> env = Contributor.env(platform);
-    try (App app = start(env, FlowCatalystOptions.defaults().withSyncOnBoot(true), orders())) {
+    env.put("FLOWCATALYST_SYNC_ON_BOOT", "true");
+    try (App app = start(env, orders())) {
       assertThat(platform.syncedResources()).isEqualTo(ALL_RESOURCES);
     }
   }
@@ -283,7 +280,8 @@ class DefinitionSyncTest {
   void aFailedSyncOnBootDoesNotStopTheApplication() {
     platform.respond("roles", 500, "{\"error\":\"boom\"}");
     Map<String, String> env = Contributor.env(platform);
-    try (App app = start(env, FlowCatalystOptions.defaults().withSyncOnBoot(true), orders())) {
+    env.put("FLOWCATALYST_SYNC_ON_BOOT", "true");
+    try (App app = start(env, orders())) {
       assertThat(platform.syncedResources()).isEqualTo(ALL_RESOURCES);
       assertThat(app.get(PlatformClient.class).isEnabled()).isTrue();
     }

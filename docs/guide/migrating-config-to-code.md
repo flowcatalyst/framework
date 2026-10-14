@@ -1,10 +1,26 @@
-<!-- types: AppBuilder, KeyRules, DatabaseModule, RedisModule, JettyHttpModule, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, KeyRules, DatabaseModule, RedisModule, JettyHttpModule, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
-**Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
-setting moved to code ([config-and-code contract](../contracts/config-and-code.md), owner ruling
-"move all behaviour to code"). This page lists, module by module, each key that moved and what to
-write instead.
+**Breaking (2026-10-14)** for lock stores, secret stores, HTTP clients and driver keys. The rule
+([config-and-code contract](../contracts/config-and-code.md)): the settings of **services and
+connections** are configuration; the things an application can have **many of** (lock stores,
+secret stores, named HTTP clients, rate limiters, background loops), with their policies and the
+driver behind each, are **code**. Ask: *could an application want several of these, with
+different values?* Then it is code. *Is it one setting of the service, or of a connection?* Then it
+is configuration. This page lists each key that moved and what to write instead.
+
+**Most applications change little.** `app.*`, `http.*`, `flowcatalyst.*` (receivers included),
+`auth.*` and the database and Redis instances (pools, timeouts, `migrate`) are configuration, as
+before 2026-10-14. Only these sections or keys moved: `locks`, `secrets`, `rate-limits`, the
+behaviour of each HTTP client, and `driver` in instance sections.
+
+*History.* For a few hours on 2026-10-14 the first reading of the ruling moved every behavioural
+key to code (`HealthPolicy`, `MetricsOptions`, `HttpOptions`, `DatabasePool`, `RedisPool`,
+`FlowCatalystOptions`, `ReceiverOptions`, `AppBuilder.shutdownDrain`, `DatabaseModule.builder()`,
+`RedisModule.builder()`). That over-reached and was reversed the same day: those types are gone
+and their keys are configuration again, with the old names, defaults and environment variables. An
+application that had already moved to them goes back to the keys and to `new JettyHttpModule()`,
+`new DatabaseModule()`, `new RedisModule()`, `new FlowCatalystModule()`.
 
 ## How to migrate
 
@@ -12,16 +28,10 @@ write instead.
    `application-{env}.yaml`, `secrets.local.yaml`) or in the environment fails start-up with a
    problem naming the key, where it came from and the code that replaces it. Nothing is ignored
    silently.
-2. Delete each key. If its value was the default, you are done with it: the defaults did not
-   change.
-3. Otherwise give the value in code with the API in the tables below.
-4. If the value must differ per deployment, declare a setting of your own (in your own component,
-   such as `orders.*`) and pass it in with the `Function<Config, T>` form
+2. Delete each key and give the thing in code with the API in the tables below.
+3. If a value of a code-defined thing must differ per deployment, declare a setting of your own (in
+   your own component, such as `orders.*`) and read it where the thing is built
    ([Config](config.md#making-a-code-defined-thing-differ-per-deployment)).
-
-Connections and secrets stay where they are: database and Redis URLs, user names and passwords,
-`http.host` and `http.port`, the platform's `flowcatalyst.base-url`, `application`, `client-id`,
-`client-secret` and the receiver secrets, `auth.*`.
 
 ## Code that no longer compiles
 
@@ -33,35 +43,19 @@ Connections and secrets stay where they are: database and Redis URLs, user names
 | `SecretsModule.ENV`, `FILE`, `PLATFORM` | `SecretStores.env(..)`, `file(..)`, `platform()` |
 | `DatabaseModule.DRIVER`, `RedisModule.DRIVER`, `HttpClientModule.DRIVER` | nothing (one driver each; clients are named in code) |
 | `HttpClientModule.EVENT_LOOPS`, `MAX_CONNECTIONS` | `HttpClientModule.builder().eventLoops(..)`, `.maxConnectionsPerHost(..)` |
-| `FlowCatalystModule.ENABLED`, `TIMEOUT`, `SYNC_ON_BOOT`, `OUTBOX_STALE_AFTER`, `RECEIVERS_ENABLED`, `RECEIVERS_PATH`, `RECEIVERS_REQUIRE_SIGNATURE`, the receivers' timeout, lease, delay, retention and interval constants | `FlowCatalystOptions`, `ReceiverOptions`; read the timeout with `PlatformClient.timeout()` |
 | `Drivers`, `DriverFactory`, `AppBuilder.drivers()`, `Instances.build(capability, section, lookup[, defaultDriver])` | choose a driver in code; for instances that are connections, `Instances.build(capability, section, lookup, InstanceFactory)` |
-
-## Core (`app.*`)
-
-Nothing to migrate: `app.shutdown.drain`, `app.health.*` and `app.metrics.*` are service settings
-and stay configuration. (For a few hours on 2026-10-14 they were `AppBuilder.shutdownDrain`,
-`health(HealthPolicy)` and `metrics(MetricsOptions)`; those are removed again.)
 
 ## Database and Redis instances
 
 Nothing moves but `driver`: delete `driver: postgresql` and `driver: redis` from instance
-sections. `pool.*`, `migrate`, Redis `timeout` and `pool.max` are connection settings and stay
-configuration (for a few hours on 2026-10-14 they were `DatabasePool`, `RedisPool` and the
-modules' builders, which are removed again). The pool keys are now checked at start-up
-(`pool.max` 1 to 1000, `pool.min-idle` 0 to `pool.max`, `pool.connect-timeout` 250 ms to 5 min;
-Redis `timeout` more than 0 and at most 5 min, `pool.max` 1 to 1000); a connect timeout under
-250 ms used to be raised silently and is now refused.
-
-## HTTP (`http.*`)
-
-Nothing to migrate: the server's settings (`http.max-body-bytes`, `http.request-timeout`,
-`http.shutdown-grace`, `http.metrics.*`) are service settings and stay configuration. (For a few
-hours on 2026-10-14 they were `HttpOptions`, which is removed again.) The module claims `http`: a
-misspelt key there (`http.prot`) fails start-up.
+sections. The pool keys are now checked at start-up (`pool.max` 1 to 1000, `pool.min-idle` 0 to
+`pool.max`, `pool.connect-timeout` 250 ms to 5 min; Redis `timeout` more than 0 and at most 5 min,
+`pool.max` 1 to 1000); a connect timeout under 250 ms used to be raised silently and is now refused.
 
 ## HTTP client (`http-client.*`, `http-clients.*`)
 
-Each client is now named in code; its section keeps `base-url` and the credentials of its strategy.
+An application can call many services, each with its own retry and authentication policy, so
+each client is now named in code; its section keeps `base-url` and the credentials of its strategy.
 
 | Key | Default | Now |
 |---|---|---|
@@ -85,33 +79,6 @@ HttpClientModule.builder()
         .withAuth(ClientAuth.clientCredentials().withScope("billing")))
     .build()
 // http-clients.instances.billing: { base-url: ..., auth: { token-url: ..., client-id: orders } }
-```
-
-## FlowCatalyst (`flowcatalyst.*`)
-
-`base-url`, `application`, `client-id`, `client-secret`, `subscription-target-base-url` and the
-receiver secrets (`receivers.signing-secret`, `receivers.bearer-token` and their `dispatch.` and
-`scheduled-jobs.` variants) stay.
-
-| Key | Default | Now |
-|---|---|---|
-| `flowcatalyst.enabled: false` | `true` | `new FlowCatalystModule(FlowCatalystOptions.disabled())` |
-| `flowcatalyst.timeout` | `30s` | `FlowCatalystOptions.defaults().withTimeout(Duration)`; read it back with `PlatformClient.timeout()` or `app.get(FlowCatalystOptions.class).timeout()` |
-| `flowcatalyst.sync.on-boot: true` | `false` | `.withSyncOnBoot(true)` |
-| `flowcatalyst.outbox.stale-after` | `5m` | `.withOutboxStaleAfter(Duration)` |
-| `flowcatalyst.receivers.enabled: false` | `true` | `.withReceivers(ReceiverOptions.disabled())` |
-| `flowcatalyst.receivers.path` | `/fc` | `ReceiverOptions.defaults().withPath(String)` |
-| `flowcatalyst.receivers.require-signature: false` | `true` | `ReceiverOptions.withRequireSignature(false)` |
-| `receivers.dispatch-timeout`, `job-timeout`, `job-lock-lease`, `completion-retry-delay`, `once-retention`, `once-purge-interval` | `25s`, `10m`, `10m`, `1s`, `30d`, `1h` | `ReceiverOptions.withDispatchTimeout`, `withJobTimeout`, `withJobLockLease`, `withCompletionRetryDelay`, `withOnceRetention`, `withOncePurgeInterval` |
-
-`FlowCatalystModule.TIMEOUT`, `ENABLED`, `SYNC_ON_BOOT`, `OUTBOX_STALE_AFTER` and the behavioural
-`RECEIVERS_*` constants are gone; the connection and secret constants (`BASE_URL`, `APPLICATION`,
-`CLIENT_ID`, `CLIENT_SECRET`, `SUBSCRIPTION_TARGET_BASE_URL`, `RECEIVERS_*_SECRET`,
-`RECEIVERS_*_TOKEN`) stay.
-
-```java
-// before: flowcatalyst: { receivers: { enabled: false } }
-new FlowCatalystModule(FlowCatalystOptions.defaults().withReceivers(ReceiverOptions.disabled()))
 ```
 
 ## Locks (`locks.*`, the whole section)

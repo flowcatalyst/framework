@@ -7,7 +7,6 @@ import static io.flowcatalyst.framework.flowcatalyst.Receiving.sign;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.flowcatalyst.framework.core.App;
-import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.database.DatabaseModule;
 import io.flowcatalyst.framework.database.PostgresFixture;
 import io.flowcatalyst.framework.http.TestClient;
@@ -22,8 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.UnaryOperator;
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -80,17 +77,11 @@ class ScheduledJobLockIntegrationTest {
   }
 
   private TestClient replica(ScheduledJobHandler handler, String... env) {
-    return replica(handler, UnaryOperator.identity(), env);
-  }
-
-  private TestClient replica(ScheduledJobHandler handler, UnaryOperator<ReceiverOptions> adjust, String... env) {
     App app =
         Receiving.start(
             dir,
             Receiving.env(platform, env),
             () -> NOW,
-            MonotonicClock.system(),
-            Receiving.receivers(adjust),
             new DatabaseModule(),
             LocksModule.builder().store("main", DatabaseLockStores.database()).build(),
             new LocksDatabaseModule(),
@@ -221,7 +212,8 @@ class ScheduledJobLockIntegrationTest {
               }
               return JobResult.success();
             },
-            o -> o.withJobLockLease(Duration.ofSeconds(3)));
+            "FLOWCATALYST_RECEIVERS_JOB_LOCK_LEASE",
+            "3s");
     fire(client, "i1");
     assertThat(inside.await(10, TimeUnit.SECONDS)).isTrue();
     // Another process took the key after an expiry: the refresh (every second) finds it lost.

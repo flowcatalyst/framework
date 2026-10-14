@@ -41,7 +41,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,18 +82,16 @@ class ScheduledJobReceiverTest {
   }
 
   private TestClient start(Consumer<Receivers> registrar, String... env) {
-    return start(registrar, UnaryOperator.identity(), env);
-  }
-
-  /** Completion retries wait 10 ms (the receivers' option), then {@code adjust} applies. */
-  private TestClient start(Consumer<Receivers> registrar, UnaryOperator<ReceiverOptions> adjust, String... env) {
+    String[] all = new String[env.length + 2];
+    all[0] = "FLOWCATALYST_RECEIVERS_COMPLETION_RETRY_DELAY";
+    all[1] = "10ms";
+    System.arraycopy(env, 0, all, 2, env.length);
     app =
         Receiving.start(
             dir,
-            Receiving.env(platform, env),
+            Receiving.env(platform, all),
             () -> NOW,
             monotonic,
-            Receiving.receivers(o -> adjust.apply(o.withCompletionRetryDelay(Duration.ofMillis(10)))),
             locks,
             Receiving.handlers(registrar));
     return Receiving.client(app);
@@ -102,10 +99,6 @@ class ScheduledJobReceiverTest {
 
   private TestClient start(ScheduledJobHandler handler, String... env) {
     return start(r -> r.onScheduledJob(CODE, handler), env);
-  }
-
-  private TestClient start(ScheduledJobHandler handler, UnaryOperator<ReceiverOptions> adjust) {
-    return start(r -> r.onScheduledJob(CODE, handler), adjust);
   }
 
   private static String envelope(String instanceId, boolean tracks, Map<String, Object> extra) {
@@ -586,14 +579,15 @@ class ScheduledJobReceiverTest {
   }
 
   @Test
-  void withoutAnEnvelopeTimeoutTheReceiverOptionApplies() throws Exception {
+  void withoutAnEnvelopeTimeoutTheSettingApplies() throws Exception {
     TestClient client =
         start(
             (ctx, f) -> {
               Thread.sleep(60_000);
               return JobResult.success();
             },
-            o -> o.withJobTimeout(Duration.ofMillis(300)));
+            "FLOWCATALYST_RECEIVERS_JOB_TIMEOUT",
+            "300ms");
     long started = System.nanoTime();
     fire(client, envelope("i1"));
     JsonNode c = completion(0);
@@ -618,7 +612,8 @@ class ScheduledJobReceiverTest {
               }
               return JobResult.success();
             },
-            o -> o.withJobTimeout(Duration.ofMillis(200)));
+            "FLOWCATALYST_RECEIVERS_JOB_TIMEOUT",
+            "200ms");
     fire(client, envelope("i1"));
     assertThat(completionOf("i1").get("result").get("error").asString()).startsWith("timed out");
     // Timed out and reported, but still running: the lock stays held, so the next firing skips.
@@ -775,7 +770,8 @@ class ScheduledJobReceiverTest {
               }
               return JobResult.success();
             },
-            o -> o.withJobLockLease(Duration.ofSeconds(1)));
+            "FLOWCATALYST_RECEIVERS_JOB_LOCK_LEASE",
+            "1s");
     fire(client, envelope("i1"));
     assertThat(inside.await(5, TimeUnit.SECONDS)).isTrue();
     // The lease expires on the store's clock: the next refresh (every ~333 ms) finds it lost.
@@ -796,7 +792,8 @@ class ScheduledJobReceiverTest {
               release.await(10, TimeUnit.SECONDS);
               return JobResult.success();
             },
-            o -> o.withJobLockLease(Duration.ofSeconds(1)));
+            "FLOWCATALYST_RECEIVERS_JOB_LOCK_LEASE",
+            "1s");
     fire(client, envelope("i1"));
     Thread.sleep(2_500); // well past the 1 s lease
     assertThat(lockStore().tryAcquire(KEY, Duration.ofSeconds(1))).isInstanceOf(AcquireResult.Busy.class);
@@ -814,10 +811,8 @@ class ScheduledJobReceiverTest {
     app =
         Receiving.start(
             dir,
-            Receiving.env(platform),
+            Receiving.env(platform, "FLOWCATALYST_RECEIVERS_COMPLETION_RETRY_DELAY", "10ms"),
             () -> NOW,
-            MonotonicClock.system(),
-            Receiving.receivers(o -> o.withCompletionRetryDelay(Duration.ofMillis(10))),
             broken,
             Receiving.handlers(
                 r ->

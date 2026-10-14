@@ -19,8 +19,8 @@ The specification, with the threat model, is [contracts/secrets.md](../contracts
 ## Setting it up
 
 List `SecretsModule` (in `framework-core`) with one or more stores, named in code with the driver
-each uses (there is no `secrets` configuration; behaviour is code,
-[Config](config.md#what-configuration-holds)). From `SecretsTest`:
+each uses (there is no `secrets` configuration; an application can have many stores, so they are
+code, [Config](config.md#what-configuration-holds)). From `SecretsTest`:
 
 ```java
 SecretsModule.Builder two =

@@ -167,7 +167,7 @@ as removed):
 | `app.metrics.driver` | `memory` or `noop` | `memory` | core ([metrics](background-and-metrics.md#drivers)) |
 | `app.metrics.max-series` | integer, 1 to 100 000 | `1000` | core |
 | `http.host`, `http.port`, `http.max-body-bytes`, `http.request-timeout`, `http.shutdown-grace`, `http.metrics.*` | see [HTTP](http.md#the-jetty-module-and-its-settings) | | `http` |
-| `flowcatalyst.base-url`, `application`, `client-id`, `client-secret`, `subscription-target-base-url`, the receiver secrets | see [The FlowCatalyst module](flowcatalyst-module.md#settings) (the rest is `FlowCatalystOptions` in code) | | `flowcatalyst` |
+| `flowcatalyst.*`, `flowcatalyst.receivers.*` | see [The FlowCatalyst module](flowcatalyst-module.md#settings) and [Receivers](receivers.md#settings) | | `flowcatalyst` |
 | `auth.issuer`, `client-id`, `client-secret`, `public-base-url`, `cookie-keys` | see [Sessions and login](sessions-and-login.md) (the rest is `AuthModule.builder()` in code) | | `auth` |
 
 The locks, secrets and HTTP client modules declare no setting: lock stores, secret stores and

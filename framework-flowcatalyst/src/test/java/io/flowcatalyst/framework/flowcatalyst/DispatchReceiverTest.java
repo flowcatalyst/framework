@@ -5,7 +5,6 @@ import static io.flowcatalyst.framework.flowcatalyst.Receiving.SECRET;
 import static io.flowcatalyst.framework.flowcatalyst.Receiving.TS;
 import static io.flowcatalyst.framework.flowcatalyst.Receiving.sign;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -14,7 +13,6 @@ import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.framework.context.PrincipalKind;
 import io.flowcatalyst.framework.core.App;
-import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
@@ -32,7 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,27 +71,12 @@ class DispatchReceiverTest {
   }
 
   private TestClient start(Consumer<Receivers> registrar, String... env) {
-    return start(registrar, UnaryOperator.identity(), env);
-  }
-
-  private TestClient start(Consumer<Receivers> registrar, UnaryOperator<ReceiverOptions> options, String... env) {
-    app =
-        Receiving.start(
-            dir,
-            Receiving.env(platform, env),
-            () -> NOW,
-            MonotonicClock.system(),
-            Receiving.receivers(options),
-            Receiving.handlers(registrar));
+    app = Receiving.start(dir, Receiving.env(platform, env), () -> NOW, Receiving.handlers(registrar));
     return Receiving.client(app);
   }
 
   private TestClient start(DispatchHandler handler, String... env) {
     return start(r -> r.onDispatch(TYPE, handler), env);
-  }
-
-  private TestClient start(DispatchHandler handler, UnaryOperator<ReceiverOptions> options, String... env) {
-    return start(r -> r.onDispatch(TYPE, handler), options, env);
   }
 
   /** A signed delivery as the platform sends it. */
@@ -210,7 +192,8 @@ class DispatchReceiverTest {
               }
               return DispatchResult.ack();
             },
-            o -> o.withDispatchTimeout(Duration.ofMillis(200)));
+            "FLOWCATALYST_RECEIVERS_DISPATCH_TIMEOUT",
+            "200ms");
     long started = System.nanoTime();
     TestResponse r = deliver(client);
     long tookMs = (System.nanoTime() - started) / 1_000_000;
@@ -331,18 +314,19 @@ class DispatchReceiverTest {
     TestClient client =
         start(
             (ctx, d) -> DispatchResult.ack(),
-            o -> o.withRequireSignature(false),
+            "FLOWCATALYST_RECEIVERS_REQUIRE_SIGNATURE",
+            "false",
             "FLOWCATALYST_RECEIVERS_SIGNING_SECRET",
             null);
     assertThat(unsigned(client, TYPE).body(ENVELOPE).send().status()).isEqualTo(200);
     assertThat(logs.text())
-        .contains("ReceiverOptions.requireSignature is false: unsigned deliveries to /fc are accepted");
+        .contains("flowcatalyst.receivers.require-signature is false: unsigned deliveries to /fc are accepted");
   }
 
   @Test
   void aSignedDeliveryIsStillVerifiedWhenSignaturesAreNotRequired() {
     TestClient client =
-        start((ctx, d) -> DispatchResult.ack(), o -> o.withRequireSignature(false));
+        start((ctx, d) -> DispatchResult.ack(), "FLOWCATALYST_RECEIVERS_REQUIRE_SIGNATURE", "false");
     TestResponse r =
         unsigned(client, TYPE)
             .header("X-FlowCatalyst-Signature", sign("wrong", TS, ENVELOPE))
@@ -780,18 +764,23 @@ class DispatchReceiverTest {
   }
 
   @Test
-  void aBadPrefixOrTimeoutIsRefusedWhenBuilt() {
-    assertThatIllegalArgumentException().isThrownBy(() -> ReceiverOptions.defaults().withPath("/fc/")).withMessageContaining("path");
-    assertThatIllegalArgumentException().isThrownBy(() -> ReceiverOptions.defaults().withPath("fc")).withMessageContaining("path");
-    assertThatIllegalArgumentException()
-        .isThrownBy(() -> ReceiverOptions.defaults().withDispatchTimeout(Duration.ZERO))
-        .withMessageContaining("dispatchTimeout");
+  void aBadPrefixOrTimeoutFailsStartUp() {
+    StartupException e =
+        failure(
+            r -> {},
+            "FLOWCATALYST_RECEIVERS_PATH",
+            "/fc/",
+            "FLOWCATALYST_RECEIVERS_DISPATCH_TIMEOUT",
+            "0s");
+    assertThat(e.problems())
+        .extracting(Problem::key)
+        .containsExactlyInAnyOrder("flowcatalyst.receivers.path", "flowcatalyst.receivers.dispatch-timeout");
   }
 
   @Test
-  void thePrefixIsGivenInCode() {
+  void thePrefixIsASetting() {
     TestClient client =
-        start((ctx, d) -> DispatchResult.ack(), o -> o.withPath("/hooks/flowcatalyst"));
+        start((ctx, d) -> DispatchResult.ack(), "FLOWCATALYST_RECEIVERS_PATH", "/hooks/flowcatalyst");
     TestResponse r =
         client
             .post("/hooks/flowcatalyst/dispatch")
@@ -838,10 +827,8 @@ class DispatchReceiverTest {
     app =
         Receiving.start(
             dir,
-            Map.of(),
+            Map.of("FLOWCATALYST_ENABLED", "false"),
             () -> NOW,
-            MonotonicClock.system(),
-            FlowCatalystOptions.disabled(),
             Receiving.handlers(
                 r ->
                     r.onDispatch(

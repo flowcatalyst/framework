@@ -38,33 +38,46 @@ rewritten at hand-off and can lag the code in between.
   become the application's own `Setting`s (guide: rate-limiting, "Numbers from your own settings").
   Rulings pending owner: `contracts/rate-limiting.md` section 5, item 4 (cap at an empty bucket
   after a policy change; null = default policy; a resolver failure follows `onStoreFailure`).
-- **CC built 2026-10-14** (owner ruling "move all behaviour to code"): configuration holds
-  connections and secrets only; contract `contracts/config-and-code.md`, migration
-  `guide/migrating-config-to-code.md`. Commits `f8f8954` (contract), `3444145` (core: `KeyRules`,
-  `HealthPolicy`, `MetricsOptions`, `shutdownDrain`, `claimComponent`), `ecc2dca` (database, Redis),
-  `216bf89` (locks), `53c1249` (http), `373a924` (http-client), `6ff956a` (secrets), `b4e0edb`
-  (flowcatalyst), `55ecb8d` (auth claim), `9326692` (driver registry removed). **BREAKING** for the
-  first application. Migration, old key to code:
+- **CC built 2026-10-14, over-reach reversed the same day.** Owner rule (clarified): *"The
+  configs for services and things like that are all fine. It is just don't use a config to define
+  pollers or things that can have many instances."* Service and connection settings are
+  configuration; things an application can have many of (lock stores, secret stores, named HTTP
+  clients with their retry and auth policies, rate limiters, loops) and the driver behind each are
+  code. Decision test: several of these with different values -> code; one setting of the service
+  or a connection -> config. Contract `contracts/config-and-code.md` (section 11 records the
+  reversal), migration `guide/migrating-config-to-code.md`. The first reading (`f8f8954`,
+  `3444145`, `ecc2dca`, `53c1249`, `b4e0edb`) moved every behavioural key to code; the reversal
+  commits put `app.*`, `http.*`, `flowcatalyst.*` (receivers included) and the database and Redis
+  instance keys (pools, timeouts, `migrate`) back in configuration with the old names, defaults and
+  environment variables, and removed `HealthPolicy`, `MetricsOptions`, `AppBuilder.shutdownDrain`
+  / `health` / `metrics`, `HttpOptions`, `DatabasePool`, `RedisPool`, `DatabaseModule.builder()`,
+  `RedisModule.builder()`, `FlowCatalystOptions`, `ReceiverOptions` and `PlatformClient.timeout()`.
+  Kept: `216bf89` (locks in code), `373a924` (HTTP clients in code), `6ff956a` (secrets in code),
+  `55ecb8d` (auth claims its component), `9326692` (driver registry removed), the removed-key check
+  and claimed components. New against before 2026-10-14: database and Redis pool keys are
+  range-checked at start-up (a connect timeout under 250 ms is refused, no longer raised).
+  **BREAKING** for the first application, now only:
 
   | Old key | New code |
   |---|---|
-  | `app.shutdown.drain`, `app.health.*`, `app.metrics.*` | `App.builder().shutdownDrain(..)`, `.health(HealthPolicy..)`, `.metrics(MetricsOptions..)` |
-  | `database.instances.<n>.pool.*`, `.migrate` | `DatabaseModule.builder().pool(DatabasePool..)`, `.migrate(..)` |
-  | `redis.instances.<n>.timeout`, `.pool.max` | `RedisModule.builder().pool(RedisPool..)` |
   | `locks.*` | `LocksModule.builder().store(name, LockStores.memory() / DatabaseLockStores.database() / RedisLockStores.redis(..))`; drop `LocksRedisModule` |
-  | `http.max-body-bytes`, `request-timeout`, `shutdown-grace`, `metrics.enabled`, `metrics.path` | `new JettyHttpModule(HttpOptions..)` |
-  | `http-client.*`, `http-clients.instances.<n>` behaviour (timeouts, retry, `auth.type`, scope...) | `HttpClientModule.builder().client(name, HttpClientOptions..withAuth(ClientAuth..))`; the section keeps `base-url` and credentials |
   | `secrets.*` | `SecretsModule.builder().store(name, SecretStores.env(..) / file(..))` with `CachePolicy` |
-  | `flowcatalyst.enabled`, `timeout`, `sync.on-boot`, `outbox.stale-after`, `receivers.*` behaviour | `new FlowCatalystModule(FlowCatalystOptions..withReceivers(ReceiverOptions..))`; `PlatformClient.timeout()` |
+  | `http-client.event-loops`, `.max-connections-per-host`; `http-clients.default`; per client `driver`, timeouts, `max-response-bytes`, `retry.*`, `auth.type`, `auth.method`, `auth.scope`, `auth.audience`, `auth.name` | `HttpClientModule.builder().eventLoops(..)`, `.client(name, HttpClientOptions..withAuth(ClientAuth..))`; the section keeps `base-url` and credentials |
+  | `database.instances.<n>.driver`, `redis.instances.<n>.driver` | delete |
   | `rate-limits.*` (ignored since MA 10) | now fails start-up |
 
-  Exact edits for `inhance/mono-repo` are in the CC report (ingest-runtime: `SecretsModule` builder
-  with the `INGEST_SECRET_` env store, `FlowCatalystModule` with `ReceiverOptions.disabled()`,
-  `PlatformClient.timeout()` for the two `FlowCatalystModule.TIMEOUT` reads, YAML without `secrets`
-  and `receivers.enabled`; ingest-control-plane: YAML without `pool` and `migrate`). Go G1 and Rust R1
-  still read driver names and behavioural keys (contract header); the key-rules conformance vector is
-  to be added with the Go port. Not done: nothing published, so the mono-repo needs a fresh
-  `./mvnw install` of the framework before its edits compile.
+  `inhance/mono-repo` needs (re-checked against the final state): ingest-runtime
+  `IngestRuntime.builder()` lists `SecretsModule.builder().store("env",
+  SecretStores.env("INGEST_SECRET_")).build()` instead of `new SecretsModule()`, and its
+  `config/application.yaml` loses the `secrets:` section and the comment naming
+  `SECRETS_INSTANCES_FILES_*` / `SECRETS_DEFAULT`; everything else stays (`flowcatalyst.receivers.enabled:
+  false`, `http.port`, `FlowCatalystModule.TIMEOUT`, `new HttpClientModule()` with
+  `ServiceClients.register`, the control plane's `database` section with `pool` and `migrate`).
+  Open question for the owner: `http-client.event-loops` and `.max-connections-per-host` are one
+  setting of the HTTP client engine, so the decision test says configuration; they stay code as
+  built (the orchestrator's ruling) until the owner says otherwise. Go G1 and Rust R1 still read
+  driver names for locks, secrets and HTTP clients; the key-rules conformance vector is to be added
+  with the Go port. Nothing published: the mono-repo needs a fresh `./mvnw install` of the framework.
 - Owner decisions waiting (each recorded in its contract under "Rulings pending owner"): publishing
   the Java SDK and the group id before the first tag (`contracts/build.md`); rate-limit store
   failure default ALLOW, IPv6 /64, the memory overflow bucket (`contracts/rate-limiting.md`);

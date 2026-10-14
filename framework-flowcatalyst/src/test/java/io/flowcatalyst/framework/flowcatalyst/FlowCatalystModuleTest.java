@@ -47,14 +47,10 @@ class FlowCatalystModuleTest {
   }
 
   private App start(Map<String, String> env) {
-    return start(env, FlowCatalystOptions.defaults());
-  }
-
-  private App start(Map<String, String> env, FlowCatalystOptions options) {
     return App.builder()
         .configDirectory(dir)
         .environment(env)
-        .module(new FlowCatalystModule(options))
+        .module(new FlowCatalystModule())
         .start();
   }
 
@@ -195,7 +191,7 @@ class FlowCatalystModuleTest {
 
   @Test
   void disabledNeedsNoSettingsAndAddsNoHealthCheck() {
-    try (App app = start(Map.of(), FlowCatalystOptions.disabled())) {
+    try (App app = start(Map.of("FLOWCATALYST_ENABLED", "false"))) {
       PlatformClient client = app.get(PlatformClient.class);
       assertThat(client.isEnabled()).isFalse();
       assertThat(app.health().check().results()).doesNotContainKey("flowcatalyst");

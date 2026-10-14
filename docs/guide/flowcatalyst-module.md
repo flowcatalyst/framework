@@ -1,4 +1,4 @@
-<!-- types: FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, Receivers, PlatformClient, PlatformException, Definitions, Definition, DefinitionCatalog, DefinitionSync, SyncReport, CategoryResult, SyncException, SyncCommand, Command, Launch, FakePlatform -->
+<!-- types: FlowCatalystModule, Receivers, PlatformClient, PlatformException, Definitions, Definition, DefinitionCatalog, DefinitionSync, SyncReport, CategoryResult, SyncException, SyncCommand, Command, Launch, FakePlatform -->
 # The FlowCatalyst module
 
 `framework-flowcatalyst` connects the application to the FlowCatalyst platform: it holds the
@@ -31,46 +31,24 @@ flowcatalyst:
   # client-secret: from the environment, FLOWCATALYST_CLIENT_SECRET
 ```
 
-Configuration holds the connection to the platform and the secrets, nothing else:
-
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `flowcatalyst.enabled` | boolean | `true` | `false` makes the module inert: no setting below is needed, the catalog is empty, `PlatformClient.isEnabled()` is false and every other method throws |
 | `flowcatalyst.base-url` | URI | required while enabled | absolute `http(s)` URL of the platform |
 | `flowcatalyst.application` | string | required while enabled | this application's code on the platform, `[a-z][a-z0-9-]*` |
 | `flowcatalyst.client-id` | string | required while enabled | OAuth client id of the application's service account |
 | `flowcatalyst.client-secret` | secret | required while enabled | its secret. Use `FLOWCATALYST_CLIENT_SECRET` or `config/secrets.local.yaml` ([Config](config.md#secrets)) |
-| `flowcatalyst.subscription-target-base-url` | URI | none | what subscription targets given as a path (`/webhooks/billing`) resolve against: the URL the platform reaches this deployment at |
-| `flowcatalyst.receivers.*` secrets | secret | none | the receivers' signing secrets and bearer tokens, listed on the [Receivers](receivers.md#settings) page |
-
-How the module behaves is `FlowCatalystOptions`, given in code: `new FlowCatalystModule()` is the
-defaults, `new FlowCatalystModule(FlowCatalystOptions)` sets them, and
-`new FlowCatalystModule(config -> ...)` computes them from a setting of your own. The resolved
-options are a service (`app.get(FlowCatalystOptions.class)`). Checked when built:
-
-| `FlowCatalystOptions` | Default | Meaning |
-|---|---|---|
-| `disabled()`, `withEnabled(boolean)` | enabled | disabled makes the module inert: no platform setting is needed, the catalog is empty, `PlatformClient.isEnabled()` is false and every other method throws |
-| `withTimeout(Duration)` | `30s` | timeout of calls to the platform; more than 0, at most 1 h; `PlatformClient.timeout()` returns it |
-| `withSyncOnBoot(boolean)` | `false` | also sync definitions in `started`; failures are logged, never fatal |
-| `withOutboxStaleAfter(Duration)` | `5m` | the `outbox` health check is down when the oldest undelivered row is older than this; more than 0 |
-| `withReceivers(ReceiverOptions)` | `ReceiverOptions.defaults()` | the receivers' behaviour ([Receivers](receivers.md#settings)) |
-
-To run without a platform in some deployments, decide it from a setting of your own (from
-`FlowCatalystOptionsTest`):
-
-```java
-FlowCatalystModule module =
-    new FlowCatalystModule(
-        config -> config.get(PLATFORM_ON) ? FlowCatalystOptions.defaults() : FlowCatalystOptions.disabled());
-```
-
-The module claims the `flowcatalyst` component: a misspelt key there fails start-up, and the old
-behavioural keys (`flowcatalyst.enabled`, `timeout`, `sync.on-boot`, `outbox.stale-after`,
-`receivers.enabled`, `receivers.path` and the receivers' timeouts) fail naming their replacement.
+| `flowcatalyst.timeout` | duration | `30s` | timeout of calls to the platform |
+| `flowcatalyst.subscription-target-base-url` | URI | none | what subscription targets given as a path (`/webhooks/billing`) resolve against |
+| `flowcatalyst.sync.on-boot` | boolean | `false` | also sync definitions in `started`; failures are logged, never fatal |
+| `flowcatalyst.outbox.stale-after` | duration | `5m` | the `outbox` health check is down when the oldest undelivered row is older than this; must be positive |
+| `flowcatalyst.receivers.*` | | | the receivers' settings, listed on the [Receivers](receivers.md#settings) page, including `enabled` (default true) which can switch the receiver routes off |
 
 The service account (client id and secret) and the application code must already exist on the
 platform; the framework does not create them. When the module is enabled, missing or malformed
-settings fail start-up with one `StartupException` naming every one.
+settings fail start-up with one `StartupException` naming every one. The module claims the
+`flowcatalyst` component, so a misspelt key under it (`flowcatalyst.receivers.enabeld`) fails
+start-up too, listing the keys it reads.
 
 The platform is **not on the request path**. If it cannot be reached at start-up the application
 still starts; the failure is logged and the `flowcatalyst` health check reports it. That check
@@ -122,7 +100,7 @@ ServiceClient api =
   never log it), so the platform authorises the call by that account's roles. After a `401` the
   client calls `clearToken()` and sends the request once more with a fresh token.
 - **Timeouts and retries** are the client's (`request-timeout`, retries for idempotent requests
-  only); the module's timeout (`FlowCatalystOptions.withTimeout`) covers only its own calls.
+  only); `flowcatalyst.timeout` covers only the module's own calls.
 
 ## Creating a dispatch job
 
@@ -301,7 +279,7 @@ Added at `boot` when the module is enabled, a `Databases` service exists, and th
 database has an `outbox_messages` table (migrations have run by then); otherwise there is no
 check, and an INFO line says why. It reports `Down` when the oldest undelivered row (status
 `PENDING` or `IN_PROGRESS`; terminal failures are not a backlog) is **strictly older** than
-`FlowCatalystOptions.outboxStaleAfter`, measured with the application's `InstantSource`. It runs two
+`flowcatalyst.outbox.stale-after`, measured with the application's `InstantSource`. It runs two
 `min(created_at)` queries and writes nothing. A failing lookup reports the database error.
 The check is informational: a stale backlog is reported (`DEGRADED`) but does not make
 `/health/ready` answer `503` unless `app.health.critical` lists `outbox`.
@@ -310,9 +288,10 @@ The check is informational: a stale backlog is reported (`DEGRADED`) but does no
 
 The module also mounts the receivers for dispatch jobs and scheduled-job firings
 (`POST /fc/dispatch`, `POST /fc/scheduled-jobs`), with signature checks and ack / defer / reject
-results. They have their own page: [Receivers](receivers.md), which also lists their secrets and
-`ReceiverOptions`. A receiver you register no handler for answers `404`, and
-`ReceiverOptions.disabled()` removes both routes (for an application that only wants the token).
+results. They have their own page: [Receivers](receivers.md), which also lists the
+`flowcatalyst.receivers.*` settings. A receiver you register no handler for answers `404`, and
+`flowcatalyst.receivers.enabled: false` removes both routes (for an application that only wants the
+token).
 
 ## Testing
 

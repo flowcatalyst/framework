@@ -17,7 +17,7 @@ import tools.jackson.databind.JsonNode;
  * authenticated with OAuth2 client credentials (the application's service account).
  *
  * <p>Application code uses this wrapper; SDK types do not appear in its signatures. When
- * the module is disabled ({@code FlowCatalystOptions.enabled} false) the instance exists but {@link #isEnabled()} is false and
+ * {@code flowcatalyst.enabled} is false the instance exists but {@link #isEnabled()} is false and
  * every other method throws {@link IllegalStateException}.
  */
 public final class PlatformClient {
@@ -25,7 +25,6 @@ public final class PlatformClient {
   private final @Nullable FlowCatalystClient sdk;
   private final @Nullable FlowCatalystClient reporting;
   private final @Nullable ApplicationCode application;
-  private final @Nullable Duration timeout;
 
   /** The service principal, with the token it was read from (contract section 4b). */
   private record Resolved(String token, PrincipalId principal) {
@@ -40,16 +39,14 @@ public final class PlatformClient {
   private PlatformClient(
       @Nullable FlowCatalystClient sdk,
       @Nullable FlowCatalystClient reporting,
-      @Nullable ApplicationCode application,
-      @Nullable Duration timeout) {
+      @Nullable ApplicationCode application) {
     this.sdk = sdk;
     this.reporting = reporting;
     this.application = application;
-    this.timeout = timeout;
   }
 
   static PlatformClient disabled() {
-    return new PlatformClient(null, null, null, null);
+    return new PlatformClient(null, null, null);
   }
 
   static PlatformClient create(
@@ -69,7 +66,7 @@ public final class PlatformClient {
         builder(baseUrl, clientId, clientSecret, timeout, subscriptionTargetBaseUrl)
             .retryAttempts(0)
             .build();
-    return new PlatformClient(main, reporting, application, timeout);
+    return new PlatformClient(main, reporting, application);
   }
 
   private static FlowCatalystClient.Builder builder(
@@ -92,7 +89,7 @@ public final class PlatformClient {
   /**
    * Whether the module is enabled and this client can talk to the platform.
    *
-   * @return false when the module is disabled ({@code FlowCatalystOptions})
+   * @return false when {@code flowcatalyst.enabled} is false
    */
   public boolean isEnabled() {
     return sdk != null;
@@ -110,21 +107,6 @@ public final class PlatformClient {
       throw disabledException();
     }
     return code;
-  }
-
-  /**
-   * The timeout of requests to the platform ({@code FlowCatalystOptions.timeout}), for clients an
-   * application builds itself against the platform.
-   *
-   * @return the timeout
-   * @throws IllegalStateException when the module is disabled
-   */
-  public Duration timeout() {
-    Duration t = timeout;
-    if (t == null) {
-      throw disabledException();
-    }
-    return t;
   }
 
   /**
@@ -262,6 +244,6 @@ public final class PlatformClient {
   }
 
   private static IllegalStateException disabledException() {
-    return new IllegalStateException("the flowcatalyst module is disabled (FlowCatalystOptions.enabled)");
+    return new IllegalStateException("the flowcatalyst module is disabled (flowcatalyst.enabled)");
   }
 }
