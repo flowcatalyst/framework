@@ -144,7 +144,7 @@ const navUi = {
       </template>
       <template #footer="{ collapsed: isCollapsed }">
         <div class="flex w-full gap-1" :class="isCollapsed === true ? 'flex-col items-center' : 'items-center'">
-          <UDropdownMenu v-if="who !== undefined" :items="userItems" :content="{ side: 'top', align: 'start' }">
+          <UDropdownMenu v-if="who !== undefined" :items="userItems" :modal="false" :content="{ side: 'top', align: 'start' }">
             <UButton
               v-bind="isCollapsed === true ? { square: true } : { label: who.name }"
               icon="i-lucide-circle-user"

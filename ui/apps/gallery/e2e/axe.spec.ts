@@ -57,6 +57,12 @@ for (const scheme of ["light", "dark"] as const) {
     expect(await axeViolations(page), "column menu").toEqual([]);
     await page.keyboard.press("Escape");
 
+    await openPage(page, "/shell", "Application shell");
+    await page.getByTestId("fw-user-menu").click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    expect(await axeViolations(page), "user menu").toEqual([]);
+    await page.keyboard.press("Escape");
+
     await openPage(page, "/feedback", "Feedback");
     for (const kind of ["success", "info", "warning", "error"] as const) {
       await page.getByTestId(`flash-${kind}`).click();

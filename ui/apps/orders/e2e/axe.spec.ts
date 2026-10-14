@@ -92,11 +92,10 @@ for (const scheme of ["light", "dark"] as const) {
     expect(await axeViolations(page), "filters popover").toEqual([]);
     await page.keyboard.press("Escape");
 
-    // Not checked with axe while open: FwAppShell's user menu is a modal dropdown, which hides the
-    // sidebar and the page with aria-hidden while focus can still reach them (aria-hidden-focus; the
-    // same defect FwRowActions fixed with `:modal="false"`). Gap recorded in docs/ui/u3.md, G2.
+    // The shell's user menu is non-modal (docs/ui/u3.md, G2), so the page is not aria-hidden under focus.
     await page.getByTestId("fw-user-menu").click();
     await expect(page.getByRole("menu")).toBeVisible();
+    expect(await axeViolations(page), "user menu").toEqual([]);
     await csp.expectClean();
   });
 }

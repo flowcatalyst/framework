@@ -308,6 +308,21 @@ test.describe("application shell (FwAppShell)", () => {
     await csp.expectClean();
   });
 
+  test("user menu (non-modal): Escape and an outside click close it and focus returns to the trigger", covers("shell-sign-out"), async ({ page, csp }) => {
+    await openPage(page, "/shell", "Application shell");
+    const trigger = page.getByTestId("fw-user-menu");
+    await trigger.click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.getByRole("heading", { level: 1 }).click();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await csp.expectClean();
+  });
+
   test("desktop: the toggle collapses the sidebar to a rail of 40 px targets with tooltips, by mouse and keyboard, keeping focus", covers("shell-sidebar-collapse"), async ({ page, csp }) => {
     await openPage(page, "/shell", "Application shell");
     const sidebar = page.locator("#dashboard-sidebar-fw-sidebar");
