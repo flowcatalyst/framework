@@ -63,7 +63,7 @@ platform's `frontend/node_modules`.
 | CSRF | the `/ui` (templ) routes run `guard.CSRF` (`http.CrossOriginProtection` plus refusing an unsafe request with neither `Sec-Fetch-Site` nor `Origin`); the **`/api` routes the SPA calls have no such check** and rely on `SameSite=Lax` (finding, section 8.4) | `guard.CSRF`'s rules |
 | Embedding | `frontend/embed.go` (`//go:embed all:dist`), `handler.go`: exact asset or `index.html`, `immutable` caching under `/assets/`, `no-store` on `index.html`, a clear "frontend not built" response | the pattern; with two corrections (section 9: a missing hashed asset and an unknown `/api` path must not answer `index.html`) |
 | Patterns | list pages as `DataTable` + `FcTableToolbar` + URL-synced filters (`useListState`), record drawers as **child routes** over the list (`useDrawerRoute`: deep links, Back closes, discard-changes guard on leave and on row switch), cursor pagination with an in-session back stack (`useCursorPagination`), `useDirtyForm` (structural snapshot), a convention test against assigning a `204` result to a ref | all of them, ported onto Nuxt UI components as `@flowcatalyst/ui` composables and partials |
-| Look | hard-coded slate and navy hex values in scoped styles; 12.6 px base font; no dark mode | the kit's tokens instead (section 11) |
+| Look | hard-coded slate and navy hex values in scoped styles; 12.6 px base font; no dark mode | the theme of section 11 (kit values on Nuxt UI variables; Nuxt UI default text scale) |
 
 ### 1.2 The UI kit and the platform's templ port
 
