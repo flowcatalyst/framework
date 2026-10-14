@@ -52,6 +52,8 @@ export const fcIcons = [
   "i-lucide-log-out",
   "i-lucide-monitor",
   "i-lucide-moon",
+  "i-lucide-panel-left-close",
+  "i-lucide-panel-left-open",
   "i-lucide-refresh-cw",
   "i-lucide-search",
   "i-lucide-sun",

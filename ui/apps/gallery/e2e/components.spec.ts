@@ -1,6 +1,14 @@
 // The behaviours of the FlowCatalyst parts (src/behaviours.ts; docs/go/ui.md section 12: keyboard
 // operation, focus trap and return, Escape, live announcements). Each test names the checklist rows it
 // exercises (`covers`); every test also asserts the strict CSP stayed clean.
+import { axeViolations } from "./axe-tools.ts";
+
+declare global {
+  interface Window {
+    /** Cumulative layout shift of the document, collected by the shell test's init script. */
+    __layoutShift?: number;
+  }
+}
 import { covers, expect, openPage, test } from "./fixtures.ts";
 
 test.describe("table toolbar (FwTableToolbar)", () => {
@@ -297,6 +305,116 @@ test.describe("application shell (FwAppShell)", () => {
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Signed out" })).toBeVisible();
     await expect(page.getByTestId("signed-out-from")).toHaveText("You signed out.");
+    await csp.expectClean();
+  });
+
+  test("desktop: the toggle collapses the sidebar to a rail of 40 px targets with tooltips, by mouse and keyboard, keeping focus", covers("shell-sidebar-collapse"), async ({ page, csp }) => {
+    await openPage(page, "/shell", "Application shell");
+    const sidebar = page.locator("#dashboard-sidebar-fw-sidebar");
+    const toggle = page.getByTestId("fw-sidebar-toggle");
+    const nav = page.getByRole("navigation", { name: "Main" });
+    await expect(toggle).toHaveAccessibleName("Collapse sidebar");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(toggle).toHaveAttribute("aria-controls", "dashboard-sidebar-fw-sidebar");
+    await expect(page.getByTestId("fw-app-name")).toBeVisible();
+    const wide = (await sidebar.boundingBox())?.width ?? 0;
+    expect(wide).toBeGreaterThan(100);
+
+    await toggle.click();
+    await expect(toggle).toHaveAccessibleName("Expand sidebar");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(toggle).toBeFocused();
+    await expect(sidebar).toHaveAttribute("data-collapsed", "true");
+    await expect.poll(async () => (await sidebar.boundingBox())?.width ?? 0).toBe(65); // the 64 px rail plus the 1 px border
+    // Names are gone from view (the link keeps its accessible name through the tooltip's aria-label or sr text).
+    expect((await page.getByTestId("fw-app-name").boundingBox())?.width ?? 0, "app name is screen-reader text only").toBeLessThanOrEqual(1);
+    for (const target of [toggle, nav.getByRole("link", { name: "Shell" }), page.getByTestId("fw-user-menu"), page.getByTestId("color-mode")]) {
+      const box = await target.boundingBox();
+      expect(box?.width, `target width ${await target.evaluate((el) => el.outerHTML.slice(0, 90))}`).toBeGreaterThanOrEqual(40);
+      expect(box?.height, "target height").toBeGreaterThanOrEqual(40);
+    }
+    // A rail icon's name shows as a tooltip (Reka suppresses a tooltip on focus that follows a click, so hover).
+    await page.mouse.move(700, 400);
+    await nav.getByRole("link", { name: "Shell" }).hover();
+    await expect(page.locator('[data-slot="content"].select-none').filter({ hasText: "Shell" })).toBeVisible();
+
+    // Keyboard: Enter on the toggle expands, Space collapses; focus stays on it.
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(toggle).toBeFocused();
+    await expect.poll(async () => (await sidebar.boundingBox())?.width ?? 0).toBe(wide);
+    await page.keyboard.press("Space");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(toggle).toBeFocused();
+    await csp.expectClean();
+  });
+
+  test("desktop: the choice is stored per viewer and a collapsed sidebar is drawn collapsed on load with no layout shift", covers("shell-sidebar-collapse"), async ({ page, csp }) => {
+    await openPage(page, "/shell", "Application shell");
+    await page.getByTestId("fw-sidebar-toggle").click();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("fc:shell-sidebar-collapsed"))).toBe("true");
+    expect(await page.evaluate(() => document.cookie)).not.toContain("dashboard");
+
+    await page.addInitScript(() => {
+      window.__layoutShift = 0;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if ("value" in entry && typeof entry.value === "number") {
+            window.__layoutShift = (window.__layoutShift ?? 0) + entry.value;
+          }
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Application shell" })).toBeVisible();
+    const sidebar = page.locator("#dashboard-sidebar-fw-sidebar");
+    await expect(sidebar).toHaveAttribute("data-collapsed", "true");
+    await expect(page.getByTestId("fw-sidebar-toggle")).toHaveAttribute("aria-expanded", "false");
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.__layoutShift), "cumulative layout shift").toBeLessThan(0.01);
+
+    // The collapsed rail passes axe at AA in both themes.
+    expect(await axeViolations(page), "collapsed rail, light").toEqual([]);
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(page.getByTestId("fw-sidebar-toggle")).toHaveAttribute("aria-expanded", "false");
+    expect(await axeViolations(page), "collapsed rail, dark").toEqual([]);
+
+    await page.getByTestId("fw-sidebar-toggle").click();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("fc:shell-sidebar-collapsed"))).toBe("false");
+    await csp.expectClean();
+  });
+
+  test("blocked storage: the toggle still works and nothing throws", covers("shell-sidebar-collapse"), async ({ page, csp }) => {
+    await page.addInitScript(() => {
+      Storage.prototype.getItem = () => {
+        throw new Error("blocked");
+      };
+      Storage.prototype.setItem = () => {
+        throw new Error("blocked");
+      };
+    });
+    await openPage(page, "/shell", "Application shell");
+    await page.getByTestId("fw-sidebar-toggle").click();
+    await expect(page.getByTestId("fw-sidebar-toggle")).toHaveAttribute("aria-expanded", "false");
+    await csp.expectClean();
+  });
+
+  test("phone: a stored collapsed state does not touch the slideover, which has no collapse toggle", covers("shell-sidebar-collapse", "shell-phone-sidebar"), async ({ page, csp }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("fc:shell-sidebar-collapsed", "true");
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPage(page, "/shell", "Application shell");
+    await page.getByRole("button", { name: "Open sidebar" }).click();
+    const nav = page.getByRole("navigation", { name: "Main" });
+    await expect(nav.getByRole("link", { name: "Shell" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Shell" })).toContainText("Shell");
+    await expect(page.getByRole("dialog").getByTestId("fw-sidebar-toggle")).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(nav).toBeHidden();
     await csp.expectClean();
   });
 });

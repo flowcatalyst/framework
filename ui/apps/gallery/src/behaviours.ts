@@ -27,6 +27,7 @@ export const behaviours = [
   { id: "shell-nav-permissions", behaviour: "Navigation shows only what the session may open", by: "FwAppShell + usePermissions", page: "/shell" },
   { id: "shell-current-page", behaviour: "The current page is marked aria-current in the navigation", by: "FwAppShell (UNavigationMenu)", page: "/shell" },
   { id: "shell-sign-out", behaviour: "Sign out from the account menu goes through the runtime", by: "FwAppShell (UDropdownMenu) + api-runtime", page: "/shell" },
+  { id: "shell-sidebar-collapse", behaviour: "On desktop the sidebar collapses to an icon rail (40 px targets, tooltips) and expands again with a keyboard-operable toggle that keeps focus; the choice is stored per viewer and applied before the first paint", by: "FwAppShell (UDashboardSidebar) + useLocalState", page: "/shell" },
   { id: "shell-phone-sidebar", behaviour: "On a phone the sidebar opens from the navbar and closes again", by: "FwAppShell (UDashboardSidebar)", page: "/shell" },
   { id: "colour-mode", behaviour: "Light, dark or system colour mode, stored, switched without an inline style", by: "FwColorModeButton + useColorMode", page: "/shell" },
 
