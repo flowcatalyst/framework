@@ -77,7 +77,7 @@ linters:
       - linters: [forbidigo, gosec]
         path: (^|/)(fwtest|cmd|internal/conformance)/
       - linters: [forbidigo]
-        path: (^|/)examples/[^/]+/main\.go$
+        path: (^|/)examples/.*main\.go$
 
 formatters:
   enable:

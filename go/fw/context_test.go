@@ -93,3 +93,24 @@ func TestPermissionMatching(t *testing.T) {
 		t.Error("an empty segment was accepted")
 	}
 }
+
+func TestPrincipalKindGoesWithItsPrincipal(t *testing.T) {
+	t.Parallel()
+	cx := fw.ContextFor(fw.MustClientID("acme"))
+	if _, ok := cx.PrincipalKind(); ok {
+		t.Error("a kind without a principal")
+	}
+	svc := cx.WithPrincipalOfKind(fw.MustPrincipalID("sa-1"), fw.PrincipalService)
+	if k, ok := svc.PrincipalKind(); !ok || k != fw.PrincipalService || k.String() != "SERVICE" {
+		t.Errorf("kind %v %v", k, ok)
+	}
+	if _, ok := svc.WithPrincipal(fw.MustPrincipalID("u-2")).PrincipalKind(); ok {
+		t.Error("WithPrincipal kept the previous principal's kind")
+	}
+	defer func() {
+		if recover() == nil {
+			t.Error("an unknown kind was accepted")
+		}
+	}()
+	cx.WithPrincipalOfKind(fw.MustPrincipalID("x"), fw.PrincipalKind(9))
+}

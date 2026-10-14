@@ -8,10 +8,12 @@ import (
 	"testing"
 
 	"github.com/flowcatalyst/framework/go/database"
+	"github.com/flowcatalyst/framework/go/examples/orders-demo/orders"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/fwtest"
 	"github.com/flowcatalyst/framework/go/internal/conformance"
 	"github.com/flowcatalyst/framework/go/locks/dblock"
+	"github.com/flowcatalyst/framework/go/usecase"
 )
 
 type historyDoc struct {
@@ -29,6 +31,8 @@ type historyRow struct {
 func migrationSets() map[string]fw.MigrationSet {
 	return map[string]fw.MigrationSet{
 		"migrations/locks-database.json": {Module: dblock.ModuleID, Files: dblock.Migrations()},
+		"migrations/outbox.json":         {Module: usecase.OutboxModuleID, Files: usecase.OutboxMigrations()},
+		"migrations/orders.json":         {Module: orders.ModuleID, Files: orders.Migrations()},
 	}
 }
 

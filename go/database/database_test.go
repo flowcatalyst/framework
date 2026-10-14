@@ -195,11 +195,18 @@ func TestConnectMigrateAndHealthThroughAnApplication(t *testing.T) {
 		if err := database.Migrate(ctx, b, dbs); err != nil {
 			return nil, err
 		}
-		main, _ = dbs.Default()
+		db, ok := dbs.Default()
+		if !ok {
+			return nil, errors.New("no default instance")
+		}
+		main = db
 		return nil, nil
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if main == nil {
+		t.Fatal("build did not run")
 	}
 	if ok, err := main.TableExists(t.Context(), "orders"); err != nil || !ok {
 		t.Errorf("orders not migrated: %v %v", ok, err)

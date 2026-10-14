@@ -54,11 +54,18 @@ func TestConnectThroughAnApplication(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		c, _ = clients.Default()
+		def, ok := clients.Default()
+		if !ok {
+			return nil, context.Canceled
+		}
+		c = def
 		return nil, nil
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if c == nil {
+		t.Fatal("build did not run")
 	}
 	if res, ok := run.Health(t.Context()).Result("redis:default"); !ok || res.Status != fw.Up {
 		t.Errorf("health %+v", res)

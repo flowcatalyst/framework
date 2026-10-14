@@ -1,8 +1,10 @@
 package mustliteral
 
 import (
+	"github.com/flowcatalyst/framework/go/event"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/locks"
+	"github.com/flowcatalyst/framework/go/usecase"
 )
 
 // checks maps each framework Must... function to the Parse... function it wraps. A Must...
@@ -16,6 +18,9 @@ var checks = map[string]func(string) error{
 	"github.com/flowcatalyst/framework/go/fw.MustExecutionID":     errOf(fw.ParseExecutionID),
 	"github.com/flowcatalyst/framework/go/fw.MustPermission":      errOf(fw.ParsePermission),
 	"github.com/flowcatalyst/framework/go/fw.MustIDPrefix":        errOf(fw.ParseIDPrefix),
+	"github.com/flowcatalyst/framework/go/event.MustType":         errOf(event.ParseType),
+	"github.com/flowcatalyst/framework/go/usecase.MustName":       errOf(usecase.ParseName),
+	"github.com/flowcatalyst/framework/go/usecase.MustErrorCode":  errOf(usecase.ParseErrorCode),
 	"github.com/flowcatalyst/framework/go/locks.MustServiceKey":   errOf(locks.ServiceKey),
 }
 

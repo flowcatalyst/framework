@@ -51,6 +51,9 @@ func run(pass *analysis.Pass) (any, error) {
 		if pass.Pkg.Path() == path || pass.Pkg.Path() == path+"_test" {
 			return // the declaring package and its own tests (which test Must itself) are exempt
 		}
+		if strings.HasSuffix(pass.Fset.Position(call.Pos()).Filename, "_test.go") {
+			return // tests build fixtures from vectors; a bad value panics in the test at once
+		}
 		full := path + "." + fn.Name()
 		check, known := checks[full]
 		if !known {

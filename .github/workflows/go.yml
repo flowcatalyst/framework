@@ -62,7 +62,22 @@ jobs:
         with:
           go-version: "1.27.2"
           cache-dependency-path: go/go.sum
+      - run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 # the sqlfw tests run sqlc
       - run: make test
+
+  # The checked SQL of the examples: sqlc vet (prepare every query against a PostgreSQL migrated
+  # by the framework's runner) and diff, and the jet table code. The tool starts its own embedded
+  # PostgreSQL 18.
+  sql-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.2"
+          cache-dependency-path: go/go.sum
+      - run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+      - run: make sql-check
 
   vulncheck:
     runs-on: ubuntu-latest

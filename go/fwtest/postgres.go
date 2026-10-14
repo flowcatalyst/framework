@@ -1,21 +1,20 @@
 package fwtest
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"math/rand/v2"
 	"net/url"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/flowcatalyst/framework/go/internal/pgembed"
 )
 
 // EnvDatabaseURL names the variable that points the tests at an existing PostgreSQL server
@@ -165,36 +164,16 @@ func newPostgres() (*pgServer, error) {
 		}
 		return &pgServer{base: u, stop: func() {}}, nil
 	}
-	tmp, err := os.MkdirTemp("", "fwtest-pg-*")
+	raw, stop, err := pgembed.Start(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	port, err := FreePort()
+	base, err := url.Parse(raw)
 	if err != nil {
-		_ = os.RemoveAll(tmp)
+		stop()
 		return nil, err
 	}
-	var log bytes.Buffer // the server's own output, shown only when it fails to start
-	pg := embeddedpostgres.NewDatabase(embeddedpostgres.DefaultConfig().
-		Version(embeddedpostgres.V18).
-		Logger(&log).
-		Port(uint32(port)). //nolint:gosec // a TCP port fits in uint32
-		DataPath(filepath.Join(tmp, "data")).
-		RuntimePath(filepath.Join(tmp, "runtime")).
-		Username("postgres").Password("postgres").Database("postgres").
-		StartTimeout(90 * time.Second))
-	if err := pg.Start(); err != nil {
-		_ = os.RemoveAll(tmp)
-		return nil, fmt.Errorf("start embedded PostgreSQL 18 on port %d: %w\n%s", port, err, log.String())
-	}
-	base, err := url.Parse(fmt.Sprintf("postgres://postgres:postgres@127.0.0.1:%d/postgres", port))
-	if err != nil {
-		return nil, err
-	}
-	return &pgServer{base: base, stop: func() {
-		_ = pg.Stop()
-		_ = os.RemoveAll(tmp)
-	}}, nil
+	return &pgServer{base: base, stop: stop}, nil
 }
 
 func stopPostgres() {

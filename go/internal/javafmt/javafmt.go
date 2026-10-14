@@ -15,7 +15,13 @@ import (
 // otherwise computerised scientific notation ("1.0E7", "1.0E-4", "4.9E-324"). The digits are the
 // shortest that round to v, except that Java never chooses a one-digit decimal: when the shortest
 // has one digit, it takes the closest two-digit decimal (so 5e-324 prints as 4.9E-324).
-func Double(v float64) string {
+func Double(v float64) string { return format(v, 64) }
+
+// Float returns Java's Float.toString(v): as [Double], with the digits that round-trip a
+// float32 (0.1f prints 0.1, not 0.10000000149011612).
+func Float(v float32) string { return format(float64(v), 32) }
+
+func format(v float64, bits int) string {
 	switch {
 	case math.IsNaN(v):
 		return "NaN"
@@ -31,9 +37,9 @@ func Double(v float64) string {
 	}
 	neg := v < 0
 	a := math.Abs(v)
-	digits, exp := sciDigits(a, -1)
+	digits, exp := sciDigits(a, -1, bits)
 	if len(digits) == 1 {
-		digits, exp = sciDigits(a, 1)
+		digits, exp = sciDigits(a, 1, bits)
 	}
 	digits = strings.TrimRight(digits, "0")
 	if digits == "" {
@@ -80,8 +86,8 @@ func Double(v float64) string {
 
 // sciDigits returns the significant digits of a positive finite a and its decimal exponent, with
 // prec digits after the first (-1: the shortest that round-trip).
-func sciDigits(a float64, prec int) (string, int) {
-	s := strconv.FormatFloat(a, 'e', prec, 64) // d.dddde±xx
+func sciDigits(a float64, prec, bits int) (string, int) {
+	s := strconv.FormatFloat(a, 'e', prec, bits) // d.dddde±xx
 	mant, expText, _ := strings.Cut(s, "e")
 	exp, _ := strconv.Atoi(expText)
 	return strings.Replace(mant, ".", "", 1), exp

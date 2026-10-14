@@ -9,6 +9,8 @@
 #   vet              go vet with the framework's analyzers (cmd/fwvet)
 #   nilaway          NilAway over the framework's packages
 #   test             go test -race on both modules (PostgreSQL and Redis come from fwtest)
+#   sql-check        the examples' checked SQL: schema dir, sqlc vet (db-prepare) and diff, jet code
+#                    (needs sqlc v1.31.1 on PATH: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1)
 #   go-sync-shared   copy the shared statements, scripts and migrations from ../conformance and the
 #                    Java modules into the packages that embed them
 
@@ -16,15 +18,15 @@ GO ?= go
 TOOL := $(GO) tool -modfile=$(CURDIR)/tools/go.mod
 MODULE := github.com/flowcatalyst/framework/go
 
-.PHONY: go-check fmt fmt-check lint vet nilaway test go-sync-shared
+.PHONY: go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared
 
-go-check: fmt-check lint vet nilaway test
+go-check: fmt-check lint vet nilaway test sql-check
 
 fmt:
-	$(TOOL) gofumpt -w $$(find . -name '*.go' -not -path './tools/*' -not -path '*/testdata/*')
+	$(TOOL) gofumpt -w $$(find . -name '*.go' -not -path './tools/*' -not -path '*/testdata/*' -not -path '*/internal/jet/*')
 
 fmt-check:
-	@out=$$($(TOOL) gofumpt -l $$(find . -name '*.go' -not -path './tools/*' -not -path '*/testdata/*')); \
+	@out=$$($(TOOL) gofumpt -l $$(find . -name '*.go' -not -path './tools/*' -not -path '*/testdata/*' -not -path '*/internal/jet/*')); \
 	if [ -n "$$out" ]; then echo "not gofumpt-formatted (run make -C go fmt):"; echo "$$out"; exit 1; fi
 
 lint:
@@ -42,6 +44,9 @@ nilaway:
 test:
 	$(GO) test -race -count=1 ./...
 	cd flowcatalyst && $(GO) test -race -count=1 ./...
+
+sql-check:
+	cd examples/orders-demo && $(GO) run ./tools/fwsql check
 
 go-sync-shared:
 	@sh internal/conformance/sync-shared.sh

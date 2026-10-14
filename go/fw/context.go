@@ -15,6 +15,7 @@ import (
 type Context struct {
 	client      ClientID
 	principal   PrincipalID
+	kind        PrincipalKind
 	application ApplicationCode
 	correlation CorrelationID
 	causation   CausationID
@@ -72,14 +73,54 @@ func (cx Context) Execution() (ExecutionID, bool) { return cx.execution, !cx.exe
 // Permissions returns a copy of the permissions the principal holds.
 func (cx Context) Permissions() []Permission { return slices.Clone(cx.permissions) }
 
-// WithPrincipal returns a copy with the principal set. It panics on the zero PrincipalID.
+// PrincipalKind is what kind of principal is acting (core contract section 3): a person or a
+// service account, the platform's type claim. It is not written to the outbox; it is for
+// Authorize and logs.
+type PrincipalKind int
+
+const (
+	// PrincipalUser is a person.
+	PrincipalUser PrincipalKind = iota + 1
+	// PrincipalService is a service account (the FlowCatalyst receivers run as one).
+	PrincipalService
+)
+
+// String returns USER or SERVICE.
+func (k PrincipalKind) String() string {
+	switch k {
+	case PrincipalUser:
+		return "USER"
+	case PrincipalService:
+		return "SERVICE"
+	}
+	return ""
+}
+
+// WithPrincipal returns a copy with the principal set and its kind unknown (cleared, so a kind
+// never describes another principal than the one it came with). It panics on the zero
+// PrincipalID.
 func (cx Context) WithPrincipal(p PrincipalID) Context {
 	if p.IsZero() {
 		panic("fw: Context.WithPrincipal with the zero PrincipalID")
 	}
 	cx.principal = p
+	cx.kind = 0
 	return cx
 }
+
+// WithPrincipalOfKind returns a copy with the principal and its kind set. It panics on the zero
+// PrincipalID or an unknown kind.
+func (cx Context) WithPrincipalOfKind(p PrincipalID, k PrincipalKind) Context {
+	if k != PrincipalUser && k != PrincipalService {
+		panic("fw: Context.WithPrincipalOfKind with an unknown PrincipalKind")
+	}
+	cx = cx.WithPrincipal(p)
+	cx.kind = k
+	return cx
+}
+
+// PrincipalKind returns the principal's kind, when it is known.
+func (cx Context) PrincipalKind() (PrincipalKind, bool) { return cx.kind, cx.kind != 0 }
 
 // WithApplication returns a copy with the application set. It panics on the zero value.
 func (cx Context) WithApplication(a ApplicationCode) Context {
@@ -170,6 +211,9 @@ func (cx Context) LogAttrs() []slog.Attr {
 	}
 	if !cx.principal.IsZero() {
 		attrs = append(attrs, slog.String("principal", cx.principal.v))
+	}
+	if cx.kind != 0 {
+		attrs = append(attrs, slog.String("principal_kind", cx.kind.String()))
 	}
 	if !cx.application.IsZero() {
 		attrs = append(attrs, slog.String("application", cx.application.v))

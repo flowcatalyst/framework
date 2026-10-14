@@ -759,9 +759,10 @@ A use case run by a dispatch receiver always has a principal: the application's 
 principal, kind Service**, the one its credentials identify. The receiver builds `fw.Context` with
 that principal, the client from `X-FlowCatalyst-Client` (or `_platform`), the application, the
 envelope's correlation id, **causation = the dispatch job id** and execution id = the job id. So the
-job id reaches the events' `causationId` and the audit row. The Java receiver currently sets no
-principal and no causation (design section 7): reported, not copied. Needs `fw.PrincipalKind` on
-`Context` and a source for the service principal's id (decision 22).
+job id reaches the events' `causationId` and the audit row. *2026-10-14:* Java now does the same
+(flowcatalyst contract section 4b: the id is the `sub` of the client-credentials token; vector
+`conformance/receivers/context.json`); `fw.PrincipalKind` is on `Context` since G2 (design
+section 7, decision 22).
 
 ### Reuse
 

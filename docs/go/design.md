@@ -487,7 +487,12 @@ slice can judge them on real code. Decision 13.
   (the ruling says so). Go follows the ruling, which needs two contract amendments shared by all
   implementations: a principal **kind** on `Context` (User, Service), and where the service
   principal's id comes from (the client-credentials token's `sub`, or `GET /api/me`; neither was
-  checked against the platform).
+  checked against the platform). *Resolved 2026-10-14:* both amendments landed and Java now
+  follows the ruling (framework commits fcc6e98, cf9368b): `PrincipalKind` (`USER`, `SERVICE`) on
+  `Context` (core contract section 3; Go's `fw.Context` has it since G2: `WithPrincipalOfKind`,
+  `PrincipalKind`), the service principal's id the `sub` of the client-credentials token
+  (flowcatalyst contract section 4b), causation and execution = the job id, permissions empty;
+  vector `conformance/receivers/context.json`, which Go's G4 receivers compare.
 - **Conformance vectors that do not exist yet.** `conformance/` has `tsid`, `config`, `sql/locks`,
   `lua/locks`, `migrations`, `sql/outbox` and `outbox`. The vectors the Rust plan lists for HTTP
   errors, health, Datastar, metrics, rate limiting, secrets and the receivers (Rust milestones 3.1)
@@ -519,9 +524,15 @@ slice can judge them on real code. Decision 13.
 | huma v2.38.0 in the platform, on chi; adapters include `humago` (the stdlib mux); the platform replaces `huma.NewError` and sets `huma.DefaultArrayNullable` (package-level variables) | `go.mod`, the module cache, `internal/platform/shared/httpcompat` |
 | `http.CrossOriginProtection` in the standard library, used by the platform's `/ui` CSRF guard | `internal/ui/guard/guard.go` |
 
-**Not verified** (each is checked in the milestone named): sqlc's outer-join nullability and its
-handling of a type alias of a generic id as an override (G2); which go-jet runtime packages import
-`lib/pq` (G2); whether `ServeMux`'s 405 response can be replaced without wrapping every handler (G3,
+**Answered in G2 (2026-10-14):** sqlc marks every column of an outer-joined table nullable (pointer
+types, even `NOT NULL` columns), **but** a column with a type override keeps its non-pointer type
+there, and a cast expression (`min(x)::text`) is typed non-null although it can be NULL: write such
+columns with `coalesce` ([checked SQL](../guide/go/checked-sql.md)). A type alias of a generic id
+(`type OrderID = id.ID[OrderKind]`) works as an override type, generated code compiles. go-jet's
+runtime package `github.com/go-jet/jet/v2/postgres` imports `lib/pq` (pure Go); no compiled package
+imports the MySQL driver or `go-sqlite3`, which are only in the module graph. NilAway: no
+suppressions in G0 to G2 (findings were real unguarded `(value, ok)` uses, fixed in code).
+Still **not verified**: whether `ServeMux`'s 405 response can be replaced without wrapping every handler (G3,
 the design wraps); NilAway's noise on this code (G1);
 `exactOptionalPropertyTypes` with hey-api's output and Nuxt UI's types, and a style CSP without
 `'unsafe-inline'` for every Nuxt UI component (G5a, U0; [`ui.md`](ui.md) section 18).
@@ -554,7 +565,7 @@ decision (old 25) are replaced by decisions 7, 18, 19 and 27 to 32.
 | 19 | **The typed TypeScript spine.** | `@hey-api/openapi-ts`, exact pin, plugins `@hey-api/typescript` (enums as `as const` unions), `@hey-api/sdk` + `@hey-api/client-fetch` (every operation typed: path, query, body, response, error envelope) and `zod` (version 4) for `UForm`; SDK validation off except in the E2E run; `openapi.json` and the generated client committed, regenerated and diffed in CI. Not the platform's types-only output with a hand-written transport ([`ui.md`](ui.md) section 6). | G5a (U3) |
 | 20 | **Metrics.** | The framework's own registry and exposition writer (the contract fixes the bytes), not `client_golang`'s registry; an optional bridge later. | G1 |
 | 21 | **Logging.** | `log/slog` only; library packages receive a `*slog.Logger` from `Boot`; `Context` fields as attributes. | G1 |
-| 22 | **Receiver principal.** | Implement the ruling (service principal of kind Service; causation = the dispatch job id; execution id = the job id as Java). Amend the contracts with the principal kind and the source of the service principal's id; report the Java receiver's difference. | G4 |
+| 22 | **Receiver principal.** | Implement the ruling (service principal of kind Service; causation = the dispatch job id; execution id = the job id as Java). *2026-10-14: the contracts are amended and Java follows them (section 7); `fw.Context` has the kind since G2; Go's receivers (G4) compare `conformance/receivers/context.json`.* | G4 |
 | 23 | **Receiver semantics specific to Go.** | A typed dispatch handler whose payload does not decode answers `Reject` (as Rust decision 14); on a handler timeout the response is 503 at once and the goroutine is left running but tracked, so shutdown waits for it within the drain; the scheduled-job lock stays held until the handler returns. | G4 |
 | 24 | **Redis client.** | go-redis v9 (the platform's). | G1 |
 | 25 | **YAML.** | `go.yaml.in/yaml/v3` (the maintained successor of the archived `gopkg.in/yaml.v3`); a duplicate key is refused, recorded as an allowed difference from Java. | G1 |

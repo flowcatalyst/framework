@@ -49,6 +49,8 @@
     - { title: "Go: application and config", path: guide/go/core.md }
     - { title: "Go: database and Redis", path: guide/go/database.md }
     - { title: "Go: locks", path: guide/go/locks.md }
+    - { title: "Go: write path", path: guide/go/write-path.md }
+    - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }

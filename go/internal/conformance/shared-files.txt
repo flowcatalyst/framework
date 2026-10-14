@@ -6,3 +6,7 @@ framework-locks-database/src/main/resources/db/migration/locks/V0001__create_loc
 conformance/lua/locks/acquire.lua locks/redislock/lua/acquire.lua
 conformance/lua/locks/refresh.lua locks/redislock/lua/refresh.lua
 conformance/lua/locks/release.lua locks/redislock/lua/release.lua
+conformance/sql/outbox/insert.sql usecase/sql/insert.sql
+framework-usecase/src/main/resources/db/migration/outbox/V0001__create_outbox_messages.sql usecase/migrations/V0001__create_outbox_messages.sql
+framework-usecase/src/main/resources/db/migration/outbox/V0002__widen_outbox_client_id.sql usecase/migrations/V0002__widen_outbox_client_id.sql
+examples/orders-demo/src/main/resources/db/migration/orders/V0001__create_orders.sql examples/orders-demo/orders/migrations/V0001__create_orders.sql

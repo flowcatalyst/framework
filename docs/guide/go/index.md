@@ -10,7 +10,8 @@ The Java pages of this guide describe the Java framework only.
 
 **State:** G0 (the module skeleton, toolchain, test fixtures and the conformance runner) and G1
 (foundation and locks: [application and config](core.md), [database and Redis](database.md),
-[locks](locks.md)) are built.
+[locks](locks.md)) and G2 (the [write path](write-path.md) and [checked SQL](checked-sql.md)) are
+built. HTTP (G3) and the FlowCatalyst module (G4) are not started.
 Nothing is published; module and package names are the design's working names.
 
 ## The tree
