@@ -7,7 +7,7 @@
   "description": "U0 check: what @hey-api/openapi-ts generates from a hand-written OpenAPI 3.1 document shaped like docs/contracts/openapi.md",
   "scripts": {
     "generate": "openapi-ts",
-    "drift": "openapi-ts && git diff --exit-code -- src/api",
+    "drift": "openapi-ts && node ../../scripts/api-drift.ts src/api",
     "typecheck": "tsc --build",
     "test": "vitest run"
   },
@@ -15,6 +15,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@flowcatalyst/api-runtime": "workspace:*",
     "@hey-api/openapi-ts": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",

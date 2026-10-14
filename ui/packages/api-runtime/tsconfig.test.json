@@ -1,0 +1,11 @@
+{
+  "$comment": "The tests and the source they import, under the full strict settings; only hey-api's client/ and core/ come from tsconfig.generated.json.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "types": ["node"]
+  },
+  "references": [{ "path": "./tsconfig.generated.json" }],
+  "include": ["test/**/*.ts", "src/**/*.ts"],
+  "exclude": ["test/orders-demo/api/client/**", "test/orders-demo/api/core/**", "src/generated/*/client/**", "src/generated/*/core/**"]
+}

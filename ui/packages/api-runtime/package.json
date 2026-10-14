@@ -1,0 +1,42 @@
+{
+  "name": "@flowcatalyst/api-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FlowCatalyst framework SPA runtime: the configured hey-api fetch client, the error envelope, the browser session and its guard, and the generated client of the framework's own endpoints",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": [
+    "./src/zod-config.ts",
+    "./src/index.ts"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./zod": "./src/zod-config.ts",
+    "./openapi-ts": "./src/openapi-ts.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "generate": "openapi-ts",
+    "drift": "openapi-ts && node ../../scripts/api-drift.ts src/generated test/orders-demo/api",
+    "typecheck": "tsc --build",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.43",
+    "vue-router": "^4.6.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "catalog:",
+    "@types/node": "catalog:",
+    "happy-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:",
+    "zod": "catalog:"
+  }
+}

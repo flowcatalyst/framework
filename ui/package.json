@@ -13,7 +13,7 @@
     "test": "pnpm -r test",
     "gallery:dev": "pnpm --filter @flowcatalyst/gallery dev",
     "gallery:e2e": "pnpm --filter @flowcatalyst/gallery e2e",
-    "api:drift": "pnpm --filter @flowcatalyst/openapi-sample drift",
+    "api:drift": "pnpm -r --if-present drift",
     "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm api:drift && pnpm licences && pnpm gallery:e2e",
     "licences": "node scripts/check-licences.ts"
   },

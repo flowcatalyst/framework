@@ -1,0 +1,10 @@
+{
+  "$comment": "Node: the hey-api configuration (an application's openapi-ts.config.ts imports src/openapi-ts.ts) and the vitest config.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["openapi-ts.config.ts", "vitest.config.ts", "src/openapi-ts.ts"]
+}

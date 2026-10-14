@@ -1,0 +1,11 @@
+{
+  "$comment": "Browser source, under the full strict settings (the generated SDK, types and Zod schemas included).",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "types": []
+  },
+  "references": [{ "path": "./tsconfig.generated.json" }],
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/openapi-ts.ts", "src/generated/*/client/**", "src/generated/*/core/**"]
+}
