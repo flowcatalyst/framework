@@ -223,9 +223,8 @@ generated. Their components are fixed here, identical in every implementation an
 - `logout` documents `403` (`CROSS_ORIGIN_REQUEST`) and `415`; `getAuthSession` documents nothing
   but `default`.
 
-In TypeScript the union narrows on `session.authenticated === true`. Whether hey-api's TypeScript and
-Zod plugins render `const` as literal types is **unverified** and checked at the emitter step; if
-not, the components use a one-value `enum` instead, in this section and the vector together.
+In TypeScript the union narrows on `session.authenticated === true`. Verified at U0
+([`../ui/u0.md`](../ui/u0.md)): hey-api renders `const` as literal types (and `z.literal` in Zod).
 
 **Client rules** (for `@flowcatalyst/api-runtime`, and for any hand-written client):
 
@@ -632,13 +631,14 @@ broken check must fail a test).
 Conformance vectors (`conformance/auth/`: id_token cases, sealed cookies, the session JSON) are not
 written in M4c; they are listed for when Go implements this contract.
 
-## 12. Rulings taken here (owner may reverse)
+## 12. Rulings
 
 Ruled by the owner on 2026-10-14, for the SPA amendments (4.4, 4.5): typed operations omit `null`s
 while plain routes keep them, so `endSessionUrl` is omitted once `/auth/session` and `/auth/logout`
 are typed operations (MO); the client package section 4.5 refers to is `@flowcatalyst/api-runtime`
-(linked by path until published under the `@flowcatalyst` scope). Rulings 1 to 7 below were not part
-of that answer and stay open to reversal.
+(linked by path until published under the `@flowcatalyst` scope). Rulings 1 to 7 below were taken
+with the contract and **RULED by the owner on 2026-10-14** (confirmed as written; each stays
+reversible by a later owner ruling like any other).
 
 1. **No platform tokens in the session; no refresh** (6.4). Simplest correct choice for M4c:
    nothing to leak, nothing to rotate, no cross-replica refresh race. Cost: role changes and

@@ -129,10 +129,13 @@ origin only, plus the hashes you pass for inline snippets (such as a colour-mode
 `Cross-Origin-Opener-Policy: same-origin` and `Permissions-Policy: camera=(), microphone=(),
 geolocation=()`.
 
-**TODO (U0):** whether Nuxt UI runs without `'unsafe-inline'` styles is not verified yet. The shared
-UI package's first step checks it under Playwright; if it does, the strict policy becomes the default
-(owner ruling 2026-10-14). Until then the baseline is the default, and an application that turns
-strict on must check its own pages in a browser.
+**TODO (default flip):** U0 verified that Nuxt UI runs under the strict policy
+([`../ui/u0.md`](../ui/u0.md)), so the contract now makes strict the default (owner ruling
+2026-10-14), on two conditions: the SPA is built with the `flowcatalystUi()` Vite plugin from
+`@flowcatalyst/ui` and sets Zod to `jitless` before any schema exists. The `Spa` builder has not
+been changed yet: today the baseline is still its default, and strict is opt-in as above. The
+follow-up is to flip the default, taking the exact CSP and script hash from `@flowcatalyst/ui/csp`.
+Until then, an application that turns strict on must check its own pages in a browser.
 
 HSTS is the TLS terminator's job; there is no compression (a proxy or CDN compresses) and no CORS.
 

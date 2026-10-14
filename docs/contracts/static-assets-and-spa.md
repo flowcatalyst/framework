@@ -228,19 +228,34 @@ The table is fixed so Java and Go answer the same bytes (the JDK's and Go's MIME
 
 ## 7. Content-Security-Policy
 
-- **Baseline (default):** the platform's policy, which restricts framing, plugins and `<base>` only:
-  `frame-ancestors 'none'; object-src 'none'; base-uri 'self'`. It does not restrict scripts,
-  styles or connections.
-- **Strict (opt-in, in code):** the policy of [`../go/ui.md`](../go/ui.md) section 9 (`default-src
+- **Strict (the default, amended 2026-10-14 after U0):** the policy of [`../go/ui.md`](../go/ui.md) section 9 (`default-src
   'self'`, `script-src 'self'` plus the hashes the application passes for its inline snippets,
   `style-src 'self'`, `img-src 'self' data:`, `font-src 'self'`, `connect-src 'self'`,
   `frame-ancestors 'none'`, `base-uri 'none'`, `form-action 'self'`, `object-src 'none'`), with
   `Cross-Origin-Opener-Policy: same-origin` and `Permissions-Policy: camera=(), microphone=(),
   geolocation=()`. Java: `.contentSecurityPolicy(Csp.strict("sha256-..."))`.
-- Whether Nuxt UI runs without `'unsafe-inline'` for styles is **unverified**; the shared UI
-  package's first step (U0, [`../go/ui.md`](../go/ui.md) section 17) answers it under Playwright. If
-  it does, strict becomes the default in a later amendment of this section (owner ruling
-  2026-10-14); until then the baseline is the default, as in the platform.
+- **Baseline (opt-in, in code):** the platform's policy, which restricts framing, plugins and
+  `<base>` only: `frame-ancestors 'none'; object-src 'none'; base-uri 'self'`. It does not restrict
+  scripts, styles or connections; an application whose pages cannot run under strict chooses it.
+- **Why strict is the default.** The owner ruled (2026-10-14) that strict becomes the default if U0
+  shows Nuxt UI runs under it. U0 ([`../ui/u0.md`](../ui/u0.md), commit 48a545b) verified it in
+  Chromium under Playwright: the gallery (dashboard shell, modals, slideovers, popovers, menus, forms,
+  tables, date inputs, toasts, both colour modes) produced no `securitypolicyviolation`, no console
+  message about the policy and no request to another origin, with exactly the policy above, one
+  script hash and no style source besides `'self'`. Firefox and WebKit were not run.
+- **Conditions.** The result holds only for an SPA that (1) is built with the `flowcatalystUi()` Vite
+  plugin from `@flowcatalyst/ui`, which turns Nuxt UI's runtime colour styles and `vaul-vue`'s
+  injected styles into a stylesheet at build time and writes the colour-mode snippet into
+  `index.html`; and (2) sets Zod to `jitless` (`z.config({ jitless: true })`) before any schema is
+  built, because Zod 4 otherwise probes `new Function("")`, which is reported as a `script-src`
+  violation (`@flowcatalyst/api-runtime` takes this over at U2). The one inline script's hash is
+  `COLOR_MODE_SNIPPET_SHA256`, and the exact policy string is built by the CSP helpers, both exported
+  from `@flowcatalyst/ui/csp`; the application passes that hash to the Spa builder. Components
+  known to break the policy (`UBanner` with an `id`, `USplitter`) are forbidden by the package's lint.
+- **Follow-up (not done; Java code unchanged by this amendment):** the Java `Spa` builder's default
+  must flip to strict, with the exact CSP and script hash taken from `@flowcatalyst/ui/csp`, and the
+  baseline becomes the explicit opt-in (`Csp.baseline()`). Until that change lands, `Spa` still
+  defaults to the baseline.
 - HSTS is the TLS terminator's job (the http contract leaves TLS outside the application).
 
 ## 8. Build integration
@@ -333,8 +348,10 @@ owner may reverse them.
    alternative (the `frontend-maven-plugin`, which downloads Node and pnpm during the Maven build)
    keeps one command but puts a JavaScript toolchain inside every Java build. *Owner, 2026-10-14:
    confirmed; the SPA is built separately and Maven copies `web/dist`.*
-5. **Baseline CSP by default**, strict opt-in until U0 shows Nuxt UI runs under it. *Owner,
-   2026-10-14: the strict policy becomes the default if U0 shows Nuxt UI runs under it.*
+5. **Strict CSP by default** (amended 2026-10-14: U0 showed Nuxt UI runs under it, under the
+   conditions of section 7); the baseline is the opt-in. *Owner, 2026-10-14: the strict policy
+   becomes the default if U0 shows Nuxt UI runs under it.* The Java `Spa` default still has to be
+   flipped (section 7, follow-up).
 6. **No compression** (no precompressed `.br`/`.gz` siblings, as [`../go/ui.md`](../go/ui.md) section 9
    sketched): compression is outside the http contract; a proxy or CDN compresses. Both
    implementations leave it out so they answer the same bytes.

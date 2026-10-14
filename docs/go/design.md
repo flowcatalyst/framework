@@ -246,8 +246,8 @@ no global HTTP client, no global configuration, no `slog.SetDefault` in library 
 As for Rust (Rust design 2.1): one copy of the contracts and `conformance/` read in place by the
 tests, one documentation site. The Java and Rust builds are unaffected: `go/` is neither a Maven
 module nor a Cargo crate, and the Maven and Cargo builds ignore it. The UI is TypeScript in a pnpm
-workspace rooted at the repository root (`ui/` for the shared packages, `go/examples/*/web` for the
-example SPAs; [`ui.md`](ui.md) section 4), which Maven and Cargo ignore as well.
+workspace rooted at `ui/` (the shared packages, the gallery and a sample; example SPAs such as
+`go/examples/*/web` are outside it and link the package by path; [`ui.md`](ui.md) section 4), which Maven and Cargo ignore as well.
 
 ### 2.2 Two Go modules, and the UI workspace
 
@@ -258,7 +258,7 @@ example SPAs; [`ui.md`](ui.md) section 4), which Maven and Cargo ignore as well.
 
 The UI is not a Go module: `@flowcatalyst/ui` (components, partials and pages extending Nuxt UI, the app
 shell, composables, the theme preset), `@flowcatalyst/api-runtime` (the generated client's transport and error
-handling) and `@flowcatalyst/gallery` live in `ui/`; an application's SPA is built to `web/dist` inside its
+handling) and `@flowcatalyst/gallery` live in the `ui/` workspace (`ui/packages/ui`, `ui/packages/api-runtime`, `ui/apps/gallery`); an application's SPA is built to `web/dist` inside its
 own Go module and embedded with `//go:embed`. The earlier plan of a third module, `go/ui`, holding
 the platform's templ kit, is withdrawn by the 2026-10-13 ruling.
 
@@ -534,7 +534,7 @@ decision (old 25) are replaced by decisions 7, 18, 19 and 27 to 32.
 | # | Decision | Recommendation | Blocks |
 |---|---|---|---|
 | 1 | **Start now, and how far.** | Start G0 to G4 now: those Java contracts are built and stable. The UI package's first steps (U0 to U2 of G5a: workspace, gallery, components, partials) may start at once, in parallel, because they need no server and Java is not their authority ([`ui.md`](ui.md) section 17); U3 needs G3's typed operations. Hold G5b (sessions, login) for the M4c contract (decision 29). *2026-10-14:* the UI package is now shared and built first against Java (decision 31), so G5a reduces to the Go side (U3 on Go's orders-demo). | everything |
-| 2 | **Where the code lives and the module split.** | `go/` in this repository with two modules: core `github.com/flowcatalyst/framework/go` and `.../go/flowcatalyst` (the only fcsdk importer) (section 2.2). The UI in a pnpm workspace rooted at the repository root: shared packages in `ui/`, example SPAs in `go/examples/*/web` ([`ui.md`](ui.md) section 4). | G0 |
+| 2 | **Where the code lives and the module split.** | `go/` in this repository with two modules: core `github.com/flowcatalyst/framework/go` and `.../go/flowcatalyst` (the only fcsdk importer) (section 2.2). The UI in a pnpm workspace rooted at `ui/` (U0, 2026-10-14): shared packages in `ui/packages`, the gallery in `ui/apps/gallery`; example SPAs in `go/examples/*/web`, outside the workspace, linking by path ([`ui.md`](ui.md) section 4). | G0 |
 | 3 | **Licence.** | **Done (2026-10-13).** Apache-2.0 for both modules and the UI packages; browser dependencies permissive only (a licence check over the pnpm lockfile). fcsdk was relicensed from MPL-2.0 to Apache-2.0 (owner-approved; no third-party MPL code in it) and ships its own `LICENSE` and `NOTICE`, so no MPL exception is needed in `go/flowcatalyst`. | G0, G4 |
 | 4 | **How the framework consumes fcsdk.** | **Done (2026-10-13).** `pkg/fcsdk` is its own module, `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` (path matches the repository; `go get` through a `pkg/fcsdk/vX.Y.Z` git tag verified), released with `make release-go-sdk` (dry run verified, not yet released); the missing sync categories (connections, scheduled jobs, docs, OpenAPI) were added. Until the first tag, a local `go.work` or `replace`. Not: depending on the whole platform module; not copying. Section 4.1. | G4 |
 | 5 | **Test infrastructure.** | Embedded PostgreSQL 18 per test binary, a database per test from a migrated template, never 15432 or 8080; no `integration` build tag; Redis tests on a real `redis-server`/`valkey-server` from `PATH` (fail with instructions when absent), miniredis only above the driver. | G0 |

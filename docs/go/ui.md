@@ -104,7 +104,7 @@ framework's own route table. Section 7 compares this with the framework writing 
 | API client | `@hey-api/openapi-ts` (exact pin; it is 0.x and changes between minors): `@hey-api/typescript`, `@hey-api/sdk`, `@hey-api/client-fetch`, `zod` | section 6 |
 | Forms | Nuxt UI `UForm` with the generated **Zod 4** schemas (Zod implements Standard Schema, which `UForm` accepts) | server validation stays the authority |
 | State | composables with `provide`/`inject` (session, permissions, current client); **no Pinia in `@flowcatalyst/ui`** (an application may add it) | as TypeScript decision 19 |
-| Package manager | **pnpm** (the platform's, the owner's other project), workspace at the repository root, exact versions, `catalog:` for shared versions, frozen lockfile in CI, `minimumReleaseAge` and an `onlyBuiltDependencies` allow-list | Node 24 LTS |
+| Package manager | **pnpm** (the platform's, the owner's other project), workspace rooted at `ui/`, exact versions, `catalog:` for shared versions, frozen lockfile in CI, `minimumReleaseAge` and an `onlyBuiltDependencies` allow-list | Node 24 LTS |
 | Tests | vitest (+ `@vue/test-utils`, happy-dom), Playwright, `@axe-core/playwright` | section 12 |
 
 ## 3. TypeScript and lint settings
@@ -186,18 +186,19 @@ typescript-eslint `strictTypeChecked` with type information (`parserOptions.proj
 
 ## 4. Packages and layout
 
-The UI is **TypeScript in a pnpm workspace whose root is this repository's root**, so the Go
-example's web app and the Java example's (`examples/*/web`, the first one built; decision 31 is
-decided) share one install and lockfile. Applications outside this repository (the first is the Java
-control plane in `inhance/mono-repo`) consume the packages from a registry once publishing is
-decided (decision 33).
-The Maven and Cargo builds ignore it; `go/` stays a pure Go tree apart from the example's `web/`
-folder.
+The UI is **TypeScript in a pnpm workspace rooted at `ui/` in this repository** (accepted at U0,
+2026-10-14, [`../ui/u0.md`](../ui/u0.md); the first draft of this page drew the repository root).
+The workspace holds the shared packages, the gallery and the OpenAPI sample. An example's SPA
+(`examples/orders-demo/web`, `go/examples/orders-demo/web`) is **not** a workspace member: it has its
+own install and lockfile and links the package by path, exactly like an application outside this
+repository (the first is the Java control plane in `inhance/mono-repo`), until publishing is
+decided (decision 33). The Maven and Cargo builds ignore `ui/`; `go/` stays a pure Go tree apart
+from the example's `web/` folder.
 
 ```
-pnpm-workspace.yaml            packages: ui/packages/*, ui/gallery, go/examples/*/web (later examples/*/web); catalog
-package.json                   private; tooling only (eslint, oxfmt, typescript, vue-tsc, vitest, playwright)
-ui/
+ui/                            the pnpm workspace root
+  pnpm-workspace.yaml          packages: packages/*, apps/*, samples/*; catalog; minimumReleaseAge
+  package.json                 private; tooling only (eslint, oxfmt, typescript, vue-tsc, vitest, playwright)
   tsconfig.base.json  eslint.config.ts
   packages/
     ui/                        @flowcatalyst/ui: components, partials, pages, layouts, composables, theme preset, Vue plugin
@@ -212,7 +213,10 @@ ui/
     api-runtime/               @flowcatalyst/api-runtime: configures @hey-api/client-fetch (same origin, credentials, the
                                error envelope as a typed ServiceError, 401 -> sign-in, toasts), envelope -> UForm
                                errors, and the generated client of the framework's own endpoints (session, auth)
-  gallery/                     @flowcatalyst/gallery: every component, partial and page in every state, light and dark
+  apps/
+    gallery/                   @flowcatalyst/gallery: every component, partial and page in every state, light and dark
+  samples/
+    openapi/                   hand-written OpenAPI 3.1 document and the hey-api client generated from it (U0)
 go/examples/orders-demo/web/   the example SPA (package.json, vite.config.ts, src/, openapi.json, the generated
                                client in src/api/, embed.go with //go:embed all:dist)
 ```
@@ -228,7 +232,8 @@ backend that implements the same operations.
 Applications consume `@flowcatalyst/ui` as **source** (workspace packages, compiled by the application's
 Vite build), so no declaration files are emitted or published. **Outside this repository** (owner,
 2026-10-14): the application checks out the framework repository and links the package by path
-(pnpm `"@flowcatalyst/ui": "link:../flowcatalyst-framework/ui/packages/ui"`); the package exports its
+(pnpm `"@flowcatalyst/ui": "link:../flowcatalyst-framework/ui/packages/ui"`; the examples in this
+repository link the same way with a relative path); the package exports its
 TypeScript and Vue source and the consumer's Vite compiles it; CI checks the framework out at a
 pinned tag or commit. Later the packages are published to GitHub Packages under the `@flowcatalyst`
 scope (the npm scope must equal the GitHub owner; `@fw` was a placeholder). Decision 33.
@@ -494,7 +499,8 @@ the SPA is the router's fallback, not a trailing-wildcard route (so decision 28'
 section 2 is not needed); API prefixes are derived from the routes; `index.html` is served for any
 extension-less GET outside them, without an `Accept` check; missing assets and unknown API paths
 answer the JSON envelope; the baseline CSP is the platform's and the strict policy below is opt-in
-until U0 verifies Nuxt UI under it; no precompressed siblings. The text below is kept as the
+in the first Java build; U0 verified Nuxt UI under it, so strict becomes the default
+(static-assets contract section 7); no precompressed siblings. The text below is kept as the
 reasoning.*
 
 `httpfw/spa` (sketch): `spa.Handler(dist fs.FS, spa.Options{Prefix: "/", APIPrefixes: ...})`,
@@ -778,8 +784,8 @@ Inside G5a (UI package) and G5b (sessions), [`milestones.md`](milestones.md):
 
 ## 18. Open doubts
 
-1. **`exactOptionalPropertyTypes` with generated code** and Nuxt UI's types: unverified (U0).
-2. **CSP without `'unsafe-inline'` for styles**: unverified for every Nuxt UI component (U0, U1).
+1. **`exactOptionalPropertyTypes` with generated code** and Nuxt UI's types: answered at U0 ([`../ui/u0.md`](../ui/u0.md)): it works, with the two scoped exceptions recorded there.
+2. **CSP without `'unsafe-inline'` for styles**: answered at U0 for the components of the gallery (Chromium only; `UBanner` with an `id` and `USplitter` break it and are forbidden by lint); each component added at U1 is checked under it.
 3. **hey-api is 0.x**: minor versions change generated output and options; pinned exactly, upgraded
    deliberately with the drift check showing the diff.
 4. **Three UI stacks in the family** (PrimeVue SPA, templ `/ui` in the platform, Nuxt UI in both

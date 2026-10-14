@@ -54,7 +54,7 @@ rewritten at hand-off and can lag the code in between.
   gained `permissions` with the platform's wildcard matching. http: `Request.rawQuery()`,
   `Request.contentLength()` public, `Response.redirect`. Guide: `guide/sessions-and-login.md`,
   `guide/migrating-from-flowcatalyst-token.md` (the first application's app-side steps). Rulings
-  taken, for the owner to confirm or reverse, are in the contract's section 12 (no platform tokens in
+  **RULED by the owner 2026-10-14** (confirmed as written; contract section 12) (no platform tokens in
   the session and no refresh; JDK HTTP client rather than `framework-httpclient`; `/auth/session`
   answers 200; http only in local/test; CSRF on logout; sessions get no permissions until roles are
   mapped; `Context.permissions`). Not verified against a real platform or a real browser.
@@ -140,7 +140,7 @@ decided; section 7), `go/capabilities.md` sections 5 and 13, `go/milestones.md` 
   `405`; missing assets (under `assets/` or with an asset extension) `404 no-store`; `index.html`
   `no-cache` + strong SHA-256 ETag, hashed assets `immutable`; nosniff, `Referrer-Policy:
   same-origin`, `X-Frame-Options: DENY`, the platform's baseline CSP (`frame-ancestors 'none';
-  object-src 'none'; base-uri 'self'`), the strict CSP opt-in until U0; an index built at start-up;
+  object-src 'none'; base-uri 'self'`), the strict CSP opt-in until U0 (U0 passed: strict is now the default, see "U0 built" below; the Java `Spa` default is still the baseline); an index built at start-up;
   no `index.html` fails start-up outside `local`/`test`; Maven copies `web/dist` and never runs Node;
   nosniff on every framework response (http amendment).
 - `contracts/openapi.md`: `Operation` values declared in `register`, bound in `boot`, handlers return
@@ -157,6 +157,38 @@ decided; section 7), `go/capabilities.md` sections 5 and 13, `go/milestones.md` 
   bodies, read the session at start and on focus, not on a timer; 401 -> navigate to sign-in);
   4.4: `endSessionUrl` omitted rather than `null` (code still writes `null`, STATUS records it).
 
+**U0 built (2026-10-14, commit 48a545b; results in [`ui/u0.md`](ui/u0.md)).** The pnpm workspace is
+rooted at `ui/` (accepted over the repository root the first design drew): `ui/packages/ui`
+(`@flowcatalyst/ui`), `ui/apps/gallery` (`@flowcatalyst/gallery`), `ui/samples/openapi`. Example SPAs
+are outside it and link by path (`link:../flowcatalyst-framework/ui/packages/ui` from another
+repository; a relative path inside this one). Nuxt UI runs under the strict CSP in Chromium;
+hey-api renders `const` as literal types and `oneOf` + `discriminator` as narrowing unions, so the
+sessions contract's `const` form stands. U1 to U4 are pending. Follow-ups:
+
+- Java: flip the `Spa` builder's default CSP to strict, with the policy and script hash from
+  `@flowcatalyst/ui/csp` (the contract is amended; no Java code changed).
+- Zod's `jitless` (`z.config({ jitless: true })` before any schema exists) is owned by
+  `@flowcatalyst/api-runtime` from U2; until then the gallery sets it.
+- hey-api names the error component `Error`, which shadows the global `Error` where imported (import
+  it under another name). `api-runtime` must not configure an `auth` callback: the cookie is the only
+  credential (sessions contract 4.5).
+- `UForm` 4.11.3 drops a submit made while input-event validation is running, keeps native
+  constraint validation on (use `novalidate`), and its `dirty` is not "differs from initial"
+  (`useDirtyForm` keeps the snapshot comparison); `UDashboardNavbar`'s `title` renders a second `h1`.
+- Not verified: Firefox and WebKit, the real API, screenshots (U1), hey-api 0.93.1.
+
+**Owner decisions pending from U0:**
+
+1. The four light-theme colour pairs that fail WCAG AA 4.5:1 (white on primary emerald-600 3.76;
+   subtle success 2.95; subtle info 3.61; muted foreground on `bg-elevated` 4.34): change the kit's
+   light tokens, or accept them.
+2. Licences: MPL-2.0 for `axe-core`, `@axe-core/playwright` and `lightningcss` (unmodified build and
+   test tools): accept; the OFL-1.1 notice for the Inter font must ship with an application's
+   third-party notices; `vaul-vue` 0.4.1 declares no licence in its npm package (its repository is
+   MIT) and ships in every bundle that uses `UDashboardSidebar`, `USidebar` or `UDrawer`: accept,
+   ask upstream, or replace.
+3. TypeScript stays at 6.0.3 until `typescript-eslint` supports 7.0.
+
 **Work order and estimates** (days of agent-assisted work at the Java pace so far):
 
 | # | Item | Estimate | Depends on |
@@ -164,7 +196,7 @@ decided; section 7), `go/capabilities.md` sections 5 and 13, `go/milestones.md` 
 | 1 | The contracts above | done (this step) | |
 | 2 | **MS**: Java static assets + SPA fallback in `framework-http`, nosniff everywhere, the `conformance/http/spa.json` vector, guide page | done 2026-10-14 | 1 |
 | 3 | **MO**: Java typed operations and the OpenAPI emitter: core declaration-phase command (0.5 d), `Rule`/`Validator` constraints as data (0.5 d), `Operation`/`Outcome`/`bind` and permissions (0.5 to 1 d), the schema walk and canonical writer (1.5 to 2 d), `framework-auth`'s two endpoints rebound as operations and the `conformance/openapi/` vectors (0.5 to 1 d), guide page (0.5 d) | 3.5 to 5 d | 2 |
-| 4 | **MU**: the shared UI package, U0 workspace, lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (1.5 to 2 d); U2 shell, list, drawer and form partials, composables, `@flowcatalyst/api-runtime` (2.5 to 4 d); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
+| 4 | **MU**: the shared UI package, U0 workspace (**built 2026-10-14**), lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (1.5 to 2 d); U2 shell, list, drawer and form partials, composables, `@flowcatalyst/api-runtime` (2.5 to 4 d); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
 | 5 | **M4d** admin skeleton (typed admin operations, `admin:*` sync, shell and permission gating as `@flowcatalyst/ui` pages) then **M4e** slices (users and invitations, event types, config and secret status; scoped events and dispatch jobs wait on the platform) | M4d 2 to 3 d; M4e 1 to 2 d per slice | 4 |
 | 6 | **MC**: the control plane migration guide (framework side) | 0.5 to 1 d; the application's own work about 3 to 5 d (typed operations for five endpoints, a `web/` SPA with list, drawer and the sealed-union form, CI order) | 3, 4 (U3, U4) |
 | 7 | **M-UI**: the optional JTE + Datastar module | 4 to 6 d, when an application asks | none |
@@ -185,8 +217,9 @@ MO against the same vectors (inside its G3 and G5a) and reuses MU as is.
    pinned tag or commit. Later the packages are published to GitHub Packages under the
    `@flowcatalyst` scope (the npm scope must equal the GitHub owner). The `@fw` placeholder is
    renamed in the docs: `@flowcatalyst/ui`, `@flowcatalyst/api-runtime`, `@flowcatalyst/gallery`.
-4. **Strict CSP becomes the default if U0 shows Nuxt UI runs under it**; until then the baseline is
-   the default (static assets section 7).
+4. **Strict CSP becomes the default if U0 shows Nuxt UI runs under it**; U0 did (see "U0 built"
+   below), so strict is the contract's default (static assets section 7); the Java `Spa` default is
+   still to flip.
 5. **Derived API prefixes accepted**: a client route cannot share a first segment with a server route
    (static assets section 5).
 6. **`BigDecimal` as a JSON string and closed response schemas: confirmed** (openapi section 13,
