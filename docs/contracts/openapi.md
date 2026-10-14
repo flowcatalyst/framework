@@ -481,18 +481,40 @@ not types only:
 
 ```ts
 // web/openapi-ts.config.ts
-import { defineConfig } from "@hey-api/openapi-ts";
-export default defineConfig({
-  input: "openapi.json",
-  output: { path: "src/api" },
-  plugins: [
-    { name: "@hey-api/typescript", enums: "javascript" },  // literal unions; no TypeScript enums (erasableSyntaxOnly)
-    "@hey-api/client-fetch",
-    { name: "@hey-api/sdk", validator: false },            // one typed function per operation
-    { name: "zod", compatibilityVersion: 4 },              // schemas for UForm (Standard Schema)
-  ],
-});
+import { fwOpenApiConfig } from "@flowcatalyst/api-runtime/openapi-ts";
+export default fwOpenApiConfig({ input: "openapi.json", output: "src/api" });
 ```
+
+`fwOpenApiConfig` (`ui/packages/api-runtime/src/openapi-ts.ts`) holds the settings, so every
+application generates the same way. Its plugin list:
+
+```ts
+plugins: [
+  { name: "@hey-api/typescript", enums: "javascript" },  // literal unions; no TypeScript enums (erasableSyntaxOnly)
+  { name: "@hey-api/client-fetch", baseUrl: false },     // no generated base URL (below)
+  { name: "@hey-api/sdk", validator: false },            // one typed function per operation
+  { name: "zod", compatibilityVersion: 4,                // schemas for UForm (Standard Schema)
+    "~resolvers": { number: int64AsNumber } },           // int64 stays a number (below)
+],
+```
+
+Two settings the build found necessary (MU U2, [`../ui/u2.md`](../ui/u2.md); hey-api 0.99.0):
+
+- **`@hey-api/client-fetch` with `baseUrl: false`.** The document has no `servers` (section 4: the
+  SPA calls its own origin). Without the setting, hey-api reads a bare input such as `openapi.json`
+  as a host and writes it as the client's base URL (`createConfig({ baseUrl: 'openapi.json' })`), so
+  every call would go to `openapi.json/api/...` relative to the page (an input path with a slash in
+  it does not trigger this). `@flowcatalyst/api-runtime` also sets `baseUrl: ""` when it configures
+  the client at run time.
+- **`int64` through the Zod plugin's number resolver.** For `format: int64` (and `uint64`) hey-api
+  writes `z.coerce.bigint()` while the TypeScript type it writes is `number` (section 5's type
+  table). The schema's output, which `UForm` hands to the submit handler, is then a BigInt, and
+  `JSON.stringify` refuses it ("Do not know how to serialize a BigInt"). The resolver
+  (`~resolvers.number`, hey-api's documented hook; `int64AsNumber` in the same file) writes
+  `z.int()` with the declared bounds as plain numbers: `z.int().gte(0).lte(100000000)` instead of
+  `z.coerce.bigint().gte(BigInt(0)).lte(BigInt(100000000))`. `z.int()` accepts safe integers only,
+  which is section 5's rule (exact only below 2^53; ids are strings). Every other number keeps
+  hey-api's default.
 
 - **Committed:** `web/openapi.json` and `web/src/api/` (generated). The SPA imports only the
   generated SDK for API calls; `@flowcatalyst/api-runtime` configures its `client-fetch` instance (same

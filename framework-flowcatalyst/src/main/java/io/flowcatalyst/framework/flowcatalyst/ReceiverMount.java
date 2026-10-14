@@ -16,7 +16,6 @@ import java.time.InstantSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,9 +24,6 @@ import org.slf4j.LoggerFactory;
 final class ReceiverMount {
 
   private static final Logger LOG = LoggerFactory.getLogger(ReceiverMount.class);
-
-  /** Literal segments only: the prefix is not a pattern. */
-  private static final Pattern PATH = Pattern.compile("(/[A-Za-z0-9._~-]+)+");
 
   private ReceiverMount() {}
 
@@ -41,81 +37,26 @@ final class ReceiverMount {
    */
   static @Nullable ScheduledJobRunner mount(App app, PlatformClient client) {
     Config config = app.config();
-    if (!config.get(FlowCatalystModule.RECEIVERS_ENABLED)) {
-      LOG.info(
-          "flowcatalyst: {} is false, so the receiver routes are not mounted",
-          FlowCatalystModule.RECEIVERS_ENABLED.key());
+    ReceiverOptions options = app.get(FlowCatalystOptions.class).receivers();
+    if (!options.enabled()) {
+      LOG.info("flowcatalyst: the receivers are disabled (ReceiverOptions), so the receiver routes are not mounted");
       return null;
     }
-    List<Problem> problems = new ArrayList<>();
-    String prefix = config.get(FlowCatalystModule.RECEIVERS_PATH);
-    if (!PATH.matcher(prefix).matches()) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID,
-              FlowCatalystModule.RECEIVERS_PATH.key(),
-              "must be a path of literal segments starting with '/' and without a trailing '/'"));
-    }
-    Duration dispatchTimeout = config.get(FlowCatalystModule.RECEIVERS_DISPATCH_TIMEOUT);
-    if (dispatchTimeout.isZero() || dispatchTimeout.isNegative()) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID,
-              FlowCatalystModule.RECEIVERS_DISPATCH_TIMEOUT.key(),
-              "must be positive"));
-    }
-    Duration jobTimeout = config.get(FlowCatalystModule.RECEIVERS_JOB_TIMEOUT);
-    if (jobTimeout.isZero() || jobTimeout.isNegative()) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID, FlowCatalystModule.RECEIVERS_JOB_TIMEOUT.key(), "must be positive"));
-    }
-    Duration lease = config.get(FlowCatalystModule.RECEIVERS_JOB_LOCK_LEASE);
-    if (lease.compareTo(Duration.ofSeconds(1)) < 0 || lease.compareTo(Duration.ofHours(24)) > 0) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID,
-              FlowCatalystModule.RECEIVERS_JOB_LOCK_LEASE.key(),
-              "must be from 1s to 24h"));
-    }
-    Duration retryDelay = config.get(FlowCatalystModule.RECEIVERS_COMPLETION_RETRY_DELAY);
-    if (retryDelay.isNegative() || retryDelay.compareTo(Duration.ofMinutes(1)) > 0) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID,
-              FlowCatalystModule.RECEIVERS_COMPLETION_RETRY_DELAY.key(),
-              "must be from 0 to 1m"));
-    }
-    Duration retention = config.get(FlowCatalystModule.RECEIVERS_ONCE_RETENTION);
-    if (retention.isZero() || retention.isNegative()) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID,
-              FlowCatalystModule.RECEIVERS_ONCE_RETENTION.key(),
-              "must be positive"));
-    }
-    Duration purgeInterval = config.get(FlowCatalystModule.RECEIVERS_ONCE_PURGE_INTERVAL);
-    if (purgeInterval.isZero() || purgeInterval.isNegative()) {
-      problems.add(
-          Problem.of(
-              FlowCatalystModule.ID,
-              FlowCatalystModule.RECEIVERS_ONCE_PURGE_INTERVAL.key(),
-              "must be positive"));
-    }
-    if (!problems.isEmpty()) {
-      throw new StartupException(problems);
-    }
+    String prefix = options.path();
+    Duration dispatchTimeout = options.dispatchTimeout();
+    Duration jobTimeout = options.jobTimeout();
+    Duration lease = options.jobLockLease();
+    Duration retryDelay = options.completionRetryDelay();
     Optional<Routes> routes = app.find(Routes.class);
     if (routes.isEmpty()) {
       LOG.debug("flowcatalyst: no HTTP module, so no receivers are mounted");
       return null;
     }
-    boolean requireSignature = config.get(FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE);
+    boolean requireSignature = options.requireSignature();
     if (!requireSignature) {
       LOG.warn(
-          "flowcatalyst: {} is false: unsigned deliveries to {} are accepted. Anyone who can reach"
-              + " these routes can run your handlers.",
-          FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE.key(),
+          "flowcatalyst: ReceiverOptions.requireSignature is false: unsigned deliveries to {} are"
+              + " accepted. Anyone who can reach these routes can run your handlers.",
           prefix);
     }
     InstantSource clock = app.get(InstantSource.class);
@@ -186,13 +127,13 @@ final class ReceiverMount {
       LOG.warn("flowcatalyst: could not look for table {}: {}; no purge task", OncePurge.TABLE, e.getMessage());
       return null;
     }
-    Config config = app.config();
+    ReceiverOptions options = app.get(FlowCatalystOptions.class).receivers();
     OncePurge purge =
         new OncePurge(
             db,
             app.find(Locks.class).orElse(null),
-            config.get(FlowCatalystModule.RECEIVERS_ONCE_RETENTION),
-            config.get(FlowCatalystModule.RECEIVERS_ONCE_PURGE_INTERVAL),
+            options.onceRetention(),
+            options.oncePurgeInterval(),
             app.get(InstantSource.class));
     purge.start();
     return purge;
@@ -216,14 +157,15 @@ final class ReceiverMount {
     }
     List<Problem> problems = new ArrayList<>();
     Config config = app.config();
-    if (!config.get(FlowCatalystModule.RECEIVERS_ENABLED)) {
+    ReceiverOptions options = app.get(FlowCatalystOptions.class).receivers();
+    if (!options.enabled()) {
       if (any) {
         LOG.warn(
-            "flowcatalyst: handlers are registered (dispatch {}, scheduled jobs {}) but {} is false;"
-                + " nothing is mounted, so the platform cannot deliver to them",
+            "flowcatalyst: handlers are registered (dispatch {}, scheduled jobs {}) but the receivers"
+                + " are disabled (ReceiverOptions); nothing is mounted, so the platform cannot deliver"
+                + " to them",
             receivers.dispatchPatterns().stream().sorted().toList(),
-            receivers.jobCodes().stream().sorted().toList(),
-            FlowCatalystModule.RECEIVERS_ENABLED.key());
+            receivers.jobCodes().stream().sorted().toList());
       }
       return;
     }
@@ -234,7 +176,7 @@ final class ReceiverMount {
               null,
               "receivers are registered but no HTTP module provides Routes to mount them on"));
     }
-    if (config.get(FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE)) {
+    if (options.requireSignature()) {
       if (receivers.hasDispatchHandlers()
           && effective(
                   config,
@@ -308,9 +250,8 @@ final class ReceiverMount {
         own.key(),
         "required while "
             + receiver
-            + " handlers are registered and "
-            + FlowCatalystModule.RECEIVERS_REQUIRE_SIGNATURE.key()
-            + " is true (or set the shared "
+            + " handlers are registered and ReceiverOptions.requireSignature is true (or set the"
+            + " shared "
             + FlowCatalystModule.RECEIVERS_SIGNING_SECRET.key()
             + ")");
   }

@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -111,6 +111,33 @@ HttpClientModule.builder()
         .withAuth(ClientAuth.clientCredentials().withScope("billing")))
     .build()
 // http-clients.instances.billing: { base-url: ..., auth: { token-url: ..., client-id: orders } }
+```
+
+## FlowCatalyst (`flowcatalyst.*`)
+
+`base-url`, `application`, `client-id`, `client-secret`, `subscription-target-base-url` and the
+receiver secrets (`receivers.signing-secret`, `receivers.bearer-token` and their `dispatch.` and
+`scheduled-jobs.` variants) stay.
+
+| Key | Default | Now |
+|---|---|---|
+| `flowcatalyst.enabled: false` | `true` | `new FlowCatalystModule(FlowCatalystOptions.disabled())` |
+| `flowcatalyst.timeout` | `30s` | `FlowCatalystOptions.defaults().withTimeout(Duration)`; read it back with `PlatformClient.timeout()` or `app.get(FlowCatalystOptions.class).timeout()` |
+| `flowcatalyst.sync.on-boot: true` | `false` | `.withSyncOnBoot(true)` |
+| `flowcatalyst.outbox.stale-after` | `5m` | `.withOutboxStaleAfter(Duration)` |
+| `flowcatalyst.receivers.enabled: false` | `true` | `.withReceivers(ReceiverOptions.disabled())` |
+| `flowcatalyst.receivers.path` | `/fc` | `ReceiverOptions.defaults().withPath(String)` |
+| `flowcatalyst.receivers.require-signature: false` | `true` | `ReceiverOptions.withRequireSignature(false)` |
+| `receivers.dispatch-timeout`, `job-timeout`, `job-lock-lease`, `completion-retry-delay`, `once-retention`, `once-purge-interval` | `25s`, `10m`, `10m`, `1s`, `30d`, `1h` | `ReceiverOptions.withDispatchTimeout`, `withJobTimeout`, `withJobLockLease`, `withCompletionRetryDelay`, `withOnceRetention`, `withOncePurgeInterval` |
+
+`FlowCatalystModule.TIMEOUT`, `ENABLED`, `SYNC_ON_BOOT`, `OUTBOX_STALE_AFTER` and the behavioural
+`RECEIVERS_*` constants are gone; the connection and secret constants (`BASE_URL`, `APPLICATION`,
+`CLIENT_ID`, `CLIENT_SECRET`, `SUBSCRIPTION_TARGET_BASE_URL`, `RECEIVERS_*_SECRET`,
+`RECEIVERS_*_TOKEN`) stay.
+
+```java
+// before: flowcatalyst: { receivers: { enabled: false } }
+new FlowCatalystModule(FlowCatalystOptions.defaults().withReceivers(ReceiverOptions.disabled()))
 ```
 
 ## Locks (`locks.*`, the whole section)

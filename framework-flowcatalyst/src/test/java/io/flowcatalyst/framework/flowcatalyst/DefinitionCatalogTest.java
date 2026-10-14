@@ -31,7 +31,11 @@ class DefinitionCatalogTest {
   }
 
   private App start(Map<String, String> env, Contributor... contributors) {
-    var builder = App.builder().configDirectory(dir).environment(env).module(new FlowCatalystModule());
+    return start(env, FlowCatalystOptions.defaults(), contributors);
+  }
+
+  private App start(Map<String, String> env, FlowCatalystOptions options, Contributor... contributors) {
+    var builder = App.builder().configDirectory(dir).environment(env).module(new FlowCatalystModule(options));
     for (Contributor c : contributors) {
       builder.module(c);
     }
@@ -159,7 +163,7 @@ class DefinitionCatalogTest {
   void disabledSkipsValidationAndTheCatalogIsEmpty() {
     Contributor bad = Contributor.of("sales", d -> d.eventType("garbage", "X", null));
 
-    try (App app = start(Map.of("FLOWCATALYST_ENABLED", "false"), bad)) {
+    try (App app = start(Map.of(), FlowCatalystOptions.disabled(), bad)) {
       assertThat(app.get(DefinitionCatalog.class).eventTypes()).isEmpty();
     }
   }

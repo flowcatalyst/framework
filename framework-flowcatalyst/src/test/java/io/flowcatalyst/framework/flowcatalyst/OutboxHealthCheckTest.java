@@ -85,6 +85,11 @@ class OutboxHealthCheckTest {
   }
 
   private App start(boolean withDatabase, boolean withOutbox, Map<String, String> env, HealthPolicy health) {
+    return start(withDatabase, withOutbox, env, health, FlowCatalystOptions.defaults());
+  }
+
+  private App start(
+      boolean withDatabase, boolean withOutbox, Map<String, String> env, HealthPolicy health, FlowCatalystOptions options) {
     AppBuilder b =
         App.builder().configDirectory(dir).environment(env).instantSource(() -> NOW).health(health);
     if (withDatabase) {
@@ -93,7 +98,7 @@ class OutboxHealthCheckTest {
     if (withOutbox) {
       b.module(new OutboxModule());
     }
-    b.module(new FlowCatalystModule());
+    b.module(new FlowCatalystModule(options));
     return b.start();
   }
 
@@ -184,8 +189,9 @@ class OutboxHealthCheckTest {
   }
 
   @Test
-  void theLimitIsASetting() {
-    try (App app = start(true, true, env("FLOWCATALYST_OUTBOX_STALE_AFTER", "30s"))) {
+  void theLimitIsGivenInCode() {
+    try (App app =
+        start(true, true, env(), HealthPolicy.defaults(), FlowCatalystOptions.defaults().withOutboxStaleAfter(Duration.ofSeconds(30)))) {
       insert("r1", 0, NOW.minusSeconds(31));
       assertThat(outbox(app)).isInstanceOf(HealthResult.Down.class);
     }
@@ -224,7 +230,7 @@ class OutboxHealthCheckTest {
 
   @Test
   void aDisabledModuleAddsNoCheck() {
-    try (App app = start(true, true, Map.of("FLOWCATALYST_ENABLED", "false"))) {
+    try (App app = start(true, true, Map.of(), HealthPolicy.defaults(), FlowCatalystOptions.disabled())) {
       assertThat(app.health().check().results()).doesNotContainKey("outbox");
     }
   }
@@ -240,11 +246,9 @@ class OutboxHealthCheckTest {
   }
 
   @Test
-  void aNonPositiveLimitFailsStartUp() {
-    Throwable t = catchThrowable(() -> start(true, true, env("FLOWCATALYST_OUTBOX_STALE_AFTER", "0s")).close());
-    assertThat(t).isInstanceOf(StartupException.class);
-    assertThat(((StartupException) t).problems())
-        .extracting(Problem::key)
-        .containsExactly("flowcatalyst.outbox.stale-after");
+  void aNonPositiveLimitIsRefusedWhenBuilt() {
+    org.assertj.core.api.Assertions.assertThatIllegalArgumentException()
+        .isThrownBy(() -> FlowCatalystOptions.defaults().withOutboxStaleAfter(Duration.ZERO))
+        .withMessageContaining("outboxStaleAfter");
   }
 }

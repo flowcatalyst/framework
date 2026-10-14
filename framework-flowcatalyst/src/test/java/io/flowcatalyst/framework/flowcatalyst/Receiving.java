@@ -81,14 +81,30 @@ final class Receiving {
 
   static App start(
       Path dir, Map<String, String> env, InstantSource clock, MonotonicClock monotonic, Module... modules) {
+    return start(dir, env, clock, monotonic, FlowCatalystOptions.defaults(), modules);
+  }
+
+  /** As above, with the module's behaviour given in code. */
+  static App start(
+      Path dir,
+      Map<String, String> env,
+      InstantSource clock,
+      MonotonicClock monotonic,
+      FlowCatalystOptions options,
+      Module... modules) {
     AppBuilder b =
         App.builder().configDirectory(dir).environment(env).instantSource(clock).monotonicClock(monotonic);
     b.module(routes());
     for (Module m : modules) {
       b.module(m);
     }
-    b.module(new FlowCatalystModule());
+    b.module(new FlowCatalystModule(options));
     return b.start();
+  }
+
+  /** The default options with the receivers adjusted. */
+  static FlowCatalystOptions receivers(java.util.function.UnaryOperator<ReceiverOptions> adjust) {
+    return FlowCatalystOptions.defaults().withReceivers(adjust.apply(ReceiverOptions.defaults()));
   }
 
   static TestClient client(App app) {

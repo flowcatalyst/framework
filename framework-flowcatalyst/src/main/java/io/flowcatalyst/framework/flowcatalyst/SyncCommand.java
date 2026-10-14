@@ -35,7 +35,7 @@ final class SyncCommand implements Command {
       }
     }
     if (!app.get(PlatformClient.class).isEnabled()) {
-      out.println("flowcatalyst is disabled (flowcatalyst.enabled=false); nothing to sync");
+      out.println("flowcatalyst is disabled (FlowCatalystOptions.enabled is false); nothing to sync");
       return 2;
     }
     try {

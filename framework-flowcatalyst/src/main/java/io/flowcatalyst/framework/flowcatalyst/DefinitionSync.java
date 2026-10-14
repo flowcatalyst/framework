@@ -87,7 +87,7 @@ public final class DefinitionSync {
    */
   public SyncReport run(Mode mode) {
     if (!client.isEnabled()) {
-      throw new IllegalStateException("the flowcatalyst module is disabled (flowcatalyst.enabled)");
+      throw new IllegalStateException("the flowcatalyst module is disabled (FlowCatalystOptions.enabled)");
     }
     warnAboutUnusedPermissions();
     DefinitionSet set = SdkMapping.toSet(client.application().value(), catalog);

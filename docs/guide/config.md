@@ -159,7 +159,7 @@ to code fails naming its replacement):
 |---|---|---|---|
 | `http.host`, `http.port` | string, integer | `0.0.0.0`, `8080` | `http` ([HTTP](http.md#the-jetty-module-and-its-settings); the rest is `HttpOptions` in code) |
 | `http.metrics.bearer-token` | secret | none | `http` ([the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint)) |
-| `flowcatalyst.*` | see [The FlowCatalyst module](flowcatalyst-module.md#settings) | | `flowcatalyst` |
+| `flowcatalyst.base-url`, `application`, `client-id`, `client-secret`, `subscription-target-base-url`, the receiver secrets | see [The FlowCatalyst module](flowcatalyst-module.md#settings) (the rest is `FlowCatalystOptions` in code) | | `flowcatalyst` |
 
 The core declares no setting. The shutdown drain, the health policy and the metrics driver are
 `App.builder().shutdownDrain(Duration)`, `.health(HealthPolicy)` and `.metrics(MetricsOptions)`

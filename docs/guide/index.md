@@ -67,7 +67,7 @@ public final class Main {
 `OrdersModule` is your own module (it is [`examples/orders-demo`](https://github.com/flowcatalyst/framework/blob/main/examples/orders-demo/src/main/java/io/flowcatalyst/framework/examples/ordersdemo/OrdersModule.java)):
 it contributes its migrations and provides its use cases. `FlowCatalystModule` holds the
 application's service-account credentials, syncs its definitions and mounts the receivers; set
-`flowcatalyst.enabled: false` to run without a platform. `JettyHttpModule` is listed last on
+`new FlowCatalystModule(FlowCatalystOptions.disabled())` to run without a platform. `JettyHttpModule` is listed last on
 purpose: it opens the port in its `started` hook, so the port opens only once every other module has
 started ([why](http.md#wiring-it-up)). Behaviour is a *use case*, run with a `Context` that says
 which client is acting (the **client code**, such as `acme`, in a

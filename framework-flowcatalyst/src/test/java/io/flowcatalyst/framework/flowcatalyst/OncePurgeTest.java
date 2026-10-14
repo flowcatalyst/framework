@@ -2,9 +2,11 @@ package io.flowcatalyst.framework.flowcatalyst;
 
 import static io.flowcatalyst.framework.flowcatalyst.Receiving.NOW;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.core.App;
+import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.database.Database;
@@ -21,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.function.UnaryOperator;
 import java.time.Instant;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -72,14 +75,21 @@ class OncePurgeTest {
   }
 
   /** Starts the app with a purge interval so long that only the first run happens. */
-  private void start(String... env) {
-    String[] all = new String[env.length + 2];
-    all[0] = "FLOWCATALYST_RECEIVERS_ONCE_PURGE_INTERVAL";
-    all[1] = "1h";
-    System.arraycopy(env, 0, all, 2, env.length);
+  private void start() {
+    start(o -> o);
+  }
+
+  /** As {@link #start()}, with the receivers adjusted after the long interval is set. */
+  private void start(UnaryOperator<ReceiverOptions> adjust) {
     app =
         Receiving.start(
-            dir, Receiving.env(platform, all), () -> NOW, new DatabaseModule(), LocksModule.builder().store("local", LockStores.memory()).build());
+            dir,
+            Receiving.env(platform),
+            () -> NOW,
+            MonotonicClock.system(),
+            Receiving.receivers(o -> adjust.apply(o.withOncePurgeInterval(Duration.ofHours(1)))),
+            new DatabaseModule(),
+            LocksModule.builder().store("local", LockStores.memory()).build());
   }
 
   private static void row(String job, Instant processedAt) {
@@ -124,12 +134,12 @@ class OncePurgeTest {
   }
 
   @Test
-  void theRetentionSettingDecidesTheCutoff() throws Exception {
+  void theRetentionOptionDecidesTheCutoff() throws Exception {
     start();
     app.close();
     row("a", NOW.minus(Duration.ofHours(3)));
     row("b", NOW.minus(Duration.ofMinutes(30)));
-    start("FLOWCATALYST_RECEIVERS_ONCE_RETENTION", "1h");
+    start(o -> o.withOnceRetention(Duration.ofHours(1)));
     awaitJobs("b");
   }
 
@@ -182,7 +192,7 @@ class OncePurgeTest {
 
   @Test
   void theBackgroundTaskRunsRepeatedlyAndStopsAtShutdown() throws Exception {
-    start("FLOWCATALYST_RECEIVERS_ONCE_PURGE_INTERVAL", "50ms");
+    start(o -> o.withOncePurgeInterval(Duration.ofMillis(50)));
     // Rows added while the app runs are purged by a later run.
     row("late", NOW.minus(Duration.ofDays(90)));
     awaitJobs("");
@@ -194,21 +204,12 @@ class OncePurgeTest {
   }
 
   @Test
-  void nonPositiveRetentionOrIntervalFailsStartUp() {
-    for (String[] bad :
-        new String[][] {
-          {"FLOWCATALYST_RECEIVERS_ONCE_RETENTION", "0s"},
-          {"FLOWCATALYST_RECEIVERS_ONCE_PURGE_INTERVAL", "0s"}
-        }) {
-      Throwable t = catchThrowable(() -> start(bad));
-      assertThat(t).isInstanceOf(StartupException.class);
-      assertThat(((StartupException) t).problems())
-          .extracting(Problem::key)
-          .containsExactly(
-              bad[0].equals("FLOWCATALYST_RECEIVERS_ONCE_RETENTION")
-                  ? "flowcatalyst.receivers.once-retention"
-                  : "flowcatalyst.receivers.once-purge-interval");
-      app = null;
-    }
+  void nonPositiveRetentionOrIntervalIsRefusedWhenBuilt() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ReceiverOptions.defaults().withOnceRetention(Duration.ZERO))
+        .withMessageContaining("onceRetention");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ReceiverOptions.defaults().withOncePurgeInterval(Duration.ZERO))
+        .withMessageContaining("oncePurgeInterval");
   }
 }

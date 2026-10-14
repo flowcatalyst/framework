@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.core.App;
+import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.http.TestClient;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,9 +67,19 @@ class ReceiverSecretsTest {
       };
 
   private TestClient start(Consumer<Receivers> registrar, String... env) {
+    return start(registrar, UnaryOperator.identity(), env);
+  }
+
+  private TestClient start(Consumer<Receivers> registrar, UnaryOperator<ReceiverOptions> options, String... env) {
     app =
         Receiving.start(
-            dir, Receiving.env(platform, env), () -> NOW, LocksModule.builder().store("local", LockStores.memory()).build(), Receiving.handlers(registrar));
+            dir,
+            Receiving.env(platform, env),
+            () -> NOW,
+            MonotonicClock.system(),
+            Receiving.receivers(options),
+            LocksModule.builder().store("local", LockStores.memory()).build(),
+            Receiving.handlers(registrar));
     return Receiving.client(app);
   }
 
@@ -244,7 +256,7 @@ class ReceiverSecretsTest {
 
   @Test
   void withRequireSignatureFalseNoSecretIsNeeded() {
-    TestClient client = start(BOTH, SHARED_KEY, null, "FLOWCATALYST_RECEIVERS_REQUIRE_SIGNATURE", "false");
+    TestClient client = start(BOTH, o -> o.withRequireSignature(false), SHARED_KEY, null);
     TestResponse r =
         client
             .post("/fc/dispatch")

@@ -1,4 +1,4 @@
-<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, Database, Databases, FlowCatalystModule, PlatformClient, PlatformException, Context, PrincipalKind, Locks, LockStore -->
+<!-- types: ReceiverOptions, Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, Database, Databases, FlowCatalystModule, PlatformClient, PlatformException, Context, PrincipalKind, Locks, LockStore -->
 # Receivers: dispatch jobs and scheduled jobs
 
 The platform delivers work **to** your application over HTTP: dispatch jobs (an event, fanned out by
@@ -10,16 +10,16 @@ endpoints for you, checks the delivery signature, and calls the handlers you reg
 | `POST /fc/dispatch` | one dispatch job | `200` ack or defer, `422` reject, `503` retry |
 | `POST /fc/scheduled-jobs` | one scheduled-job firing | `202` at once; the job runs in the background |
 
-The prefix is `flowcatalyst.receivers.path` (default `/fc`). The routes need an HTTP module that
+The prefix is `ReceiverOptions.path` (default `/fc`). The routes need an HTTP module that
 provides `Routes` (for example `JettyHttpModule`); they have no session and no `Context`
 requirement, because the signature is the authentication. Set the dispatch connection's or the
 job's target URL on the platform to these routes (the framework does not set it for you).
 
 **Only a receiver that has a handler answers.** An application that registers no dispatch handler
 answers `404 NOT_FOUND` on `/fc/dispatch` without looking at the signature, and the same for
-`/fc/scheduled-jobs` without a scheduled-job handler. `flowcatalyst.receivers.enabled: false`
+`/fc/scheduled-jobs` without a scheduled-job handler. `ReceiverOptions.disabled()`
 removes both routes even when handlers exist. See [Applications that only want the
-token](#applications-that-only-want-the-token). A disabled module (`flowcatalyst.enabled: false`)
+token](#applications-that-only-want-the-token). A disabled module (`FlowCatalystOptions.disabled()`)
 mounts nothing either.
 
 Read this page with [The FlowCatalyst module](flowcatalyst-module.md) (settings, definitions) and
@@ -129,26 +129,34 @@ UseCase.named("send-invoice", SendInvoice.class, InvoiceSent.class)
 
 ## Settings
 
-All under `flowcatalyst.receivers.`; durations are `30s`, `10m` and so on. Secrets come from the
-environment, for example `FLOWCATALYST_RECEIVERS_SIGNING_SECRET`; see [Config](config.md#secrets).
+The secrets are configuration, all under `flowcatalyst.receivers.`, from the environment (for
+example `FLOWCATALYST_RECEIVERS_SIGNING_SECRET`) or `config/secrets.local.yaml`; see
+[Config](config.md#secrets). Everything else is `ReceiverOptions`, given in code with
+`FlowCatalystOptions.withReceivers(...)`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | boolean | `true` | `false` mounts neither route, even when handlers are registered (start-up warns); see [Applications that only want the token](#applications-that-only-want-the-token) |
-| `path` | string | `/fc` | prefix of the routes; literal segments, no trailing `/` |
 | `signing-secret` | secret | none | the **shared** secret the platform signs deliveries with; used by each receiver that has no secret of its own |
 | `bearer-token` | secret | none | the **shared** optional bearer token; when effective, `Authorization: Bearer` must match as well as the signature |
 | `dispatch.signing-secret` | secret | shared one | the secret for the dispatch receiver only |
 | `dispatch.bearer-token` | secret | shared one | the bearer token for the dispatch receiver only |
 | `scheduled-jobs.signing-secret` | secret | shared one | the secret for the scheduled-job receiver only |
 | `scheduled-jobs.bearer-token` | secret | shared one | the bearer token for the scheduled-job receiver only |
-| `require-signature` | boolean | `true` | `false` accepts unsigned deliveries (start-up logs a warning) |
-| `dispatch-timeout` | duration | `25s` | how long a dispatch handler may run; keep it below the job's timeout (platform default 30 s) |
-| `job-timeout` | duration | `10m` | how long a scheduled job may run when its firing carries no `timeoutSeconds` |
-| `job-lock-lease` | duration | `10m` | lease of the scheduled-job overlap lock, 1 s to 24 h; refreshed every third of it |
-| `once-retention` | duration | `30d` | how long `DispatchDelivery.once` records are kept before the purge deletes them; keep it longer than the platform can redeliver a job |
-| `once-purge-interval` | duration | `1h` | how often the background purge runs |
-| `completion-retry-delay` | duration | `1s` | wait before the first retry of a failed completion call, 0 to 1 m; doubles |
+
+| `ReceiverOptions` | Default | Meaning |
+|---|---|---|
+| `disabled()`, `withEnabled(boolean)` | enabled | disabled mounts neither route, even when handlers are registered (start-up warns); see [Applications that only want the token](#applications-that-only-want-the-token) |
+| `withPath(String)` | `/fc` | prefix of the routes; literal segments, no trailing `/` |
+| `withRequireSignature(boolean)` | `true` | `false` accepts unsigned deliveries (start-up logs a warning) |
+| `withDispatchTimeout(Duration)` | `25s` | how long a dispatch handler may run; more than 0; keep it below the job's timeout (platform default 30 s) |
+| `withJobTimeout(Duration)` | `10m` | how long a scheduled job may run when its firing carries no `timeoutSeconds`; more than 0 |
+| `withJobLockLease(Duration)` | `10m` | lease of the scheduled-job overlap lock, 1 s to 24 h; refreshed every third of it |
+| `withOnceRetention(Duration)` | `30d` | how long `DispatchDelivery.once` records are kept before the purge deletes them; keep it longer than the platform can redeliver a job |
+| `withOncePurgeInterval(Duration)` | `1h` | how often the background purge runs |
+| `withCompletionRetryDelay(Duration)` | `1s` | wait before the first retry of a failed completion call, 0 to 1 min; doubles |
+
+Each range is checked when the record is built (`IllegalArgumentException`). For example
+`new FlowCatalystModule(FlowCatalystOptions.defaults().withReceivers(ReceiverOptions.defaults().withPath("/hooks/flowcatalyst")))`.
 
 ### Why there can be two secrets
 
@@ -196,7 +204,7 @@ It returns a `DispatchResult`:
 | Situation | Response | Platform behaviour |
 |---|---|---|
 | Handler returned `ack` / `defer` / `reject` | `200` / `200` / `422` | as above |
-| Handler **threw**, exceeded `dispatch-timeout`, or returned `null` | `503 UNAVAILABLE`, fixed message | **transient**: retried with the platform's backoff up to the job's max retries. The exception is logged at ERROR with the job id and correlation id and never returned |
+| Handler **threw**, exceeded the dispatch timeout (`ReceiverOptions.dispatchTimeout`), or returned `null` | `503 UNAVAILABLE`, fixed message | **transient**: retried with the platform's backoff up to the job's max retries. The exception is logged at ERROR with the job id and correlation id and never returned |
 | No handler for the type | `422` reject `no handler for <type>` | terminal: a job that can never succeed must not retry |
 | Bad or missing signature, or bearer | `401 UNAUTHENTICATED` with `details.reason` | the platform treats 401 and 403 as terminal, so a wrong secret shows at once |
 | Malformed headers or envelope | `400 VALIDATION` | |
@@ -256,7 +264,7 @@ A `ScheduledJobHandler` receives the `Context` and a `ScheduledJobFiring` (`jobI
 
 **Overlap protection is yours, not the platform's.** Unless the envelope says `concurrent` (absent
 means false), the run takes the lock `scheduled-job:{jobCode}` (service scope) from the **default**
-lock instance, with a lease of `job-lock-lease` refreshed while the handler runs. Pass
+lock store, with a lease of `ReceiverOptions.jobLockLease` refreshed while the handler runs. Pass
 `firing.fencingToken()` on to what you write if a stale run must be rejected there. So start-up
 fails when such a job handler is registered and no lock store is given: list
 `LocksModule.builder()` with a default store (`DatabaseLockStores` or `RedisLockStores` across
@@ -319,8 +327,8 @@ or health check (an ingestor, say) registers no handlers. It does not expose rec
 
 - A receiver with no handler answers `404 NOT_FOUND`, the same body as an unknown route, before
   the signature is looked at. Nothing about it depends on a secret, so no secret is needed.
-- To remove the two routes entirely, set `flowcatalyst.receivers.enabled: false` (environment
-  variable `FLOWCATALYST_RECEIVERS_ENABLED`). Then **nothing is mounted** and every method on
+- To remove the two routes entirely, give `FlowCatalystOptions.defaults().withReceivers(ReceiverOptions.disabled())`.
+  Then **nothing is mounted** and every method on
   `/fc/...` is `404`, even if a module registers handlers; start-up logs a WARN naming those
   handlers, because the platform can then never deliver to them. None of the start-up checks for
   receivers (secret, lock instance, `Routes`) apply while receivers are disabled.
