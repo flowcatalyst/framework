@@ -23,7 +23,7 @@ export default defineConfig(
       "samples/openapi/src/api/**",
       "packages/api-runtime/src/generated/**",
       "packages/api-runtime/test/orders-demo/api/**",
-      "apps/gallery/src/api/**",
+      "apps/*/src/api/**",
     ],
   },
   tseslint.configs.strictTypeChecked,

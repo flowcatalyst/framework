@@ -1,0 +1,38 @@
+{
+  "name": "@flowcatalyst/orders-web",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "The orders demo's single-page application (U3): Nuxt UI on plain Vue 3 and Vite, served by examples/orders-demo",
+  "scripts": {
+    "dev": "vite --port 5175 --strictPort",
+    "build": "vite build",
+    "typecheck": "tsc --build tsconfig.node.json && vue-tsc --build tsconfig.app.json",
+    "generate": "openapi-ts",
+    "drift": "openapi-ts && node ../../scripts/api-drift.ts src/api",
+    "e2e": "vite build && playwright test"
+  },
+  "dependencies": {
+    "@flowcatalyst/api-runtime": "link:../../packages/api-runtime",
+    "@flowcatalyst/ui": "link:../../packages/ui",
+    "@iconify-json/lucide": "catalog:",
+    "@internationalized/date": "catalog:",
+    "@nuxt/ui": "catalog:",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "catalog:",
+    "@hey-api/openapi-ts": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vue-tsc": "catalog:"
+  }
+}

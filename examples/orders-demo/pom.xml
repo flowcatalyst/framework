@@ -66,6 +66,13 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
+    <!-- TestOidcProvider: the end-to-end launcher (OrdersE2e) signs in against it, not the platform. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
