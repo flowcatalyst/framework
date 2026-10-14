@@ -55,7 +55,10 @@ credentials.
 | `auth.public-base-url` (required) | `AUTH_PUBLIC_BASE_URL` | your application's origin as browsers see it, for example `https://orders.example.com`; no path |
 | `auth.cookie-keys` | `AUTH_COOKIE_KEYS` | only for the cookie store (below) |
 
-Everything else (timeouts, permissions, where to land, rate limits) is set on the builder, in code.
+Everything else (timeouts, permissions, where to land, rate limits) is set on the builder, in code
+([config and code](config.md#what-configuration-holds)). The module claims the `auth` component, so
+any other key under `auth` in a file (a misspelt `auth.isuer`, an `auth.idle-timeout`) fails
+start-up as unknown.
 
 **Register the login client on the platform.** An anchor administrator calls
 `POST /api/applications/{id}/provision-login-client` with `redirectUris:

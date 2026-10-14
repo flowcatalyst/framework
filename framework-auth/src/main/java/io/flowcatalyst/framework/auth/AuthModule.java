@@ -103,6 +103,9 @@ public final class AuthModule implements Module {
 
   @Override
   public void register(AppBuilder app) {
+    // Configuration holds connections and secrets only; a misspelt auth key fails start-up
+    // (config-and-code contract, section 5).
+    app.claimComponent("auth");
     app.declare(ISSUER);
     app.declare(CLIENT_ID);
     app.declare(CLIENT_SECRET);
