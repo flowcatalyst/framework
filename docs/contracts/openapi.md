@@ -2,7 +2,7 @@
 
 Status: written 2026-10-14, before any code, for the UI direction decided that day (Nuxt UI SPA as
 the primary UI for the Java and Go frameworks; [`../handover.md`](../handover.md), "UI direction").
-Nothing here is built. The **document rules** (sections 4 to 9) are language-neutral: the Java
+*Built in Java with MO (2026-10-14); amendments found by the build are marked (MO).* The **document rules** (sections 4 to 9) are language-neutral: the Java
 emitter (`framework-http`) and the Go emitter (`httpfw`, [`../go/capabilities.md`](../go/capabilities.md)
 section 5, decision 18) produce the same document for the same API, checked by a shared conformance
 vector (section 10). The **declaration API** (sections 2 and 3) is described in its Java shape; Go's
@@ -68,6 +68,28 @@ static final Operation<IngestionBody, IngestionView> CREATE =
 | `requiresContext()` | as `RouteOptions.requiresContext()`; documents the security schemes (section 7) and the statuses section 6 implies |
 | `permission(p)` | the permission the `Context` must hold (core contract section 3 matching); enforced by `framework-http` with `Context.hasPermission` (`403 FORBIDDEN`, the same answer as `Auth.require`); implies `requiresContext()`; emitted as `x-fw-permission` |
 
+*Amended by the build (MO):*
+
+- Factories, as built: `Operation.get(pattern, Class|TypeRef)`, `delete(...)` the same, `post`,
+  `put`, `patch(pattern, Validator, Class|TypeRef)`, and a body-less `post(pattern, Class|TypeRef)`
+  (logout): a body sent to a body-less operation is not read. `id`, `summary`, `description`,
+  `tag(...)`, `path(...)`, `query(...)`, `status`, `requiresContext()`, `permission`, `error`, `build()`.
+- `build()` never throws for a descriptor mistake (a missing or malformed id, a bad tag, a malformed
+  pattern, a path parameter missing from the pattern or a pattern name not declared, a parameter
+  declared twice, a success status other than 200, 201, 202 and 204, `204` without `NoBody` or
+  `NoBody` with another status, an error status outside 400 to 599, an error code not
+  `[A-Z][A-Z0-9_]*`, an error declared twice or without a message, a blank permission). They are
+  listed by `Operation.problems()` and reported as start-up problems when the route table is
+  compiled and as dump problems by the `openapi` command, so a static field never fails class
+  initialisation.
+- Parameters: `PathParam.string|integer|longInt(name)`, `PathParam.enumOf(name, Class)`;
+  `QueryParam.string|integer|longInt|bool(name)`, `QueryParam.enumOf(name, Class)`, then at most one
+  of `.optional()` (`QueryParam<@Nullable T>`), `.defaultValue(v)` (documented as the schema's
+  `default`) or `.list()` (`QueryParam<List<T>>`, empty when absent). Query names match
+  `[A-Za-z][A-Za-z0-9_.-]*`. A missing required value is `REQUIRED: is required`, a bad one `INVALID:
+  ...`, all parameter errors in one `400 VALIDATION`.
+- The response may also be a sealed interface (a union), not only a record.
+
 ## 3. Declaring and binding (Java)
 
 Operations are **declared in `register`** (so the document needs no service, configuration or
@@ -88,22 +110,39 @@ routes.bind(CREATE, request -> {
 });
 ```
 
+*Amended by the build (MO):* binding is `Routes.bind(operation, handler)` or `bind(operation,
+handler, RouteOptions)` for route middleware (options that require a context on an operation that
+does not are a start-up problem: the document would call it public). The HTTP module's `Routes` is
+given every declared operation (`Routes.declare`, from `OpenApi.operations(lookup)`); a table built by
+hand in a test (`new Routes()`) that is never given declarations does not check that bound
+operations were declared. Order of the checks on a request: the permission (`403`), then every
+parameter (one `400`), then the body (`415`, `400`), then the handler, so a caller without the
+permission learns nothing about the body rules.
+
 - `OperationHandler<B, R>` is `Outcome<R> handle(OperationRequest<B> request) throws Exception`.
   `OperationRequest<B>` gives `body()` (decoded and validated), `path(PathParam<T>)`,
   `query(QueryParam<T>)`, `context()`, and `raw()` (the `Request`, for headers).
 - `Outcome<R>` is a **sealed result** (house rule): `Outcome.Ok<R>` (the value, optional extra
   headers such as `Location` or `Set-Cookie`) or `Outcome.Failed<R>` (a `ServiceError`, so a
   `UseCaseError` passes straight through; `Outcome.failed(status, code, message)` builds one). Throwing `HttpException` still works and maps as before.
+  *As built (MO):* `Outcome.ok(value)` returns `Outcome.Ok`, whose `header(name, value)` appends (two
+  `Set-Cookie`s are fine); `Outcome.noContent()` for a `NoBody` response; `Outcome.failed(error)` and
+  `failed(status, code, message[, details])` (status 400 to 599).
 - Start-up problems, collected as usual: a declared operation that is not bound; a bound operation
   that was not declared; an operation bound twice; two operations with one id; the route rules of
   http contract section 2 (a bound operation is a route).
 - A `Failed` outcome whose status is neither declared nor implied (section 6) is answered as given
   and logged once per operation and status at WARN ("status 409 is not in the document for
-  createIngestion").
+  createIngestion"); *as built (MO):* once per process.
 - **Responses of typed operations omit absent values**: a `@Nullable` record component that is
   `null` is left out of the JSON (Jackson `NON_NULL` on the typed-operation writer only; plain
   routes and `Response.json` keep writing `null`, unchanged). This matches the Go emitter
   (`omitzero`), the session JSON (sessions contract section 6.1) and the document (section 5).
+  *As built (MO):* the typed-operation mapper is `Json.operationMapper()`: `Json.mapper()`'s
+  strictness, `NON_NULL` for record components, `BigDecimal` written as a string (read from a string
+  or a number), `Duration` as ISO-8601, and the context id types (`ClientId`, `PrincipalId`,
+  `ApplicationCode`, `CorrelationId`) as plain strings (Jackson would otherwise write `{"value":
+  ...}`, which the document does not describe).
 
 ## 4. The document
 
@@ -193,6 +232,15 @@ for the same reason Jackson uses it; it is not wiring and never scans the classp
 | a framework value type (ids, `ClientId`) | its built-in schema (a `string`, with a `pattern` where the type has one) | `string` | its `SchemaProvider` |
 | an application value type | a schema registered in code: `OpenApi.schema(app, Money.class, Schema.string().pattern("^-?[0-9]+\\.[0-9]{2}$"))` | per the schema | `SchemaProvider` |
 
+*Amended by the build (MO):* the framework value types are `ClientId` (`{"type": "string",
+"pattern": "^[A-Za-z0-9._-]{1,100}$"}`), `ApplicationCode` (`"pattern": "^[a-z][a-z0-9-]*$"`),
+`PrincipalId` and `CorrelationId` (`"pattern": "\\S", "minLength": 1`, the non-blank rule). A
+registered schema that is a union (`Schema.oneOf(...)`) or an object is a component under the type's
+name; any other registered schema is written inline wherever the type appears. Jackson annotations
+on a registered type are not checked (the registration is the application's word for what Jackson
+writes; a `Money` record with `@JsonValue` is the example). `float`, `short`, `byte` and `char` are not
+in the table and are refused.
+
 **Refused** (the dump fails, naming the type and the path from the operation to it, for example
 `createIngestion.body.source.Sftp.every`): `Optional` (house rule: never a field), `Object`, raw or
 wildcard generic types, a `Map` whose key is not `String`, arrays of primitives other than
@@ -203,7 +251,11 @@ Jackson annotation the emitter does not understand (5.5).
 ### 5.2 Records
 
 - One component per record type. **Name:** the simple name; a nested record is prefixed by its
-  enclosing types (`IngestionView.Route` is `IngestionViewRoute`); a generic record is followed by
+  enclosing types (`IngestionView.Route` is `IngestionViewRoute`). *Amended (MO):* only enclosing
+  records, interfaces and enums count; an enclosing class that is none of those (a holder of API
+  types such as `OrdersApi`) adds nothing, so `OrdersApi.OrderView` is `OrderView`, the name a Go
+  package-level type would have. The name `Error` is the framework's envelope; a type named so is a
+  name collision. A recursive record (`Node(List<Node> children)`) is one component; a generic record is followed by
   its type arguments' names (`CursorPage<IngestionView>` is `CursorPageIngestionView`). Two types
   that produce one name is a dump problem (rename one, or register a name in code:
   `OpenApi.name(app, Type.class, "OtherName")`).
@@ -224,6 +276,11 @@ Jackson annotation the emitter does not understand (5.5).
   were refused; the generated, fully typed client of section 11 is what prevents that here.)
 - `@JsonIgnore`-free public methods named like getters (`getX()`, `isX()`) on a record are a dump
   problem: Jackson would serialise them as properties the walk does not see.
+- *Added (MO):* `OpenApi.property(app, Record.class, "component", schema)` replaces one property's
+  schema (whether it is required still follows `@Nullable`), for a property with a fixed value
+  (`Schema.bool().constant(true)`), used by the session components (sessions contract 4.5). An
+  override naming no component is a dump problem. `@JsonIgnore` on a record component is a dump
+  problem (Jackson would drop the property).
 
 ### 5.3 Sealed interfaces
 
@@ -244,6 +301,13 @@ a dump problem, because Jackson's wire form and the document would disagree.
   `{"type": "string", "const": "<name>"}`, required.
 - The interface's own `@JsonIgnore` default methods (for example `Source.singleOwner()`) are not
   properties and are ignored.
+- *Amended by the build (MO):* every `@JsonSubTypes.Type` needs an explicit `name` (Jackson's default
+  for a nested class is not portable); `names` aliases, `defaultImpl` and `visible = true` are dump
+  problems; every permitted subtype must be a record; a variant component with the discriminator's
+  name is a dump problem. A variant record used on its own (as a response) is still the variant
+  component `<Interface><Variant>` with the discriminator first, because Jackson inherits the type
+  id from the interface. A sealed interface with a registered `Schema.oneOf(...)` needs no Jackson
+  annotations and is documented without a `discriminator` (the session answer).
 
 ### 5.4 Constraints from the Validator
 
@@ -264,6 +328,18 @@ rules map as follows:
 | `each(rule)` | the rule's constraint on `items` |
 | `custom(...)` | none |
 
+*Amended by the build (MO):* when rules overlap, the tighter bound wins (`minLength`, `minimum`,
+`minItems` take the largest, the maxima the smallest); an explicit `pattern` replaces `notBlank`'s
+`\S` (its `minLength: 1` stays; a pattern that accepts only whitespace is then under-documented); two
+explicit patterns, or `oneOf` with a value outside an enum's constants, are dump problems; `oneOf` on an
+enum narrows its `enum`; a rule that does not fit the value (`oneOf` on a list) is a dump problem.
+The ECMA refusal list, as built: inline flags `(?i)`, atomic groups `(?>`, possessive quantifiers,
+`\A \Z \z \G \h \H \v \V \R \X \Q \E \e \a \N`, every `\p{...}`/`\P{...}` (ECMA reads them only with the
+`u` flag, which a browser validator may not set), `\x{...}`, a nested class or `&&` in a class, a
+class starting with `]`, and a pattern compiled with flags. Validator fields that are not record
+components are dump problems. Constraints are compared as documented: `custom` and `notNull` rules do
+not make two validators differ.
+
 One component per type: two operations whose validators give the same type different constraints
 is a dump problem (give each its own body type, or share the validator). A type used both as a
 request body and in a response carries the body's constraints in both places (data the server
@@ -272,7 +348,8 @@ produces is valid data).
 **Schema keyword order** (for section 4.1): `$ref`, `type`, `const`, `enum`, `format`,
 `contentEncoding`, `pattern`, `minLength`, `maxLength`, `minimum`, `maximum`, `items`, `minItems`,
 `maxItems`, `uniqueItems`, `properties`, `required`, `additionalProperties`, `oneOf`,
-`discriminator`, `description`.
+`discriminator`, `description`. *Amended (MO):* `default` (a query parameter's default value) comes
+before `description`. A record with no required component has no `required` keyword.
 
 ### 5.5 Jackson annotations
 
@@ -315,6 +392,10 @@ each pointing at it:
 | each `error(status, ...)` | declared; the codes are listed in the response's `description` (`"CODE_TAKEN: the client already has an ingestion with that code"`), one line per code, sorted |
 | `default` | always (everything else: `429`, `500`, `503`) |
 
+*As built (MO):* a declared `error(status, ...)` on a status the shape already implies (for example
+`403`) replaces that status's `$ref` with the described response. A response object for a declared
+status is `{"description": "<CODE>: <message>" lines joined with "\n", "content": {...Error...}}`.
+
 `error` stays a `string`, not an enum: use-case codes are an open set. hey-api types the SDK's
 `error` result as `Error`, so the SPA never handles `unknown`.
 
@@ -329,6 +410,10 @@ callers authenticate:
 - an application's own resolver contributes its own (Java: `OpenApi.securityScheme(app, "basic",
   SecurityScheme.httpBasic())`), for example the first application's fixed token and basic login.
 
+*As built (MO):* `SecurityScheme.cookie(name)`, `header(name)`, `bearer(format)` and `httpBasic()`;
+scheme names match `[A-Za-z][A-Za-z0-9_-]*`, and one name contributed twice is a dump problem.
+`components.securitySchemes` is left out when nothing was contributed.
+
 An operation that `requiresContext()` gets `security` listing every contributed scheme (each as its
 own alternative); a public operation gets none. An operation that requires a context when no
 scheme was contributed is a dump problem ("say how callers authenticate").
@@ -342,6 +427,8 @@ scheme was contributed is a dump problem ("say how callers authenticate").
   document (no `security`): they answer without a session.
 - `/auth/login` and `/auth/callback` are browser navigations, never fetched: not in the document.
 - Health, metrics, receivers, the SPA's files and Datastar streams are not operations.
+- *Built (MO):* with summaries `Read the browser session` and `Sign out of the application` and the
+  tag `auth`; `logout` declares `403 CROSS_ORIGIN_REQUEST` and `415 UNSUPPORTED_MEDIA_TYPE`.
 
 ## 9. Dumping the document
 
@@ -353,12 +440,17 @@ scheme was contributed is a dump problem ("say how callers authenticate").
   `Provider` or `boot` is never called.
 - `framework-http` claims **`openapi`**: `java -jar app.jar openapi` writes the document to standard
   output; `openapi --out web/openapi.json` writes the file. Every dump problem is collected and
-  printed, exit code 1. Go: the same command name and output (`<app> openapi`), run in Go's declare
+  printed, exit code 1. *Amended by the build (MO):* `framework-http` has no module, so it provides
+  the command (`OpenApi.command()`) and the HTTP server module (`JettyHttpModule`, id `http`) claims
+  it: every application that serves HTTP has it. Any other argument prints the usage, exit code 2.
+  Tools and tests get the declarations without a command through core's `AppBuilder.declarations()`
+  (register only); `OpenApi.document(declarations)` returns `Written(json)` or `Refused(problems)`. Go: the same command name and output (`<app> openapi`), run in Go's declare
   phase.
 - **Drift in the Maven build (Java):** the framework's test helper
   `OpenApiTesting.assertCommitted(appBuilder, Path.of("web/openapi.json"))` regenerates the document
   in a unit test and fails with a diff when the committed file differs, so `./mvnw verify` catches a
-  stale document without Node. The TypeScript side has its own drift check (section 11).
+  stale document without Node. *As built (MO):* the same test run with `-Dopenapi.update=true`
+  writes the file; a missing file fails with the command to write it. The TypeScript side has its own drift check (section 11).
 
 ## 10. One document for Java and Go
 
@@ -371,7 +463,9 @@ runs against the other's when the operations are the same:
   status, both security cases) described in its `README.md`, and `fixture.json`, the expected
   document. The Java tests write it (`-Dconformance.update=true`); Go's emitter must reproduce it
   **byte for byte**. `conformance/openapi/auth.json` holds the two operations of section 8 and their
-  components, which `@flowcatalyst/api-runtime` is generated from;
+  components, which `@flowcatalyst/api-runtime` is generated from; *added (MO):*
+  `conformance/openapi/orders-demo.json`, a sample application (the Java `examples/orders-demo`
+  document, byte-equal to its committed `web/openapi.json`);
 - known modelling differences are absorbed by the rules: Java writes `@Nullable` absent, Go omits
   `omitzero` values, and both document "may be absent" (5.2); neither emits nullable types.
 
@@ -431,6 +525,20 @@ export default defineConfig({
 - the conformance vectors of section 10;
 - an end-to-end check in the example application: the generated client compiles under the UI's
   `tsconfig` and a Playwright run with response validation on passes against the real server.
+  *Not built with MO (it needs the UI package, MU U3).* Checked by hand on 2026-10-14 instead:
+  `@hey-api/openapi-ts` 0.93.1 (the platform SPA's pin) generated types, SDK and Zod 4 schemas from
+  `fixture.json`; `tsc` 5.8 under `strict` and `exactOptionalPropertyTypes` accepts the generated
+  types, SDK and Zod files and a discriminated-union switch over `Shape`; hey-api's own runtime files
+  (`client/`, `core/`) do not compile under `exactOptionalPropertyTypes` (the UI package must exclude
+  them from that flag), and its Zod plugin writes `int64` as `z.coerce.bigint()` while the type is
+  `number` (to configure in the UI package). U0 pinned 0.99.0 and checked a hand-written document
+  to these rules ([`../ui/u0.md`](../ui/u0.md)) with the same findings for the runtime files; the
+  emitted documents have not been run through 0.99.0 yet (U3 does, from
+  `examples/orders-demo/web/openapi.json`).
+- *As built (MO):* the documents are validated in the Maven build against the OpenAPI Initiative's
+  3.1 schema (`schema/2022-10-07`, Apache-2.0, vendored as a test resource) and each component against
+  the JSON Schema 2020-12 meta-schema, with `com.networknt:json-schema-validator` as a test dependency;
+  the Jackson agreement test validates the typed writer's JSON with the same library.
 
 ## 13. Rulings
 

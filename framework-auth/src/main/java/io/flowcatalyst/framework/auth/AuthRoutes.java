@@ -1,12 +1,15 @@
 package io.flowcatalyst.framework.auth;
 
 import io.flowcatalyst.framework.http.HttpErrors;
+import io.flowcatalyst.framework.http.NoBody;
+import io.flowcatalyst.framework.http.OperationRequest;
+import io.flowcatalyst.framework.http.Outcome;
 import io.flowcatalyst.framework.http.Request;
 import io.flowcatalyst.framework.http.Response;
-import java.time.Instant;
 import java.time.InstantSource;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
@@ -141,66 +144,48 @@ final class AuthRoutes {
     return bindingName == null ? response : response.addHeader("Set-Cookie", cookies.clear(bindingName));
   }
 
-  // ---- GET /auth/session -------------------------------------------------------------------
+  // ---- GET /auth/session (operation getAuthSession) -----------------------------------------
 
-  Response session(Request request) throws Exception {
-    Optional<Authenticated> current = sessions.current(request);
+  Outcome<AuthSession> session(OperationRequest<NoBody> request) throws Exception {
+    Optional<Authenticated> current = sessions.current(request.raw());
     if (current.isEmpty()) {
-      Map<String, Object> body = new LinkedHashMap<>();
-      body.put("authenticated", false);
-      body.put("loginUrl", "/auth/login");
-      return noStore(Response.json(200, body));
+      return noStore(Outcome.ok(new AuthSession.Anonymous(false, "/auth/login")));
     }
     Authenticated a = current.get();
     Principal p = a.principal();
-    Map<String, Object> principal = new LinkedHashMap<>();
-    principal.put("id", p.id().value());
-    principal.put("kind", p.kind().name());
-    if (p.name() != null) {
-      principal.put("name", p.name());
-    }
-    if (p.email() != null) {
-      principal.put("email", p.email());
-    }
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("authenticated", true);
-    body.put("principal", principal);
-    if (p.tier() != null) {
-      body.put("tier", p.tier());
-    }
-    body.put("client", a.client().value());
-    body.put("clients", p.clients());
-    body.put("applications", p.applications());
-    body.put("roles", p.roles());
-    body.put("permissions", new TreeSet<>(a.permissions()));
-    Instant authTime = a.authTime();
-    if (authTime != null) {
-      body.put("authTime", authTime.toString());
-    }
-    body.put("expiresAt", a.expiresAt().toString());
-    Instant idle = a.idleExpiresAt();
-    if (idle != null) {
-      body.put("idleExpiresAt", idle.toString());
-    }
-    Map<String, Object> csrf = new LinkedHashMap<>();
-    csrf.put("mode", "fetch-metadata");
-    csrf.put("jsonBodies", true);
-    body.put("csrf", csrf);
-    return noStore(Response.json(200, body));
+    AuthSession.Authenticated body =
+        new AuthSession.Authenticated(
+            true,
+            new AuthPrincipal(p.id().value(), p.kind(), p.name(), p.email()),
+            AuthTier.of(p.tier()),
+            a.client().value(),
+            p.clients(),
+            p.applications(),
+            p.roles(),
+            List.copyOf(new TreeSet<>(a.permissions())),
+            // a browser session always has both (sections 6.1 and 6.4); only bearer tokens lack them
+            Objects.requireNonNull(a.authTime(), "a session has an authTime"),
+            a.expiresAt(),
+            Objects.requireNonNull(a.idleExpiresAt(), "a session has an idle expiry"),
+            AuthCsrf.FIXED);
+    return noStore(Outcome.ok(body));
   }
 
-  // ---- POST /auth/logout -------------------------------------------------------------------
+  // ---- POST /auth/logout (operation logout) --------------------------------------------------
 
-  Response logout(Request request) {
-    String handle = Cookies.read(request, cookies.sessionName());
+  Outcome<AuthLogout> logout(OperationRequest<NoBody> request) {
+    String handle = Cookies.read(request.raw(), cookies.sessionName());
     if (handle != null) {
-      sessions.csrf().check(request);
+      sessions.csrf().check(request.raw());
       manager.deleteSession(handle);
     }
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("loggedOut", true);
-    body.put("endSessionUrl", rp.endSessionUrl(postLogoutRedirectUri));
-    return noStore(Response.json(200, body)).addHeader("Set-Cookie", cookies.clear(cookies.sessionName()));
+    // endSessionUrl is omitted when unknown (section 4.4, amended): typed operations omit nulls
+    return noStore(Outcome.ok(new AuthLogout(true, rp.endSessionUrl(postLogoutRedirectUri))))
+        .header("Set-Cookie", cookies.clear(cookies.sessionName()));
+  }
+
+  private static <R> Outcome.Ok<R> noStore(Outcome.Ok<R> outcome) {
+    return outcome.header("Cache-Control", "no-store");
   }
 
   private static Response noStore(Response response) {

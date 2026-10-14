@@ -20,6 +20,20 @@
       <groupId>tools.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
     </dependency>
+    <!-- Tests only: validates the emitted OpenAPI documents against the OpenAPI 3.1 schema and the
+         JSON Schema 2020-12 meta-schema, and Jackson's output against the emitted schemas (Apache-2.0).
+         Its YAML support is not needed. -->
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>tools.jackson.dataformat</groupId>
+          <artifactId>jackson-dataformat-yaml</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- the conformance vector helpers (Conformance, JsonVectors) -->
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>

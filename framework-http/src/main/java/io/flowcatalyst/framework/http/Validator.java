@@ -28,12 +28,32 @@ public final class Validator<T> {
     void run(T root, List<FieldError> out);
   }
 
+  /**
+   * The rules of one field, as data (for the OpenAPI document; contract section 5.4).
+   *
+   * @param name the field name, as given to {@link #field}
+   * @param constraints what each rule checks, in the order given
+   */
+  public record FieldRules(String name, List<Constraint> constraints) {
+    /**
+     * Copies the constraints.
+     *
+     * @param name the field name
+     * @param constraints the constraints
+     */
+    public FieldRules {
+      constraints = List.copyOf(constraints);
+    }
+  }
+
   private final Class<T> type;
   private final List<Step<T>> steps;
+  private final List<FieldRules> fields;
 
-  private Validator(Class<T> type, List<Step<T>> steps) {
+  private Validator(Class<T> type, List<Step<T>> steps, List<FieldRules> fields) {
     this.type = type;
     this.steps = steps;
+    this.fields = fields;
   }
 
   /**
@@ -44,7 +64,7 @@ public final class Validator<T> {
    * @return a validator with no rules
    */
   public static <T> Validator<T> of(Class<T> type) {
-    return new Validator<>(type, List.of());
+    return new Validator<>(type, List.of(), List.of());
   }
 
   /**
@@ -71,7 +91,11 @@ public final class Validator<T> {
             out.add(new FieldError(Violations.join(name, e.path()), e.code(), e.message()));
           }
         };
-    return with(step);
+    List<Constraint> described = new ArrayList<>();
+    for (Rule<? super V> rule : copy) {
+      described.add(rule.describe());
+    }
+    return with(step, new FieldRules(name, described));
   }
 
   /**
@@ -88,10 +112,22 @@ public final class Validator<T> {
     return field(name, getter, Rules.valid(nested));
   }
 
-  private Validator<T> with(Step<T> step) {
+  private Validator<T> with(Step<T> step, FieldRules field) {
     List<Step<T>> list = new ArrayList<>(steps);
     list.add(step);
-    return new Validator<>(type, List.copyOf(list));
+    List<FieldRules> described = new ArrayList<>(fields);
+    described.add(field);
+    return new Validator<>(type, List.copyOf(list), List.copyOf(described));
+  }
+
+  /**
+   * The rules of every field, as data, in the order they were added; a field added twice appears
+   * twice. The OpenAPI emitter reads them (contract section 5.4).
+   *
+   * @return the fields
+   */
+  public List<FieldRules> fields() {
+    return fields;
   }
 
   /**

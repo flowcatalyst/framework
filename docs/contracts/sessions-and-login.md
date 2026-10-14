@@ -4,7 +4,7 @@ Status: M4c, written 2026-10-13 before the Java code; Java built the same day (`
 `framework-auth-database`, `framework-auth-redis`). Amendments found by the build are marked.
 *Amended 2026-10-14 for the SPA (UI direction, [`../handover.md`](../handover.md)): section 4.5 (what
 a single-page application relies on, the two endpoints as typed operations) and 4.4 (`endSessionUrl`
-omitted rather than `null`); neither is built yet.* **Language-neutral and JSON-first**: Java,
+omitted rather than `null`); both built with MO the same day.* **Language-neutral and JSON-first**: Java,
 Go, Rust and TypeScript implement the same endpoints, cookies, JSON shapes, error codes and
 verification rules. Java names appear only where the Java shape is described.
 
@@ -190,9 +190,9 @@ browser session only.
   The SPA navigates to it to end the platform session as well (single logout); ignoring it logs out
   of the application only. **Omitted** when discovery has no `end_session_endpoint` or cannot be
   read. *Amended 2026-10-14: was `null`; omitted matches section 6.1 ("optional values are omitted,
-  not null") and the OpenAPI contract's "may be absent" rule. The Java code still writes `null` until
-  logout becomes a typed operation (section 4.5); an SPA that tests `endSessionUrl` for truthiness
-  works with both. Ruled by the owner 2026-10-14: typed operations omit `null`s, plain routes keep
+  not null") and the OpenAPI contract's "may be absent" rule. Built with MO: logout is a typed
+  operation and the field is left out; an SPA that tests `endSessionUrl` for truthiness works with
+  both. Ruled by the owner 2026-10-14: typed operations omit `null`s, plain routes keep
   them (OpenAPI contract section 13, ruling 4), so the omission arrives with MO and nothing else
   changes on the wire.*
 - Without a session the answer is the same `200` (logout is idempotent).
@@ -225,6 +225,15 @@ generated. Their components are fixed here, identical in every implementation an
 
 In TypeScript the union narrows on `session.authenticated === true`. Verified at U0
 ([`../ui/u0.md`](../ui/u0.md)): hey-api renders `const` as literal types (and `z.literal` in Zod).
+*Also checked with MO on the emitted `conformance/openapi/fixture.json` with hey-api 0.93.1, the
+platform's pin: the same.*
+
+*As built (MO):* the operations carry summaries (`Read the browser session`, `Sign out of the
+application`) and the tag `auth` (all in `conformance/openapi/auth.json`). `tier` is the enum of the
+three tiers the platform issues; a token whose `tier` claim is anything else answers without `tier`
+(before MO the value was echoed), so the answer always matches the document. A browser session
+always has `authTime` and `idleExpiresAt`. Everything else on the wire is unchanged: the bytes of
+both answers are those of M4c except the omitted `endSessionUrl`.
 
 **Client rules** (for `@flowcatalyst/api-runtime`, and for any hand-written client):
 

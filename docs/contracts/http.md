@@ -281,7 +281,9 @@ sessions (M4), OpenAPI generation, rate limiting (added by MA item 9, rate-limit
 
 *Amended 2026-10-14 (UI direction):* static assets and the SPA fallback are specified in
 [`static-assets-and-spa.md`](static-assets-and-spa.md) (built with MS, 2026-10-14); typed operations and OpenAPI
-generation in [`openapi.md`](openapi.md). Both are shared with the Go implementation.
+generation in [`openapi.md`](openapi.md) (built with MO, 2026-10-14: `Operation`, `Routes.bind`, the
+`openapi` command claimed by the HTTP module; `Rule.describe()` and `Validator.fields()` give the
+document the validation rules as data). Both are shared with the Go implementation.
 
 ## 12. Test requirements
 

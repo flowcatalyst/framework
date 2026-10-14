@@ -177,6 +177,10 @@ A failed validation responds `400`:
 
 `details` holds the first error per field path, as `"<CODE>: <message>"`.
 
+Each standard rule also says what it checks (`Rule.describe()`, `Validator.fields()`), which is how a
+typed operation's validator becomes the constraints of its OpenAPI document; see [Typed operations and
+OpenAPI](openapi.md) for `Operation`, `Routes.bind` and the `openapi` command.
+
 ## Errors
 
 Every non-2xx response the framework produces has one envelope, content type `application/json`:

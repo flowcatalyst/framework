@@ -17,6 +17,7 @@ import io.flowcatalyst.framework.http.Dispatcher;
 import io.flowcatalyst.framework.http.MetricsEndpoint;
 import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.Routes;
+import io.flowcatalyst.framework.http.openapi.OpenApi;
 import io.flowcatalyst.framework.metrics.Metrics;
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -30,7 +31,9 @@ import org.slf4j.LoggerFactory;
 /**
  * The HTTP server module (id {@code http}): provides {@link Routes} and {@link HttpServer}, adds
  * the health endpoints, compiles the route table and starts Jetty in {@code started}
- * (after every module's {@code boot}), and stops it gracefully in {@code shutdown}.
+ * (after every module's {@code boot}), and stops it gracefully in {@code shutdown}. It claims the
+ * {@code openapi} declaration-phase command ({@link OpenApi#command()}), and its {@link Routes}
+ * know the operations modules declared ({@link OpenApi#declare}).
  *
  * <p>Module order is irrelevant: routes are registered in {@code boot}, and the table is compiled
  * only once all modules have booted.
@@ -103,8 +106,17 @@ public final class JettyHttpModule implements Module {
     app.declare(METRICS_ENABLED);
     app.declare(METRICS_PATH);
     app.declare(METRICS_BEARER_TOKEN);
-    // the environment decides whether an SPA without index.html may start (local, test)
-    app.provide(Routes.class, lookup -> new Routes(lookup.get(Config.class).environment()));
+    // the environment decides whether an SPA without index.html may start (local, test); the
+    // operations modules declared with OpenApi.declare must each be bound once (OpenAPI contract)
+    app.provide(
+        Routes.class,
+        lookup -> {
+          Routes routes = new Routes(lookup.get(Config.class).environment());
+          routes.declare(OpenApi.operations(lookup));
+          return routes;
+        });
+    // java -jar app.jar openapi [--out web/openapi.json]: the document, after register only
+    app.command(OpenApi.command());
     app.provide(
         HttpServer.class,
         lookup -> {

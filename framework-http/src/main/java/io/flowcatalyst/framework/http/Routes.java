@@ -7,6 +7,7 @@ import io.flowcatalyst.framework.metrics.Metrics;
 import io.flowcatalyst.framework.pipeline.Middleware;
 import io.flowcatalyst.framework.pipeline.Pipeline;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,12 +34,17 @@ public final class Routes {
 
   private record SpaMount(String registrant, Spa spa) {}
 
+  private record Binding(String registrant, Operation<?, ?> operation, boolean contextMismatch) {}
+
   /** State shared by every view. */
   private static final class State {
     final @Nullable String environment;
     final List<Registration> registrations = new ArrayList<>();
     final List<Middleware<Request, Response>> global = new ArrayList<>();
     final List<SpaMount> spas = new ArrayList<>();
+    final List<Binding> bindings = new ArrayList<>();
+    final List<Operation<?, ?>> declared = new ArrayList<>();
+    boolean declarationsKnown;
     boolean sealed;
 
     State(@Nullable String environment) {
@@ -250,6 +256,77 @@ public final class Routes {
     }
   }
 
+  /**
+   * Records operations as declared, so that compiling the table can check every declared operation
+   * is bound exactly once and every bound one was declared. The HTTP module always passes what
+   * modules declared with {@code OpenApi.declare}. A table built by hand ({@code new Routes()} in a
+   * test) that is never given declarations does not check that bound operations were declared.
+   *
+   * @param operations the declared operations
+   * @throws IllegalStateException when the server is already listening
+   */
+  public void declare(Collection<? extends Operation<?, ?>> operations) {
+    synchronized (state) {
+      requireOpen();
+      state.declarationsKnown = true;
+      state.declared.addAll(operations);
+    }
+  }
+
+  /**
+   * Binds a declared {@link Operation} to its handler (OpenAPI contract section 3): a route with
+   * the operation's method and pattern that checks the permission, parses the parameters, decodes
+   * and validates the body, and writes the {@link Outcome}. Problems (an operation that was not
+   * declared, bound twice, or whose descriptor is wrong) fail start-up when the table is compiled.
+   *
+   * @param <B> the body type
+   * @param <R> the response type
+   * @param operation the operation
+   * @param handler the handler
+   * @throws IllegalStateException when the server is already listening
+   */
+  public <B, R> void bind(Operation<B, R> operation, OperationHandler<B, R> handler) {
+    bind(operation, handler, RouteOptions.none());
+  }
+
+  /**
+   * Binds an operation with route middleware (for example a rate limit). The operation decides
+   * whether a context is required; options that require one for an operation that does not are a
+   * start-up problem, because the document would call it public.
+   *
+   * @param <B> the body type
+   * @param <R> the response type
+   * @param operation the operation
+   * @param handler the handler
+   * @param options route middleware
+   * @throws IllegalStateException when the server is already listening
+   */
+  public <B, R> void bind(Operation<B, R> operation, OperationHandler<B, R> handler, RouteOptions options) {
+    synchronized (state) {
+      requireOpen();
+      boolean already = false;
+      for (Binding b : state.bindings) {
+        already |= b.operation() == operation;
+      }
+      boolean mismatch = options.needsContext() && !operation.requiresContext();
+      state.bindings.add(new Binding(registrant, operation, mismatch));
+      if (already || !operation.problems().isEmpty() || mismatch) {
+        return; // reported when the table is compiled
+      }
+      RouteOptions route = operation.requiresContext() ? RouteOptions.requiresContext() : RouteOptions.none();
+      for (Middleware<Request, Response> m : options.middleware()) {
+        route = route.with(m);
+      }
+      state.registrations.add(
+          new Registration(
+              operation.method(),
+              RoutePattern.parse(operation.pattern()),
+              registrant,
+              OperationRoute.handler(operation, handler),
+              route));
+    }
+  }
+
   private void requireOpen() {
     if (state.sealed) {
       throw new IllegalStateException("routes cannot be registered after the server has started listening");
@@ -285,14 +362,21 @@ public final class Routes {
     List<Registration> registrations;
     List<Middleware<Request, Response>> global;
     List<SpaMount> spas;
+    List<Binding> bindings;
+    List<Operation<?, ?>> declared;
+    boolean declarationsKnown;
     synchronized (state) {
       state.sealed = true;
       registrations = List.copyOf(state.registrations);
       global = List.copyOf(state.global);
       spas = List.copyOf(state.spas);
+      bindings = List.copyOf(state.bindings);
+      declared = List.copyOf(state.declared);
+      declarationsKnown = state.declarationsKnown;
     }
     List<Router.Compiled> compiled = new ArrayList<>();
     List<Problem> problems = new ArrayList<>();
+    checkOperations(declared, declarationsKnown, bindings, problems);
     Map<String, Registration> seen = new LinkedHashMap<>();
     Router router = new Router();
     List<String> lines = new ArrayList<>();
@@ -362,5 +446,71 @@ public final class Routes {
       throw new StartupException(problems);
     }
     return new Dispatcher(router, global, resolver, clock, metrics, lines, spa);
+  }
+
+  /** The operation rules of OpenAPI contract section 3. */
+  private static void checkOperations(
+      List<Operation<?, ?>> declared, boolean declarationsKnown, List<Binding> bindings, List<Problem> problems) {
+    Map<String, Operation<?, ?>> ids = new LinkedHashMap<>();
+    for (Operation<?, ?> op : declared) {
+      String id = op.id();
+      if (id == null) {
+        continue;
+      }
+      Operation<?, ?> first = ids.putIfAbsent(id, op);
+      if (first != null && first != op) {
+        problems.add(
+            Problem.of(
+                null,
+                "operation " + id,
+                "two operations have the id '" + id + "': " + first.method() + " " + first.pattern()
+                    + " and " + op.method() + " " + op.pattern()));
+      }
+    }
+    java.util.Set<Operation<?, ?>> bound = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+    for (Binding b : bindings) {
+      Operation<?, ?> op = b.operation();
+      String key = "operation " + op.label();
+      if (!bound.add(op)) {
+        problems.add(Problem.of(b.registrant(), key, "operation " + op.label() + " is bound twice"));
+        continue;
+      }
+      if (declarationsKnown && !containsIdentity(declared, op)) {
+        problems.add(
+            Problem.of(
+                b.registrant(),
+                key,
+                "operation " + op.label() + " is bound but was not declared (OpenApi.declare in register)"));
+      }
+      for (String p : op.problems()) {
+        problems.add(Problem.of(b.registrant(), key, "operation " + op.label() + ": " + p));
+      }
+      if (b.contextMismatch()) {
+        problems.add(
+            Problem.of(
+                b.registrant(),
+                key,
+                "operation " + op.label() + " is bound with options that require a context, but the"
+                    + " operation does not (declare it with requiresContext() or permission(...))"));
+      }
+    }
+    for (Operation<?, ?> op : declared) {
+      if (!bound.contains(op)) {
+        problems.add(
+            Problem.of(
+                null,
+                "operation " + op.label(),
+                "operation " + op.label() + " is declared but not bound (Routes.bind in boot)"));
+      }
+    }
+  }
+
+  private static boolean containsIdentity(List<Operation<?, ?>> list, Operation<?, ?> op) {
+    for (Operation<?, ?> o : list) {
+      if (o == op) {
+        return true;
+      }
+    }
+    return false;
   }
 }

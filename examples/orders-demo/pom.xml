@@ -10,7 +10,7 @@
   </parent>
   <artifactId>orders-demo</artifactId>
   <name>orders-demo</name>
-  <description>An order with lines: the write path end to end (use cases, optimistic locking, outbox).</description>
+  <description>An order with lines: the write path end to end (use cases, optimistic locking, outbox), and the same as a web application with a typed API and a committed OpenAPI document.</description>
 
   <properties>
     <!-- An example: never published. -->
@@ -25,6 +25,23 @@
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-database</artifactId>
+    </dependency>
+    <!-- The web application (OrdersWeb): the server, sessions and login, the typed orders API. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http-jetty</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth-database</artifactId>
     </dependency>
     <!-- An application chooses its logging backend; libraries bring none. -->
     <dependency>

@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * A request as handlers see it: no server types. Created by a server adapter with {@link #of};
@@ -466,6 +467,11 @@ public final class Request {
    * @throws ValidationException when the JSON cannot be decoded or a rule fails
    */
   public <T> T json(Validator<T> validator) {
+    return json(validator, Json.mapper());
+  }
+
+  /** Decodes and validates with a given mapper (typed operations use {@link Json#operationMapper()}). */
+  <T> T json(Validator<T> validator, ObjectMapper mapper) {
     String contentType = header("content-type");
     String mediaType = contentType == null ? "" : contentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
     if (!mediaType.equals("application/json")) {
@@ -473,7 +479,7 @@ public final class Request {
     }
     T value;
     try {
-      value = Json.mapper().readValue(bodyBytes(), validator.type());
+      value = mapper.readValue(bodyBytes(), validator.type());
     } catch (JacksonException e) {
       throw Json.toValidation(e);
     }

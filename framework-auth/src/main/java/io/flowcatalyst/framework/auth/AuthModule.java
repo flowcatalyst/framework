@@ -31,7 +31,9 @@ import org.slf4j.LoggerFactory;
  * backend-for-frontend and an OIDC relying party of the FlowCatalyst platform.
  *
  * <p>Adds {@code GET /auth/login}, {@code GET /auth/callback}, {@code GET /auth/session} and {@code
- * POST /auth/logout}; provides {@link ContextResolver} (an {@link AuthContextResolver}), {@link
+ * POST /auth/logout} (the last two as typed operations {@code getAuthSession} and {@code logout},
+ * with the {@code session} and, when bearer tokens are accepted, {@code bearer} security schemes in
+ * the OpenAPI document); provides {@link ContextResolver} (an {@link AuthContextResolver}), {@link
  * Sessions} and {@link PlatformTokens}. Configuration holds only connections and secrets ({@code
  * auth.issuer}, {@code auth.client-id}, {@code auth.client-secret}, {@code auth.public-base-url},
  * {@code auth.cookie-keys}); everything else is set here, in code.
@@ -113,6 +115,8 @@ public final class AuthModule implements Module {
     if (b.provideResolver) {
       app.provide(ContextResolver.class, lookup -> lookup.get(AuthContextResolver.class));
     }
+    // GET /auth/session and POST /auth/logout are typed operations (contract section 4.5)
+    AuthApi.declare(app, b.bearer);
   }
 
   @Override
@@ -131,8 +135,8 @@ public final class AuthModule implements Module {
     RouteOptions publicRoutes = limit == null ? RouteOptions.none() : RouteOptions.none().with(limit);
     routes.get("/auth/login", s.routes()::login, publicRoutes);
     routes.get("/auth/callback", s.routes()::callback, publicRoutes);
-    routes.get("/auth/session", s.routes()::session);
-    routes.post("/auth/logout", s.routes()::logout);
+    routes.bind(AuthApi.SESSION, s.routes()::session);
+    routes.bind(AuthApi.LOGOUT, s.routes()::logout);
   }
 
   /** Everything the module builds, once. */

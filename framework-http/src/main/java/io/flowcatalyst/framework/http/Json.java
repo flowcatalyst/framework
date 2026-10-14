@@ -1,5 +1,8 @@
 package io.flowcatalyst.framework.http;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.math.BigDecimal;
 import java.util.List;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadFeature;
@@ -19,16 +22,34 @@ import tools.jackson.databind.json.JsonMapper;
  */
 public final class Json {
 
-  private static final ObjectMapper MAPPER =
-      JsonMapper.builder()
-          .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-          .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
-          .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-          .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
-          .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+  private static final ObjectMapper MAPPER = strict().build();
+
+  /**
+   * The typed-operation mapper (OpenAPI contract sections 3 and 5.1): the same strictness, plus
+   * null record components omitted ({@code NON_NULL}), {@code BigDecimal} written as a JSON string
+   * (and read from a string or a number), durations as ISO-8601, and the context id types ({@code
+   * ClientId}, {@code PrincipalId}, {@code ApplicationCode}, {@code CorrelationId}) as plain
+   * strings.
+   */
+  private static final ObjectMapper OPERATIONS =
+      strict()
+          .disable(DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
+          .changeDefaultPropertyInclusion(i -> i.withValueInclusion(JsonInclude.Include.NON_NULL))
+          .withConfigOverride(
+              BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING)))
+          .addModule(ContextIdsModule.create())
           .build();
 
   private Json() {}
+
+  private static JsonMapper.Builder strict() {
+    return JsonMapper.builder()
+        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+        .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+        .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS);
+  }
 
   /**
    * The shared mapper. Thread-safe; do not reconfigure.
@@ -37,6 +58,17 @@ public final class Json {
    */
   public static ObjectMapper mapper() {
     return MAPPER;
+  }
+
+  /**
+   * The mapper typed operations read bodies and write responses with. Plain routes and {@link
+   * Response#json} use {@link #mapper()}, which keeps writing {@code null}s (owner ruling
+   * 2026-10-14). Thread-safe; do not reconfigure.
+   *
+   * @return the mapper
+   */
+  public static ObjectMapper operationMapper() {
+    return OPERATIONS;
   }
 
   /**

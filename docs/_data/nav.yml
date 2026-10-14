@@ -28,6 +28,7 @@
     - { title: HTTP client, path: guide/http-client.md }
     - { title: Rate limiting, path: guide/rate-limiting.md }
     - { title: Static assets and the SPA, path: guide/static-assets-and-spa.md }
+    - { title: Typed operations and OpenAPI, path: guide/openapi.md }
     - { title: Sessions and login, path: guide/sessions-and-login.md }
     - { title: Migrating from flowcatalyst-token, path: guide/migrating-from-flowcatalyst-token.md }
 - group: FlowCatalyst

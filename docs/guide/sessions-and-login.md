@@ -115,6 +115,13 @@ login branding.
 or `{"authenticated":false,"loginUrl":"/auth/login"}`. Use `permissions` to show and hide things;
 every route still checks on the server.
 
+This endpoint and logout are **typed operations** (`getAuthSession` and `logout`), so they are in your
+application's OpenAPI document with fixed components (`AuthSession`, a union of
+`AuthSessionAuthenticated` and `AuthSessionAnonymous` told apart by `authenticated`, and `AuthLogout`),
+and `AuthModule` contributes the `session` and `bearer` security schemes ([Typed operations and
+OpenAPI](openapi.md)). A token whose `tier` is not one the platform issues (`ANCHOR`, `PARTNER`,
+`CLIENT`) answers without `tier`.
+
 ## Protecting routes
 
 ```java
@@ -211,7 +218,8 @@ Bearer-token requests skip the check. For a public `POST` of your own (a sign-up
 ```
 
 Navigate to `endSessionUrl` to end the platform session as well (single logout); otherwise only
-your application is signed out. `post_logout_redirect_uri` is there when you set
+your application is signed out. When the platform's discovery document has no end-session endpoint,
+or cannot be read, the answer is `{"loggedOut":true}`: the field is left out, never `null`. `post_logout_redirect_uri` is there when you set
 `.postLogoutRedirect("/bye")` and register that URL on the platform client.
 
 ## Sessions: stores and timeouts

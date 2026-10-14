@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.http;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -18,11 +19,13 @@ public final class Rules {
    * @return the rule; code {@code NOT_NULL}
    */
   public static Rule<Object> notNull() {
-    return (v, out) -> {
-      if (v == null) {
-        out.add("NOT_NULL", "is required");
-      }
-    };
+    return described(
+        new Constraint.NotNull(),
+        (v, out) -> {
+          if (v == null) {
+            out.add("NOT_NULL", "is required");
+          }
+        });
   }
 
   /**
@@ -31,11 +34,13 @@ public final class Rules {
    * @return the rule; code {@code NOT_BLANK}
    */
   public static Rule<CharSequence> notBlank() {
-    return (v, out) -> {
-      if (v == null || v.toString().isBlank()) {
-        out.add("NOT_BLANK", "must not be blank");
-      }
-    };
+    return described(
+        new Constraint.NotBlank(),
+        (v, out) -> {
+          if (v == null || v.toString().isBlank()) {
+            out.add("NOT_BLANK", "must not be blank");
+          }
+        });
   }
 
   /**
@@ -45,11 +50,13 @@ public final class Rules {
    * @return the rule; code {@code TOO_SHORT}
    */
   public static Rule<CharSequence> minLength(int min) {
-    return (v, out) -> {
-      if (v != null && v.length() < min) {
-        out.add("TOO_SHORT", "must be at least " + min + " characters");
-      }
-    };
+    return described(
+        new Constraint.MinLength(min),
+        (v, out) -> {
+          if (v != null && v.length() < min) {
+            out.add("TOO_SHORT", "must be at least " + min + " characters");
+          }
+        });
   }
 
   /**
@@ -59,11 +66,13 @@ public final class Rules {
    * @return the rule; code {@code TOO_LONG}
    */
   public static Rule<CharSequence> maxLength(int max) {
-    return (v, out) -> {
-      if (v != null && v.length() > max) {
-        out.add("TOO_LONG", "must be at most " + max + " characters");
-      }
-    };
+    return described(
+        new Constraint.MaxLength(max),
+        (v, out) -> {
+          if (v != null && v.length() > max) {
+            out.add("TOO_LONG", "must be at most " + max + " characters");
+          }
+        });
   }
 
   /**
@@ -83,11 +92,13 @@ public final class Rules {
    * @return the rule; code {@code PATTERN}
    */
   public static Rule<CharSequence> pattern(Pattern pattern) {
-    return (v, out) -> {
-      if (v != null && !pattern.matcher(v).matches()) {
-        out.add("PATTERN", "has an invalid format");
-      }
-    };
+    return described(
+        new Constraint.Pattern(pattern.pattern(), pattern.flags()),
+        (v, out) -> {
+          if (v != null && !pattern.matcher(v).matches()) {
+            out.add("PATTERN", "has an invalid format");
+          }
+        });
   }
 
   /**
@@ -113,15 +124,17 @@ public final class Rules {
   }
 
   private static Rule<Number> range(BigDecimal min, BigDecimal max, String text) {
-    return (v, out) -> {
-      if (v == null) {
-        return;
-      }
-      BigDecimal d = toDecimal(v);
-      if (d == null || d.compareTo(min) < 0 || d.compareTo(max) > 0) {
-        out.add("OUT_OF_RANGE", "must be between " + text);
-      }
-    };
+    return described(
+        new Constraint.Range(min, max),
+        (v, out) -> {
+          if (v == null) {
+            return;
+          }
+          BigDecimal d = toDecimal(v);
+          if (d == null || d.compareTo(min) < 0 || d.compareTo(max) > 0) {
+            out.add("OUT_OF_RANGE", "must be between " + text);
+          }
+        });
   }
 
   private static @Nullable BigDecimal toDecimal(Number n) {
@@ -140,11 +153,13 @@ public final class Rules {
    * @return the rule; code {@code SIZE}
    */
   public static Rule<Collection<?>> size(int min, int max) {
-    return (v, out) -> {
-      if (v != null && (v.size() < min || v.size() > max)) {
-        out.add("SIZE", "must have between " + min + " and " + max + " items");
-      }
-    };
+    return described(
+        new Constraint.Size(min, max),
+        (v, out) -> {
+          if (v != null && (v.size() < min || v.size() > max)) {
+            out.add("SIZE", "must have between " + min + " and " + max + " items");
+          }
+        });
   }
 
   /**
@@ -156,13 +171,16 @@ public final class Rules {
    */
   @SafeVarargs
   public static <T> Rule<T> oneOf(T... allowed) {
+    List<Object> ordered = List.of((Object[]) allowed);
     Set<T> set = Set.of(allowed);
     String text = String.join(", ", set.stream().map(String::valueOf).sorted().toList());
-    return (v, out) -> {
-      if (v != null && !set.contains(v)) {
-        out.add("NOT_ONE_OF", "must be one of: " + text);
-      }
-    };
+    return described(
+        new Constraint.OneOf(ordered),
+        (v, out) -> {
+          if (v != null && !set.contains(v)) {
+            out.add("NOT_ONE_OF", "must be one of: " + text);
+          }
+        });
   }
 
   /**
@@ -174,7 +192,7 @@ public final class Rules {
    * @return the rule
    */
   public static <E> Rule<Collection<? extends E>> each(Rule<? super E> rule) {
-    return (v, out) -> {
+    return described(new Constraint.Each(rule.describe()), (v, out) -> {
       if (v == null) {
         return;
       }
@@ -188,7 +206,7 @@ public final class Rules {
         }
         i++;
       }
-    };
+    });
   }
 
   /**
@@ -199,18 +217,21 @@ public final class Rules {
    * @return the rule
    */
   public static <E> Rule<E> valid(Validator<E> validator) {
-    return (v, out) -> {
-      if (v == null) {
-        return;
-      }
-      for (FieldError e : validator.validate(v)) {
-        out.addAt(e.field(), e.code(), e.message());
-      }
-    };
+    return described(
+        new Constraint.Valid(validator),
+        (v, out) -> {
+          if (v == null) {
+            return;
+          }
+          for (FieldError e : validator.validate(v)) {
+            out.addAt(e.field(), e.code(), e.message());
+          }
+        });
   }
 
   /**
-   * A rule from a predicate.
+   * A rule from a predicate. It documents nothing in the OpenAPI document ({@link Rule#describe()}
+   * is {@link Constraint.None}).
    *
    * @param <T> the value type
    * @param code the code reported when the predicate is false
@@ -222,6 +243,21 @@ public final class Rules {
     return (v, out) -> {
       if (v != null && !valid.test(v)) {
         out.add(code, message);
+      }
+    };
+  }
+
+  /** A rule that also says what it checks. */
+  private static <T> Rule<T> described(Constraint constraint, Rule<T> check) {
+    return new Rule<>() {
+      @Override
+      public void check(@Nullable T value, Violations violations) {
+        check.check(value, violations);
+      }
+
+      @Override
+      public Constraint describe() {
+        return constraint;
       }
     };
   }

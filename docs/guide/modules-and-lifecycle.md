@@ -267,7 +267,8 @@ module) no server. `start()` is unchanged for callers that do not use commands.
 ### Declaration-phase commands
 
 Some commands need only what modules declared, not configuration or services: writing the OpenAPI
-document is the first (`java -jar app.jar openapi`, built with MO). A module claims one with the
+document is the first (`java -jar app.jar openapi`, claimed by the Jetty module; see [Typed
+operations and OpenAPI](openapi.md#writing-the-document)). A module claims one with the
 `app.command(DeclarationCommand)` overload; its `run(Declarations, args, out)` gets a read-only
 `Declarations` view (`moduleIds()`, `settings()`, `contributions(Type.class)`). `launch` runs it
 after every `register` and stops there: no configuration file is read and no required setting is
