@@ -1,6 +1,7 @@
 # Contract: configuration holds connections and secrets; behaviour is code
 
-Status: owner ruling 2026-10-14 ("move all behaviour to code"), written before the code. It
+Status: owner ruling 2026-10-14 ("move all behaviour to code"), written before the code; **built
+in Java 2026-10-14** (commits `3444145` to `9326692`; "As built" notes in sections 3.6 and 10). It
 generalises MA item 10 (rate limiters built in code, [rate-limiting contract](rate-limiting.md)
 section 1) to every module. It amends the [core contract](core.md) sections 1, 2 and 4 and the
 configuration sections of the [database and Redis](database-and-redis.md), [locks](locks.md),
@@ -326,3 +327,31 @@ timeout, a smaller pool, a disabled endpoint, a different driver); the `Function
 reading an application setting; every removed key in a file and in the environment fails start-up
 with the moved-to message; an unknown key under a claimed component fails; a declared key under a
 removed pattern is allowed; the existing behavioural tests pass through the code API.
+
+## 10. As built (Java, 2026-10-14)
+
+- Key rules: `Config.load(directory, env, declarations, KeyRules)`; `KeyRules.framework(claims)` is
+  the framework's removed keys (`KeyRules.frameworkRemovedKeys()`, one list in `framework-core`) plus
+  the modules' `ComponentClaim`s; `RemovedKey(pattern, module, movedTo)`. The three-argument loader
+  applies no rules. An empty mapping (`app:` with nothing under it) above a declared key is not
+  reported.
+- `HealthPolicy` (core), `MetricsOptions` (metrics package); `AppBuilder.shutdownDrain`, `health`,
+  `metrics`, each with a `Function<Config, T>` overload; a function's out-of-range result is a
+  start-up problem of module `core`.
+- `DatabasePool`, `RedisPool`; `DatabaseModule.builder()`, `RedisModule.builder()` (`new
+  DatabaseModule()` and `new RedisModule()` stay, as the defaults).
+- `LockStoreFactory`, `LockStores`, `DatabaseLockStores`, `RedisLockStores`; `LocksModule` and
+  `SecretsModule` are builder-only (their no-argument constructors are gone, so an application that
+  listed them without stores gets a compile error, not an empty registry).
+- `SecretStores.env`, `file`, `platform` return the records `SecretStores.EnvStore`, `FileStore`,
+  `PlatformStore` (each a `SecretStoreFactory` with `withCache`, `FileStore.withMaxBytes`);
+  `CachePolicy.defaults()`, `of`, `none()`.
+- `HttpOptions` (`framework-http-jetty`), `JettyHttpModule(HttpOptions)` and
+  `JettyHttpModule(Function<Config, HttpOptions>)`.
+- `HttpClientOptions`, `ClientAuth` (sealed: `None`, `Bearer`, `Basic`, `Header`,
+  `ClientCredentialsGrant`), `HttpClientModule.builder()`; see section 3.6 for the instance-section
+  reading.
+- `FlowCatalystOptions` and `ReceiverOptions`; the resolved `FlowCatalystOptions` is a provided
+  service; `PlatformClient.timeout()`.
+- Not done: the conformance vector for the key rules (section 6); the Go and Rust ports.
+

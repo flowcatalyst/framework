@@ -23,6 +23,20 @@ Connections and secrets stay where they are: database and Redis URLs, user names
 `http.host` and `http.port`, the platform's `flowcatalyst.base-url`, `application`, `client-id`,
 `client-secret` and the receiver secrets, `auth.*`.
 
+## Code that no longer compiles
+
+| Gone | Instead |
+|---|---|
+| `new LocksModule()`, `new SecretsModule()` | `LocksModule.builder()...build()`, `SecretsModule.builder()...build()` |
+| `LocksRedisModule` | `RedisLockStores.redis(..)` in `LocksModule.builder().store(..)` |
+| `LocksModule.MEMORY`, `LocksDatabaseModule.DRIVER`, `LocksRedisModule.DRIVER`, `DEFAULT_PREFIX` | `LockStores.memory()`, `DatabaseLockStores.database()`, `RedisLockStores.redis()`, `RedisLockStores.DEFAULT_PREFIX` |
+| `SecretsModule.ENV`, `FILE`, `PLATFORM` | `SecretStores.env(..)`, `file(..)`, `platform()` |
+| `DatabaseModule.DRIVER`, `RedisModule.DRIVER`, `HttpClientModule.DRIVER` | nothing (one driver each; clients are named in code) |
+| `JettyHttpModule.MAX_BODY_BYTES`, `REQUEST_TIMEOUT`, `SHUTDOWN_GRACE`, `METRICS_ENABLED`, `METRICS_PATH` | `HttpOptions` (`HOST`, `PORT`, `METRICS_BEARER_TOKEN` stay) |
+| `HttpClientModule.EVENT_LOOPS`, `MAX_CONNECTIONS` | `HttpClientModule.builder().eventLoops(..)`, `.maxConnectionsPerHost(..)` |
+| `FlowCatalystModule.ENABLED`, `TIMEOUT`, `SYNC_ON_BOOT`, `OUTBOX_STALE_AFTER`, `RECEIVERS_ENABLED`, `RECEIVERS_PATH`, `RECEIVERS_REQUIRE_SIGNATURE`, the receivers' timeout, lease, delay, retention and interval constants | `FlowCatalystOptions`, `ReceiverOptions`; read the timeout with `PlatformClient.timeout()` |
+| `Drivers`, `DriverFactory`, `AppBuilder.drivers()`, `Instances.build(capability, section, lookup[, defaultDriver])` | choose a driver in code; for instances that are connections, `Instances.build(capability, section, lookup, InstanceFactory)` |
+
 ## Core (`app.*`)
 
 | Key | Default | Now |

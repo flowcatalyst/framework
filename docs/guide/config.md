@@ -160,8 +160,10 @@ to code fails naming its replacement):
 | `http.host`, `http.port` | string, integer | `0.0.0.0`, `8080` | `http` ([HTTP](http.md#the-jetty-module-and-its-settings); the rest is `HttpOptions` in code) |
 | `http.metrics.bearer-token` | secret | none | `http` ([the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint)) |
 | `flowcatalyst.base-url`, `application`, `client-id`, `client-secret`, `subscription-target-base-url`, the receiver secrets | see [The FlowCatalyst module](flowcatalyst-module.md#settings) (the rest is `FlowCatalystOptions` in code) | | `flowcatalyst` |
+| `auth.issuer`, `client-id`, `client-secret`, `public-base-url`, `cookie-keys` | see [Sessions and login](sessions-and-login.md) (the rest is `AuthModule.builder()` in code) | | `auth` |
 
-The core declares no setting. The shutdown drain, the health policy and the metrics driver are
+The core declares no setting, and neither do the locks, secrets and HTTP client engine: lock
+stores, secret stores and clients are named in code. The shutdown drain, the health policy and the metrics driver are
 `App.builder().shutdownDrain(Duration)`, `.health(HealthPolicy)` and `.metrics(MetricsOptions)`
 ([lifecycle](modules-and-lifecycle.md#critical-and-informational-checks),
 [metrics](background-and-metrics.md#drivers)).
