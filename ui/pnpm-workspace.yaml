@@ -1,0 +1,53 @@
+# The shared UI workspace (docs/go/ui.md section 4; owner ruling 2026-10-14: the workspace lives
+# under ui/, the library is @flowcatalyst/ui and other repositories consume it with a pnpm `link:`
+# to ui/packages/ui, as TypeScript and Vue source).
+packages:
+  - packages/*
+  - apps/*
+  - samples/*
+
+# Supply-chain rules (docs/go/ui.md section 2):
+# - a version must have been on the registry for at least 7 days before pnpm resolves it
+#   (minutes; 10080 = 7 days). This applies to transitive dependencies too.
+minimumReleaseAge: 10080
+# - no install scripts run except for the packages listed here. Nothing in this workspace needs one:
+#   esbuild, rolldown, lightningcss and @tailwindcss/oxide ship prebuilt binaries as optional
+#   dependencies. A new entry needs a reason in the commit message.
+onlyBuiltDependencies: []
+# Install scripts that exist in the tree and are deliberately not run (listed so pnpm does not warn):
+# esbuild's postinstall only re-checks its platform binary (installed as an optional dependency);
+# vue-demi's switches between Vue 2 and 3 builds and its default build is already Vue 3.
+ignoredBuiltDependencies:
+  - esbuild
+  - vue-demi
+# - exact versions when a dependency is added (`pnpm add` writes 4.11.3, never ^4.11.3).
+savePrefix: ""
+# - a peer dependency that does not match is an install error, not a warning.
+strictPeerDependencies: true
+# - nothing hoisted to the root node_modules: a workspace package imports only what it declares.
+#   (pnpm's internal hoisting into node_modules/.pnpm/node_modules stays: Nuxt UI's type declarations
+#   import `vue`, which it does not declare.)
+publicHoistPattern: []
+
+# Shared versions; a package refers to them as "catalog:".
+catalog:
+  "@nuxt/ui": 4.11.3
+  "vue": 3.5.43
+  "vue-router": 4.6.4
+  "vite": 8.2.4
+  "@vitejs/plugin-vue": 6.0.9
+  "tailwindcss": 4.3.3
+  "typescript": 6.0.3
+  "vue-tsc": 3.3.12
+  "zod": 4.6.5
+  "@iconify-json/lucide": 1.2.140
+  "@fontsource-variable/inter": 5.3.0
+  "@vueuse/core": 14.4.0
+  "@internationalized/date": 3.12.4
+  "vitest": 5.0.3
+  "@vue/test-utils": 2.5.1
+  "happy-dom": 20.14.5
+  "@playwright/test": 1.63.0
+  "@axe-core/playwright": 4.13.0
+  "@hey-api/openapi-ts": 0.99.0
+  "@types/node": 24.19.1

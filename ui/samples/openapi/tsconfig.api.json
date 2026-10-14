@@ -1,0 +1,14 @@
+{
+  "$comment": "SCOPED EXCEPTION (docs/go/ui.md section 3.1, recorded in ui/README.md): the generated folder only, without exactOptionalPropertyTypes. hey-api 0.99.0's bundled fetch client (src/api/client, src/api/core) passes `x: T | undefined` to `x?: T` in 12 places. types.gen.ts, sdk.gen.ts and zod.gen.ts compile with the flag on. Code that imports the folder reads its declarations under the full strict settings.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "outDir": "./node_modules/.tmp/api",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.api.tsbuildinfo",
+    "types": []
+  },
+  "include": ["src/api/**/*.ts"]
+}

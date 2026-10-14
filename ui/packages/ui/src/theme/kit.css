@@ -1,0 +1,92 @@
+/* @flowcatalyst/ui theme: the ui-kit tokens on Nuxt UI's design tokens (docs/go/ui.md section 11).
+
+   Import it after Nuxt UI, in the application's one CSS entry:
+
+     @import "tailwindcss";
+     @import "@nuxt/ui";
+     @import "@flowcatalyst/ui/theme/kit.css";
+
+   The token values below are copied from ui-kit/theme/tokens.css, which stays their source; a
+   unit test (test/kit-css.test.ts) fails when a copied value differs from it. The Nuxt UI
+   variables are set outside any cascade layer so they win over Nuxt UI's `@layer theme` defaults
+   and over the generated colour stylesheet whatever order the bundler emits them in. */
+
+/* Self-hosted Inter (font-src 'self'; no third-party font host). */
+@import "@fontsource-variable/inter";
+
+/* Tailwind scans the package's own components, wherever the package is installed or linked from. */
+@source "../";
+
+@theme {
+  --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+
+  /* FlowCatalyst brand palette (ui-kit/theme/tokens.css, `@theme inline`). */
+  --color-navy-50: #f0f4f8;
+  --color-navy-100: #d9e2ec;
+  --color-navy-200: #bcccdc;
+  --color-navy-300: #9fb3c8;
+  --color-navy-400: #829ab1;
+  --color-navy-500: #627d98;
+  --color-navy-600: #486581;
+  --color-navy-700: #334e68;
+  --color-navy-800: #243b53;
+  --color-navy-900: #102a43;
+  --color-navy-950: #0a1929;
+  --color-accent-300: #47a3f3;
+  --color-accent-500: #0967d2;
+  --color-accent-600: #0552b5;
+}
+
+:root {
+  /* ui-kit tokens (light), copied. */
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --muted-foreground: #64748b;
+  --primary: #059669;
+  --primary-hover: #047857;
+  --destructive: #dc2626;
+  --border: #e2e8f0;
+  --input: #94a3b8;
+  --success: #16a34a;
+  --info: #0284c7;
+  --warning: #ea580c;
+  --subtle-foreground: #475569;
+
+  /* Nuxt UI tokens from the kit's. */
+  --ui-primary: var(--primary);
+  --ui-error: var(--destructive);
+  --ui-success: var(--success);
+  --ui-info: var(--info);
+  --ui-warning: var(--warning);
+  --ui-text: var(--foreground);
+  --ui-text-muted: var(--muted-foreground);
+  --ui-text-toned: var(--subtle-foreground);
+  --ui-bg: var(--card);
+  --ui-bg-muted: var(--background);
+  --ui-border: var(--border);
+  --ui-border-accented: var(--input);
+  --ui-radius: 2px;
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* ui-kit tokens (dark), copied. */
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --card: #1e293b;
+  --popover: #1e293b;
+  --muted-foreground: #94a3b8;
+  --primary: #10b981;
+  --primary-hover: #34d399;
+  --destructive: #ef4444;
+  --border: #334155;
+  --input: #475569;
+  --success: #22c55e;
+  --info: #0ea5e9;
+  --warning: #f97316;
+  --subtle-foreground: #cbd5e1;
+}

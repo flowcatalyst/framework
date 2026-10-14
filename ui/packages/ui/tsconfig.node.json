@@ -1,0 +1,10 @@
+{
+  "$comment": "Node: the Vite config, scripts and the package's Vite plugin.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts", "scripts/**/*.ts", "src/vite.ts", "src/csp.ts", "src/theme/index.ts"]
+}

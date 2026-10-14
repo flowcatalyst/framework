@@ -1,0 +1,23 @@
+{
+  "name": "@flowcatalyst/openapi-sample",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "U0 check: what @hey-api/openapi-ts generates from a hand-written OpenAPI 3.1 document shaped like docs/contracts/openapi.md",
+  "scripts": {
+    "generate": "openapi-ts",
+    "drift": "openapi-ts && git diff --exit-code -- src/api",
+    "typecheck": "tsc --build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,699 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "openapi-sample",
+    "version": "1"
+  },
+  "paths": {
+    "/api/v1/ingestions": {
+      "get": {
+        "operationId": "listIngestions",
+        "summary": "List ingestions",
+        "tags": [
+          "ingestions"
+        ],
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ACTIVE",
+                  "PAUSED",
+                  "RETIRED"
+                ]
+              }
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPageIngestionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "ingestor:admin:ingestion:manage"
+      },
+      "post": {
+        "operationId": "createIngestion",
+        "summary": "Create an ingestion",
+        "tags": [
+          "ingestions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "description": "CODE_TAKEN: the client already has an ingestion with that code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "ingestor:admin:ingestion:manage"
+      }
+    },
+    "/api/v1/ingestions/{id}": {
+      "get": {
+        "operationId": "getIngestion",
+        "summary": "Read an ingestion",
+        "tags": [
+          "ingestions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "ingestor:admin:ingestion:manage"
+      },
+      "delete": {
+        "operationId": "removeIngestion",
+        "summary": "Remove an ingestion",
+        "tags": [
+          "ingestions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "ingestor:admin:ingestion:manage"
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthLogout"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "operationId": "getAuthSession",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthCsrf": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "fetch-metadata"
+          },
+          "jsonBodies": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "mode",
+          "jsonBodies"
+        ],
+        "additionalProperties": false
+      },
+      "AuthLogout": {
+        "type": "object",
+        "properties": {
+          "loggedOut": {
+            "type": "boolean",
+            "const": true
+          },
+          "endSessionUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loggedOut"
+        ],
+        "additionalProperties": false
+      },
+      "AuthPrincipal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "SERVICE"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "AuthSession": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AuthSessionAnonymous"
+          },
+          {
+            "$ref": "#/components/schemas/AuthSessionAuthenticated"
+          }
+        ]
+      },
+      "AuthSessionAnonymous": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "const": false
+          },
+          "loginUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "authenticated",
+          "loginUrl"
+        ],
+        "additionalProperties": false
+      },
+      "AuthSessionAuthenticated": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "const": true
+          },
+          "principal": {
+            "$ref": "#/components/schemas/AuthPrincipal"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "ANCHOR",
+              "PARTNER",
+              "CLIENT"
+            ]
+          },
+          "client": {
+            "type": "string"
+          },
+          "clients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "applications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "authTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idleExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "csrf": {
+            "$ref": "#/components/schemas/AuthCsrf"
+          }
+        },
+        "required": [
+          "authenticated",
+          "principal",
+          "client",
+          "clients",
+          "applications",
+          "roles",
+          "permissions",
+          "authTime",
+          "expiresAt",
+          "idleExpiresAt",
+          "csrf"
+        ],
+        "additionalProperties": false
+      },
+      "CursorPageIngestionView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestionView"
+            }
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "hasMore"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "IngestionBody": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^(?:[a-z][a-z0-9-]*)$",
+            "minLength": 2,
+            "maxLength": 40
+          },
+          "name": {
+            "type": "string",
+            "pattern": "\\S",
+            "minLength": 1
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "retries": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "uniqueItems": true
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "amount": {
+            "type": "string",
+            "format": "decimal"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "timeout": {
+            "type": "string",
+            "format": "duration"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "source",
+          "retries",
+          "tags",
+          "labels",
+          "amount",
+          "startsOn",
+          "timeout"
+        ],
+        "additionalProperties": false
+      },
+      "IngestionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "PAUSED",
+              "RETIRED"
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "source",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "Source": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SourceDatabasePoll"
+          },
+          {
+            "$ref": "#/components/schemas/SourceHttp"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "database-poll": "#/components/schemas/SourceDatabasePoll",
+            "http": "#/components/schemas/SourceHttp"
+          }
+        }
+      },
+      "SourceDatabasePoll": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "database-poll"
+          },
+          "query": {
+            "type": "string"
+          },
+          "every": {
+            "type": "string",
+            "format": "duration"
+          }
+        },
+        "required": [
+          "kind",
+          "query",
+          "every"
+        ],
+        "additionalProperties": false
+      },
+      "SourceHttp": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "http"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-fw_session"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "ingestions"
+    }
+  ]
+}

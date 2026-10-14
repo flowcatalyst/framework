@@ -1,0 +1,33 @@
+{
+  "name": "@flowcatalyst/gallery",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5174 --strictPort",
+    "build": "vite build",
+    "typecheck": "vue-tsc --build",
+    "serve:csp": "node scripts/serve-csp.ts",
+    "e2e": "vite build && playwright test"
+  },
+  "dependencies": {
+    "@flowcatalyst/ui": "workspace:*",
+    "@iconify-json/lucide": "catalog:",
+    "@internationalized/date": "catalog:",
+    "@nuxt/ui": "catalog:",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vue-tsc": "catalog:"
+  }
+}
