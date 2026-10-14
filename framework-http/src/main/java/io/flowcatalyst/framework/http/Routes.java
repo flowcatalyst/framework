@@ -31,19 +31,41 @@ public final class Routes {
   private record Registration(
       Method method, RoutePattern pattern, String registrant, Handler handler, RouteOptions options) {}
 
+  private record SpaMount(String registrant, Spa spa) {}
+
   /** State shared by every view. */
   private static final class State {
+    final @Nullable String environment;
     final List<Registration> registrations = new ArrayList<>();
     final List<Middleware<Request, Response>> global = new ArrayList<>();
+    final List<SpaMount> spas = new ArrayList<>();
     boolean sealed;
+
+    State(@Nullable String environment) {
+      this.environment = environment;
+    }
   }
 
   private final State state;
   private final String registrant;
 
-  /** Creates an empty route table. */
+  /**
+   * Creates an empty route table that knows no environment: an {@link Spa} mounted on it must have
+   * its {@code index.html} (a missing one is a start-up problem, as in a deployed environment).
+   */
   public Routes() {
-    this(new State(), "(unattributed)");
+    this(new State(null), "(unattributed)");
+  }
+
+  /**
+   * Creates an empty route table for an environment. The HTTP module passes {@code APP_ENV}; with
+   * {@code local} or {@code test} an {@link Spa} without {@code index.html} starts and answers the
+   * "not built" 404 instead of failing start-up (static-assets contract section 3).
+   *
+   * @param environment {@code APP_ENV}, for example {@code test}
+   */
+  public Routes(String environment) {
+    this(new State(environment), "(unattributed)");
   }
 
   private Routes(State state, String registrant) {
@@ -209,6 +231,25 @@ public final class Routes {
     }
   }
 
+  /**
+   * Mounts the application's single-page application as the router's fallback: a request whose
+   * path matches no route is answered by it (static-assets contract). One per application; the
+   * checks against the route table run when the table is compiled.
+   *
+   * <pre>{@code
+   * routes.spa(Spa.classpath("fw-spa").build());
+   * }</pre>
+   *
+   * @param spa the SPA
+   * @throws IllegalStateException when the server is already listening
+   */
+  public void spa(Spa spa) {
+    synchronized (state) {
+      requireOpen();
+      state.spas.add(new SpaMount(registrant, spa));
+    }
+  }
+
   private void requireOpen() {
     if (state.sealed) {
       throw new IllegalStateException("routes cannot be registered after the server has started listening");
@@ -243,11 +284,14 @@ public final class Routes {
       @Nullable ContextResolver resolver, MonotonicClock clock, Metrics metrics) {
     List<Registration> registrations;
     List<Middleware<Request, Response>> global;
+    List<SpaMount> spas;
     synchronized (state) {
       state.sealed = true;
       registrations = List.copyOf(state.registrations);
       global = List.copyOf(state.global);
+      spas = List.copyOf(state.spas);
     }
+    List<Router.Compiled> compiled = new ArrayList<>();
     List<Problem> problems = new ArrayList<>();
     Map<String, Registration> seen = new LinkedHashMap<>();
     Router router = new Router();
@@ -288,12 +332,35 @@ public final class Routes {
         continue;
       }
       Pipeline<Request, Response> pipeline = Pipeline.of(r.options().middleware(), r.handler()::handle);
-      router.add(new Router.Compiled(r.method(), r.pattern(), r.registrant(), r.options().needsContext(), pipeline));
+      Router.Compiled route =
+          new Router.Compiled(r.method(), r.pattern(), r.registrant(), r.options().needsContext(), pipeline);
+      router.add(route);
+      compiled.add(route);
       lines.add(r.method() + " " + r.pattern().text() + " (" + r.registrant() + ")");
+    }
+    SpaHandler spa = null;
+    if (!spas.isEmpty()) {
+      SpaMount first = spas.getFirst();
+      for (SpaMount other : spas.subList(1, spas.size())) {
+        problems.add(
+            Problem.of(
+                other.registrant(),
+                "spa",
+                "a second SPA: module '"
+                    + other.registrant()
+                    + "' mounts one at "
+                    + other.spa().prefixText()
+                    + " but module '"
+                    + first.registrant()
+                    + "' already mounted one at "
+                    + first.spa().prefixText()
+                    + "; an application serves one SPA"));
+      }
+      spa = SpaHandler.mount(first.registrant(), first.spa(), compiled, state.environment, problems, lines);
     }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
-    return new Dispatcher(router, global, resolver, clock, metrics, lines);
+    return new Dispatcher(router, global, resolver, clock, metrics, lines, spa);
   }
 }

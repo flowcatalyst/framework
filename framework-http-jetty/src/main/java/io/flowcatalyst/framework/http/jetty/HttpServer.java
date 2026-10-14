@@ -204,12 +204,15 @@ public final class HttpServer {
 
     private Response respond(org.eclipse.jetty.server.Request request) {
       if (draining.get()) {
-        return HttpErrors.error(503, "UNAVAILABLE", "the server is shutting down").header("Connection", "close");
+        return HttpErrors.error(503, "UNAVAILABLE", "the server is shutting down")
+            .header("Connection", "close")
+            .header("X-Content-Type-Options", "nosniff");
       }
       Method method = Method.parse(request.getMethod());
       if (method == null) {
         return HttpErrors.error(405, "METHOD_NOT_ALLOWED", "method not allowed")
-            .header("Allow", "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
+            .header("Allow", "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT")
+            .header("X-Content-Type-Options", "nosniff");
       }
       Map<String, List<String>> headers = new LinkedHashMap<>();
       for (HttpField f : request.getHeaders()) {
@@ -242,7 +245,8 @@ public final class HttpServer {
       }
       switch (out.body()) {
         case Response.Body.Empty e -> {
-          if (out.status() != 204 && out.status() != 304) {
+          // a HEAD answer keeps the length its GET body would have had (Response.withoutBody)
+          if (out.status() != 204 && out.status() != 304 && out.header("Content-Length") == null) {
             fields.put(HttpHeader.CONTENT_LENGTH, 0L);
           }
         }
@@ -279,6 +283,7 @@ public final class HttpServer {
           };
       String message = status >= 500 ? "internal error" : "bad request";
       response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
+      response.getHeaders().put("X-Content-Type-Options", "nosniff");
       String json = "{\"error\":\"" + code + "\",\"message\":\"" + message + "\"}";
       byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
       response.write(true, ByteBuffer.wrap(bytes), callback);

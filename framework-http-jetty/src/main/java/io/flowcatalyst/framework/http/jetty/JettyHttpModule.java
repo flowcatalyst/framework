@@ -103,7 +103,8 @@ public final class JettyHttpModule implements Module {
     app.declare(METRICS_ENABLED);
     app.declare(METRICS_PATH);
     app.declare(METRICS_BEARER_TOKEN);
-    app.provide(Routes.class, lookup -> new Routes());
+    // the environment decides whether an SPA without index.html may start (local, test)
+    app.provide(Routes.class, lookup -> new Routes(lookup.get(Config.class).environment()));
     app.provide(
         HttpServer.class,
         lookup -> {

@@ -1,0 +1,1698 @@
+{
+  "description" : "The SPA fallback (static-assets contract). fixture: the built files (UTF-8 text), served at prefix with apiPrefixes added in code, behind routes (each answers 200 {\"route\": pattern}), APP_ENV test. Each case: the request (path as sent, before percent-decoding) and the answer: status, every header except X-Correlation-Id and Content-Length, sorted by name, the body length and its SHA-256 in lowercase hex (for HEAD, bodyLength is the Content-Length sent with no body). A server that refuses an unclean request line before the framework (Jetty: 400) is outside the vector, which runs in process.",
+  "fixture" : {
+    "index.html" : "<!doctype html><html><head><script type=\"module\" src=\"/assets/index-abc123.js\"></script><link rel=\"stylesheet\" href=\"/assets/index-abc123.css\"></head><body><div id=\"app\"></div></body></html>",
+    "favicon.svg" : "<svg xmlns=\"http://www.w3.org/2000/svg\"/>",
+    "robots.txt" : "User-agent: *\n",
+    "manifest.webmanifest" : "{\"name\":\"x\"}",
+    "noextension" : "plain",
+    "assets/index-abc123.js" : "console.log(\"app\")",
+    "assets/index-abc123.css" : "body{}",
+    "assets/nested/chunk-def456.mjs" : "export {}",
+    ".vite/manifest.json" : "{\"vite\":true}"
+  },
+  "spa" : {
+    "prefix" : "/",
+    "apiPrefixes" : [ "q" ]
+  },
+  "routes" : [ {
+    "method" : "GET",
+    "pattern" : "/api/v1/orders"
+  }, {
+    "method" : "GET",
+    "pattern" : "/orders/{id}"
+  }, {
+    "method" : "POST",
+    "pattern" : "/runtime/v1/poll"
+  }, {
+    "method" : "GET",
+    "pattern" : "/health/ready"
+  } ],
+  "cases" : [ {
+    "request" : {
+      "method" : "GET",
+      "path" : "/",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/index.html",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/dashboard",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/ingestions/acme.orders",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/apiary",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/x.unknownext",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%252e%252e/x",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/index-abc123.js",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "public, max-age=31536000, immutable",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/javascript; charset=utf-8",
+        "ETag" : "\"b10fce4c4414881ba7869eb8b8f6ec85\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 18,
+      "bodySha256" : "b10fce4c4414881ba7869eb8b8f6ec853afbc653577e08f57e694a08182dfaaa"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/index-abc123.css",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "public, max-age=31536000, immutable",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/css; charset=utf-8",
+        "ETag" : "\"7c98040a541657584690ae2a1cc3b42a\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 6,
+      "bodySha256" : "7c98040a541657584690ae2a1cc3b42a8b53b159cc60c5d3abbfecbaeac6c94a"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/nested/chunk-def456.mjs",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "public, max-age=31536000, immutable",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/javascript; charset=utf-8",
+        "ETag" : "\"f4c5cf9bb78e85f15dc27180260637cf\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 9,
+      "bodySha256" : "f4c5cf9bb78e85f15dc27180260637cf24b2a24bc39e0788783a3accc4dde614"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/favicon.svg",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "image/svg+xml",
+        "ETag" : "\"900fbe934249ad120004bd24adf66aad\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 41,
+      "bodySha256" : "900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/robots.txt",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/plain; charset=utf-8",
+        "ETag" : "\"fd89345af6aca5dab85f2aa6a830e270\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 14,
+      "bodySha256" : "fd89345af6aca5dab85f2aa6a830e270a362b1fa6b5f19607ddd773a081ed651"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/manifest.webmanifest",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/manifest+json",
+        "ETag" : "\"0229d37e33daae149bf40543a5ce1db4\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 12,
+      "bodySha256" : "0229d37e33daae149bf40543a5ce1db4459d10f830d5139279aa2bfd5f6485a1"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/noextension",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/octet-stream",
+        "ETag" : "\"a116c9ed46d6207734a43317d30fd88f\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 5,
+      "bodySha256" : "a116c9ed46d6207734a43317d30fd88f52ac8634c37d904bbf4e41d865f90475"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/index-OLD.js",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/nested",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/favicon.ico",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/deep/chunk.JS",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/Index.HTML",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/api/nope",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/api/nope",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/api/nope",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/api",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/api",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/api",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/auth/login",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/auth/login",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/orders",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/orders",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/orders",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/orders/7/edit",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/orders/7/edit",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/orders/7/edit",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/health",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/health",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/health",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/runtime/x",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/runtime/x",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/runtime/x",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%61pi/x",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/%61pi/x",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/%61pi/x",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/orders/7",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Content-Type" : "application/json",
+        "X-Content-Type-Options" : "nosniff"
+      },
+      "bodyLength" : 24,
+      "bodySha256" : "2f0e3aec894a7a50094477473d88c3cec50e87ab1259e2b6210130da7ab08e8f"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/api/v1/orders",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 405,
+      "headers" : {
+        "Allow" : "GET, HEAD, OPTIONS",
+        "Content-Type" : "application/json",
+        "X-Content-Type-Options" : "nosniff"
+      },
+      "bodyLength" : 75,
+      "bodySha256" : "72a28f49901f38378bc620e0f3a250b41f42c3286f5d340489bbd49e39743a7e"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%zz",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 400,
+      "headers" : {
+        "Content-Type" : "application/json",
+        "X-Content-Type-Options" : "nosniff"
+      },
+      "bodyLength" : 127,
+      "bodySha256" : "130918d536b9cc0d2ca23d4306a412920e1c5a03b24cded8a8d0cc8bb3110566"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/dashboard",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 405,
+      "headers" : {
+        "Allow" : "GET, HEAD",
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 75,
+      "bodySha256" : "72a28f49901f38378bc620e0f3a250b41f42c3286f5d340489bbd49e39743a7e"
+    }
+  }, {
+    "request" : {
+      "method" : "PUT",
+      "path" : "/dashboard",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 405,
+      "headers" : {
+        "Allow" : "GET, HEAD",
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 75,
+      "bodySha256" : "72a28f49901f38378bc620e0f3a250b41f42c3286f5d340489bbd49e39743a7e"
+    }
+  }, {
+    "request" : {
+      "method" : "PATCH",
+      "path" : "/dashboard",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 405,
+      "headers" : {
+        "Allow" : "GET, HEAD",
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 75,
+      "bodySha256" : "72a28f49901f38378bc620e0f3a250b41f42c3286f5d340489bbd49e39743a7e"
+    }
+  }, {
+    "request" : {
+      "method" : "DELETE",
+      "path" : "/dashboard",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 405,
+      "headers" : {
+        "Allow" : "GET, HEAD",
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 75,
+      "bodySha256" : "72a28f49901f38378bc620e0f3a250b41f42c3286f5d340489bbd49e39743a7e"
+    }
+  }, {
+    "request" : {
+      "method" : "OPTIONS",
+      "path" : "/dashboard",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 405,
+      "headers" : {
+        "Allow" : "GET, HEAD",
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 75,
+      "bodySha256" : "72a28f49901f38378bc620e0f3a250b41f42c3286f5d340489bbd49e39743a7e"
+    }
+  }, {
+    "request" : {
+      "method" : "POST",
+      "path" : "/assets/index-abc123.js",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 405,
+      "headers" : {
+        "Allow" : "GET, HEAD",
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 75,
+      "bodySha256" : "72a28f49901f38378bc620e0f3a250b41f42c3286f5d340489bbd49e39743a7e"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/..",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/../secret.txt",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/../index.html",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%2e%2e/secret.txt",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/..%2fsecret.txt",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets%2findex-abc123.js",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/.",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "//index.html",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/dashboard/",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/a\\b",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%5c..%5csecret.txt",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%00",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/index.html%00.js",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/a%0d%0aX:%20y",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/a%7fb",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/.vite/manifest.json",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%2evite/manifest.json",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/%252e%252e/secret.txt",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/",
+      "headers" : {
+        "If-None-Match" : "\"93d2bf0cd3921b65032cc318d85415fa\""
+      }
+    },
+    "expect" : {
+      "status" : 304,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 0,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/dashboard",
+      "headers" : {
+        "If-None-Match" : "W/\"93d2bf0cd3921b65032cc318d85415fa\""
+      }
+    },
+    "expect" : {
+      "status" : 304,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 0,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/",
+      "headers" : {
+        "If-None-Match" : "\"other\", \"93d2bf0cd3921b65032cc318d85415fa\""
+      }
+    },
+    "expect" : {
+      "status" : 304,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 0,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/",
+      "headers" : {
+        "If-None-Match" : "*"
+      }
+    },
+    "expect" : {
+      "status" : 304,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 0,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/",
+      "headers" : {
+        "If-None-Match" : "\"other\""
+      }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/index-abc123.js",
+      "headers" : {
+        "If-None-Match" : "\"b10fce4c4414881ba7869eb8b8f6ec85\""
+      }
+    },
+    "expect" : {
+      "status" : 304,
+      "headers" : {
+        "Cache-Control" : "public, max-age=31536000, immutable",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "ETag" : "\"b10fce4c4414881ba7869eb8b8f6ec85\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 0,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/missing.js",
+      "headers" : {
+        "If-None-Match" : "*"
+      }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "fe26b5c33933959f1b83d0e5dc38a1b77412766f547f6ecfa855f255701251ed"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/",
+      "headers" : {
+        "If-Modified-Since" : "Sun, 06 Nov 2094 08:49:37 GMT"
+      }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "93d2bf0cd3921b65032cc318d85415faf60ad0345bffdc879a603161346ee774"
+    }
+  }, {
+    "request" : {
+      "method" : "GET",
+      "path" : "/assets/index-abc123.js",
+      "headers" : {
+        "Range" : "bytes=0-3"
+      }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "public, max-age=31536000, immutable",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/javascript; charset=utf-8",
+        "ETag" : "\"b10fce4c4414881ba7869eb8b8f6ec85\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 18,
+      "bodySha256" : "b10fce4c4414881ba7869eb8b8f6ec853afbc653577e08f57e694a08182dfaaa"
+    }
+  }, {
+    "request" : {
+      "method" : "HEAD",
+      "path" : "/",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "no-cache",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/html; charset=utf-8",
+        "ETag" : "\"93d2bf0cd3921b65032cc318d85415fa\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 190,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "HEAD",
+      "path" : "/assets/index-abc123.js",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 200,
+      "headers" : {
+        "Cache-Control" : "public, max-age=31536000, immutable",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "text/javascript; charset=utf-8",
+        "ETag" : "\"b10fce4c4414881ba7869eb8b8f6ec85\"",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 18,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "HEAD",
+      "path" : "/assets/missing.js",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "HEAD",
+      "path" : "/api/nope",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }, {
+    "request" : {
+      "method" : "HEAD",
+      "path" : "/..",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 404,
+      "headers" : {
+        "Cache-Control" : "no-store",
+        "Content-Security-Policy" : "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+        "Content-Type" : "application/json",
+        "Referrer-Policy" : "same-origin",
+        "X-Content-Type-Options" : "nosniff",
+        "X-Frame-Options" : "DENY"
+      },
+      "bodyLength" : 56,
+      "bodySha256" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  } ]
+}

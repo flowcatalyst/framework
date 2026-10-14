@@ -63,7 +63,13 @@ rewritten at hand-off and can lag the code in between.
   migration page's steps (not done; app-side work).
 - ~~Open owner decision for M-UI~~ **Decided 2026-10-14: Nuxt UI, shared** (section "UI direction"
   below). M-UI (JTE + Datastar) is optional and deferred.
-- Next: MS (static assets and the SPA fallback), per the work order below. Platform work for scoped
+- **MS built 2026-10-14** (static assets and the SPA fallback, `framework-http`): `Spa`
+  (`classpath`/`directory`, index at start-up, limits), `Csp`, `Routes.spa`, `new Routes(environment)`
+  (the HTTP module passes `APP_ENV`), `SpaTesting`, `nosniff` everywhere, `HEAD` keeps `Content-Length`;
+  vector `conformance/http/spa.json`; guide `guide/static-assets-and-spa.md`; orders-demo's pom copies
+  `web/dist` to `fw-spa`. Over Jetty most unclean paths are Jetty's `400` before the framework's
+  `404` (contract 4.1 amendment). Strict CSP default waits on U0.
+- Next: MO (typed operations and the OpenAPI document), per the work order below. Platform work for scoped
   event/dispatch-job reads is listed in `contracts/flowcatalyst.md` section 5.
 - Rulings: the platform delivers the outbox; handler failure/timeout in a receiver is a
   transient error; a receiver without handlers answers 404 (reverses "routes stay and refuse");
@@ -156,7 +162,7 @@ decided; section 7), `go/capabilities.md` sections 5 and 13, `go/milestones.md` 
 | # | Item | Estimate | Depends on |
 |---|---|---|---|
 | 1 | The contracts above | done (this step) | |
-| 2 | **MS**: Java static assets + SPA fallback in `framework-http`, nosniff everywhere, the `conformance/http/spa.json` vector, guide page | 1 to 1.5 d | 1 |
+| 2 | **MS**: Java static assets + SPA fallback in `framework-http`, nosniff everywhere, the `conformance/http/spa.json` vector, guide page | done 2026-10-14 | 1 |
 | 3 | **MO**: Java typed operations and the OpenAPI emitter: core declaration-phase command (0.5 d), `Rule`/`Validator` constraints as data (0.5 d), `Operation`/`Outcome`/`bind` and permissions (0.5 to 1 d), the schema walk and canonical writer (1.5 to 2 d), `framework-auth`'s two endpoints rebound as operations and the `conformance/openapi/` vectors (0.5 to 1 d), guide page (0.5 d) | 3.5 to 5 d | 2 |
 | 4 | **MU**: the shared UI package, U0 workspace, lint, Nuxt UI without Nuxt, theme, gallery under CSP and axe (1 d); U1 components (1.5 to 2 d); U2 shell, list, drawer and form partials, composables, `@flowcatalyst/api-runtime` (2.5 to 4 d); U3 Java `examples/orders-demo/web` on its generated client, served by MS (1 to 2 d); U4 session guard and default pages on the built M4c (1 to 1.5 d). U0 to U2 may run in parallel with 2 and 3 | 7 to 10.5 d | U3: 2, 3 |
 | 5 | **M4d** admin skeleton (typed admin operations, `admin:*` sync, shell and permission gating as `@flowcatalyst/ui` pages) then **M4e** slices (users and invitations, event types, config and secret status; scoped events and dispatch jobs wait on the platform) | M4d 2 to 3 d; M4e 1 to 2 d per slice | 4 |

@@ -160,6 +160,16 @@ public final class Response {
     return of(status, contentType, new Body.Bytes(bytes.clone()));
   }
 
+  /** Raw bytes the caller will never modify (the SPA's index); not copied. */
+  static Response shared(int status, String contentType, byte[] bytes) {
+    return of(status, contentType, new Body.Bytes(bytes));
+  }
+
+  /** A response with no body and no content type, such as {@code 304 Not Modified}. */
+  static Response empty(int status) {
+    return of(status, null, new Body.Empty());
+  }
+
   /**
    * A response whose body is written by a callback, for example a server-sent event stream.
    *
@@ -280,12 +290,17 @@ public final class Response {
   }
 
   /**
-   * A copy without a body, for answering HEAD.
+   * A copy without a body, for answering HEAD: the same headers, and the {@code Content-Length}
+   * the body would have had when it is held in memory (a streamed body has no known length).
    *
-   * @return the response with an empty body and the same headers
+   * @return the response with an empty body
    */
   Response withoutBody() {
-    return new Response(status, headers, new Body.Empty());
+    Response out = new Response(status, headers, new Body.Empty());
+    if (body instanceof Body.Bytes b && header("Content-Length") == null) {
+      out = out.header("Content-Length", Integer.toString(b.content().length));
+    }
+    return out;
   }
 
   private static Header checked(String name, String value) {

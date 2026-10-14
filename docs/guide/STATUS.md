@@ -1,7 +1,7 @@
-<!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes -->
+<!-- types: AppBuilder, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes, Spa, Csp, SpaTesting -->
 # Status
 
-Last verified against commit e6e0e43 (2026-10-13). `verify.sh` fails if that commit is not an
+Last verified against commit 60f093d (2026-10-14). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -21,7 +21,7 @@ repository; nothing here has been used in production. The plan, with owner rulin
 | M4a | FlowCatalyst module, client side | **Built**, except the generated docs page for the platform's outbox processor. `PlatformClient`, the `flowcatalyst` and `outbox` health checks, definitions, validation, `DefinitionSync` and the `sync` command, `Command` and `launch` in core | [flowcatalyst module](flowcatalyst-module.md) |
 | M4b | Receivers: dispatch-job and scheduled-job endpoints, signature checks, ack / defer / reject, the overlap lock | **Built.** `Receivers`, `DispatchHandler` and `DispatchResult`, `DispatchDelivery.once` with its retention purge, `ScheduledJobHandler`, `JobOptions`, `JobResult` and `ScheduledJobFiring`, per-receiver signing secrets; a receiver without a handler answers 404, and `flowcatalyst.receivers.enabled: false` removes both routes | [receivers](receivers.md) |
 | M4c | Sessions and login, written once for every language ([contract](../contracts/sessions-and-login.md), JSON-first): the application as its own backend-for-frontend (`/auth/login`, `/auth/callback`, `/auth/session`, `/auth/logout`), an OIDC relying party of the platform (PKCE S256, `state`, `nonce`, RS256-only id_token checks, JWKS cache), platform bearer tokens (`PlatformTokens`, usable on its own), `__Host-fw_session` with `database` (default), `redis`, `cookie` and `memory` stores, idle and absolute expiry, rotation, revocation, the platform's F16 CSRF rules and login-state binding, `401` versus `302`, client selection and permission mapping in code, `Context.permissions`, `AuthTesting` and `TestOidcProvider` | **Built** (2026-10-13), nothing published. Not built, by design: login pages (the platform hosts login; no dependency on M-UI), refresh (sessions keep no platform token), portal logins | [sessions and login](sessions-and-login.md), [migrating from flowcatalyst-token](migrating-from-flowcatalyst-token.md) |
-| MS | Static assets and the SPA fallback ([contract](../contracts/static-assets-and-spa.md)): one built SPA served by `framework-http` as the router's fallback, API prefixes answering the JSON 404, missing assets 404, cache headers and ETags, security headers | **Designed** (contract written 2026-10-14), not built | |
+| MS | Static assets and the SPA fallback ([contract](../contracts/static-assets-and-spa.md)): one built SPA served by `framework-http` as the router's fallback, API prefixes answering the JSON 404, missing assets 404, cache headers and ETags, security headers | **Built** (2026-10-14), nothing published. `Spa` (classpath or directory, index built at start-up, limits, not-built rule by `APP_ENV`), `Csp` (baseline default, strict opt-in until U0), `Routes.spa` and `new Routes(environment)`, `SpaTesting`; API prefixes derived from the routes plus `api`, `auth` and code; `nosniff` on every framework response; `HEAD` keeps the `GET` body's `Content-Length` on every route; the `conformance/http/spa.json` vector. Not verified in a browser; Jetty refuses most unclean paths with `400` before the framework's `404` | [static assets and the SPA](static-assets-and-spa.md) |
 | MO | Typed operations and the OpenAPI 3.1 document ([contract](../contracts/openapi.md)): operations declared in code, schemas from records, the `openapi` command without a database, the generated TypeScript client and its drift checks | **Designed** (contract written 2026-10-14), not built | |
 | MU | The shared UI package: Nuxt UI v4 on Vue and Vite in strict TypeScript, the primary UI of the Java and Go frameworks (owner ruling 2026-10-14; design in [`go/ui.md`](../go/ui.md)); steps U0 to U4 | **Designed**, not built | |
 | MC | Migration guide for the first application's control plane onto typed operations and a `web/` SPA | Not started | |
@@ -81,7 +81,7 @@ row of `implementation-plan.md`) or a milestone.
 | **Nothing published yet** | `framework-bom` exists and is all an application imports (no framework parent, no Error Prone setup); the GitHub Packages configuration and the tag-triggered publish workflow are ready, but no version has been tagged. Until then build the repo with `./mvnw install`. See [Getting started](getting-started.md#3-getting-the-artifacts-from-github-packages) | first `v*` tag (owner) |
 | **Sessions keep no platform token** | A signed-in person's roles and permissions are those of the sign-in: a role change or a deactivation at the platform takes effect at the next sign-in, at most the absolute timeout (default 8 hours) later. No refresh. See [Sessions and login](sessions-and-login.md#sessions-stores-and-timeouts) | a later revalidation option (contract section 6.4 says what it needs) |
 | **The platform must be reachable at the issuer URL** | `auth.issuer` is both the browser-facing URL and the one the application calls; a separate internal URL (container networking) is not supported | open |
-| **No UI yet** | No SPA serving, no OpenAPI document and no UI package: HTML is hand-built strings; Datastar works at the wire level only | MS, MO, MU (the optional JTE module M-UI later, if needed) |
+| **No UI yet** | A built SPA can be served ([static assets and the SPA](static-assets-and-spa.md)), but there is no OpenAPI document and no UI package yet: HTML is hand-built strings; Datastar works at the wire level only | MO, MU (the optional JTE module M-UI later, if needed) |
 | **Dispatch jobs cannot name a client by identifier** | `plan.andDispatch(DispatchJob)` writes `DISPATCH_JOB` outbox rows, but the platform's dispatch-jobs batch stores `clientId` unresolved, so a job is platform-scoped unless you pass the platform's own client id (`platformClientId`). See [Dispatch jobs](write-path.md#dispatch-jobs) | platform work: resolve `clientCode` in `/api/dispatch-jobs/batch` |
 | **Per-client secrets from files and environment only** | `SecretResolver` resolves a client's secret reference through `file` and `env` stores; the `platform` driver fails start-up because the platform has no endpoint for it. The platform-config read endpoint also returns SECRET values unmasked to any anchor-tier caller, which includes every application's service account (a platform gap, reported). See [Per-client secrets](secrets.md) | platform work ([contract](../contracts/secrets.md), section 4); M5 (platform config and secret store) |
 
@@ -129,6 +129,10 @@ against the code. Known differences at the last verification:
   enables it"; the plugin has no such switch, and the example binds it unconditionally.
 - Contract amendments of 2026-10-14 not built yet (contract first): `contracts/sessions-and-login.md`
   section 4.4 now says `endSessionUrl` is omitted when unknown, the code still writes `null`; section
-  4.5 (the two endpoints as typed operations); `contracts/http.md` section 4 (`nosniff` on every
-  response, the SPA fallback); `contracts/core.md` section 5 (declaration-phase commands). They are
-  built with MS and MO.
+  4.5 (the two endpoints as typed operations); `contracts/core.md` section 5 (declaration-phase
+  commands). They are built with MO. (`contracts/http.md` section 4, `nosniff` and the SPA fallback,
+  was built with MS.)
+- `contracts/static-assets-and-spa.md` section 4 says an unclean path answers `404`; over Jetty most
+  of them never reach the framework: Jetty's URI checks answer `400 VALIDATION` first (recorded in
+  the contract's section 4.1 amendment). The in-process `TestClient` and the conformance vector show
+  the framework's `404`.

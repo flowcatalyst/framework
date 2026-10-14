@@ -52,6 +52,21 @@
   </dependencies>
 
   <build>
+    <!--
+      The SPA (static-assets contract section 8): Maven never runs Node. CI builds web/ first
+      ("pnpm build" in web/ writes web/dist); Maven copies the output into the jar under fw-spa,
+      which the application mounts with Spa.classpath("fw-spa"). A missing web/dist is skipped.
+      Listing resources replaces Maven's default, so src/main/resources is listed too.
+    -->
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>web/dist</directory>
+        <targetPath>fw-spa</targetPath>
+      </resource>
+    </resources>
     <plugins>
       <!--
         Checked SQL: src/main/sql/**/*.sql is described against the migrated schema and the typed

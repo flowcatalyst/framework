@@ -15,13 +15,19 @@ final class FrameworkMiddleware {
   private static final Logger LOG = LoggerFactory.getLogger(FrameworkMiddleware.class);
 
   static final String CORRELATION_HEADER = "X-Correlation-Id";
+  static final String NOSNIFF_HEADER = "X-Content-Type-Options";
 
   private FrameworkMiddleware() {}
 
-  /** Echoes the request's correlation id on every response. */
+  /**
+   * Echoes the request's correlation id on every response, and marks every response
+   * {@code X-Content-Type-Options: nosniff} (static-assets contract section 6.1).
+   */
   static Middleware<Request, Response> correlationId() {
     return (request, next) ->
-        next.handle(request).header(CORRELATION_HEADER, request.correlationId().value());
+        next.handle(request)
+            .header(CORRELATION_HEADER, request.correlationId().value())
+            .header(NOSNIFF_HEADER, "nosniff");
   }
 
   /** Turns exceptions into the error envelope. */

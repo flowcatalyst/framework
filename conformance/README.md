@@ -45,3 +45,4 @@ Java module's tests in update mode, review the output, commit both, then make th
 | `migrations/` | `LockConformanceTest`, `OutboxConformanceTest`, `OrdersConformanceTest` (orders-demo) | the `fw_schema_history` rows the Java runner writes for a migration set |
 | `sql/outbox/` | `framework-usecase` `OutboxConformanceTest` | the outbox `INSERT` (JDBC `?` placeholders; Rust numbers them when the writer is built) |
 | `outbox/` | `framework-usecase` `OutboxConformanceTest` | the rows the outbox writer stores for events, dispatch jobs and audit entries (every column, the payload text), and the dispatch-job builder's refusals |
+| `http/spa.json` | `framework-http` `SpaConformanceTest` | the SPA fallback (static-assets contract): a fixture build, routes and options, and per request the status, headers and body hash the framework answers in process; Go's `httpfw/spa` compares |

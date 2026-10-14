@@ -41,7 +41,9 @@ routes.add(Method.PUT, "/orders/{id}", handler, RouteOptions.requiresContext());
 
 - A `Handler` is `Response handle(Request request) throws Exception`.
 - Methods: `GET HEAD POST PUT PATCH DELETE OPTIONS`. `HEAD` is answered from `GET` with the body
-  dropped unless a `HEAD` route exists.
+  dropped unless a `HEAD` route exists. *Amended 2026-10-14 (MS):* with the `Content-Length` the
+  `GET` body would have had, when that body is in memory (before, the server sent `0`); a streamed
+  body has no length.
 - Pattern: segments separated by `/`; a segment is a literal or `{name}` matching one non-empty
   segment (`name` is `[a-z][A-Za-z0-9]*`). No wildcards, no regex, no optional segments. A
   trailing slash is a different path from none (no normalisation); the router never redirects.
@@ -103,8 +105,9 @@ log (method, path template, status, duration, correlation id; never query string
 Application middleware runs inside those. Context resolution (section 6) runs after global
 middleware, before route middleware.
 
-*Amended 2026-10-14 (not built):* every response the framework sends carries
-`X-Content-Type-Options: nosniff` ([static-assets contract](static-assets-and-spa.md) section 6.1).
+*Amended 2026-10-14 (built with MS the same day):* every response the framework sends carries
+`X-Content-Type-Options: nosniff` (Jetty's own answers too: a malformed request, an unknown method,
+the drain's `503`) ([static-assets contract](static-assets-and-spa.md) section 6.1).
 A request whose path matches no route goes to the application's SPA, when one is mounted, instead of
 the `404` (same contract, section 1); a path that matches a route with another method keeps the
 `405`.
@@ -276,8 +279,8 @@ TLS (terminate in front), HTTP/2 (Jetty default h1 only), WebSockets, multipart,
 sessions (M4), OpenAPI generation, rate limiting (added by MA item 9, rate-limiting contract), compression, static assets, and any real
 `ContextResolver` or authentication.
 
-*Amended 2026-10-14 (UI direction; neither is built):* static assets and the SPA fallback are
-specified in [`static-assets-and-spa.md`](static-assets-and-spa.md); typed operations and OpenAPI
+*Amended 2026-10-14 (UI direction):* static assets and the SPA fallback are specified in
+[`static-assets-and-spa.md`](static-assets-and-spa.md) (built with MS, 2026-10-14); typed operations and OpenAPI
 generation in [`openapi.md`](openapi.md). Both are shared with the Go implementation.
 
 ## 12. Test requirements

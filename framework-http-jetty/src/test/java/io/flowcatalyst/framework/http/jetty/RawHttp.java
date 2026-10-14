@@ -36,6 +36,15 @@ final class RawHttp implements Closeable {
   }
 
   Reply read() throws IOException {
+    return read(true);
+  }
+
+  /** Reads a response's status line and headers only: the answer to a HEAD has no body. */
+  Reply readHeaders() throws IOException {
+    return read(false);
+  }
+
+  private Reply read(boolean withBody) throws IOException {
     String statusLine = line();
     int status = Integer.parseInt(statusLine.split(" ")[1]);
     Map<String, String> headers = new LinkedHashMap<>();
@@ -45,7 +54,7 @@ final class RawHttp implements Closeable {
     }
     String body = "";
     String len = headers.get("content-length");
-    if (len != null) {
+    if (withBody && len != null) {
       byte[] b = in.readNBytes(Integer.parseInt(len));
       body = new String(b, StandardCharsets.UTF_8);
     }
