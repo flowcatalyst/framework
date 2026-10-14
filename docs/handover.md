@@ -236,6 +236,30 @@ clean `pnpm install --frozen-lockfile` (84 vitest tests, 68 Playwright tests). F
 - The orders example's page type has no `hasMore` and `listOrders` no search parameter (`ui/u2.md`).
 - Next: U3, the Java `examples/orders-demo/web` on its generated client (`fwOpenApiConfig`), served by MS.
 
+**U1 revised: Nuxt UI used natively (2026-10-14, owner rulings A to D; audit in
+[`ui/nuxt-native.md`](ui/nuxt-native.md), results in [`ui/u1.md`](ui/u1.md)).** The ui-kit specs are a
+checklist of behaviours, not a visual or API contract. Deleted for Nuxt UI used directly:
+`FwPageHeader` (`UPageHeader`, themed compact), `FwTag` (`UBadge`), `FwSpinner` (`UButton :loading`,
+`UProgress`), `FwEmptyState` (`UEmpty`), `FwConfirmDialog` (`useConfirm` opens `FwAlertDialog` via
+`useOverlay`). Rebuilt thin: `FwAlertDialog` on `UModal` (role `alertdialog` through its `content`
+prop), `FwToggleGroup` on `UFieldGroup` + `UButton` with Reka's toggle-group behaviour. Kept: the shell,
+list page, record drawer, form dialog, status badge (Nuxt UI colour names), toolbar, cursor pager,
+paginator, row actions, pick list, detail fields, form section, local time, code/JSON/chips, colour
+mode, announcer and the composables. Theme: `@flowcatalyst/ui/theme.css` (Nuxt UI `--ui-*` tokens only,
+kit values checked by a unit test) replaces `theme/kit.css`; looks in `fcComponentTheme` (`tabs`,
+`pageHeader`, `alert`). Contrast: light primary/success/info/warning/error one shade darker (600 to
+700), dark error red-500 to red-400; **axe is strict** (no tolerated pairs), clean on every page in
+both themes at desktop and phone and with overlays open. The spec catalog test became a **behaviour
+checklist** (`apps/gallery/src/behaviours.ts`, 62 rows): each page marks its rows and a Playwright
+reporter fails a full run in which a row is exercised by no passing test. `pnpm licences` now also
+generates and checks `ui/THIRD-PARTY-NOTICES` from the gallery build (35 shipped packages; Inter OFL
+text, vaul-vue with its repository's MIT text, MPL tools listed as not shipped); the vaul-vue request is
+drafted in [`ui/upstream-vaul-vue-issue.md`](ui/upstream-vaul-vue-issue.md), not posted. `pnpm check`
+green from a clean frozen install: vitest 43 + 36 + 5, Playwright 82 (+ 4 screenshot runs);
+screenshots regenerated (`pnpm gallery:screenshots`, 44, git-ignored). Open: success and warning text
+on their own 10 % tint stay at 4.38 and 4.48 (soft/subtle variants, unused and not shown); `go/ui.md`
+sections 10 and 11 still describe the catalog and `kit.css`.
+
 **TypeScript 7 (2026-10-14, owner ruling "Definitely TypeScript 7"; commit 646cc55; results in
 [`ui/u0.md`](ui/u0.md), "TypeScript 7", the table in `ui/README.md`).** The compiler is `typescript`
 7.0.2, installed as `@typescript/native` (`npm:typescript@7.0.2`); the name `typescript` is
@@ -254,11 +278,12 @@ release whose `typescript` peer includes 7 with type-aware rules (today every re
 `typescript-native-bridge` (a one-maintainer TypeScript 6 fork with the Go checker over cgo, which
 Vue's tools dogfood) and `vue-go-tsc` 0.3.1.
 
-**Owner decisions pending from U1 and U2:** the kit tokens (light status/primary 600 shades, dark
-destructive red; the exact pairs in `ui/u1.md` replace U0's decision 1), the kit's 12.6 px text scale
-(not applied: it would put icon buttons under WCAG 2.2's 24 px target), the review screenshots
-(`pnpm gallery:screenshots`). (The two contract section 11 settings are in the contract since
-2026-10-14.)
+**Owner decisions pending from U1 and U2:** ~~the kit tokens~~ and ~~the text scale~~ decided
+2026-10-14 (one shade darker; Nuxt UI's defaults). Pending: success and warning on their own tint
+(a second shade, a lighter tint, or keep those variants unused), the review screenshots
+(`pnpm gallery:screenshots`), a navigation command palette in the shell, posting the vaul-vue draft
+and the Reka toast-announcer report (`ui/u1.md`, "Owner decisions"). (The two contract section 11
+settings are in the contract since 2026-10-14.)
 
 **Owner decisions pending from U0:**
 
