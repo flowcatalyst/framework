@@ -6,16 +6,18 @@ the environment; there is no object binding and no reflection.
 
 ## What configuration holds
 
-Configuration holds **connections and secrets only**: URLs, hosts, ports, user names, client ids,
-your application's code on the platform, its public URLs, passwords, tokens and keys. Everything
-else the framework does (timeouts, sizes, pools, retries, cache policies, health criticality,
-switches, route paths, which driver backs a capability) is **code**: typed options records with
-validated ranges, given to modules when you assemble the application (owner ruling 2026-10-14,
-[config-and-code contract](../contracts/config-and-code.md)). A deployment varies connections and
-secrets, nothing else. If you want a number to differ per deployment, declare a setting of your own
-and pass its value in code ([below](#making-a-number-tunable)).
+Configuration holds the settings of **services and connections**, and secrets: the shutdown drain,
+health timeouts and criticality, the metrics driver, the HTTP server's limits, the FlowCatalyst
+module's switches and timeouts, database and Redis instances with their pools, URLs, user names,
+client ids, passwords, tokens and keys. **Code** defines the things an application can have **many
+of**, each with its own policy: rate limiters, background loops, lock stores, secret stores and
+named HTTP clients with their retry and authentication policies, and which driver backs each
+(owner ruling 2026-10-14, clarified the same day; [config-and-code
+contract](../contracts/config-and-code.md)). The test: *could an application want several of these,
+with different values?* Then it is code. *Is it one setting of the service, or of a connection?*
+Then it is configuration.
 
-A key whose behaviour moved to code **fails start-up** when it is still in a file or in the
+A key of something that moved to code **fails start-up** when it is still in a file or in the
 environment, naming where it went ([removed keys](#removed-keys-and-claimed-components)). The
 migration, key by key, is in [Migrating configuration to code](migrating-config-to-code.md).
 
@@ -157,33 +159,36 @@ to code fails naming its replacement):
 
 | Key | Type | Default | Module |
 |---|---|---|---|
+| `app.shutdown.drain` | duration | `10s` | core ([lifecycle](modules-and-lifecycle.md#shutdown)) |
+| `app.health.timeout` | duration | `2s` | core ([health checks](modules-and-lifecycle.md#health-checks)) |
+| `app.health.critical`, `app.health.informational` | string lists | empty | core ([critical and informational checks](modules-and-lifecycle.md#critical-and-informational-checks)) |
+| `app.metrics.driver` | `memory` or `noop` | `memory` | core ([metrics](background-and-metrics.md#drivers)) |
+| `app.metrics.max-series` | integer, 1 to 100 000 | `1000` | core |
 | `http.host`, `http.port` | string, integer | `0.0.0.0`, `8080` | `http` ([HTTP](http.md#the-jetty-module-and-its-settings); the rest is `HttpOptions` in code) |
 | `http.metrics.bearer-token` | secret | none | `http` ([the Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint)) |
 | `flowcatalyst.base-url`, `application`, `client-id`, `client-secret`, `subscription-target-base-url`, the receiver secrets | see [The FlowCatalyst module](flowcatalyst-module.md#settings) (the rest is `FlowCatalystOptions` in code) | | `flowcatalyst` |
 | `auth.issuer`, `client-id`, `client-secret`, `public-base-url`, `cookie-keys` | see [Sessions and login](sessions-and-login.md) (the rest is `AuthModule.builder()` in code) | | `auth` |
 
-The core declares no setting, and neither do the locks, secrets and HTTP client engine: lock
-stores, secret stores and clients are named in code. The shutdown drain, the health policy and the metrics driver are
-`App.builder().shutdownDrain(Duration)`, `.health(HealthPolicy)` and `.metrics(MetricsOptions)`
-([lifecycle](modules-and-lifecycle.md#critical-and-informational-checks),
-[metrics](background-and-metrics.md#drivers)).
+The locks, secrets and HTTP client modules declare no setting: lock stores, secret stores and
+clients are named in code.
 
-## Making a number tunable
+## Making a code-defined thing differ per deployment
 
-Every option the framework takes as a single value also accepts a function of `Config`, resolved
-once configuration is loaded. Declare your own setting, in your own component, and read it there.
-From `BehaviourInCodeTest`:
+Service settings need nothing: they are configuration already. For the things defined in code, an
+application that wants a value to differ per deployment declares a setting of its own, in its own
+component, and reads it where the thing is built: store factories receive the `Lookup`, a loop or a
+limiter is built in `boot` with `app.config()`, and a named HTTP client takes a function of
+`Config`. From `HttpClientModuleTest`:
 
 ```java
-static final Setting<Duration> APP_HEALTH = Setting.duration("demo.health-timeout").withDefault(Duration.ofSeconds(1));
-
-App app =
-    builder(Map.of("DEMO_HEALTH_TIMEOUT", "250ms"))
-        .health(config -> HealthPolicy.defaults().withTimeout(config.get(APP_HEALTH)))
-        .shutdownDrain(config -> config.get(APP_HEALTH).multipliedBy(4))
-        .metrics(config -> MetricsOptions.noop())
-        .module(Mod.of("demo").register(b -> b.declare(APP_HEALTH)))
-        .start();
+HttpClientModule.builder()
+    .client(
+        "billing",
+        config -> {
+          used.set(config.get(TIMEOUT));
+          return HttpClientOptions.defaults().withRequestTimeout(config.get(TIMEOUT));
+        })
+    .build();
 ```
 
 A value out of range, or a setting nobody declared, fails start-up as a problem of the module
@@ -200,17 +205,17 @@ that resolved it.
 - in the environment: the variable named after the key; a `*` is replaced by each instance name
   your files have there. Patterns of one segment (`locks`) are not looked up in the environment.
 
-The problem says where the behaviour went, for example
-`key 'app.shutdown.drain' (from environment variable APP_SHUTDOWN_DRAIN): moved to code: AppBuilder.shutdownDrain(Duration)`.
+The problem says where the thing is defined now, for example
+`key 'http-client.event-loops' (from environment variable HTTP_CLIENT_EVENT_LOOPS): moved to code: HttpClientModule.builder().eventLoops(int)`.
 The list applies whatever modules you list, so a leftover section of a module you dropped still
 fails. A key that some module **declares** is never treated as removed.
 
 **Claimed components.** A module may claim a component (the first segment of keys) in `register`
 with `app.claimComponent("mail")`. Every key under it in your files must then be declared by some
 module, or start-up fails naming the keys the component has; a typo such as `mail.hots` no longer
-passes silently. The framework claims `app` (core) and, as each module moves to this rule, its own
-component. Two modules claiming one component fail start-up. Environment variables are not checked
-for unknown keys (they are never listed). From `BehaviourInCodeTest`:
+passes silently. The framework claims `app` (core), `http`, `http-client`, `locks`, `secrets`,
+`flowcatalyst` and `auth`. Two modules claiming one component fail start-up. Environment variables
+are not checked for unknown keys (they are never listed). From `KeyRulesTest`:
 
 ```java
 failure(builder().module(Mod.of("mail").register(b -> {

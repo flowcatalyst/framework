@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.function.DoubleSupplier;
 
 /**
- * Creates instruments and reads them back. Provided by the core module; the driver is chosen in
- * code with {@code AppBuilder.metrics(MetricsOptions)} ({@code memory}, the default, or {@code noop}).
+ * Creates instruments and reads them back. Provided by the core module; the driver is chosen by
+ * {@code app.metrics.driver} ({@code memory} or {@code noop}).
  *
  * <p>Names, help texts and label names are checked when an instrument is created and a breach is an
  * {@link IllegalArgumentException}: names {@code [a-z][a-z0-9_]*}, counters ending {@code _total},
@@ -16,7 +16,7 @@ import java.util.function.DoubleSupplier;
  */
 public interface Metrics {
 
-  /** The drivers {@link MetricsOptions} chooses from. */
+  /** The drivers {@code app.metrics.driver} chooses from. */
   enum Driver {
     /** In-process, readable with {@link #snapshot()} and the Prometheus endpoint. */
     MEMORY,

@@ -1,4 +1,4 @@
-<!-- types: Module, AppBuilder, App, Provider, Lookup, Instances, InstanceFactory, InstanceConfig, HealthPolicy, DatabaseModule, DatabasePool, RedisModule, RedisPool, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
+<!-- types: Module, AppBuilder, App, Provider, Lookup, Instances, InstanceFactory, InstanceConfig, DatabaseModule, DatabasePool, RedisModule, RedisPool, Command, DeclarationCommand, Declarations, Launch, Health, HealthCheck, HealthReport, HealthResult, Criticality, StartupException, Ids, MigrationSet, Databases, Database, Migrations -->
 # Modules and the application lifecycle
 
 An application is a list of **modules** given to a builder, in code. Everything the framework
@@ -50,9 +50,8 @@ thrown. `StartupException.problems()` lists them.
 tests leave no hooks behind. Closing first stops the [background loops](background-and-metrics.md),
 then runs each booted module's `shutdown` in reverse module order,
 then closes every built service that is `AutoCloseable`, in reverse build order. A failure in one
-step is logged and does not stop the rest. Each step runs on its own virtual thread and gets the
-**shutdown drain**, set in code with `App.builder().shutdownDrain(Duration)` (default `10s`, more
-than 0 and at most 1 h; it was the setting `app.shutdown.drain`, which now fails start-up). A step that is still running after that is logged as an
+step is logged and does not stop the rest. Each step runs on its own virtual thread and gets
+`app.shutdown.drain` (default `10s`). A step that is still running after that is logged as an
 overrun, **interrupted, and left behind**: shutdown moves on to the next step without waiting for
 it, so a `shutdown` hook that ignores interruption can still be running while later steps (and
 the closing of services it uses) proceed. Write hooks that stop promptly and notice
@@ -139,7 +138,7 @@ DatabaseModule module =
 `connectTimeout` 250 ms to 5 min; `IllegalArgumentException`). A pool named for an instance that
 is not configured fails start-up. `.migrate(false)` stops migrations from running at start-up (a
 separate job applies them). Each option also takes a function of `Config` (`pool(config -> ...)`,
-`migrate(config -> ...)`) to read a setting of your own ([Config](config.md#making-a-number-tunable)).
+`migrate(config -> ...)`) to read a setting of your own ([Config](config.md#making-a-code-defined-thing-differ-per-deployment)).
 `RedisModule` works the same way with `RedisPool` (`timeout` 2 s, more than 0 and at most 5 min;
 `maxSize` 16, 1 to 1000). `Database` has `dataSource()` and `name()`.
 
@@ -203,8 +202,8 @@ app.health().add("mail", () -> {
 ```
 
 `HealthCheck.check()` returns normally for up and throws for down; the message becomes the reason.
-`app.health().check()` runs all checks in parallel on virtual threads, each limited by the
-`HealthPolicy` timeout (default `2s`, more than 0 and at most 5 min), and returns a `HealthReport`: a map of name to `HealthResult`
+`app.health().check()` runs all checks in parallel on virtual threads, each limited by
+`app.health.timeout` (default `2s`), and returns a `HealthReport`: a map of name to `HealthResult`
 (`Up`, `Down(reason)`, `TimedOut`). With the Jetty module, `/health/ready` serves this
 ([HTTP](http.md#health-endpoints)).
 
@@ -223,23 +222,19 @@ report, `isUp()` is true when every check is up, `isReady()` when every critical
 `criticality(name)` says which a check ran with. `app.health().criticality(name)` returns the same
 for a registered check (null for an unknown name).
 
-The `HealthPolicy` given to the builder changes a check's criticality by name and wins over the
-module. It is code, not configuration (the `app.health.*` settings are gone,
-[config and code](config.md#what-configuration-holds)). From `BehaviourInCodeTest`:
+Configuration changes a check's criticality by name and wins over the module:
 
-```java
-App app =
-    builder()
-        .health(HealthPolicy.defaults().withCritical("platform").withInformational("cache", "typo"))
-        .module(m)
-        .start();
+```yaml
+app:
+  health:
+    critical: [flowcatalyst]          # the platform decides readiness again
+    informational: ["database:reporting"]
 ```
 
-`HealthPolicy.defaults()` is a 2 second timeout and no overrides; `withTimeout(Duration)`,
-`withCritical(String...)` and `withInformational(String...)` return copies. A name in both lists,
-or a blank name, is refused by the constructor (`IllegalArgumentException`). A name that matches no check is logged at WARN once start-up
+A name in both lists fails start-up. A name that matches no check is logged at WARN once start-up
 finishes, not refused, because some checks exist only in some deployments (the `outbox` check
-needs the table).
+needs the table). The core claims the `app` component, so a misspelt key under it
+(`app.helth.critical`) fails start-up as unknown, listing the keys it has.
 
 ## Commands and `launch`
 

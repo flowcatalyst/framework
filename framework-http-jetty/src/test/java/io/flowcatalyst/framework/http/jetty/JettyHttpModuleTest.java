@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.core.App;
-import io.flowcatalyst.framework.core.HealthPolicy;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.http.Response;
@@ -268,12 +267,7 @@ class JettyHttpModuleTest {
             app.health().add("good", () -> {});
           }
         };
-    try (App app = Apps.start(
-            dir,
-            Apps.env(),
-            b -> b.health(HealthPolicy.defaults().withTimeout(Duration.ofMillis(200))),
-            r -> {},
-            checks)) {
+    try (App app = Apps.start(dir, Apps.env("APP_HEALTH_TIMEOUT", "200ms"), r -> {}, checks)) {
       HttpResponse<String> r = get(app, "/health/ready");
       assertThat(r.statusCode()).isEqualTo(503);
       JsonNode body = json(r);
@@ -316,10 +310,9 @@ class JettyHttpModuleTest {
                   + "\"reason\":\"IllegalStateException: platform unreachable\",\"informational\":true},"
                   + "\"good\":{\"status\":\"UP\"}}}");
     }
-    // The same check made critical by the health policy takes the application out of rotation.
+    // The same check made critical by configuration takes the application out of rotation.
     try (App app =
-        Apps.start(
-            dir, Apps.env(), b -> b.health(HealthPolicy.defaults().withCritical("platform")), r -> {}, checks)) {
+        Apps.start(dir, Apps.env("APP_HEALTH_CRITICAL", "platform"), r -> {}, checks)) {
       HttpResponse<String> r = get(app, "/health/ready");
       assertThat(r.statusCode()).isEqualTo(503);
       JsonNode body = json(r);

@@ -183,14 +183,13 @@ class GracefulShutdownTest {
 
   @Test
   void theGraceDefaultsToTheAppShutdownDrain() throws Exception {
-    // a 300ms shutdown drain and no grace of its own: a stuck request is interrupted after ~300ms
+    // app.shutdown.drain=300ms and no http.shutdown-grace: a stuck request is interrupted after ~300ms
     CountDownLatch entered = new CountDownLatch(1);
     AtomicBoolean interrupted = new AtomicBoolean();
     App app =
         Apps.start(
             dir,
-            Apps.env(),
-            b -> b.shutdownDrain(Duration.ofMillis(300)),
+            Apps.env("APP_SHUTDOWN_DRAIN", "300ms"),
             r ->
                 r.get(
                     "/stuck",

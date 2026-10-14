@@ -312,14 +312,14 @@ Configuration holds where to listen and the metrics endpoint's secret, nothing e
 
 How the server behaves is `HttpOptions`, given in code: `new JettyHttpModule()` is the defaults,
 `new JettyHttpModule(HttpOptions)` sets them, and `new JettyHttpModule(config -> ...)` computes them
-from a setting of your own ([Config](config.md#making-a-number-tunable)). The record checks its ranges
+from a setting of your own ([Config](config.md#making-a-code-defined-thing-differ-per-deployment)). The record checks its ranges
 when built (`IllegalArgumentException`):
 
 | `HttpOptions` | Default | Range |
 |---|---|---|
 | `withMaxBodyBytes(long)` | `1048576` | 0 to 1 GiB |
 | `withRequestTimeout(Duration)` | `30s` (idle timeout of reads and writes) | more than 0, at most 1 h |
-| `withShutdownGrace(Duration)` | the shutdown drain (`AppBuilder.shutdownDrain`) | 0 to 1 h |
+| `withShutdownGrace(Duration)` | `app.shutdown.drain` | 0 to 1 h |
 | `withMetricsEndpoint(String path)` | none: no [Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) | literal segments such as `/metrics` |
 
 From `JettyHttpModuleTest`:

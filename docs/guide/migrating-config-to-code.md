@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, HealthPolicy, MetricsOptions, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
+<!-- types: AppBuilder, KeyRules, DatabaseModule, DatabasePool, RedisModule, RedisPool, JettyHttpModule, HttpOptions, HttpClientModule, HttpClientOptions, ClientAuth, SecretsModule, SecretStores, CachePolicy, FlowCatalystModule, FlowCatalystOptions, ReceiverOptions, PlatformClient, LocksModule, LockStores, DatabaseLockStores, RedisLockStores -->
 # Migrating configuration to code
 
 **Breaking (2026-10-14).** Configuration now holds connections and secrets only; every behavioural
@@ -17,7 +17,7 @@ write instead.
 3. Otherwise give the value in code with the API in the tables below.
 4. If the value must differ per deployment, declare a setting of your own (in your own component,
    such as `orders.*`) and pass it in with the `Function<Config, T>` form
-   ([Config](config.md#making-a-number-tunable)).
+   ([Config](config.md#making-a-code-defined-thing-differ-per-deployment)).
 
 Connections and secrets stay where they are: database and Redis URLs, user names and passwords,
 `http.host` and `http.port`, the platform's `flowcatalyst.base-url`, `application`, `client-id`,
@@ -39,21 +39,9 @@ Connections and secrets stay where they are: database and Redis URLs, user names
 
 ## Core (`app.*`)
 
-| Key | Default | Now |
-|---|---|---|
-| `app.shutdown.drain` | `10s` | `App.builder().shutdownDrain(Duration)` (more than 0, at most 1 h) |
-| `app.health.timeout` | `2s` | `App.builder().health(HealthPolicy.defaults().withTimeout(Duration))` (more than 0, at most 5 min) |
-| `app.health.critical: [a]` | empty | `HealthPolicy.withCritical("a")` |
-| `app.health.informational: [b]` | empty | `HealthPolicy.withInformational("b")` |
-| `app.metrics.driver: noop` | `memory` | `App.builder().metrics(MetricsOptions.noop())` |
-| `app.metrics.max-series` | `1000` | `App.builder().metrics(MetricsOptions.memory(int))` (1 to 100 000) |
-
-```java
-// before: app: { shutdown: { drain: 30s }, health: { critical: [flowcatalyst] } }
-App.builder()
-    .shutdownDrain(Duration.ofSeconds(30))
-    .health(HealthPolicy.defaults().withCritical("flowcatalyst"))
-```
+Nothing to migrate: `app.shutdown.drain`, `app.health.*` and `app.metrics.*` are service settings
+and stay configuration. (For a few hours on 2026-10-14 they were `AppBuilder.shutdownDrain`,
+`health(HealthPolicy)` and `metrics(MetricsOptions)`; those are removed again.)
 
 ## Database (`database.instances.<n>`)
 

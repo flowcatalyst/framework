@@ -17,15 +17,6 @@ final class FrameworkKeys {
   private static List<RemovedKey> build() {
     List<RemovedKey> l = new ArrayList<>();
 
-    // core
-    l.add(k("app.shutdown.drain", "core", "AppBuilder.shutdownDrain(Duration)"));
-    for (String s : List.of("timeout", "critical", "informational")) {
-      l.add(k("app.health." + s, "core", "AppBuilder.health(HealthPolicy)"));
-    }
-    for (String s : List.of("driver", "max-series")) {
-      l.add(k("app.metrics." + s, "core", "AppBuilder.metrics(MetricsOptions)"));
-    }
-
     // database and redis
     String pool = "DatabaseModule.builder().pool(DatabasePool)";
     for (String s : List.of("max", "min-idle", "connect-timeout")) {

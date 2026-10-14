@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.Criticality;
-import io.flowcatalyst.framework.core.HealthPolicy;
 import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Problem;
@@ -48,18 +47,13 @@ class FlowCatalystModuleTest {
   }
 
   private App start(Map<String, String> env) {
-    return start(env, HealthPolicy.defaults());
+    return start(env, FlowCatalystOptions.defaults());
   }
 
-  private App start(Map<String, String> env, HealthPolicy health) {
-    return start(env, health, FlowCatalystOptions.defaults());
-  }
-
-  private App start(Map<String, String> env, HealthPolicy health, FlowCatalystOptions options) {
+  private App start(Map<String, String> env, FlowCatalystOptions options) {
     return App.builder()
         .configDirectory(dir)
         .environment(env)
-        .health(health)
         .module(new FlowCatalystModule(options))
         .start();
   }
@@ -146,13 +140,14 @@ class FlowCatalystModuleTest {
   }
 
   @Test
-  void thePlatformCheckCanBeMadeCriticalByTheHealthPolicy() throws IOException {
+  void thePlatformCheckCanBeMadeCriticalByConfiguration() throws IOException {
     int closedPort;
     try (ServerSocket s = new ServerSocket(0)) {
       closedPort = s.getLocalPort();
     }
     Map<String, String> env = env("http://127.0.0.1:" + closedPort);
-    try (App app = start(env, HealthPolicy.defaults().withCritical("flowcatalyst"))) {
+    env.put("APP_HEALTH_CRITICAL", "flowcatalyst");
+    try (App app = start(env)) {
       HealthReport report = app.health().check();
       assertThat(report.criticality("flowcatalyst")).isEqualTo(Criticality.CRITICAL);
       assertThat(report.isReady()).isFalse();
@@ -200,7 +195,7 @@ class FlowCatalystModuleTest {
 
   @Test
   void disabledNeedsNoSettingsAndAddsNoHealthCheck() {
-    try (App app = start(Map.of(), HealthPolicy.defaults(), FlowCatalystOptions.disabled())) {
+    try (App app = start(Map.of(), FlowCatalystOptions.disabled())) {
       PlatformClient client = app.get(PlatformClient.class);
       assertThat(client.isEnabled()).isFalse();
       assertThat(app.health().check().results()).doesNotContainKey("flowcatalyst");

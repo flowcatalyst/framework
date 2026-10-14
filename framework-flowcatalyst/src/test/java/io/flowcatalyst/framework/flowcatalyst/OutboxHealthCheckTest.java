@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
-import io.flowcatalyst.framework.core.HealthPolicy;
 import io.flowcatalyst.framework.core.Criticality;
 import io.flowcatalyst.framework.core.HealthReport;
 import io.flowcatalyst.framework.core.HealthResult;
@@ -81,17 +80,12 @@ class OutboxHealthCheckTest {
   }
 
   private App start(boolean withDatabase, boolean withOutbox, Map<String, String> env) {
-    return start(withDatabase, withOutbox, env, HealthPolicy.defaults());
-  }
-
-  private App start(boolean withDatabase, boolean withOutbox, Map<String, String> env, HealthPolicy health) {
-    return start(withDatabase, withOutbox, env, health, FlowCatalystOptions.defaults());
+    return start(withDatabase, withOutbox, env, FlowCatalystOptions.defaults());
   }
 
   private App start(
-      boolean withDatabase, boolean withOutbox, Map<String, String> env, HealthPolicy health, FlowCatalystOptions options) {
-    AppBuilder b =
-        App.builder().configDirectory(dir).environment(env).instantSource(() -> NOW).health(health);
+      boolean withDatabase, boolean withOutbox, Map<String, String> env, FlowCatalystOptions options) {
+    AppBuilder b = App.builder().configDirectory(dir).environment(env).instantSource(() -> NOW);
     if (withDatabase) {
       b.module(new DatabaseModule());
     }
@@ -163,7 +157,7 @@ class OutboxHealthCheckTest {
       assertThat(report.results().get("outbox")).isInstanceOf(HealthResult.Down.class);
       assertThat(report.isReady()).isTrue();
     }
-    try (App app = start(true, true, env(), HealthPolicy.defaults().withCritical("outbox"))) {
+    try (App app = start(true, true, env("APP_HEALTH_CRITICAL", "outbox"))) {
       HealthReport report = app.health().check();
       assertThat(report.criticality("outbox")).isEqualTo(Criticality.CRITICAL);
       assertThat(report.isReady()).isFalse();
@@ -191,7 +185,7 @@ class OutboxHealthCheckTest {
   @Test
   void theLimitIsGivenInCode() {
     try (App app =
-        start(true, true, env(), HealthPolicy.defaults(), FlowCatalystOptions.defaults().withOutboxStaleAfter(Duration.ofSeconds(30)))) {
+        start(true, true, env(), FlowCatalystOptions.defaults().withOutboxStaleAfter(Duration.ofSeconds(30)))) {
       insert("r1", 0, NOW.minusSeconds(31));
       assertThat(outbox(app)).isInstanceOf(HealthResult.Down.class);
     }
@@ -230,7 +224,7 @@ class OutboxHealthCheckTest {
 
   @Test
   void aDisabledModuleAddsNoCheck() {
-    try (App app = start(true, true, Map.of(), HealthPolicy.defaults(), FlowCatalystOptions.disabled())) {
+    try (App app = start(true, true, Map.of(), FlowCatalystOptions.disabled())) {
       assertThat(app.health().check().results()).doesNotContainKey("outbox");
     }
   }

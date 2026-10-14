@@ -148,7 +148,7 @@ public final class JettyHttpModule implements Module {
       }
       Metrics metrics = app.get(Metrics.class);
       if (!metrics.readable()) {
-        LOG.warn("http: the metrics endpoint is enabled but the metrics driver (MetricsOptions) records nothing");
+        LOG.warn("http: the metrics endpoint is enabled but app.metrics.driver records nothing");
       }
       own.get(path, MetricsEndpoint.handler(metrics, token));
     }

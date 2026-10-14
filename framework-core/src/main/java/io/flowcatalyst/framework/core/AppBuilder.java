@@ -6,7 +6,6 @@ import io.flowcatalyst.framework.config.Declaration;
 import io.flowcatalyst.framework.config.EnvironmentVariables;
 import io.flowcatalyst.framework.config.KeyRules;
 import io.flowcatalyst.framework.config.Setting;
-import io.flowcatalyst.framework.metrics.MetricsOptions;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -17,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -41,12 +39,6 @@ public final class AppBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(AppBuilder.class);
   private static final Pattern MODULE_ID = Pattern.compile("[a-z][a-z0-9-]*");
 
-  /** The shutdown drain when none is given. */
-  public static final Duration DEFAULT_SHUTDOWN_DRAIN = Duration.ofSeconds(10);
-
-  /** The longest shutdown drain accepted. */
-  public static final Duration MAX_SHUTDOWN_DRAIN = Duration.ofHours(1);
-
   private final List<Module> modules = new ArrayList<>();
   private Path configDirectory = Path.of("config");
   private Map<String, String> environment = System.getenv();
@@ -54,9 +46,6 @@ public final class AppBuilder {
   private MonotonicClock monotonicClock = MonotonicClock.system();
   private boolean installShutdownHook;
   private boolean started;
-  private Function<Config, Duration> shutdownDrain = c -> DEFAULT_SHUTDOWN_DRAIN;
-  private Function<Config, HealthPolicy> healthPolicy = c -> HealthPolicy.defaults();
-  private Function<Config, MetricsOptions> metricsOptions = c -> MetricsOptions.defaults();
 
   // Registration state.
   private @Nullable String registering;
@@ -149,93 +138,6 @@ public final class AppBuilder {
     return this;
   }
 
-  /**
-   * Sets the time each shutdown step (a module's {@code shutdown} hook, a background loop's last run)
-   * may take before it is logged as overrun and the next runs; the default is 10 seconds. Was the
-   * setting {@code app.shutdown.drain} (config-and-code contract, section 3.1).
-   *
-   * @param drain more than 0, at most 1 hour
-   * @return this builder
-   * @throws IllegalArgumentException when out of range
-   */
-  public AppBuilder shutdownDrain(Duration drain) {
-    requireNotStarted();
-    Duration checked = checkDrain(drain);
-    this.shutdownDrain = c -> checked;
-    return this;
-  }
-
-  /**
-   * As {@link #shutdownDrain(Duration)}, computed from configuration once it is loaded, for an
-   * application that reads the value from a setting of its own. A value out of range fails
-   * start-up.
-   *
-   * @param drain computes the drain
-   * @return this builder
-   */
-  public AppBuilder shutdownDrain(Function<Config, Duration> drain) {
-    requireNotStarted();
-    this.shutdownDrain = drain;
-    return this;
-  }
-
-  /**
-   * Sets how health checks run and which decide readiness; the default is {@link
-   * HealthPolicy#defaults()}. Was {@code app.health.*}.
-   *
-   * @param policy the policy
-   * @return this builder
-   */
-  public AppBuilder health(HealthPolicy policy) {
-    requireNotStarted();
-    this.healthPolicy = c -> policy;
-    return this;
-  }
-
-  /**
-   * As {@link #health(HealthPolicy)}, computed from configuration once it is loaded.
-   *
-   * @param policy computes the policy
-   * @return this builder
-   */
-  public AppBuilder health(Function<Config, HealthPolicy> policy) {
-    requireNotStarted();
-    this.healthPolicy = policy;
-    return this;
-  }
-
-  /**
-   * Chooses the metrics driver and its series limit; the default is {@link
-   * MetricsOptions#defaults()} (memory, 1000). Was {@code app.metrics.*}.
-   *
-   * @param options the options
-   * @return this builder
-   */
-  public AppBuilder metrics(MetricsOptions options) {
-    requireNotStarted();
-    this.metricsOptions = c -> options;
-    return this;
-  }
-
-  /**
-   * As {@link #metrics(MetricsOptions)}, computed from configuration once it is loaded.
-   *
-   * @param options computes the options
-   * @return this builder
-   */
-  public AppBuilder metrics(Function<Config, MetricsOptions> options) {
-    requireNotStarted();
-    this.metricsOptions = options;
-    return this;
-  }
-
-  private static Duration checkDrain(Duration drain) {
-    if (!drain.isPositive() || drain.compareTo(MAX_SHUTDOWN_DRAIN) > 0) {
-      throw new IllegalArgumentException(
-          "shutdownDrain must be more than 0 and at most 1h, was " + drain);
-    }
-    return drain;
-  }
 
   /**
    * Replaces the service a module provides for {@code type} with {@code instance}, <b>in tests
@@ -500,7 +402,7 @@ public final class AppBuilder {
     requireTestModeForOverrides();
 
     List<Module> all = new ArrayList<>();
-    all.add(new CoreModule(metricsOptions));
+    all.add(new CoreModule());
     all.addAll(modules);
 
     // 1. Register, in the order listed.
@@ -542,22 +444,27 @@ public final class AppBuilder {
       throw new StartupException(problems);
     }
 
-    Duration drain = DEFAULT_SHUTDOWN_DRAIN;
-    HealthPolicy policy = HealthPolicy.defaults();
-    try {
-      drain = checkDrain(shutdownDrain.apply(config));
-    } catch (RuntimeException e) {
-      problems.add(new Problem(CoreModule.ID, null, null, "shutdownDrain: " + describe(e), e));
-    }
-    try {
-      policy = healthPolicy.apply(config);
-    } catch (RuntimeException e) {
-      problems.add(new Problem(CoreModule.ID, null, null, "health policy: " + describe(e), e));
+    Duration drain = config.get(CoreModule.SHUTDOWN_DRAIN);
+    Set<String> forcedCritical = new HashSet<>(config.get(CoreModule.HEALTH_CRITICAL));
+    Set<String> forcedInformational = new HashSet<>(config.get(CoreModule.HEALTH_INFORMATIONAL));
+    for (String name : forcedCritical) {
+      if (forcedInformational.contains(name)) {
+        problems.add(
+            Problem.of(
+                CoreModule.ID,
+                CoreModule.HEALTH_INFORMATIONAL.key(),
+                "health check '" + name + "' is also listed in " + CoreModule.HEALTH_CRITICAL.key()));
+      }
     }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
-    Health health = new Health(policy.timeout(), monotonicClock, policy.critical(), policy.informational());
+    Health health =
+        new Health(
+            config.get(CoreModule.HEALTH_TIMEOUT),
+            monotonicClock,
+            forcedCritical,
+            forcedInformational);
 
     // 3. Build every provided service.
     Map<Class<?>, Object> seeded = new LinkedHashMap<>();
@@ -620,7 +527,7 @@ public final class AppBuilder {
     List<String> unmatched = app.health().unmatchedOverrides();
     if (!unmatched.isEmpty()) {
       LOG.warn(
-          "the HealthPolicy names checks that do not exist: {}",
+          "app.health.critical / app.health.informational name checks that do not exist: {}",
           unmatched);
     }
     // Loops registered during boot and started begin only now, with the application whole.
