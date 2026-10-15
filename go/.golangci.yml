@@ -78,6 +78,10 @@ linters:
         path: (^|/)(fwtest|cmd|internal/conformance)/
       - linters: [forbidigo]
         path: (^|/)examples/.*main\.go$
+      # The JSON edge: the OpenAPI emitter, the typed operations and the validators read the wire
+      # types with reflection, as encoding/json does (design section 2.4).
+      - linters: [forbidigo]
+        path: (^|/)httpfw/(openapi/|validate/|ops\.go|declare\.go)
 
 formatters:
   enable:
