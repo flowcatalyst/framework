@@ -10,3 +10,4 @@ conformance/sql/outbox/insert.sql usecase/sql/insert.sql
 framework-usecase/src/main/resources/db/migration/outbox/V0001__create_outbox_messages.sql usecase/migrations/V0001__create_outbox_messages.sql
 framework-usecase/src/main/resources/db/migration/outbox/V0002__widen_outbox_client_id.sql usecase/migrations/V0002__widen_outbox_client_id.sql
 examples/orders-demo/src/main/resources/db/migration/orders/V0001__create_orders.sql examples/orders-demo/orders/migrations/V0001__create_orders.sql
+framework-flowcatalyst/src/main/resources/db/migration/flowcatalyst/V0001__create_dispatch_once.sql flowcatalyst/migrations/V0001__create_dispatch_once.sql

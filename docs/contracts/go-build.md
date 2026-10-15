@@ -17,6 +17,19 @@ and Rust builds ignore it. It shares with them the contracts and the conformance
 | `github.com/flowcatalyst/framework/go/flowcatalyst` | `go/flowcatalyst/` | the core module and the platform SDK (`pkg/fcsdk`); the only module that imports fcsdk |
 | `github.com/flowcatalyst/framework/go/tools` | `go/tools/` | the pinned tools (`tool` directives): golangci-lint, NilAway, gofumpt; never imported |
 
+- **How `go/flowcatalyst` resolves fcsdk (G4, 2026-10-15).** fcsdk is the module
+  `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` in the platform repository and has no release
+  (`pkg/fcsdk/VERSION` 0.0.0, no `pkg/fcsdk/v*` tag), so `go/flowcatalyst/go.mod` requires it at
+  `v0.0.0` **without a replace** and nothing can resolve it from the network yet. The checks resolve
+  it from a sibling checkout of the platform repository through an uncommitted workspace file:
+  `make -C go fc-modfile` writes `go/flowcatalyst/go.local.work` (a `replace` of fcsdk by
+  `../../flowcatalyst-go/pkg/fcsdk`, or `FCSDK=path`) and every flowcatalyst target runs with
+  `GOWORK` set to it; with no checkout the target says so and the module is not buildable. After
+  fcsdk's first tag, setting `FCSDK=` (empty) builds from `go.mod` as a consumer would. `go.mod` also
+  has `replace github.com/flowcatalyst/framework/go => ../`, which only applies inside this
+  repository (a replace in a dependency is ignored by its consumers, who need both modules tagged).
+  `make -C go fc-tidy` regenerates `go.mod` and `go.sum` (through an uncommitted `go.local.mod`)
+  without the fcsdk replace. `go/flowcatalyst/migrations/` holds a shared file (`shared-files.txt`).
 - A driver is a package (`locks/redislock`), compiled only when an application imports it, so there
   is no build tag, feature or BOM: the module graph may hold a dependency a binary never compiles.
 - Module paths are working names until the owner settles naming (design decision 33). Nothing is
@@ -27,16 +40,19 @@ and Rust builds ignore it. It shares with them the contracts and the conformance
 
 - `go 1.27` in every `go.mod`; CI and development use Go 1.27.2. The directive changes deliberately,
   with the platform, in one commit.
-- Tools are pinned in `go/tools/go.mod` and run with `go tool -modfile=tools/go.mod <tool>`, so they
-  are built by the local toolchain (golangci-lint releases built with an older Go cannot load Go
-  1.27 export data). NilAway has no releases; it is pinned by pseudo-version there.
+- Tools are pinned in `go/tools/go.mod` and built by the local toolchain (golangci-lint releases
+  built with an older Go cannot load Go 1.27 export data). NilAway has no releases; it is pinned by
+  pseudo-version there. gofumpt runs with `go tool -modfile=tools/go.mod gofumpt`; golangci-lint and
+  NilAway are built into `go/bin/` (`make -C go tools`: `go build -modfile=tools/go.mod`), because the
+  flowcatalyst module is checked in a workspace, where `go tool -modfile` is refused, and the two
+  fail under `GOFLAGS=-modfile`.
 
 ## 4. Lints and formatting
 
 `make -C go go-check` is what CI runs and what a commit needs: `fmt-check` (gofumpt), `lint`
 (golangci-lint with `go/.golangci.yml`: the platform's profile plus `gochecksumtype`, `forbidigo` and
 revive's `exported`), `vet` (`go vet` with the framework's analyzers, `cmd/fwvet`), `nilaway` and
-`test`.
+`test`; each runs on the core module and then on `go/flowcatalyst`.
 
 - `forbidigo` keeps library packages free of global state: no `time.Now`/`time.Since` (time comes
   from `fw.Clock`), no `os.Getenv` outside `config`, no `slog.Default`, no `context.Background`

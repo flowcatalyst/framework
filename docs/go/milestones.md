@@ -14,8 +14,9 @@ Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
 | G0 | **Built** (2026-10-14): `go/` with the core module, `go/flowcatalyst` (empty until G4) and `go/tools` (the pinned golangci-lint v2.14.0, NilAway and gofumpt, run by `go tool` so the local Go builds them; a third module, so the tools never enter the framework's module graph); `.golangci.yml`; `make -C go go-check`; `cmd/fwvet` with `mustliteral`; `fwtest` (embedded PostgreSQL 18, template and a database per test, Redis from `PATH`, fake clock); `internal/conformance` and the TSID vector; `.github/workflows/go.yml` (not run); [`go-build.md`](../contracts/go-build.md); `verify.sh` checks Go type names. NilAway on G0: no findings, no suppressions |
 | G1 | **Built** (2026-10-14; brought in line with [config and code](../contracts/config-and-code.md) 2026-10-15, commit 24b2be1: no driver registry (`config.Section` has one key schema), lock stores named in code (`locks.WithStore`, `dblock.Store`, `redislock.Store`), removed keys and claimed components checked at load (`config.KeyRules`; the Go moved-to texts name Go APIs), pool and port ranges as `Setting.Checked`, `Boot.HealthReport`/`Ready`/`ShutdownDrain`; the vector for the key rules is deferred until the Java side writes one): `fw` lifecycle, `config`, `background`, `metrics` (with the endpoint handler; mounting it is G3), `database` (migration runner, `Tx` constructible only inside the framework, `Filter`), `redisfw`, `locks` + `dblock` + `redislock` + `lockstest`, `examples/locks-demo`. Vectors: config (every entry), lock SQL and Lua (byte for byte, copies listed in `go/internal/conformance/shared-files.txt`), `locks-database` history (Go writes the Java rows and accepts a Java-migrated database). Rulings taken: instance sections are checked at configure (drivers declare their keys); `url` accepts `jdbc:postgresql://`, `postgres://`, `postgresql://` but not pgx's `key=value` form; a duplicate YAML key is refused (recorded in STATUS, the vector has no such case). NilAway: three findings, all fixed in code (an ok-returning `Default` now returns `nil, false` explicitly; a test slice), no suppressions |
 | G2 | **Built** (2026-10-14): `usecase` (the four-method interface, `Define`, `Run`, the runner with the failure table and step codes, `INTERRUPTED`, panic recovery, conflict retry with jitter, `Fresh`/`Loaded`, `Insert`/`Update`/`Delete` steps, `Plan` with `Emit` and `Dispatch`, the outbox writer and migrations, audit rows with ordered `AuditData`, `NewDispatchJob`, metrics, `usecasetest.Repository`), `event`, `id` (typed ids), `sqlfw` (`Main`: `schema`, `generate`, `check`, `jet`; `Query`) with `sqlfw/jetgen` and `internal/pgembed`, `examples/orders-demo` (sqlc queries, go-jet and `Filter` list queries, the Java demo's scenario and concurrency tests, a Java-migrated database accepted). Vectors: `outbox/outbox.json` byte for byte (every column, payload text and size, the dispatch-job refusals), `sql/outbox/insert.sql`, `migrations/outbox.json` and `orders.json`. go-jet adopted only as G2 says (the read model's builder; v2.16.1). Missing `Authorize` proven a compile error by a type-check test. Design section 8's sqlc points answered there. Not done: the `RunInTx` question (G4), an `fwvet` check for `usecase.Authorized[...]{}` literals |
-| G3 | **Built** (2026-10-15): `httpfw` (the contract's route table as the framework's own segment trie, fixed middleware, envelope, `DecodeJSON` on `encoding/json/v2`, correlation id, access log and HTTP metrics, health and Prometheus endpoints, the server with body limit, timeouts and drain, `ContextResolver`), `httpfw/validate` (rules as data), `httpfw/spa` (index at start-up, fallback, API prefixes from the routes, strict CSP default), typed operations and `httpfw/openapi` (the emitter), `httpfw/sessionapi` (the session operations' document side), `fw` declaration-phase commands (the `openapi` command), `fw.Boot` health/ready/drain accessors and a serve grace, `examples/orders-demo` serving its API (`orders-demo serve`) with a committed `web/openapi.json`. Vectors: `http/spa.json` (all 86 requests), `openapi/fixture.json`, `auth.json` and `orders-demo.json` **byte for byte**. G1 brought in line with [config and code](../contracts/config-and-code.md) first (24b2be1). Rulings and differences: see the notes under this table. Not done: `ratelimit` (memory, `redisrl`), `httpfw.CSRF` and `SecurityHeaders` (they belong with the cookie sessions of G5b), a generated hey-api client compiled under the UI tsconfig from the Go document (the bytes equal `examples/orders-demo/web/openapi.json`, from which `ui/apps/orders` was generated and tested in U3), and the error, health, metrics and rate-limit vectors, which the Java tests have not written (the Go tests check those rules themselves) |
-| G4 to G7 | not started |
+| G3 | **Built** (2026-10-15): `httpfw` (the contract's route table as the framework's own segment trie, fixed middleware, envelope, `DecodeJSON` on `encoding/json/v2`, correlation id, access log and HTTP metrics, health and Prometheus endpoints, the server with body limit, timeouts and drain, `ContextResolver`), `httpfw/validate` (rules as data), `httpfw/spa` (index at start-up, fallback, API prefixes from the routes, strict CSP default), typed operations and `httpfw/openapi` (the emitter), `httpfw/sessionapi` (the session operations' document side), `fw` declaration-phase commands (the `openapi` command), `fw.Boot` health/ready/drain accessors and a serve grace, `examples/orders-demo` serving its API (`orders-demo serve`) with a committed `web/openapi.json`. Vectors: `http/spa.json` (all 86 requests), `openapi/fixture.json`, `auth.json` and `orders-demo.json` **byte for byte**. G1 brought in line with [config and code](../contracts/config-and-code.md) first (24b2be1). Rulings and differences: see the notes under this table. **Leftover built with G4 (2026-10-15):** `ratelimit` (memory limiter, middleware, key functions) and `ratelimit/redisrl` (the Java script, compared byte for byte with `RedisRateLimiter.java`); no rate-limit vector exists (the Java tests have not written one, so the script and the arithmetic are checked against the Java source and the Java tests' numbers). Not done: `httpfw.CSRF` and `SecurityHeaders` (they belong with the cookie sessions of G5b), a generated hey-api client compiled under the UI tsconfig from the Go document (the bytes equal `examples/orders-demo/web/openapi.json`, from which `ui/apps/orders` was generated and tested in U3), and the error, health, metrics and rate-limit vectors, which the Java tests have not written (the Go tests check those rules themselves) |
+| G4 | **Built** (2026-10-15; the end-to-end check against a real platform: see "G4 as built", item *End to end*): `httpclient` (library on `net/http`) and `httpclient/module` (clients named in code, base URL and credentials in configuration, `http-client.max-connections-per-host` the only engine setting, metrics, correlation id), `secrets` (`Env`, `File`, cache policy, resolver), and the `flowcatalyst` module in `go/flowcatalyst` (client wrapper over fcsdk, definitions with validation, `Sync` with dry run and the `sync` command, the `flowcatalyst` and `outbox` health checks, both receivers running as the service principal, `Once` and its purge). Vectors: `receivers/context.json` (all 11 cases, Java-written; the signatures in it are recomputed by the Go code). No secrets, signature or receiver-response vector exists on the Java side; the Go tests carry the Java tests' signature vectors (`a7d62a...`, `0278cf...`) and the receiver test list of flowcatalyst section 6. fcsdk had every sync category already (connections, scheduled jobs and docs added 2026-10-13): no gaps to record in the platform repository. NilAway: findings in test helpers and two nil returns, all fixed, no suppressions |
+| G5 to G7 | not started |
 
 **G3 as built, and where it differs** (2026-10-15):
 
@@ -50,6 +51,62 @@ Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
 - *orders-demo*: a fixed-token `ContextResolver` (`orders.demo-token`) and `501 NOT_IMPLEMENTED`
   session endpoints stand in for G5b; the embedded SPA is a placeholder page until `ui/apps/orders`
   is built into `web/dist`.
+
+**G4 as built, and where it differs** (2026-10-15):
+
+- *Code, not configuration.* Rate limiters (`ratelimit`, `redisrl`), secret stores and cache policies,
+  named HTTP clients with their `RetryPolicy` and `ClientAuth` are declared in code. The service
+  settings stay configuration (`flowcatalyst.*`, `flowcatalyst.receivers.*`, `http-client.*`), with
+  the component claimed and the removed keys of the Java names failing start-up with the Go API to
+  use instead (`config.KeyRules`).
+- *`http-client.event-loops` is not declared*: `net/http` has no event loops to size. `max-connections-per-host`
+  is kept (it is `Transport.MaxConnsPerHost`). A decision, not an omission.
+- *Errors are values*: `*httpclient.Error` with a `Kind` (adds `KindCanceled`), not exceptions. A decoded
+  body is held to the size limit like a raw one.
+- *Sections without a `default` instance* (`Section.NoDefault`; `fw.Boot.LookupEnv`): `http-clients.default`
+  is a removed key, so instance sections could not insist on a default.
+- *File secrets and case-insensitive file systems*: Go's `EvalSymlinks` keeps the case the caller typed,
+  so the store compares the path with the directory's own spelling (`exactCase`); a path that differs only
+  in case is refused on macOS as it would be on Linux.
+- *fcsdk resolution.* fcsdk has no release, so `go/flowcatalyst/go.mod` requires `fcsdk v0.0.0` and
+  commits no `replace`. Local checks use an uncommitted `go.local.work` (written by `make fc-modfile`,
+  pointing at `../../flowcatalyst-go`, override `FCSDK=`); `make fc-tidy` regenerates go.mod and go.sum.
+  `go tool -modfile` is refused in workspace mode, so golangci-lint and NilAway are built into
+  `go/bin` (`make tools`). CI is not edited: it needs a platform checkout (owner decision pending).
+- *No fcsdk sync category is missing* (connections, scheduled jobs and docs exist). Docs are synced by
+  the Go module; Java skips them.
+- *fcsdk retries* 5xx and 425 itself; the platform client uses two SDK clients (retry 3, and 1 for
+  reporting) sharing one client-credentials provider, so the token is fetched once.
+- *The service principal* is the `sub` of the client-credentials token, accepted only when `type` is
+  `SERVICE`; the refusal never shows the token. Causation is the dispatch job id, or the instance id
+  for a scheduled job (`conformance/receivers/context.json`, 11 of 11).
+- *Receivers*: no 405 for a receiver that has no handlers (its route is not mounted); optional
+  integers use 0 for "unset"; `OnDispatch[T]` takes the event type pattern explicitly; a handler that
+  ignores its context and returns late is cut off by a timer, not a context deadline, so a handler
+  returning `ctx.Err()` is still a timeout. Responses are written by hand where json/v2's map order
+  would vary (`{"ack":false,"delaySeconds":N}`).
+- *`Once`* hands the work a `*database.Tx` (the transaction that also holds the claim row);
+  `RunInTx` stays open. The purge is a background task under the `flowcatalyst-once-purge` health name.
+- *Scheduled job builders* (`WithPayload`, `Targeting`, `WithTimeout`, `WithDeliveryAttempts`) were added
+  after the end-to-end check showed a job target cannot otherwise be set; a job's target must be an
+  absolute URL (a subscription's may be a path against `subscription-target-base-url`).
+- *Vectors*: Java has none for rate limiting, secrets, signatures or receiver responses. The Lua script
+  is compared byte for byte with the Java text block; the signature vectors of the Java tests are in
+  the Go tests; IP literal parsing differs where Go's `netip` is stricter than Java's.
+- *End to end* (2026-10-15, real platform, isolated: own embedded cluster on 25433, API 18480, state in
+  the scratchpad, dropped afterwards; 8080, 15432 and the developer's fcdev untouched). Verified:
+  `sync --dry-run` and `sync` against the platform (event type, connection, subscription, scheduled job
+  created, then updated on re-sync); an event posted to `/api/events/batch` reaches the receiver as a
+  signed `POST /fc/dispatch`, the signature verifies, the handler runs as the application's service
+  principal (equal to the token `sub`), causation is the dispatch job id, `Once` records the delivery;
+  a fired scheduled job is delivered, run and reported: instance `COMPLETED`, result `{"recorded":1}`.
+  Not verified: `fcdev outbox` delivering orders-demo's outbox (the events were posted directly), and
+  the `outbox` health check against a live outbox (covered by the database tests).
+  Platform findings, for the platform repository (not edited here): a code-first connection stores the
+  application's principal id (`prn_`) as its service account, and the delivery signer then looks it up
+  as a service account id and delivers unsigned ("service account prn_... does not exist"); the
+  deliveries were refused with `MISSING_SIGNATURE` until the row was set to the `sac_` id in the
+  isolated database. The connection update API accepts the field but keeps the `prn_` value.
 
 *2026-10-14 (owner): the UI package is shared with Java and built first against the Java backend.*
 G5a's U0 to U2 (and U3, U4 on the Java example) are therefore done once, outside this plan; Go's G5a

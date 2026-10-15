@@ -121,6 +121,11 @@ func readBody(r *http.Request) ([]byte, error) {
 	return b, nil
 }
 
+// ReadBody reads the whole request body, up to http.max-body-bytes: a body over the limit is a 413
+// PAYLOAD_TOO_LARGE error, a body that cannot be read a 400 VALIDATION one. For a handler that
+// needs the exact bytes (a signature is computed over them) rather than a decoded value.
+func ReadBody(r *http.Request) ([]byte, error) { return readBody(r) }
+
 // requireJSON refuses a request whose content type is not application/json.
 func requireJSON(r *http.Request) error {
 	mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
