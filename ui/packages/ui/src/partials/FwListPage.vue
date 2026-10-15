@@ -9,13 +9,21 @@
 //
 // UTable's `v-model:sorting` cannot be typed under exactOptionalPropertyTypes (docs/ui/u0.md), so the
 // sorting is split into the prop and an event here, once.
+//
+// Phone: cells are tight below `sm` and a column marked `phone: "hide"` (FwListColumn) is dropped, so a
+// five-column table shows its three main columns without clipping or sideways scrolling (the values of
+// the dropped ones belong in the drawer). Drawer: on a wide screen the open record drawer takes its
+// width out of the list instead of covering the toolbar (lib/drawerHost.ts); too narrow, it overlays.
 import type { TableColumn, TableRow } from "@nuxt/ui";
 import UEmpty from "@nuxt/ui/components/Empty.vue";
 import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import UTable from "@nuxt/ui/components/Table.vue";
-import { computed } from "vue";
+import { useElementSize } from "@vueuse/core";
+import { computed, provide, shallowRef, useTemplateRef } from "vue";
 import FwTableToolbar from "../components/FwTableToolbar.vue";
 import type { SortingState } from "../composables/useListState.ts";
+import { DRAWER_HOST_KEY, MIN_LIST_WIDTH } from "../lib/drawerHost.ts";
+import type { FwListColumn } from "../types.ts";
 
 const {
   title,
@@ -34,7 +42,7 @@ const {
   title: string;
   subtitle?: string;
   data: readonly T[];
-  columns: TableColumn<T>[];
+  columns: FwListColumn<T>[];
   loading?: boolean;
   sorting?: SortingState;
   activeFilterCount?: number;
@@ -70,6 +78,29 @@ const slots = defineSlots<{
 }>();
 
 const rows = computed(() => [...data]);
+
+function withPrefix<A>(prefix: string, value: string | ((arg: A) => string) | undefined): string | ((arg: A) => string) {
+  return typeof value === "function" ? (arg: A) => `${prefix} ${value(arg)}`.trim() : `${prefix} ${value ?? ""}`.trim();
+}
+
+// Tight cells on a phone (UTable's p-4 is 32 px a column) and the hidden columns.
+const TIGHT = "px-2 sm:px-4";
+const HIDDEN = "hidden sm:table-cell";
+const tableColumns = computed<TableColumn<T>[]>(() =>
+  columns.map(({ phone, ...column }): TableColumn<T> => {
+    const cls = column.meta?.class;
+    const prefix = `${TIGHT}${phone === "hide" ? ` ${HIDDEN}` : ""}`;
+    const merged = { ...column.meta, class: { td: withPrefix(prefix, cls?.td), th: withPrefix(prefix, cls?.th) } };
+    return { ...column, meta: merged };
+  }),
+);
+
+// The drawer host: how much of the right edge the open drawer takes, if the list can give it.
+const host = useTemplateRef<HTMLElement>("host");
+const { width: hostWidth } = useElementSize(host);
+const drawerWidth = shallowRef<number | undefined>(undefined);
+provide(DRAWER_HOST_KEY, { width: drawerWidth });
+const pushed = computed(() => (drawerWidth.value !== undefined && hostWidth.value - drawerWidth.value >= MIN_LIST_WIDTH ? drawerWidth.value : 0));
 const filtered = computed(() => search.value !== "" || activeFilterCount > 0);
 const emptyActions = computed(() =>
   filtered.value
@@ -92,7 +123,8 @@ function onSorting(next: SortingState | undefined): void {
 </script>
 
 <template>
-  <div class="flex flex-col" data-testid="fw-list-page">
+  <div ref="host" data-testid="fw-list-page">
+    <div class="flex flex-col transition-[padding] duration-200 motion-reduce:transition-none" :style="{ paddingRight: `${String(pushed)}px` }" data-testid="fw-list-content">
     <UPageHeader :title="title" v-bind="subtitle === undefined ? {} : { description: subtitle }">
       <template v-if="slots.actions !== undefined" #links><slot name="actions" /></template>
     </UPageHeader>
@@ -112,7 +144,7 @@ function onSorting(next: SortingState | undefined): void {
       <div class="overflow-x-auto" tabindex="0" role="region" :aria-label="title" data-testid="fw-list-table">
       <UTable
         :data="rows"
-        :columns="columns"
+        :columns="tableColumns"
         :loading="loading"
         :sorting="sorting"
         :meta="meta"
@@ -132,6 +164,7 @@ function onSorting(next: SortingState | undefined): void {
       </UTable>
       </div>
       <slot name="pager" />
+    </div>
     </div>
     <slot name="drawer" />
   </div>

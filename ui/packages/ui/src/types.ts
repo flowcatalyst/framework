@@ -1,6 +1,6 @@
 // Types shared by the package's components, in a .ts module so that both vue-tsc and the type-aware
 // lint (which sees .vue imports only through the `*.vue` shim) can read them.
-import type { NavigationMenuItem } from "@nuxt/ui";
+import type { NavigationMenuItem, TableColumn } from "@nuxt/ui";
 import type { RouteLocationRaw } from "vue-router";
 
 /** Nuxt UI's colour aliases, as UBadge and UButton take them (the theme's palette). */
@@ -8,6 +8,13 @@ export type StatusColor = "primary" | "secondary" | "success" | "info" | "warnin
 
 /** The colours of a confirmation (FwAlertDialog, useConfirm): the confirm button's. */
 export type AlertColor = "primary" | "warning" | "error";
+
+/**
+ * A column of FwListPage: Nuxt UI's `TableColumn` plus the phone strategy. `phone: "hide"` drops the
+ * column below the `sm` breakpoint (640 px), where the table keeps its other columns; the dropped
+ * values belong in the record drawer.
+ */
+export type FwListColumn<T> = TableColumn<T> & { readonly phone?: "hide" };
 
 /** ui-kit drawer.md sizes. */
 export type DrawerSize = "default" | "wide" | "two-thirds";

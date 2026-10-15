@@ -22,7 +22,7 @@ export { default as FwStatusBadge } from "./components/FwStatusBadge.vue";
 export { default as FwTableToolbar } from "./components/FwTableToolbar.vue";
 export { default as FwToggleGroup } from "./components/FwToggleGroup.vue";
 
-export type { AlertColor, DrawerSize, FwNavItem, PickItem, RowAction, StatusColor, ToggleOption } from "./types.ts";
+export type { AlertColor, DrawerSize, FwListColumn, FwNavItem, PickItem, RowAction, StatusColor, ToggleOption } from "./types.ts";
 
 // Partials and the layout (U2).
 export { default as FwFormDialog } from "./partials/FwFormDialog.vue";

@@ -37,6 +37,7 @@ export const behaviours = [
   { id: "list-clear-all", behaviour: "Clear all resets every filter with one reload and moves focus to the search box", by: "FwTableToolbar + useListState", page: "/lists" },
   { id: "list-empty-clear", behaviour: "An emptied list says so in a status region and offers Clear filters while filtered", by: "FwListPage (UEmpty)", page: "/orders" },
   { id: "list-page-search", behaviour: "Without a search parameter, the search narrows the loaded rows", by: "FwListPage (UTable global filter)", page: "/orders" },
+  { id: "list-phone-columns", behaviour: "On a phone the table keeps its priority columns and drops the others (their values are in the record drawer): nothing is clipped and the table does not scroll sideways", by: "FwListPage (column `phone: \"hide\"`)", page: "/orders" },
   { id: "list-row-open", behaviour: "A row opens its record; the open record's row is highlighted", by: "FwListPage (UTable)", page: "/orders" },
   { id: "cursor-paging", behaviour: "Newest, Newer and Older over keyset pages; an unusable control keeps focus", by: "FwCursorPager + useCursorPagination", page: "/lists" },
   { id: "cursor-race", behaviour: "A slower, older answer never overwrites a newer one", by: "useCursorPagination", page: "/lists" },
@@ -46,6 +47,7 @@ export const behaviours = [
   // Record drawer.
   { id: "drawer-child-route", behaviour: "The record drawer is a child route: deep link, Back reopens, the list's query kept", by: "FwRecordDrawer + useDrawerRoute", page: "/orders" },
   { id: "drawer-non-modal", behaviour: "The drawer is non-modal: the list stays usable and another row switches the record", by: "FwRecordDrawer (USlideover)", page: "/orders" },
+  { id: "drawer-push", behaviour: "On a wide screen the drawer pushes the list aside: Filters, Refresh and the columns stay clickable with the drawer open; on a narrower one it overlays", by: "FwRecordDrawer + FwListPage (drawer host)", page: "/orders" },
   { id: "drawer-focus", behaviour: "Opening moves focus to the drawer's heading; Escape and Close go back to the list", by: "FwRecordDrawer", page: "/orders" },
   { id: "drawer-discard", behaviour: "Leaving, Back, switching rows or closing with unsaved changes asks 'Discard changes?' (Keep editing focused)", by: "useDrawerRoute + useDirtyForm + useConfirm", page: "/orders" },
 

@@ -84,9 +84,7 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(page.getByText(`${placed.id} cancelled.`).first()).toBeVisible();
     expect(await axeViolations(page), "toast over the drawer").toEqual([]);
 
-    // The non-modal drawer covers the toolbar's right-hand controls: close it first.
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // The drawer pushes the list aside on a wide screen (G5): Filters works with the drawer still open.
     await page.getByTestId("fw-toolbar-filters").click();
     await expect(page.getByTestId("fw-toolbar-filters-panel")).toBeVisible();
     expect(await axeViolations(page), "filters popover").toEqual([]);
@@ -110,6 +108,9 @@ test("axe: list and drawer at phone width (390 px), light and dark", async ({ pa
     await page.goto("/orders");
     await expect(page.getByRole("heading", { level: 1, name: "Orders" })).toBeVisible();
     expect(await axeViolations(page), `list, ${scheme}`).toEqual([]);
+    // G4: three priority columns, fitted without scrolling sideways; the numbers are in the drawer.
+    await expect(page.getByTestId("fw-list-table").getByRole("columnheader").filter({ visible: true })).toHaveText(["Order", "Customer", "Status"]);
+    expect(await page.getByTestId("fw-list-table").evaluate((el) => el.scrollWidth - el.clientWidth), `${scheme}: no sideways scroll`).toBeLessThanOrEqual(0);
     await page.goto(`/orders/${placed.id}`);
     await expect(page.getByRole("dialog", { name: placed.id })).toBeVisible();
     expect(await axeViolations(page), `drawer, ${scheme}`).toEqual([]);

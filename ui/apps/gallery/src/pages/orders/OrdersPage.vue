@@ -13,8 +13,8 @@ import {
   stringFilter,
   useCursorPagination,
   useListState,
+  type FwListColumn,
 } from "@flowcatalyst/ui";
-import type { TableColumn } from "@nuxt/ui";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UFormField from "@nuxt/ui/components/FormField.vue";
 import UInput from "@nuxt/ui/components/Input.vue";
@@ -55,7 +55,7 @@ const selected = computed(() => {
   return typeof id === "string" ? id : undefined;
 });
 
-const columns: TableColumn<OrderSummaryView>[] = [
+const columns: FwListColumn<OrderSummaryView>[] = [
   {
     accessorKey: "id",
     header: "Order",
@@ -63,8 +63,8 @@ const columns: TableColumn<OrderSummaryView>[] = [
   },
   { accessorKey: "customer", header: "Customer" },
   { accessorKey: "status", header: "Status", cell: ({ row }) => h(FwStatusBadge, { status: row.original.status, colors: STATUS_COLORS }) },
-  { accessorKey: "lineCount", header: "Lines", meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
-  { accessorKey: "totalCents", header: "Total", cell: ({ row }) => money(row.original.totalCents), meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
+  { accessorKey: "lineCount", header: "Lines", phone: "hide", meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
+  { accessorKey: "totalCents", header: "Total", phone: "hide", cell: ({ row }) => money(row.original.totalCents), meta: { class: { td: "text-right tabular-nums", th: "text-right" } } },
 ];
 
 const statusItems = [
@@ -115,7 +115,7 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
     empty-message="No orders match."
     search-placeholder="Search this page…"
     search-loaded-rows
-    data-behaviour="list-url-state list-empty-clear list-page-search list-row-open"
+    data-behaviour="list-url-state list-empty-clear list-page-search list-row-open list-phone-columns"
     @select="open"
     @refresh="pager.refresh"
     @clear="list.clearFilters"
@@ -142,7 +142,7 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
     <template #drawer>
       <p
         class="mt-2 text-sm text-muted"
-        data-behaviour="drawer-child-route drawer-non-modal drawer-focus drawer-discard form-schema form-server-errors form-busy form-discard form-number-commit form-int64 record-create"
+        data-behaviour="drawer-child-route drawer-non-modal drawer-push drawer-focus drawer-discard form-schema form-server-errors form-busy form-discard form-number-commit form-int64 record-create"
       >
         Open an order for its record drawer (a child route: Back closes it); New order and Add line are form dialogs.
       </p>

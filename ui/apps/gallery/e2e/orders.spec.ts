@@ -85,6 +85,74 @@ test("drawer: a child route, focus on its heading, non-modal, Escape and Back cl
   await csp.expectClean();
 });
 
+test("phone: the table keeps its priority columns, nothing is clipped, the hidden values are in the drawer", covers("list-phone-columns"), async ({ page, csp }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openPage(page, "/orders", "Orders");
+  await expect(rows(page)).toHaveCount(8);
+  const headers = page.getByTestId("fw-list-table").getByRole("columnheader");
+  await expect(headers.filter({ visible: true })).toHaveText(["Order", "Customer", "Status"]);
+  const region = page.getByTestId("fw-list-table");
+  const clipped = await region.evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(clipped, "the table fits the phone without scrolling sideways").toBeLessThanOrEqual(0);
+  // Every visible cell is fully inside the region (the Status badge is not cut off).
+  const box = await region.boundingBox();
+  const badge = await rows(page).first().locator("td").nth(2).boundingBox();
+  expect(box).not.toBeNull();
+  expect(badge).not.toBeNull();
+  expect((badge?.x ?? 0) + (badge?.width ?? 0)).toBeLessThanOrEqual((box?.x ?? 0) + (box?.width ?? 0) + 0.5);
+  // The numbers the phone drops are still one tap away.
+  await rows(page).first().getByRole("link").click();
+  await expect(page.getByRole("dialog").getByTestId("lines")).toBeVisible();
+
+  // A wide screen shows every column.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/orders");
+  await expect(headers.filter({ visible: true })).toHaveText(["Order", "Customer", "Status", "Lines", "Total"]);
+  await csp.expectClean();
+});
+
+test("drawer: on a wide screen it pushes the list aside and Filters and Refresh stay usable", covers("drawer-push"), async ({ page, csp }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openPage(page, "/orders", "Orders");
+  const toolbar = page.getByTestId("fw-table-toolbar");
+  const fullWidth = (await toolbar.boundingBox())?.width ?? 0;
+  await rows(page).first().getByRole("link").click();
+  const drawer = page.getByRole("dialog").first();
+  await expect(drawer).toBeVisible();
+  await expect(page.getByTestId("fw-drawer-title")).toBeFocused();
+  // Both the slide-in and the list's padding are transitions: wait until they have settled.
+  await expect
+    .poll(async () => {
+      const drawerBox = await drawer.boundingBox();
+      const box = await toolbar.boundingBox();
+      return (box?.x ?? 0) + (box?.width ?? 0) <= (drawerBox?.x ?? 0) + 0.5 && (drawerBox?.x ?? 0) < 1000;
+    }, { message: "the list ends where the drawer begins" })
+    .toBe(true);
+
+  // No Escape first: the toolbar is reachable with the drawer open.
+  await page.getByTestId("fw-toolbar-filters").click();
+  await expect(page.getByTestId("fw-toolbar-filters-panel")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("fw-toolbar-filters-panel")).toBeHidden();
+  await page.getByTestId("fw-toolbar-refresh").click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+
+  // Closing gives the width back.
+  await drawer.getByRole("button", { name: "Close" }).first().click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect.poll(async () => (await toolbar.boundingBox())?.width ?? 0).toBeGreaterThan(fullWidth - 1);
+
+  // Too narrow for both: the drawer overlays the list, as before.
+  await page.setViewportSize({ width: 900, height: 800 });
+  await rows(page).first().getByRole("link").click();
+  await expect(page.getByRole("dialog").first()).toBeVisible();
+  await expect.poll(async () => (await page.getByRole("dialog").first().boundingBox())?.x ?? 9999).toBeLessThan(600);
+  const narrow = await toolbar.boundingBox();
+  const narrowDrawer = await page.getByRole("dialog").first().boundingBox();
+  expect((narrow?.x ?? 0) + (narrow?.width ?? 0)).toBeGreaterThan(narrowDrawer?.x ?? 0);
+  await csp.expectClean();
+});
+
 test("drawer: leaving or switching rows with a changed note asks to discard", covers("drawer-discard"), async ({ page, csp }) => {
   await openPage(page, "/orders", "Orders");
   await rows(page).filter({ hasText: "ord_1042" }).getByRole("link", { name: "ord_1042" }).click();
