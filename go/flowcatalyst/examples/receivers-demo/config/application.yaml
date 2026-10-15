@@ -1,0 +1,19 @@
+# One PostgreSQL, the platform, and the HTTP port. Every value can be overridden by the environment
+# variable named after its path (DATABASE_INSTANCES_MAIN_URL, FLOWCATALYST_BASE_URL, HTTP_PORT, ...).
+# Secrets (flowcatalyst.client-secret, flowcatalyst.receivers.signing-secret) belong in the
+# environment or config/secrets.local.yaml.
+
+database:
+  default: main
+  instances:
+    main:
+      url: jdbc:postgresql://localhost:5432/receivers
+      username: app
+
+flowcatalyst:
+  application: orders
+  client-id: orders-service
+  base-url: http://localhost:8080
+
+http:
+  port: 8081
