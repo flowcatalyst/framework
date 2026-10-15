@@ -27,7 +27,7 @@ const codes = Object.keys(SIGN_IN_FAILURE_MESSAGES);
     <GallerySection
       :behaviours="['sign-in-failed-page']"
       title="FwSignInFailedPage"
-      description="Where a failed sign-in lands: a sentence per code of the sessions contract (section 4.2), the code as text, Try again. Any other code gets the general sentence."
+      description="Where a failed sign-in lands: a sentence per code of the sessions contract (sections 4.2 and 4.1.1), the code as text, Try again. Any other code gets the general sentence."
     >
       <ul class="list-disc space-y-1 pl-5 text-sm">
         <li v-for="code in codes" :key="code">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Where a failed sign-in lands (docs/ui/u3.md G11): the demo's `LoginFailureHandler.redirectTo(
-// "/sign-in-failed")` sends the callback's code in `?error=` (sessions contract section 4.2). Says what
+// "/sign-in-failed")` sends the failure's code in `?error=` (sessions contract 4.2: the callback; 4.1.1: a rate-limited or
+// unreachable `/auth/login` in a browser navigation). Says what
 // happened in a sentence per code (signInFailureMessage), shows the code for an administrator, and
 // offers Try again, which starts sign-in again and returns to `returnTo`. A public route, outside the shell.
 import UButton from "@nuxt/ui/components/Button.vue";

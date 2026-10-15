@@ -4,8 +4,8 @@
 import { axeViolations } from "./axe-tools.ts";
 import { covers, expect, openPage, test } from "./fixtures.ts";
 
-// The seven codes the callback answers (sessions contract section 4.2); each has its own sentence.
-const CODES = ["INVALID_CALLBACK", "LOGIN_NOT_STARTED_HERE", "INVALID_STATE", "LOGIN_REFUSED", "LOGIN_FAILED", "INVALID_ID_TOKEN", "PLATFORM_UNAVAILABLE"];
+// The eight codes a failure handler receives (sessions contract section 4.2 and 4.1.1); each has its own sentence.
+const CODES = ["INVALID_CALLBACK", "LOGIN_NOT_STARTED_HERE", "INVALID_STATE", "LOGIN_REFUSED", "LOGIN_FAILED", "INVALID_ID_TOKEN", "PLATFORM_UNAVAILABLE", "RATE_LIMITED"];
 const GENERAL = "The sign-in did not complete. Try again.";
 
 test("the standalone layout: no shell, the application name, one h1, announced regions", covers("standalone-layout"), async ({ page, csp }) => {

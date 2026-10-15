@@ -12,8 +12,8 @@ import FwUnavailablePage from "../src/pages/FwUnavailablePage.vue";
 import { SIGN_IN_FAILURE_MESSAGES, signInFailureMessage } from "../src/lib/signInFailure.ts";
 import { h, type Component } from "vue";
 
-// The seven codes the callback answers (sessions contract section 4.2).
-const CODES = ["INVALID_CALLBACK", "LOGIN_NOT_STARTED_HERE", "INVALID_STATE", "LOGIN_REFUSED", "LOGIN_FAILED", "INVALID_ID_TOKEN", "PLATFORM_UNAVAILABLE"];
+// The eight codes a failure handler receives (sessions contract section 4.2 and 4.1.1).
+const CODES = ["INVALID_CALLBACK", "LOGIN_NOT_STARTED_HERE", "INVALID_STATE", "LOGIN_REFUSED", "LOGIN_FAILED", "INVALID_ID_TOKEN", "PLATFORM_UNAVAILABLE", "RATE_LIMITED"];
 
 async function mountAt(component: Component, url: string, props: Record<string, unknown>, signIn: (returnTo?: string) => void = () => undefined) {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/:rest(.*)*", component: { render: () => h("p") } }] });

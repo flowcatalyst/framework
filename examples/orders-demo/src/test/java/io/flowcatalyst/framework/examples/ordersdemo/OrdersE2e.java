@@ -5,17 +5,27 @@ import com.sun.net.httpserver.HttpServer;
 import io.flowcatalyst.framework.auth.TestOidcProvider;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.database.PostgresFixture;
+import io.flowcatalyst.framework.http.Request;
+import io.flowcatalyst.framework.http.Response;
+import io.flowcatalyst.framework.http.ratelimit.KeyResolvers;
+import io.flowcatalyst.framework.http.ratelimit.MemoryRateLimiter;
+import io.flowcatalyst.framework.http.ratelimit.RateLimit;
+import io.flowcatalyst.framework.http.ratelimit.RateLimitPolicy;
+import io.flowcatalyst.framework.pipeline.Middleware;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The orders demo for the browser end-to-end suite ({@code ui/apps/orders/e2e}): the real {@link
@@ -34,6 +44,8 @@ import java.util.concurrent.CountDownLatch;
  *   <li>{@code /control/reset} deletes every order (sessions stay)
  *   <li>{@code /control/end-sessions} deletes every session, as an expiry would
  *   <li>{@code /control/provider-down?value=true|false} makes the platform answer 503
+ *   <li>{@code /control/login-rate-limit?value=true|false} puts a real limiter of one request a minute on the sign-in routes
+ *       (a fresh budget each time it is switched on); the suite otherwise runs without a limit
  *   <li>{@code /control/authorize-error?value=access_denied} makes the platform refuse the next sign-ins (empty: normal)
  * </ul>
  */
@@ -72,7 +84,15 @@ public final class OrdersE2e {
     env.put("AUTH_ISSUER", provider.issuer().toString());
     env.put("AUTH_CLIENT_ID", "orders-web");
     env.put("AUTH_PUBLIC_BASE_URL", origin);
-    App app = OrdersWeb.builder(auth -> auth.noRateLimit()).configDirectory(Path.of("config")).environment(env).start();
+    // No limit unless the suite asks (a test run signs in far more than 20 times a minute); then a real
+    // limiter, one request a minute, so a refused navigation can be seen.
+    AtomicReference<Middleware<Request, Response>> limit = new AtomicReference<>();
+    Middleware<Request, Response> switchable =
+        (request, next) -> {
+          Middleware<Request, Response> current = limit.get();
+          return current == null ? next.handle(request) : current.handle(request, next);
+        };
+    App app = OrdersWeb.builder(auth -> auth.rateLimit(switchable)).configDirectory(Path.of("config")).environment(env).start();
 
     HttpServer control = HttpServer.create(new InetSocketAddress("127.0.0.1", controlPort), 0);
     control.createContext("/control/ready", e -> reply(e, 200, "ready"));
@@ -101,6 +121,21 @@ public final class OrdersE2e {
         "/control/authorize-error",
         e -> {
           provider.authorizeError(query(e.getRequestURI()).getOrDefault("value", ""));
+          reply(e, 200, "ok");
+        });
+    AtomicInteger limiters = new AtomicInteger();
+    control.createContext(
+        "/control/login-rate-limit",
+        e -> {
+          if ("true".equals(query(e.getRequestURI()).get("value"))) {
+            limit.set(
+                RateLimit.by(
+                        MemoryRateLimiter.create("auth-e2e-" + limiters.incrementAndGet(), new RateLimitPolicy(1, Duration.ofMinutes(1), 1)),
+                        KeyResolvers.clientAddress())
+                    .build());
+          } else {
+            limit.set(null);
+          }
           reply(e, 200, "ok");
         });
     control.createContext(
