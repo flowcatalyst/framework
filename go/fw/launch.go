@@ -13,7 +13,9 @@ import (
 	"time"
 )
 
-// Launch runs the application as its main function does, and returns the process exit code:
+// Launch runs the application as its main function does, and returns the process exit code. When
+// the first argument names a declaration-phase command ([Declarer.DeclarationCommand]) only that
+// runs, right after declaration: no configuration is read and nothing is built. Otherwise:
 //
 //  1. configure: read config files, the environment and secrets.local.yaml, check every declared
 //     setting and instance section; every problem is reported at once (exit 1);
@@ -27,6 +29,16 @@ import (
 func (a *App) Launch(ctx context.Context, args []string, build BuildFunc) int {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, os.Interrupt)
 	defer stop()
+	if len(args) > 0 {
+		if cmd, ok := a.declarationCommand(args[0]); ok {
+			a.seal()
+			if problems := slices.Clone(a.problems); len(problems) > 0 {
+				a.report(&StartupError{Problems: problems})
+				return 1
+			}
+			return runDeclarationCommand(ctx, cmd, args[1:], a)
+		}
+	}
 	b, serve, err := a.configureAndBuild(ctx, build)
 	if err != nil {
 		a.report(err)
@@ -104,6 +116,16 @@ func runCommand(ctx context.Context, cmd CommandFunc, args []string, a *App) (co
 	return cmd(ctx, args, a.opts.stdout)
 }
 
+func runDeclarationCommand(ctx context.Context, cmd DeclarationCommandFunc, args []string, a *App) (code int) {
+	defer func() {
+		if p := recover(); p != nil {
+			a.opts.logger.Error("command panicked", slog.Any("panic", p))
+			code = 1
+		}
+	}()
+	return cmd(ctx, args, a.opts.stdout)
+}
+
 func (a *App) report(err error) {
 	if se, ok := errors.AsType[*StartupError](err); ok {
 		_, _ = fmt.Fprintln(a.opts.stderr, se.Error())
@@ -129,6 +151,7 @@ func (a *App) start(ctx context.Context, b *Boot, serve Serve) (*Running, error)
 	b.ready.Store(true)
 	serveCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	r.cancelServe = cancel
+	r.serve = serve
 	go func() {
 		defer close(r.done)
 		if serve == nil {
@@ -163,6 +186,7 @@ type Running struct {
 	boot        *Boot
 	done        chan struct{}
 	cancelServe context.CancelFunc
+	serve       Serve
 	serveErr    error
 	once        sync.Once
 	shutdownErr error
@@ -181,9 +205,13 @@ func (r *Running) Ready() bool { return r.boot.Ready() }
 // Health runs every health check.
 func (r *Running) Health(ctx context.Context) HealthReport { return r.boot.HealthReport(ctx) }
 
+// serveCloseMargin is how long past its own grace period a Serve may take to close what it left.
+const serveCloseMargin = time.Second
+
 // Shutdown stops the application once (later calls return the first result): not ready from
 // now on; loops stopped first, each given up to app.shutdown.drain; serve cancelled and waited
-// for up to app.shutdown.drain; then the shutdown actions in reverse registration order, each
+// for up to app.shutdown.drain (a Serve with a ShutdownGrace method, the HTTP server, for that long
+// plus a second); then the shutdown actions in reverse registration order, each
 // bounded by app.shutdown.drain, a failure logged and the rest still run. It returns serve's
 // error, if any.
 func (r *Running) Shutdown() error {
@@ -194,14 +222,20 @@ func (r *Running) Shutdown() error {
 		r.boot.loops.Stop(drain)
 		if r.cancelServe != nil {
 			r.cancelServe()
-			timer := time.NewTimer(drain)
+			wait, what := drain, "app.shutdown.drain"
+			if g, ok := r.serve.(interface{ ShutdownGrace() time.Duration }); ok {
+				// a Serve with a grace period of its own (the HTTP server's http.shutdown-grace) gets
+				// that long, plus a moment to close what it left
+				wait, what = g.ShutdownGrace()+serveCloseMargin, "its shutdown grace"
+			}
+			timer := time.NewTimer(wait)
 			select {
 			case <-r.done:
+				r.shutdownErr = r.serveErr
 			case <-timer.C:
-				log.Warn("serve did not return within app.shutdown.drain; abandoned", slog.Duration("drain", drain))
+				log.Warn("serve did not return within "+what+"; abandoned", slog.Duration("waited", wait))
 			}
 			timer.Stop()
-			r.shutdownErr = r.serveErr
 		}
 		r.runShutdownActions()
 	})

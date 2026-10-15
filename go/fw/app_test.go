@@ -329,6 +329,9 @@ func TestBootAccessors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if boot == nil {
+		t.Fatal("build did not run")
+	}
 	if !boot.Ready() || !r.Ready() {
 		t.Error("not ready after Start")
 	}

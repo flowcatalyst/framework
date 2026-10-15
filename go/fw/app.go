@@ -1,6 +1,7 @@
 package fw
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -29,6 +30,7 @@ type App struct {
 	settings   []config.Declared
 	sections   []config.Section
 	claims     []config.ComponentClaim
+	declared   []declaredCommand
 	migrations []MigrationSet
 
 	core coreSettings
@@ -269,4 +271,46 @@ func declareCore(d *Declarer) coreSettings {
 			"Most series one metric may hold (1 to 100000); further label combinations are dropped.").
 			WithDefault(1000).Checked(config.Between(1, 100_000))),
 	}
+}
+
+type declaredCommand struct {
+	module, name string
+	run          DeclarationCommandFunc
+}
+
+// DeclarationCommandFunc runs a declaration-phase command: after every Declare function ran and
+// before anything else, with no configuration read, no service built and nothing connected
+// (core contract section 5; the openapi command is one). args are the arguments after the
+// command's name; it returns the process exit code.
+type DeclarationCommandFunc func(ctx context.Context, args []string, out io.Writer) int
+
+// DeclarationCommand claims a command name that [App.Launch] runs right after declaration, before
+// configuration is loaded, so it needs no configuration file, environment, database or network.
+// Two claims of one name are a start-up problem.
+func (d *Declarer) DeclarationCommand(name string, run DeclarationCommandFunc) {
+	d.app.mu.Lock()
+	defer d.app.mu.Unlock()
+	d.app.mustNotBeSealed("DeclarationCommand")
+	for _, c := range d.app.declared {
+		if c.name == name {
+			d.app.problems = append(d.app.problems, Problem{
+				Module: d.module, Key: "command " + name,
+				Message: fmt.Sprintf("claimed twice (first by module '%s')", c.module),
+			})
+			return
+		}
+	}
+	d.app.declared = append(d.app.declared, declaredCommand{module: d.module, name: name, run: run})
+}
+
+// declarationCommand returns the declaration-phase command named name.
+func (a *App) declarationCommand(name string) (DeclarationCommandFunc, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, c := range a.declared {
+		if c.name == name {
+			return c.run, true
+		}
+	}
+	return nil, false
 }
