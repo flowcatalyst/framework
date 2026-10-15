@@ -85,28 +85,28 @@ func FrameworkRemovedKeys() []RemovedKey {
 	}
 	k("locks", "locks", stores)
 
-	named := "nothing: clients are named in code, one httpclient client per name with its options"
+	named := "nothing: clients are named in code, module.Build(ctx, b, d, module.WithClient(name, module.ClientOptions{...}))"
 	k("http-clients.default", "http-client", named)
 	k("http-clients.instances.*.driver", "http-client", named)
-	k("http-clients.instances.*.connect-timeout", "http-client", "the client's options: connect timeout")
-	k("http-clients.instances.*.request-timeout", "http-client", "the client's options: request timeout")
-	k("http-clients.instances.*.max-response-bytes", "http-client", "the client's options: maximum response bytes")
+	k("http-clients.instances.*.connect-timeout", "http-client", "the client's options: module.ClientOptions.ConnectTimeout")
+	k("http-clients.instances.*.request-timeout", "http-client", "the client's options: module.ClientOptions.RequestTimeout")
+	k("http-clients.instances.*.max-response-bytes", "http-client", "the client's options: module.ClientOptions.MaxResponseBytes")
 	for _, s := range []string{"max-attempts", "initial-backoff", "max-backoff", "max-retry-after"} {
-		k("http-clients.instances.*.retry."+s, "http-client", "the client's options: retry policy")
+		k("http-clients.instances.*.retry."+s, "http-client", "the client's options: module.ClientOptions.Retry (httpclient.RetryPolicy)")
 	}
-	k("http-clients.instances.*.retry", "http-client", "the client's options: retry policy")
+	k("http-clients.instances.*.retry", "http-client", "the client's options: module.ClientOptions.Retry (httpclient.RetryPolicy)")
 	for _, s := range []string{"type", "method", "scope", "audience", "name"} {
-		k("http-clients.instances.*.auth."+s, "http-client", "the client's options: authentication strategy")
+		k("http-clients.instances.*.auth."+s, "http-client", "the client's options: module.ClientAuth (Bearer, Basic, Header, ClientCredentials)")
 	}
 
-	secretStores := "secrets stores named in code (secrets.Env(prefix) | secrets.File(directory)) with a cache policy"
+	secretStores := "secrets.Build(ctx, b, d, secrets.WithStore(name, secrets.Env(prefix) | secrets.File(directory)))"
 	k("secrets.default", "secrets", "secrets.DefaultStore(name)")
 	for _, s := range []string{"driver", "directory", "prefix", "max-bytes", "cache-ttl", "cache-max"} {
 		k("secrets.instances.*."+s, "secrets", secretStores)
 	}
 	k("secrets", "secrets", secretStores)
 
-	limiters := "rate limiters built in code (ratelimit memory or Redis limiter)"
+	limiters := "rate limiters built in code: ratelimit.NewMemory(name, policy) | redisrl.New(ctx, name, client, policy)"
 	k("rate-limits.default", "rate-limit", limiters)
 	for _, s := range []string{"driver", "limit", "period", "burst", "max-keys", "connection", "prefix"} {
 		k("rate-limits.instances.*."+s, "rate-limit", limiters)

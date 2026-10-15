@@ -146,6 +146,17 @@ type InstancesHandle struct{ path string }
 // driver choice). They are checked when the application is configured: an unread key is an
 // unknown key. capability names the capability in problems.
 func (d *Declarer) Instances(path, capability string, keys ...config.Decl) InstancesHandle {
+	return d.instances(path, capability, false, keys)
+}
+
+// InstancesWithoutDefault is [Declarer.Instances] for a capability whose instances are named in
+// code: the section has no default instance, so several instances need no path.default (which is
+// a removed key there).
+func (d *Declarer) InstancesWithoutDefault(path, capability string, keys ...config.Decl) InstancesHandle {
+	return d.instances(path, capability, true, keys)
+}
+
+func (d *Declarer) instances(path, capability string, noDefault bool, keys []config.Decl) InstancesHandle {
 	d.app.mu.Lock()
 	defer d.app.mu.Unlock()
 	d.app.mustNotBeSealed("Instances")
@@ -159,7 +170,7 @@ func (d *Declarer) Instances(path, capability string, keys ...config.Decl) Insta
 		}
 	}
 	d.app.sections = append(d.app.sections, config.Section{
-		Module: d.module, Path: path, Capability: capability, Keys: keys,
+		Module: d.module, Path: path, Capability: capability, Keys: keys, NoDefault: noDefault,
 	})
 	return InstancesHandle{path: path}
 }

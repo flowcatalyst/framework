@@ -20,6 +20,7 @@ import (
 // shutdown actions, commands). Nothing registered runs until build has returned.
 type Boot struct {
 	app     *App
+	env     map[string]string
 	values  *config.Values
 	ids     *Ids
 	metrics *metrics.Registry
@@ -65,6 +66,15 @@ func (f ServeFunc) Serve(ctx context.Context) error { return f(ctx) }
 
 // AppName returns the application's name.
 func (b *Boot) AppName() string { return b.app.name }
+
+// LookupEnv returns the environment variable name from the environment the application was
+// configured with (the process's, or the map given to [WithEnvironment]), by exact name. The
+// environment is never listed. Settings are read through package config; this is for a capability
+// whose variable names are computed, such as the env secret store.
+func (b *Boot) LookupEnv(name string) (string, bool) {
+	v, ok := b.env[name]
+	return v, ok
+}
 
 // Environment returns APP_ENV ("local" when absent or blank).
 func (b *Boot) Environment() string { return b.values.Environment() }
@@ -211,7 +221,7 @@ func (a *App) newBoot() (*Boot, error) {
 		return nil, &StartupError{Problems: problems}
 	}
 
-	b := &Boot{app: a, values: values, ids: NewIds(a.opts.clock)}
+	b := &Boot{app: a, env: env, values: values, ids: NewIds(a.opts.clock)}
 	critical := a.core.critical.Get(b)
 	informational := a.core.informational.Get(b)
 	for _, n := range critical {

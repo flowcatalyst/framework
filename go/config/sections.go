@@ -12,7 +12,11 @@ func (l *loader) checkSection(sec Section) Instances {
 	}
 	result := Instances{Path: sec.Path, ByName: map[string]Instance{}}
 
-	defaultName, hasDefault := l.readString(sec.Path+".default", add)
+	var defaultName string
+	var hasDefault bool
+	if !sec.NoDefault {
+		defaultName, hasDefault = l.readString(sec.Path+".default", add)
+	}
 
 	// keys directly under the section other than default and instances.*
 	prefix := sec.Path + "."
@@ -47,6 +51,7 @@ func (l *loader) checkSection(sec Section) Instances {
 	result.Names = names
 
 	switch {
+	case sec.NoDefault:
 	case hasDefault:
 		if slices.Contains(names, defaultName) {
 			result.Default = defaultName

@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/flowcatalyst/framework/go/config"
@@ -215,5 +216,37 @@ func TestInstanceRangeCheckNamesKeyAndSource(t *testing.T) {
 	want := "module 'db': key 'db.instances.a.pool.max' (from " + filepath.Join(dir, "application.yaml") + "): must be 1 to 1000, was 5000"
 	if got := problemTexts(ps); !equalStrings(got, []string{want}) {
 		t.Errorf("got %q want %q", got, want)
+	}
+}
+
+func TestASectionWithoutADefaultNeedsNoneForSeveralInstances(t *testing.T) {
+	t.Parallel()
+	sec := dbSection()
+	sec.NoDefault = true
+	v, ps := loadSection(t, sec, nil, "db:\n  instances:\n    a: { url: x }\n    b: { url: y }\n")
+	if len(ps) != 0 {
+		t.Fatal(ps)
+	}
+	in := v.Instances("db")
+	if in.Default != "" || !equalStrings(in.Names, []string{"a", "b"}) {
+		t.Fatalf("%+v", in)
+	}
+	// without NoDefault the same file is a problem
+	_, ps = loadSection(t, dbSection(), nil, "db:\n  instances:\n    a: { url: x }\n    b: { url: y }\n")
+	if len(ps) != 1 {
+		t.Fatalf("%v", ps)
+	}
+}
+
+func TestADefaultKeyInASectionWithoutOneIsARemovedKeyWhenTheRulesSayAndNotRead(t *testing.T) {
+	t.Parallel()
+	sec := dbSection()
+	sec.NoDefault = true
+	dir := files(t, map[string]string{"application.yaml": "db:\n  default: a\n  instances:\n    a: { url: x }\n"})
+	rules := config.KeyRules{Removed: []config.RemovedKey{{Pattern: "db.default", Module: "db", MovedTo: "nothing"}}}
+	_, ps := config.Load(config.Sources{Dir: dir, Env: map[string]string{}}, nil, []config.Section{sec}, rules)
+	got := problemTexts(ps)
+	if len(got) != 1 || !strings.HasPrefix(got[0], "module 'db': key 'db.default' (from ") || !strings.HasSuffix(got[0], "application.yaml): moved to code: nothing (see the guide page migrating-config-to-code)") {
+		t.Fatalf("%v", got)
 	}
 }

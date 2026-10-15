@@ -258,6 +258,10 @@ type Section struct {
 	Capability string
 	// Keys are the keys of an instance, relative to it ("url", "pool.max").
 	Keys []Decl
+	// NoDefault says the section has no default instance: several instances need no
+	// <section>.default (a capability whose instances are named in code, such as the HTTP
+	// clients, where <section>.default is a removed key).
+	NoDefault bool
 }
 
 // Sources are where values come from.
