@@ -56,6 +56,15 @@ func ContextOf(r *http.Request) fw.Context {
 	return st.cx
 }
 
+// ContextIfAny returns the fw.Context the ContextResolver produced for a route that requires one,
+// and false on a request that has none (global middleware, which runs before context resolution,
+// and routes registered without RequiresContext). Middleware that works with and without a
+// context, such as the rate limiter's key resolvers, uses it instead of [ContextOf].
+func ContextIfAny(r *http.Request) (fw.Context, bool) {
+	st := stateOf(r)
+	return st.cx, st.hasCx
+}
+
 // QueryValue returns the first value of a query parameter. A malformed percent-escape in the query
 // is a 400 VALIDATION failure.
 func QueryValue(r *http.Request, name string) (string, bool, error) {
