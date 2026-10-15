@@ -68,9 +68,11 @@ Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
 - *File secrets and case-insensitive file systems*: Go's `EvalSymlinks` keeps the case the caller typed,
   so the store compares the path with the directory's own spelling (`exactCase`); a path that differs only
   in case is refused on macOS as it would be on Linux.
-- *fcsdk resolution.* fcsdk has no release, so `go/flowcatalyst/go.mod` requires `fcsdk v0.0.0` and
-  commits no `replace`. Local checks use an uncommitted `go.local.work` (written by `make fc-modfile`,
-  pointing at `../../flowcatalyst-go`, override `FCSDK=`); `make fc-tidy` regenerates go.mod and go.sum.
+- *fcsdk resolution.* fcsdk was unreleased during G4 and the end-to-end result was checked against a
+  local checkout; it is now released (`pkg/fcsdk/v0.0.2`) and `go/flowcatalyst/go.mod` requires it, no
+  `replace`. `make -C go go-check` and the flowcatalyst tests pass against the released module (the
+  G4 "unverified against a release" note is closed). An uncommitted `go.local.work` (`make fc-modfile
+  FCSDK=<path>`) remains the option for unreleased fcsdk; `make fc-tidy` runs `go mod tidy`.
   `go tool -modfile` is refused in workspace mode, so golangci-lint and NilAway are built into
   `go/bin` (`make tools`). CI is not edited: it needs a platform checkout (owner decision pending).
 - *No fcsdk sync category is missing* (connections, scheduled jobs and docs exist). Docs are synced by
@@ -107,6 +109,9 @@ Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
   as a service account id and delivers unsigned ("service account prn_... does not exist"); the
   deliveries were refused with `MISSING_SIGNATURE` until the row was set to the `sac_` id in the
   isolated database. The connection update API accepts the field but keeps the `prn_` value.
+  That is a platform-side defect, not an fcsdk API gap: `git log pkg/fcsdk` in the platform repository
+  has nothing after `pkg/fcsdk/v0.0.2`, and the G4 code compiles and passes `make -C go go-check`
+  against the released `v0.0.2` (checked 2026-10-15).
 
 *2026-10-14 (owner): the UI package is shared with Java and built first against the Java backend.*
 G5a's U0 to U2 (and U3, U4 on the Java example) are therefore done once, outside this plan; Go's G5a

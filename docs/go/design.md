@@ -373,9 +373,8 @@ The [gap analysis](gap-analysis.md) is the detail; the decisions are:
 How the framework module gets fcsdk (decision 4, done 2026-10-13): `pkg/fcsdk` is **its own Go
 module**, `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` (the path follows the platform's GitHub
 repository, as `clients/fn-go` does), released by the platform's tooling as tags
-`pkg/fcsdk/vX.Y.Z` (`make release-go-sdk`; unreleased so far, `pkg/fcsdk/VERSION` 0.0.0, first
-release `BUMP=0.1.0`). `go/flowcatalyst` requires it by that path; until the first tag,
-development uses a `go.work` file (not committed) or a `replace` pointing at the sibling checkout.
+`pkg/fcsdk/vX.Y.Z` (`make release-go-sdk`; `v0.0.1` and `v0.0.2` released). `go/flowcatalyst` requires `v0.0.2`; to develop
+against unreleased fcsdk, `make -C go ... FCSDK=<checkout>` uses a `go.work` file (not committed).
 The module imports nothing from the platform, its `go` directive is 1.26.0, and the platform itself
 consumes it through `replace ... => ./pkg/fcsdk`. Its outbox rows now follow this repository's
 `conformance/outbox` vector (camelCase batch items, with `data`/`operationData` written as the

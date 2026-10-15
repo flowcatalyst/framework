@@ -17,19 +17,17 @@ and Rust builds ignore it. It shares with them the contracts and the conformance
 | `github.com/flowcatalyst/framework/go/flowcatalyst` | `go/flowcatalyst/` | the core module and the platform SDK (`pkg/fcsdk`); the only module that imports fcsdk |
 | `github.com/flowcatalyst/framework/go/tools` | `go/tools/` | the pinned tools (`tool` directives): golangci-lint, NilAway, gofumpt; never imported |
 
-- **How `go/flowcatalyst` resolves fcsdk (G4, 2026-10-15).** fcsdk is the module
-  `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` in the platform repository and has no release
-  (`pkg/fcsdk/VERSION` 0.0.0, no `pkg/fcsdk/v*` tag), so `go/flowcatalyst/go.mod` requires it at
-  `v0.0.0` **without a replace** and nothing can resolve it from the network yet. The checks resolve
-  it from a sibling checkout of the platform repository through an uncommitted workspace file:
-  `make -C go fc-modfile` writes `go/flowcatalyst/go.local.work` (a `replace` of fcsdk by
-  `../../flowcatalyst-go/pkg/fcsdk`, or `FCSDK=path`) and every flowcatalyst target runs with
-  `GOWORK` set to it; with no checkout the target says so and the module is not buildable. After
-  fcsdk's first tag, setting `FCSDK=` (empty) builds from `go.mod` as a consumer would. `go.mod` also
-  has `replace github.com/flowcatalyst/framework/go => ../`, which only applies inside this
-  repository (a replace in a dependency is ignored by its consumers, who need both modules tagged).
-  `make -C go fc-tidy` regenerates `go.mod` and `go.sum` (through an uncommitted `go.local.mod`)
-  without the fcsdk replace. `go/flowcatalyst/migrations/` holds a shared file (`shared-files.txt`).
+- **How `go/flowcatalyst` resolves fcsdk (G4, 2026-10-15; released 2026-10-15).** fcsdk is the module
+  `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` in the platform repository, released as the tag
+  `pkg/fcsdk/v0.0.2`; `go/flowcatalyst/go.mod` requires that version, with no replace, and the checks
+  and CI resolve it from the module proxy (no platform checkout needed). To develop against unreleased
+  fcsdk, set `FCSDK=<path to pkg/fcsdk>` (for example `make -C go go-check FCSDK=../flowcatalyst-go/pkg/fcsdk`):
+  `make -C go fc-modfile` then writes `go/flowcatalyst/go.local.work` (not committed; a `replace` of
+  fcsdk by that checkout) and every flowcatalyst target runs with `GOWORK` set to it. Never commit a
+  `replace`. `go.mod` also has `replace github.com/flowcatalyst/framework/go => ../`, which only
+  applies inside this repository (a replace in a dependency is ignored by its consumers, who need both
+  modules tagged). `make -C go fc-tidy` runs `go mod tidy` against the released fcsdk; bump the version
+  in `go.mod` first. `go/flowcatalyst/migrations/` holds a shared file (`shared-files.txt`).
 - A driver is a package (`locks/redislock`), compiled only when an application imports it, so there
   is no build tag, feature or BOM: the module graph may hold a dependency a binary never compiles.
 - Module paths are working names until the owner settles naming (design decision 33). Nothing is

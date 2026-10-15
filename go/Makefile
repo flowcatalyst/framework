@@ -15,20 +15,20 @@
 #   go-sync-shared   copy the shared statements, scripts and migrations from ../conformance and the
 #                    Java modules into the packages that embed them
 #   tools            build golangci-lint and NilAway (pinned in tools/go.mod) into bin/
-#   fc-modfile       write flowcatalyst/go.local.work and go.local.mod (not committed): a replace of the
-#                    fcsdk module by the checkout at $(FCSDK) (default: the platform repository
-#                    beside this one). The flowcatalyst targets use it when it exists. fcsdk has no
-#                    release yet, so go.mod alone cannot resolve it; once it does, FCSDK= (empty)
-#                    builds from go.mod as a consumer would.
-#   fc-tidy          go mod tidy of the flowcatalyst module through go.local.mod, then go.mod and
-#                    go.sum rewritten from it without the fcsdk replace
+#   fc-modfile       with FCSDK=<path> set, write flowcatalyst/go.local.work and go.local.mod (not committed):
+#                    a replace of the fcsdk module by that checkout, to develop against unreleased fcsdk
+#                    (FCSDK=$(HOME)/Developer/flowcatalyst-go/pkg/fcsdk). By default FCSDK is empty and the
+#                    flowcatalyst module builds from the released fcsdk in go.mod, as a consumer would.
+#   fc-tidy          go mod tidy of the flowcatalyst module against the released fcsdk (a local checkout is
+#                    ignored; bump the version in go.mod first)
 
 GO ?= go
 TOOL := $(GO) tool -modfile=$(CURDIR)/tools/go.mod
 MODULE := github.com/flowcatalyst/framework/go
 
-# The platform repository's fcsdk module, for local development only (never committed as a replace).
-FCSDK ?= $(abspath $(CURDIR)/../../flowcatalyst-go/pkg/fcsdk)
+# A checkout of the platform repository's fcsdk module, for developing against unreleased fcsdk only (never
+# committed as a replace). Empty by default: go.mod's released version is used.
+FCSDK ?=
 # Run a command in the flowcatalyst module, with the fcsdk checkout when there is one.
 # (a workspace file, not -modfile: golangci-lint and NilAway fail under GOFLAGS=-modfile, and go tool -modfile
 # cannot run in a workspace, so they are built into bin/ first.)
@@ -46,21 +46,15 @@ tools:
 	$(GO) build -modfile=$(CURDIR)/tools/go.mod -o bin/nilaway go.uber.org/nilaway/cmd/nilaway
 
 fc-modfile:
-	@if [ -n "$(FCSDK)" ] && [ -d "$(FCSDK)" ]; then \
-	  printf 'go 1.27\n\nuse .\n\nreplace github.com/flowcatalyst/flowcatalyst/pkg/fcsdk => %s\n' "$(FCSDK)" > flowcatalyst/go.local.work; \
-	  cp flowcatalyst/go.mod flowcatalyst/go.local.mod; \
-	  if [ -f flowcatalyst/go.sum ]; then cp flowcatalyst/go.sum flowcatalyst/go.local.sum; fi; \
-	  printf '\nreplace github.com/flowcatalyst/flowcatalyst/pkg/fcsdk => %s\n' "$(FCSDK)" >> flowcatalyst/go.local.mod; \
-	else \
-	  rm -f flowcatalyst/go.local.mod flowcatalyst/go.local.sum flowcatalyst/go.local.work; \
-	  echo "note: no fcsdk checkout at '$(FCSDK)'; the flowcatalyst module resolves fcsdk from go.mod (it needs a released version)"; \
+	@rm -f flowcatalyst/go.local.mod flowcatalyst/go.local.sum flowcatalyst/go.local.work
+	@if [ -n "$(FCSDK)" ]; then \
+	  test -d "$(FCSDK)" || { echo "FCSDK=$(FCSDK) is not a directory"; exit 1; }; \
+	  printf 'go 1.27\n\nuse .\n\nreplace github.com/flowcatalyst/flowcatalyst/pkg/fcsdk => %s\n' "$(abspath $(FCSDK))" > flowcatalyst/go.local.work; \
+	  echo "note: flowcatalyst builds against the fcsdk checkout $(abspath $(FCSDK))"; \
 	fi
 
-fc-tidy: fc-modfile
-	@test -f flowcatalyst/go.local.mod || { echo "fc-tidy needs the fcsdk checkout (FCSDK=...)"; exit 1; }
-	cd flowcatalyst && GOWORK=off GOFLAGS=-modfile=go.local.mod go mod tidy
-	grep -v '^replace github.com/flowcatalyst/flowcatalyst/pkg/fcsdk' flowcatalyst/go.local.mod | cat -s > flowcatalyst/go.mod
-	cp flowcatalyst/go.local.sum flowcatalyst/go.sum
+fc-tidy:
+	cd flowcatalyst && GOWORK=off go mod tidy
 
 fmt:
 	$(TOOL) gofumpt -w $$(find . -name '*.go' -not -path './tools/*' -not -path '*/testdata/*' -not -path '*/internal/jet/*')

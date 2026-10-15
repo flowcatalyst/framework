@@ -168,9 +168,10 @@ use case inside the same transaction is an open point shared with Java.
 
 ## Using it without the platform checkout
 
-fcsdk has no release yet (`pkg/fcsdk/VERSION` 0.0.0, no `pkg/fcsdk/v*` tag), so
-`go/flowcatalyst/go.mod` requires `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk v0.0.0` without a
-replace, and the framework's own checks resolve it from a sibling checkout of the platform repository:
-`make -C go fc-modfile` writes `go/flowcatalyst/go.local.work` (not committed) with a `replace` to
-`../flowcatalyst-go/pkg/fcsdk` (or `FCSDK=path`). The module's `replace` of the core module by `../`
-is applied only inside this repository. A consumer needs both modules released with tags.
+fcsdk is released (tag `pkg/fcsdk/v0.0.2`), so `go/flowcatalyst/go.mod` requires
+`github.com/flowcatalyst/flowcatalyst/pkg/fcsdk v0.0.2` and the framework's checks resolve it from the
+module proxy; no platform checkout is needed. To develop against unreleased fcsdk, pass
+`FCSDK=../flowcatalyst-go/pkg/fcsdk` to make: `make -C go fc-modfile FCSDK=...` writes
+`go/flowcatalyst/go.local.work` (not committed) with a `replace` to that checkout. The module's
+`replace` of the core module by `../` is applied only inside this repository. A consumer needs both
+modules released with tags.
