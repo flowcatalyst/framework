@@ -74,7 +74,7 @@ environment an http `auth.public-base-url` or `auth.issuer` fails start-up.
 
 The browser (or your SPA) goes to `/auth/login?returnTo=/orders`. The framework:
 
-1. reads the platform's discovery document (once; a failure answers `502 PLATFORM_UNAVAILABLE`),
+1. reads the platform's discovery document (once; a failure answers `502 PLATFORM_UNAVAILABLE`, or your failure page for a browser navigation),
 2. creates a login record (`state`, `nonce`, PKCE verifier, the `returnTo`) for 10 minutes and sets a
    binding cookie `__Host-fw_login_<hash>` for this browser,
 3. redirects to the platform's `/oauth/authorize` with PKCE S256.
@@ -99,6 +99,14 @@ of yours instead:
 AuthModule.builder().loginFailure(LoginFailureHandler.redirectTo("/signed-out"))
 // a failed sign-in now answers 302 /signed-out?error=LOGIN_REFUSED
 ```
+
+The same handler answers a sign-in that cannot even start, **for a browser navigation only**: a
+rate-limited `/auth/login` (or `/auth/callback`) gives `?error=RATE_LIMITED`, a platform that cannot
+be reached at discovery gives `?error=PLATFORM_UNAVAILABLE`. "Browser navigation" is the test used
+for the `401` redirect below (`GET`/`HEAD`, no `Authorization`, `Sec-Fetch-Mode: navigate` or, without
+that header, `Accept: text/html`). Your SPA's `fetch` and any API client still get the JSON envelope
+and the `429` or `502`; with the default handler nobody sees a change. The kit's
+`FwSignInFailedPage` has a sentence for each code.
 
 `.loginTheme("acme")` adds `client=acme` to the authorize URL so the platform shows that client's
 login branding.

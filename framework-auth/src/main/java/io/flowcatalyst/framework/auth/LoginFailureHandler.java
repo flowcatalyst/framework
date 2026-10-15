@@ -8,6 +8,10 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Answers a failed sign-in. The default is the JSON error envelope; the framework renders no pages.
+ *
+ * <p>It receives the failures of {@code /auth/callback}, and, for a <b>browser navigation</b> only,
+ * a rate-limited or platform-unavailable {@code /auth/login} (contract section 4.1); an API or
+ * {@code fetch} request always gets the JSON envelope.
  */
 @FunctionalInterface
 public interface LoginFailureHandler {

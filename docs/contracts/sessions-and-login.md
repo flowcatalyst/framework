@@ -93,7 +93,7 @@ All four answer `Cache-Control: no-store`. Errors use the http contract's envelo
    the replacement returns is checked against the same rule, and the default landing is used when
    it fails.
 2. Fetch (or reuse) the discovery document (section 5.1). If it cannot be read: `502
-   PLATFORM_UNAVAILABLE`.
+   PLATFORM_UNAVAILABLE`, answered as in 4.1.1.
 3. Create a **login record** (section 6.2): `state`, `nonce`, the PKCE `codeVerifier` (each 32
    random bytes from a CSPRNG, base64url without padding; the verifier is 43 characters), the kept
    `returnTo`, `createdAt`. Store it with a lifetime of **10 minutes** (the platform's code
@@ -106,6 +106,27 @@ All four answer `Cache-Control: no-store`. Errors use the http contract's envelo
    rules for the query).
 
 Several logins may be in flight in one browser (two tabs): each has its own binding cookie.
+
+#### 4.1.1 A sign-in that cannot start, for a browser (ruled 2026-10-15)
+
+`/auth/login` (and the rate limit in front of it and of `/auth/callback`, section 8) can refuse
+before the platform is involved: `429 RATE_LIMITED`, `502 PLATFORM_UNAVAILABLE`. Who is asking decides
+the answer:
+
+- A **browser navigation**, the test of 7.4 (`GET` or `HEAD`, no `Authorization` header,
+  `Sec-Fetch-Mode: navigate`, or, when that header is absent, an `Accept` containing `text/html`),
+  is answered by the **same failure handler as the callback** (4.2): the default handler is the JSON
+  envelope, so an application that has not configured one sees no change; `redirectTo(page)` gives
+  `302 Location: <page>?error=<CODE>` (the code is `RATE_LIMITED` or `PLATFORM_UNAVAILABLE`). The
+  redirect is `no-store`, sets no login binding cookie, and drops the limiter's `Retry-After`. The
+  status is the callback's (`302` from `redirectTo`), not `303`: both are followed with a `GET`, and
+  one handler gives one answer.
+- **Every other request** (an SPA's `fetch`, an API client, `curl` without `Accept: text/html`, a
+  request with `Authorization`) keeps the JSON envelope and the status above, unchanged. This is for
+  frontends only; nothing is negotiated for APIs.
+
+The codes carry no secret. A custom rate limit (`.rateLimit(...)`) that answers `429` is covered the
+same way; any other status it answers is left alone. Vector: `conformance/auth/login-failure.json`.
 
 ### 4.2 `GET /auth/callback?code=&state=` (or `?error=&error_description=&state=`)
 
@@ -129,7 +150,8 @@ binding cookie named by `state` (when `state` is a well-formed value):
 
 An application may replace the failure answer in code (Java: `.loginFailure(handler)`, receiving
 the code and the request; for example a `302` to its own error page with `?error=CODE`). The
-status codes above are the default and the conformance reference. Failures are logged at INFO with
+status codes above are the default and the conformance reference. The same handler also answers a
+browser navigation to a sign-in that cannot start (4.1.1). Failures are logged at INFO with
 the code and the correlation id, never with a token, a code or the state.
 
 ### 4.3 `GET /auth/session`
@@ -584,7 +606,8 @@ are rate limited per client address with the rate-limiting contract's middleware
 built in code (rate-limiting contract section 1, ruling 2026-10-13): the default is a memory
 limiter named `auth`, 20 a minute, burst 20; an application replaces it (for example with a
 `redis` limiter shared by replicas, or `KeyResolvers.forwardedFor` behind a proxy) or removes it in
-code. `/auth/session` and `/auth/logout` are not limited (they cost one store read).
+code. `/auth/session` and `/auth/logout` are not limited (they cost one store read). The `429` is the rate-limiting contract's
+envelope; to a browser navigation it is answered by the login failure handler with `RATE_LIMITED` (4.1.1).
 
 ## 9. Test support
 
@@ -614,8 +637,13 @@ code. `/auth/session` and `/auth/logout` are not limited (they cost one store re
 | 403 | `CLIENT_NOT_PERMITTED` | the selected client is not among the principal's clients |
 | 403 | `FORBIDDEN` | `Auth.require` found the permission missing |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | a cookie request's body is not JSON |
-| 429 | (rate-limiting contract) | over the limit on `/auth/login` or `/auth/callback` |
-| 502 | `PLATFORM_UNAVAILABLE` | discovery, keys or the token endpoint cannot be reached during login |
+| 429 | `RATE_LIMITED` (rate-limiting contract) | over the limit on `/auth/login` or `/auth/callback`; to a browser navigation the failure handler's answer with this code (4.1.1) |
+| 502 | `PLATFORM_UNAVAILABLE` | discovery, keys or the token endpoint cannot be reached during login (a browser navigation to `/auth/login`: the failure handler's answer, 4.1.1) |
+
+The codes a failure handler can receive, and so a failure page's `?error=`, are eight: the seven
+of 4.2 (`INVALID_CALLBACK`, `LOGIN_NOT_STARTED_HERE`, `INVALID_STATE`, `LOGIN_REFUSED`,
+`LOGIN_FAILED`, `INVALID_ID_TOKEN`, `PLATFORM_UNAVAILABLE`) and `RATE_LIMITED`. The UI
+kit's `signInFailureMessage` has a sentence for each.
 | 503 | `UNAVAILABLE` | the keys cannot be read to check a bearer token |
 
 ## 11. Tests
@@ -638,8 +666,10 @@ permission matching with wildcards; `Auth.require`; rate limit on the public rou
 refused outside test mode. Security-relevant assertions are mutation-checked (a deliberately
 broken check must fail a test).
 
-Conformance vectors (`conformance/auth/`: id_token cases, sealed cookies, the session JSON) are not
-written in M4c; they are listed for when Go implements this contract.
+Conformance vectors: `conformance/auth/login-failure.json` (4.1.1: per request headers and
+condition, the redirect or the envelope; written by `LoginFailureNavigationTest`; Go compares when
+its sessions are built, G5b, **pending**). The others (id_token cases, sealed cookies, the session
+JSON) are not written; they are listed for when Go implements this contract.
 
 ## 12. Rulings
 
@@ -668,6 +698,10 @@ reversible by a later owner ruling like any other).
    mapping fails closed.
 7. **The `Context` gains `permissions`** (core contract section 3), because `authorize` steps see the
    `Context` and nothing else.
+
+Ruled by the owner on 2026-10-15 (G9 of `ui/u3.md`): a failed or rate-limited `/auth/login` shows
+the SPA's sign-in-failed page to a **browser navigation**, through the failure handler, with the new
+code `RATE_LIMITED`; the contract is extended for frontends only, APIs keep the envelope (4.1.1).
 
 ## 13. Not in M4c
 

@@ -126,7 +126,7 @@ public final class AuthModule implements Module {
   public void boot(App app) {
     Services s = app.get(Services.class);
     Routes routes = app.get(Routes.class).forModule(ID);
-    routes.use(new AuthMiddleware());
+    routes.use(new AuthMiddleware(b.loginFailure));
     Middleware<Request, Response> limit = b.rateLimit;
     if (limit == null && b.rateLimited) {
       limit =

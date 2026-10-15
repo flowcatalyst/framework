@@ -1,0 +1,287 @@
+{
+  "description" : "A sign-in that cannot start (sessions contract 4.1 step 2 and section 8). Setup: the application's failure handler redirects to /sign-in-failed ('?error=CODE'); condition RATE_LIMITED = the client address has used its budget (the request then sent is refused with 429), PLATFORM_UNAVAILABLE = discovery cannot be read (502). A browser navigation (GET or HEAD, no Authorization, Sec-Fetch-Mode navigate, or without that header an Accept containing text/html) gets the handler's answer: here 302 to location, no body checked; every other request gets the JSON envelope {error, message} with the status. The redirect and the 502 are Cache-Control: no-store (the limiter's own 429 envelope is unchanged and says nothing of caching); no answer sets a login binding cookie. Header names compare case-insensitively.",
+  "failurePage" : "/sign-in-failed",
+  "cases" : [ {
+    "name" : "RATE_LIMITED: navigate with Accept html",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate",
+        "Accept" : "text/html,application/xhtml+xml"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: navigate alone",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: no Sec-Fetch-Mode, Accept html",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Accept" : "text/html"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: navigate to a login with returnTo",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login?returnTo=%2Forders",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: fetch (cors) even when Accept html",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "cors",
+        "Accept" : "text/html"
+      }
+    },
+    "expect" : {
+      "status" : 429,
+      "error" : "RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: same-origin fetch",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "same-origin"
+      }
+    },
+    "expect" : {
+      "status" : 429,
+      "error" : "RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: no headers",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 429,
+      "error" : "RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: Accept json",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Accept" : "application/json"
+      }
+    },
+    "expect" : {
+      "status" : 429,
+      "error" : "RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: Authorization present",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate",
+        "Authorization" : "Bearer x"
+      }
+    },
+    "expect" : {
+      "status" : 429,
+      "error" : "RATE_LIMITED"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: navigate with Accept html",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate",
+        "Accept" : "text/html,application/xhtml+xml"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: navigate alone",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: no Sec-Fetch-Mode, Accept html",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Accept" : "text/html"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: navigate to a login with returnTo",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login?returnTo=%2Forders",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: fetch (cors) even when Accept html",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "cors",
+        "Accept" : "text/html"
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "error" : "PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: same-origin fetch",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "same-origin"
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "error" : "PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: no headers",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : { }
+    },
+    "expect" : {
+      "status" : 502,
+      "error" : "PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: Accept json",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Accept" : "application/json"
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "error" : "PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "PLATFORM_UNAVAILABLE: Authorization present",
+    "condition" : "PLATFORM_UNAVAILABLE",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/login",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate",
+        "Authorization" : "Bearer x"
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "error" : "PLATFORM_UNAVAILABLE"
+    }
+  }, {
+    "name" : "RATE_LIMITED: callback navigation",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/callback?state=x",
+      "headers" : {
+        "Sec-Fetch-Mode" : "navigate"
+      }
+    },
+    "expect" : {
+      "status" : 302,
+      "location" : "/sign-in-failed?error=RATE_LIMITED"
+    }
+  }, {
+    "name" : "RATE_LIMITED: callback fetch",
+    "condition" : "RATE_LIMITED",
+    "request" : {
+      "method" : "GET",
+      "path" : "/auth/callback?state=x",
+      "headers" : {
+        "Sec-Fetch-Mode" : "cors"
+      }
+    },
+    "expect" : {
+      "status" : 429,
+      "error" : "RATE_LIMITED"
+    }
+  } ]
+}
