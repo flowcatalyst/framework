@@ -76,9 +76,11 @@ rewritten at hand-off and can lag the code in between.
   Owner ruling (2026-10-14, resolves the former open question): `http-client.event-loops` and
   `.max-connections-per-host` are configuration (one engine setting each), not code; they are
   declared by `HttpClientModule` (`EVENT_LOOPS`, `MAX_CONNECTIONS_PER_HOST`), range-checked, and
-  not removed keys, so nothing changes for the first application. Go G1 and Rust R1 still read
-  driver names for locks, secrets and HTTP clients; the key-rules conformance vector is to be added
-  with the Go port. Nothing published: the mono-repo needs a fresh `./mvnw install` of the framework.
+  not removed keys, so nothing changes for the first application. Go G1 follows the contract since
+  2026-10-15 (commit 24b2be1; no driver registry, locks in code, removed keys and claimed components,
+  ranges); Rust R1 (parked) still reads driver names for locks, secrets and HTTP clients; the
+  key-rules conformance vector (`conformance/config/key-rules.json`) is still to be written, with the
+  Java side (the Go tests carry table tests for the checks meanwhile). Nothing published: the mono-repo needs a fresh `./mvnw install` of the framework.
 - Owner decisions waiting (each recorded in its contract under "Rulings pending owner"): publishing
   the Java SDK and the group id before the first tag (`contracts/build.md`); rate-limit store
   failure default ALLOW, IPv6 /64, the memory overflow bucket (`contracts/rate-limiting.md`);
@@ -154,7 +156,11 @@ rewritten at hand-off and can lag the code in between.
   fixtures. Plan: `ui-dogfood-plan.md`.
 - Rust and TypeScript are **parked** (owner, 2026-10-13): no further work on either until resumed. Rust: R0 to R2 built, R3 onward not started (banner in `rust/design.md`). TypeScript: design only, drafted and parked the same day in favour of Go, spike not run (banner in `typescript/design.md`).
 - Java follow-ups found while designing the others: (1) the dispatch receiver builds its `Context` with no principal and no causation, against the 2026-10-12 receiver-principal ruling (service principal of kind Service, dispatch job id as cause); (2) the Java tests have not yet written the HTTP, Datastar, metrics, rate-limit, secrets, receiver and htmlnorm conformance vectors the other implementations compare against; (3) the contracts need the principal kind and the source of the service principal's id spelled out; (4) the platform findings (dispatch-jobs `clientCode`, object-shaped `metadata`) are listed under 'Platform work found' above.
-- Go framework: designed 2026-10-13, nothing built (owner decision: Go alongside Java; a part of a
+- Go framework: G0 to G3 built (G3 on 2026-10-15: `httpfw`, `httpfw/spa`, typed operations and the
+  OpenAPI emitter, `fw` declaration-phase commands, `orders-demo serve`; the SPA vector and the
+  three OpenAPI vectors pass byte for byte; differences and what is not built are in
+  `go/milestones.md` under "G3 as built"; pages `guide/go/http.md` and `guide/go/openapi.md`); G4
+  (the FlowCatalyst module) is next and not started. Designed 2026-10-13 (owner decision: Go alongside Java; a part of a
   business application will later be built on both and compared). `go/gap-analysis.md` (fcsdk
   covers 2 of the 41 built Java capabilities, 14 partly, 25 not at all; none of the partly ones
   passes the shared vectors as is; the platform's templ UI kit was the big reuse until the 2026-10-13 ruling that the Go UI is Nuxt UI on Vue with strict TypeScript; see `go/ui.md`), `go/design.md`

@@ -12,9 +12,44 @@ Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
 | # | State |
 |---|---|
 | G0 | **Built** (2026-10-14): `go/` with the core module, `go/flowcatalyst` (empty until G4) and `go/tools` (the pinned golangci-lint v2.14.0, NilAway and gofumpt, run by `go tool` so the local Go builds them; a third module, so the tools never enter the framework's module graph); `.golangci.yml`; `make -C go go-check`; `cmd/fwvet` with `mustliteral`; `fwtest` (embedded PostgreSQL 18, template and a database per test, Redis from `PATH`, fake clock); `internal/conformance` and the TSID vector; `.github/workflows/go.yml` (not run); [`go-build.md`](../contracts/go-build.md); `verify.sh` checks Go type names. NilAway on G0: no findings, no suppressions |
-| G1 | **Built** (2026-10-14): `fw` lifecycle, `config`, `background`, `metrics` (with the endpoint handler; mounting it is G3), `database` (migration runner, `Tx` constructible only inside the framework, `Filter`), `redisfw`, `locks` + `dblock` + `redislock` + `lockstest`, `examples/locks-demo`. Vectors: config (every entry), lock SQL and Lua (byte for byte, copies listed in `go/internal/conformance/shared-files.txt`), `locks-database` history (Go writes the Java rows and accepts a Java-migrated database). Rulings taken: instance sections are checked at configure (drivers declare their keys); `url` accepts `jdbc:postgresql://`, `postgres://`, `postgresql://` but not pgx's `key=value` form; a duplicate YAML key is refused (recorded in STATUS, the vector has no such case). NilAway: three findings, all fixed in code (an ok-returning `Default` now returns `nil, false` explicitly; a test slice), no suppressions |
+| G1 | **Built** (2026-10-14; brought in line with [config and code](../contracts/config-and-code.md) 2026-10-15, commit 24b2be1: no driver registry (`config.Section` has one key schema), lock stores named in code (`locks.WithStore`, `dblock.Store`, `redislock.Store`), removed keys and claimed components checked at load (`config.KeyRules`; the Go moved-to texts name Go APIs), pool and port ranges as `Setting.Checked`, `Boot.HealthReport`/`Ready`/`ShutdownDrain`; the vector for the key rules is deferred until the Java side writes one): `fw` lifecycle, `config`, `background`, `metrics` (with the endpoint handler; mounting it is G3), `database` (migration runner, `Tx` constructible only inside the framework, `Filter`), `redisfw`, `locks` + `dblock` + `redislock` + `lockstest`, `examples/locks-demo`. Vectors: config (every entry), lock SQL and Lua (byte for byte, copies listed in `go/internal/conformance/shared-files.txt`), `locks-database` history (Go writes the Java rows and accepts a Java-migrated database). Rulings taken: instance sections are checked at configure (drivers declare their keys); `url` accepts `jdbc:postgresql://`, `postgres://`, `postgresql://` but not pgx's `key=value` form; a duplicate YAML key is refused (recorded in STATUS, the vector has no such case). NilAway: three findings, all fixed in code (an ok-returning `Default` now returns `nil, false` explicitly; a test slice), no suppressions |
 | G2 | **Built** (2026-10-14): `usecase` (the four-method interface, `Define`, `Run`, the runner with the failure table and step codes, `INTERRUPTED`, panic recovery, conflict retry with jitter, `Fresh`/`Loaded`, `Insert`/`Update`/`Delete` steps, `Plan` with `Emit` and `Dispatch`, the outbox writer and migrations, audit rows with ordered `AuditData`, `NewDispatchJob`, metrics, `usecasetest.Repository`), `event`, `id` (typed ids), `sqlfw` (`Main`: `schema`, `generate`, `check`, `jet`; `Query`) with `sqlfw/jetgen` and `internal/pgembed`, `examples/orders-demo` (sqlc queries, go-jet and `Filter` list queries, the Java demo's scenario and concurrency tests, a Java-migrated database accepted). Vectors: `outbox/outbox.json` byte for byte (every column, payload text and size, the dispatch-job refusals), `sql/outbox/insert.sql`, `migrations/outbox.json` and `orders.json`. go-jet adopted only as G2 says (the read model's builder; v2.16.1). Missing `Authorize` proven a compile error by a type-check test. Design section 8's sqlc points answered there. Not done: the `RunInTx` question (G4), an `fwvet` check for `usecase.Authorized[...]{}` literals |
-| G3 to G7 | not started |
+| G3 | **Built** (2026-10-15): `httpfw` (the contract's route table as the framework's own segment trie, fixed middleware, envelope, `DecodeJSON` on `encoding/json/v2`, correlation id, access log and HTTP metrics, health and Prometheus endpoints, the server with body limit, timeouts and drain, `ContextResolver`), `httpfw/validate` (rules as data), `httpfw/spa` (index at start-up, fallback, API prefixes from the routes, strict CSP default), typed operations and `httpfw/openapi` (the emitter), `httpfw/sessionapi` (the session operations' document side), `fw` declaration-phase commands (the `openapi` command), `fw.Boot` health/ready/drain accessors and a serve grace, `examples/orders-demo` serving its API (`orders-demo serve`) with a committed `web/openapi.json`. Vectors: `http/spa.json` (all 86 requests), `openapi/fixture.json`, `auth.json` and `orders-demo.json` **byte for byte**. G1 brought in line with [config and code](../contracts/config-and-code.md) first (24b2be1). Rulings and differences: see the notes under this table. Not done: `ratelimit` (memory, `redisrl`), `httpfw.CSRF` and `SecurityHeaders` (they belong with the cookie sessions of G5b), a generated hey-api client compiled under the UI tsconfig from the Go document (the bytes equal `examples/orders-demo/web/openapi.json`, from which `ui/apps/orders` was generated and tested in U3), and the error, health, metrics and rate-limit vectors, which the Java tests have not written (the Go tests check those rules themselves) |
+| G4 to G7 | not started |
+
+**G3 as built, and where it differs** (2026-10-15):
+
+- *Router (decision 16).* The framework's own trie instead of `ServeMux` behind a table: the mux's
+  404, 405 and redirect behaviour had to be bypassed anyway, and its refusal of two patterns that
+  overlap with neither more specific (`/a/{x}/c`, `/a/b/{y}`) disappears, so Go and Java route
+  alike and that expected difference is not needed. `net/http`'s server, `Handler`, `httptest` and
+  `r.PathValue` are used as designed.
+- *Validation (decision 17).* The OpenAPI contract wins over the parse-function collector sketched
+  in the capabilities page: `httpfw/validate` is rules as data (the Java `Validator` and `Rule`), so
+  the constraints of the document and the checks of the server have one source. The parse-style
+  `validate.Field(&v, ...)` is not built; the orders demo keeps its domain constructors.
+- *Strict CSP is the SPA default* (static-assets contract section 7, owner ruling); the Java builder
+  still defaults to the baseline, so `TestSPAVector` passes `spa.Baseline()`. The vector is
+  unchanged.
+- *Pointer fields need `omitzero`.* The document calls them "may be absent", so a nil must not be
+  written as `null`; the emitter refuses a pointer field without `omitzero` or `omitempty`.
+- *Refused types*: `int`, unsigned integers and `float32` (use `int32`, `int64`, `float64`);
+  embedded structs; `Date`, `Decimal`, `UUID` and ISO-8601 duration value types are not provided
+  (the fixture test defines them with `SchemaProvider`).
+- *Declaration-phase commands* are new in `fw` (`Declarer.DeclarationCommand`; core contract
+  section 5 describes the Java `DeclarationCommand`): `openapi` runs before configuration.
+- *Shutdown*: `fw` waits for a `Serve` that has a `ShutdownGrace` for that long plus a second, not
+  `app.shutdown.drain`; and it no longer reads a serve error that is not there yet (a data race when
+  serve overran the drain).
+- *Details of use-case errors* come from a map, so they are written sorted by key (Java writes its
+  map's insertion order).
+- *A request the client abandoned* is recorded as 499 (Java records 204); nothing is written.
+- *Request lines `net/http` cannot parse* get its plain-text 400 where Jetty's errors use the
+  envelope; the `Content-Type`/`Allow` and 413-with-`Connection: close` rules hold.
+- *The `ETag` header is stored as `ETag`* (the contract's spelling) instead of Go's canonical `Etag`.
+- *orders-demo*: a fixed-token `ContextResolver` (`orders.demo-token`) and `501 NOT_IMPLEMENTED`
+  session endpoints stand in for G5b; the embedded SPA is a placeholder page until `ui/apps/orders`
+  is built into `web/dist`.
 
 *2026-10-14 (owner): the UI package is shared with Java and built first against the Java backend.*
 G5a's U0 to U2 (and U3, U4 on the Java example) are therefore done once, outside this plan; Go's G5a
@@ -71,6 +106,8 @@ binds 8080; time comes from the fake clock; every failure message names the vect
 | `conformance/sql/outbox/insert.sql` | `usecase` outbox writer | G2 |
 | `conformance/outbox/outbox.json` | `usecase` (rows byte for byte, the dispatch-job refusals) | G2 |
 | `conformance/migrations/outbox.json`, `orders.json` | `database` runner, orders-demo | G2 |
+| `conformance/http/spa.json` | `httpfw/spa` through the dispatcher (`internal/conformance/http_test.go`; all 86 cases: status, headers, body length and hash) | G3 |
+| `conformance/openapi/fixture.json`, `auth.json`, `orders-demo.json` | `httpfw/openapi` through `Declared.OpenAPI` (exact bytes) | G3 |
 
 ### 3.2 Vectors still to be written by the Java tests
 

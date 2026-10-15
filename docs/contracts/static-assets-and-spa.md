@@ -4,7 +4,7 @@ Status: written 2026-10-14, before any code, for the UI direction decided that d
 5 of section 12 confirmed by the owner the same day (Nuxt UI SPA as
 the primary UI for the Java and Go frameworks; [`../handover.md`](../handover.md), "UI direction").
 *Built in Java 2026-10-14 (MS, `framework-http`); amendments the build found are marked "Amended
-2026-10-14 (MS)".* Go has not built it. **Language-neutral**: Java (`framework-http`) builds it first and Go
+2026-10-14 (MS)".* *Built in Go 2026-10-15 (G3, `httpfw/spa`; `conformance/http/spa.json` passes; Go's default policy is the strict one, the Java builder's still the baseline).* **Language-neutral**: Java (`framework-http`) builds it first and Go
 (`httpfw/spa`, [`../go/capabilities.md`](../go/capabilities.md) section 5) implements the same
 rules. Java names appear only where the Java shape is described.
 

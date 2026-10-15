@@ -2,7 +2,7 @@
 
 Status: written 2026-10-14, before any code, for the UI direction decided that day (Nuxt UI SPA as
 the primary UI for the Java and Go frameworks; [`../handover.md`](../handover.md), "UI direction").
-*Built in Java with MO (2026-10-14); amendments found by the build are marked (MO).* The **document rules** (sections 4 to 9) are language-neutral: the Java
+*Built in Java with MO (2026-10-14); amendments found by the build are marked (MO). Built in Go with G3 (2026-10-15, `httpfw/openapi`, `httpfw/validate`): the three vectors of section 10 pass byte for byte; Go's differences are listed in [`../go/milestones.md`](../go/milestones.md) under "G3 as built" (a pointer field needs `omitzero`; `int`, unsigned and `float32` are refused; the declaration is `Declared.Operations` and the command a `fw` declaration-phase command).* The **document rules** (sections 4 to 9) are language-neutral: the Java
 emitter (`framework-http`) and the Go emitter (`httpfw`, [`../go/capabilities.md`](../go/capabilities.md)
 section 5, decision 18) produce the same document for the same API, checked by a shared conformance
 vector (section 10). The **declaration API** (sections 2 and 3) is described in its Java shape; Go's

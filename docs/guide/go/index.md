@@ -10,8 +10,9 @@ The Java pages of this guide describe the Java framework only.
 
 **State:** G0 (the module skeleton, toolchain, test fixtures and the conformance runner) and G1
 (foundation and locks: [application and config](core.md), [database and Redis](database.md),
-[locks](locks.md)) and G2 (the [write path](write-path.md) and [checked SQL](checked-sql.md)) are
-built. HTTP (G3) and the FlowCatalyst module (G4) are not started.
+[locks](locks.md)) and G2 (the [write path](write-path.md) and [checked SQL](checked-sql.md)) and G3
+([HTTP and the SPA](http.md), [typed operations and OpenAPI](openapi.md)) are built. The
+FlowCatalyst module (G4) is not started.
 Nothing is published; module and package names are the design's working names.
 
 ## The tree
@@ -22,6 +23,7 @@ go/
   .golangci.yml          the platform's lint profile plus gochecksumtype, forbidigo, revive exported
   Makefile               go-check (fmt-check, lint, vet, nilaway, test), go-sync-shared
   fw/                    the core: Context and its ids, Clock, TSIDs (Ids)
+  httpfw/                HTTP: routes, errors, server, health; spa/, openapi/, validate/, sessionapi/
   fwtest/                PostgreSQL 18 and Redis for tests, a database per test, a fake clock
   internal/conformance/  the conformance runner: checks the shared vectors in ../conformance/
   cmd/fwvet/             the framework's analyzers, run by go vet

@@ -14,9 +14,11 @@ text, this text wins. The [database and Redis](database-and-redis.md), [HTTP](ht
 [background and metrics](background-and-metrics.md) and [FlowCatalyst](flowcatalyst.md) contracts'
 configuration sections stand as written before 2026-10-14 (with section 3's notes on ranges).
 
-Implementations: Java builds this. The Go (G1) and Rust (R1) implementations still read driver
-names for locks, secrets and HTTP clients from configuration; they follow this contract when they
-next change their configuration code (the conformance vectors are unchanged by it, section 6).
+Implementations: Java builds this. The Go implementation (G1) followed it on 2026-10-15 (commit
+24b2be1): no driver registry, lock stores named in code, removed keys and claimed components
+checked at load, ranges checked at start-up. The Rust implementation (R1, parked) still reads driver
+names for locks, secrets and HTTP clients from configuration; it follows this contract when it is
+resumed (the conformance vectors are unchanged by it, section 6).
 
 ## 1. The rule
 
@@ -352,7 +354,8 @@ environment with its message.
   so a misspelt key fails start-up listing the module's keys. The database and Redis range checks
   are start-up problems raised by the instance factory, before any connection opens, one problem
   per wrong value.
-- Not done: the conformance vector for the key rules (section 6); the Go and Rust ports.
+- Not done: the conformance vector for the key rules (section 6); the Rust port. Go's checks are
+  table tests (`config` and `fw`) until the Java side writes the vector.
 
 ## 11. The reversal (2026-10-14)
 

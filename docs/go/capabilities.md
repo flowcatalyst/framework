@@ -489,6 +489,8 @@ type CursorPage[T any] struct{ Items []T; HasMore bool; NextCursor *string }
 - `httpfw.SecurityHeaders`: the headers of the static-assets contract section 6.1 on the SPA's
   responses (the strict CSP of section 7 opt-in); `X-Content-Type-Options: nosniff` everywhere.
 
+*As built (G3, 2026-10-15): the router is the framework's own trie, validation is rules as data (`httpfw/validate`), operations are declared with `Declared.Operations` and the `openapi` command is a `fw` declaration-phase command; see [`milestones.md`](milestones.md) "G3 as built" and the guide pages `guide/go/http.md` and `guide/go/openapi.md`. The sketches in this section are the design's, not the final signatures.*
+
 ### Changes
 
 | Java | Go | Why |

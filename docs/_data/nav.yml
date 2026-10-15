@@ -51,6 +51,8 @@
     - { title: "Go: database and Redis", path: guide/go/database.md }
     - { title: "Go: locks", path: guide/go/locks.md }
     - { title: "Go: write path", path: guide/go/write-path.md }
+    - { title: "Go: HTTP and the SPA", path: guide/go/http.md }
+    - { title: "Go: typed operations and OpenAPI", path: guide/go/openapi.md }
     - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
 - group: Reference and status
   items:
