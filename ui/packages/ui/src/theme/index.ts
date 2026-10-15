@@ -49,6 +49,7 @@ export const fcIcons = [
   "i-lucide-inbox",
   "i-lucide-info",
   "i-lucide-list-filter",
+  "i-lucide-log-in",
   "i-lucide-log-out",
   "i-lucide-monitor",
   "i-lucide-moon",

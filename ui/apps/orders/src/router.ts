@@ -1,3 +1,4 @@
+import { FwSignedOutPage, FwSignInFailedPage, FwUnavailablePage } from "@flowcatalyst/ui";
 import { createRouter, createWebHistory } from "vue-router";
 import { READ } from "./pages.ts";
 
@@ -14,10 +15,10 @@ export const router = createRouter({
       // The record drawer as a child route (useDrawerRoute): /orders/:id.
       children: [{ path: ":id", component: () => import("./pages/OrderDrawer.vue"), meta: { title: "Orders", permission: READ } }],
     },
-    { path: "/signed-out", component: () => import("./pages/SignedOutPage.vue"), meta: { title: "Signed out", public: true } },
-    { path: "/sign-in-failed", component: () => import("./pages/SignInFailedPage.vue"), meta: { title: "Sign-in failed", public: true } },
+    { path: "/signed-out", component: FwSignedOutPage, props: { appName: "Orders", returnTo: "/orders" }, meta: { title: "Signed out", public: true } },
+    { path: "/sign-in-failed", component: FwSignInFailedPage, props: { appName: "Orders", returnTo: "/orders" }, meta: { title: "Sign-in failed", public: true } },
     { path: "/not-permitted", component: () => import("./pages/NotPermittedPage.vue"), meta: { title: "Not permitted" } },
-    { path: "/unavailable", component: () => import("./pages/UnavailablePage.vue"), meta: { title: "Unavailable", public: true } },
+    { path: "/unavailable", component: FwUnavailablePage, props: { appName: "Orders", retryTo: "/orders" }, meta: { title: "Unavailable", public: true } },
     { path: "/:pathMatch(.*)*", component: () => import("./pages/NotFoundPage.vue"), meta: { title: "Not found" } },
   ],
 });

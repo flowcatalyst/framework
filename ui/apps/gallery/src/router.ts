@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
+import { FwSignedOutPage, FwSignInFailedPage, FwUnavailablePage } from "@flowcatalyst/ui";
 import { pages } from "./pages.ts";
 
 const components: Readonly<Record<string, RouteRecordRaw["component"]>> = {
@@ -10,6 +11,7 @@ const components: Readonly<Record<string, RouteRecordRaw["component"]>> = {
   "/feedback": () => import("./pages/FeedbackPage.vue"),
   "/values": () => import("./pages/ValuesPage.vue"),
   "/lists": () => import("./pages/ListsPage.vue"),
+  "/standalone": () => import("./pages/StandalonePage.vue"),
   "/shell": () => import("./pages/ShellPage.vue"),
   "/fonts": () => import("./pages/FontsPage.vue"),
 };
@@ -25,6 +27,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "Orders (partials)" },
     children: [{ path: ":id", component: () => import("./pages/orders/OrderDrawer.vue"), meta: { title: "Orders (partials)" } }],
   },
+  // The kit's pages outside the shell (U4): public routes, rendered without FwAppShell (App.vue).
+  { path: "/standalone/signed-out", component: FwSignedOutPage, props: { appName: "Gallery", returnTo: "/standalone" }, meta: { title: "Signed out", public: true } },
+  { path: "/standalone/sign-in-failed", component: FwSignInFailedPage, props: { appName: "Gallery", returnTo: "/standalone" }, meta: { title: "Sign-in failed", public: true } },
+  { path: "/standalone/unavailable", component: FwUnavailablePage, props: { appName: "Gallery", retryTo: "/standalone" }, meta: { title: "Unavailable", public: true } },
   { path: "/signed-out", component: () => import("./pages/SignedOutPage.vue"), meta: { title: "Signed out" } },
   // Components known to break the strict CSP, kept so the e2e suite notices when that changes.
   { path: "/probes/drawer", component: () => import("./pages/probes/DrawerProbe.vue") },

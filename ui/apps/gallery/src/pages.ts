@@ -20,6 +20,7 @@ export const pages: readonly GalleryPage[] = [
   { path: "/values", title: "Values and code", heading: "Values and code", icon: "i-lucide-braces" },
   { path: "/lists", title: "List parts", heading: "List parts", icon: "i-lucide-list" },
   { path: "/orders", title: "Orders (partials)", heading: "Orders", icon: "i-lucide-shopping-cart" },
+  { path: "/standalone", title: "Standalone pages", heading: "Standalone pages", icon: "i-lucide-panel-top" },
   { path: "/shell", title: "Shell", heading: "Application shell", icon: "i-lucide-panel-left" },
   { path: "/fonts", title: "Fonts", heading: "Font comparison", icon: "i-lucide-type" },
 ];

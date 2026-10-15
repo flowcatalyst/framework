@@ -30,6 +30,13 @@ export { default as FwListPage } from "./partials/FwListPage.vue";
 export { default as FwRecordDrawer } from "./partials/FwRecordDrawer.vue";
 export { default as FwAppShell } from "./layouts/FwAppShell.vue";
 
+// U4: the standalone layout and the pages outside the shell (signed out, sign-in failed, unavailable).
+export { default as FwStandalonePage } from "./layouts/FwStandalonePage.vue";
+export { default as FwSignedOutPage } from "./pages/FwSignedOutPage.vue";
+export { default as FwSignInFailedPage } from "./pages/FwSignInFailedPage.vue";
+export { default as FwUnavailablePage } from "./pages/FwUnavailablePage.vue";
+export { SIGN_IN_FAILURE_MESSAGES, signInFailureMessage } from "./lib/signInFailure.ts";
+
 // Composables.
 export { announce, announcements } from "./composables/useAnnouncer.ts";
 export { useColorMode, type ColorMode, type ColorModePreference } from "./composables/useColorMode.ts";

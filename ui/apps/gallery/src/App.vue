@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// The gallery runs inside FwAppShell (the package's own shell, U2).
+// The gallery runs inside FwAppShell (the package's own shell, U2); public routes (the kit's standalone
+// pages, U4) are rendered without it.
 import { FwAppShell, type FwNavItem } from "@flowcatalyst/ui";
 import UApp from "@nuxt/ui/components/App.vue";
 import { computed } from "vue";
@@ -16,6 +17,7 @@ const navigation: FwNavItem[] = [
   // Never shown: the gallery's session holds no permission (FwAppShell hides what the user may not open).
   { label: "Administration", to: "/admin", icon: "i-lucide-shield", permission: "gallery:admin:manage" },
 ];
+const standalone = computed(() => route.meta.public === true);
 const title = computed(() => {
   const meta: unknown = route.meta["title"];
   return typeof meta === "string" ? meta : "Gallery";
@@ -24,7 +26,8 @@ const title = computed(() => {
 
 <template>
   <UApp>
-    <FwAppShell app-name="FlowCatalyst UI" :navigation="navigation" :page-title="title" :user="{ name: 'Ada Lovelace', email: 'ada@example.com' }">
+    <RouterView v-if="standalone" />
+    <FwAppShell v-else app-name="FlowCatalyst UI" :navigation="navigation" :page-title="title" :user="{ name: 'Ada Lovelace', email: 'ada@example.com' }">
       <RouterView />
     </FwAppShell>
   </UApp>

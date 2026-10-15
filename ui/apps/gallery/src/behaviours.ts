@@ -51,6 +51,12 @@ export const behaviours = [
   { id: "drawer-focus", behaviour: "Opening moves focus to the drawer's heading; Escape and Close go back to the list", by: "FwRecordDrawer", page: "/orders" },
   { id: "drawer-discard", behaviour: "Leaving, Back, switching rows or closing with unsaved changes asks 'Discard changes?' (Keep editing focused)", by: "useDrawerRoute + useDirtyForm + useConfirm", page: "/orders" },
 
+  // Pages outside the shell.
+  { id: "standalone-layout", behaviour: "Signed-out and error pages stand alone: a centred column with the application name, one h1, a body and the ways out, no sidebar, announced regions included", by: "FwStandalonePage", page: "/standalone" },
+  { id: "signed-out-page", behaviour: "After sign-out the page says so and Sign in again starts sign-in and returns to the given path", by: "FwSignedOutPage + BrowserSession.signIn", page: "/standalone" },
+  { id: "sign-in-failed-page", behaviour: "A failed sign-in says what happened in a sentence per contract code, shows the code as text, and Try again signs in again", by: "FwSignInFailedPage (signInFailureMessage)", page: "/standalone" },
+  { id: "unavailable-page", behaviour: "When the session cannot be read at all the page says so and Try again reloads in full", by: "FwUnavailablePage", page: "/standalone" },
+
   // Form dialogs.
   { id: "form-schema", behaviour: "Create and edit forms validate with the operation's generated Zod schema; the first field is focused, then the first invalid one", by: "FwFormDialog (UModal, UForm)", page: "/orders" },
   { id: "form-server-errors", behaviour: "A 400's field details land on their fields and focus moves there", by: "FwFormDialog + applyServiceError", page: "/orders" },
