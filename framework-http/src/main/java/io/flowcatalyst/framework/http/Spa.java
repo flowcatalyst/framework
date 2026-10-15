@@ -181,7 +181,7 @@ public final class Spa {
     private String assetsDirectory = "assets";
     private int maxFiles = DEFAULT_MAX_FILES;
     private long maxBytes = DEFAULT_MAX_BYTES;
-    private Csp csp = Csp.baseline();
+    private Csp csp = Csp.strict();
 
     private Builder(Source source) {
       this.source = source;
@@ -270,8 +270,11 @@ public final class Spa {
     }
 
     /**
-     * The {@code Content-Security-Policy} on every answer of the SPA; default
-     * {@link Csp#baseline()}.
+     * The {@code Content-Security-Policy} on every answer of the SPA; default {@link Csp#strict}
+     * with no script hashes (static-assets contract section 7). An SPA with an inline script (the
+     * colour-mode snippet {@code @flowcatalyst/ui} writes into {@code index.html}) passes its hash:
+     * {@code Csp.strict("sha256-...")}; {@link Csp#baseline()} is the explicit opt-in for pages
+     * that cannot run under the strict policy.
      *
      * @param policy the policy
      * @return this builder

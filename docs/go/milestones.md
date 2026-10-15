@@ -30,8 +30,8 @@ Building started 2026-10-14 (owner go-ahead for G0 to G2). The guide's Go pages
   the constraints of the document and the checks of the server have one source. The parse-style
   `validate.Field(&v, ...)` is not built; the orders demo keeps its domain constructors.
 - *Strict CSP is the SPA default* (static-assets contract section 7, owner ruling); the Java builder
-  still defaults to the baseline, so `TestSPAVector` passes `spa.Baseline()`. The vector is
-  unchanged.
+  has the same default since 2026-10-15, so `TestSPAVector` uses the default and the vector
+  (regenerated that day) pins the strict policy.
 - *Pointer fields need `omitzero`.* The document calls them "may be absent", so a nil must not be
   written as `null`; the emitter refuses a pointer field without `omitzero` or `omitempty`.
 - *Refused types*: `int`, unsigned integers and `float32` (use `int32`, `int64`, `float64`);

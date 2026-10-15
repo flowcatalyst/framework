@@ -24,6 +24,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 class SpaTest {
 
   static final String BASELINE_CSP = "frame-ancestors 'none'; object-src 'none'; base-uri 'self'";
+
+  /** The default policy since 2026-10-15 (contract section 7): strict, with no script hashes. */
+  static final String STRICT_CSP =
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self';"
+          + " connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
   static final String IMMUTABLE = "public, max-age=31536000, immutable";
 
   @TempDir Path tmp;
@@ -62,7 +67,9 @@ class SpaTest {
     assertThat(r.header("X-Content-Type-Options")).isEqualTo("nosniff");
     assertThat(r.header("Referrer-Policy")).isEqualTo("same-origin");
     assertThat(r.header("X-Frame-Options")).isEqualTo("DENY");
-    assertThat(r.header("Content-Security-Policy")).isEqualTo(BASELINE_CSP);
+    assertThat(r.header("Content-Security-Policy")).isEqualTo(STRICT_CSP);
+    assertThat(r.header("Cross-Origin-Opener-Policy")).isEqualTo("same-origin");
+    assertThat(r.header("Permissions-Policy")).isEqualTo("camera=(), microphone=(), geolocation=()");
   }
 
   static void assertEnvelope404NoStore(TestResponse r, String what) {
@@ -546,7 +553,7 @@ class SpaTest {
   }
 
   @Test
-  void theSecurityHeadersAreOnEveryAnswerOfTheSpaAndTheBaselineRestrictsNoScripts() {
+  void theSecurityHeadersAreOnEveryAnswerOfTheSpaAndTheDefaultPolicyIsTheStrictOne() {
     TestClient client = client();
     List<TestResponse> answers =
         List.of(
@@ -561,15 +568,32 @@ class SpaTest {
     for (TestResponse r : answers) {
       assertSpaHeaders(r);
       String csp = r.header("Content-Security-Policy");
+      assertThat(csp).startsWith("default-src 'self'; script-src 'self';").doesNotContain("unsafe-inline");
+    }
+    assertThat(Csp.strict().value()).isEqualTo(STRICT_CSP);
+  }
+
+  @Test
+  void theBaselineIsTheExplicitOptInAndRestrictsNoScripts() {
+    TestClient client =
+        client(Spa.directory(dist).contentSecurityPolicy(Csp.baseline()).build(), SpaTest::appRoutes);
+    for (String path : List.of("/", "/assets/index-abc123.js", "/assets/missing.js", "/api/x")) {
+      TestResponse r = client.get(path).send();
+      String csp = r.header("Content-Security-Policy");
+      assertThat(csp).isEqualTo(BASELINE_CSP);
       for (String d : List.of("default-src", "script-src", "style-src", "connect-src")) {
         assertThat(csp).doesNotContain(d);
       }
       assertThat(r.header("Cross-Origin-Opener-Policy")).isNull();
+      assertThat(r.header("Permissions-Policy")).isNull();
+      assertThat(r.header("X-Frame-Options")).isEqualTo("DENY");
     }
+    assertThat(Csp.baseline().value()).isEqualTo(BASELINE_CSP);
+    assertThat(Csp.baseline().isStrict()).isFalse();
   }
 
   @Test
-  void theStrictPolicyIsOptInWithItsCompanionHeaders() {
+  void theStrictPolicyTakesTheApplicationsInlineScriptHashes() {
     TestClient client =
         client(
             Spa.directory(dist)
@@ -587,11 +611,6 @@ class SpaTest {
       assertThat(r.header("Permissions-Policy")).isEqualTo("camera=(), microphone=(), geolocation=()");
       assertThat(r.header("X-Frame-Options")).isEqualTo("DENY");
     }
-    assertThat(Csp.strict().value())
-        .isEqualTo(
-            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self';"
-                + " connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
-    assertThat(Csp.baseline().value()).isEqualTo(BASELINE_CSP);
   }
 
   @Test

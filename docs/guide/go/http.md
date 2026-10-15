@@ -143,7 +143,7 @@ Every SPA response carries `X-Content-Type-Options`, `Referrer-Policy: same-orig
 (`spa.Strict(hashes...)` takes the script hashes of inline snippets, for example the colour-mode
 snippet from `@flowcatalyst/ui/csp`; it also sends `Cross-Origin-Opener-Policy` and
 `Permissions-Policy`); `spa.Baseline()` is the opt-in that only restricts framing, plugins and
-`<base>`. The Java builder still defaults to the baseline (the contract's follow-up), so the
-conformance test passes `spa.Baseline()`. No compression, `Range` or `Last-Modified`. The ETag is
+`<base>`. The Java builder has had the same default since 2026-10-15, so the conformance test
+uses the default policy. No compression, `Range` or `Last-Modified`. The ETag is
 stored under the name `ETag` as the contract spells it, where `http.Header.Get` looks for `Etag`;
 a client on the wire sees either.

@@ -35,7 +35,7 @@ The builder:
 | `apiPrefix("runtime")` | none | an extra API prefix (below), for something served outside the router |
 | `assetsDirectory("static")` | `assets` | Vite's `build.assetsDir`: its files are `immutable`, a missing one is a 404 |
 | `maxFiles(n)`, `maxBytes(n)` | 10 000, 64 MiB | more is a start-up problem |
-| `contentSecurityPolicy(Csp.strict(...))` | `Csp.baseline()` | see "Security headers" |
+| `contentSecurityPolicy(Csp.strict("sha256-..."))` or `Csp.baseline()` | `Csp.strict()` (no hashes) | see "Security headers" |
 
 A malformed prefix or segment is an `IllegalArgumentException` at once; problems with the files or
 the route table are start-up problems, listed together with every other one.
@@ -115,27 +115,31 @@ Every answer of the SPA (`304`, `404` and `405` included) carries:
 | `X-Content-Type-Options` | `nosniff` (on **every** framework response, API and errors too) |
 | `Referrer-Policy` | `same-origin` |
 | `X-Frame-Options` | `DENY` |
-| `Content-Security-Policy` | `frame-ancestors 'none'; object-src 'none'; base-uri 'self'` |
+| `Content-Security-Policy` | the **strict** policy by default (below) |
+| `Cross-Origin-Opener-Policy`, `Permissions-Policy` | `same-origin`; `camera=(), microphone=(), geolocation=()` (with the strict policy) |
 
-That **baseline** policy restricts framing, plugins and `<base>` only, as the platform's does. The
-**strict** policy is opt-in:
+The default is the **strict** policy (since 2026-10-15; before, the baseline): scripts, styles,
+images (`data:` too), fonts and connections from the application's own origin only, plus the hashes
+you pass for inline snippets, no framing, `base-uri 'none'`, `form-action 'self'`, no plugins. An
+SPA built with `flowcatalystUi()` from `@flowcatalyst/ui` has one inline script, the colour-mode
+snippet, so it passes that hash (`COLOR_MODE_SNIPPET_SHA256` of `@flowcatalyst/ui/csp`); without it
+the browser blocks the snippet and the page loses its pre-paint colour mode:
 
 ```java
 Spa.directory(dist).contentSecurityPolicy(Csp.strict("sha256-AbC+/09=")).build()
 ```
 
-It allows scripts, styles, images (`data:` too), fonts and connections from the application's own
-origin only, plus the hashes you pass for inline snippets (such as a colour-mode script), and adds
-`Cross-Origin-Opener-Policy: same-origin` and `Permissions-Policy: camera=(), microphone=(),
-geolocation=()`.
+U0 verified that Nuxt UI runs under this policy ([`../ui/u0.md`](../ui/u0.md)) on two conditions:
+the SPA is built with the `flowcatalystUi()` Vite plugin and sets Zod to `jitless` before any
+schema exists (`@flowcatalyst/api-runtime` does). A page that cannot run under it opts out in code:
 
-**TODO (default flip):** U0 verified that Nuxt UI runs under the strict policy
-([`../ui/u0.md`](../ui/u0.md)), so the contract now makes strict the default (owner ruling
-2026-10-14), on two conditions: the SPA is built with the `flowcatalystUi()` Vite plugin from
-`@flowcatalyst/ui` and sets Zod to `jitless` before any schema exists. The `Spa` builder has not
-been changed yet: today the baseline is still its default, and strict is opt-in as above. The
-follow-up is to flip the default, taking the exact CSP and script hash from `@flowcatalyst/ui/csp`.
-Until then, an application that turns strict on must check its own pages in a browser.
+```java
+Spa.directory(dist).contentSecurityPolicy(Csp.baseline()).build()
+```
+
+The **baseline** is the platform's policy, `frame-ancestors 'none'; object-src 'none'; base-uri
+'self'`: it restricts framing, plugins and `<base>` only and sends neither companion header. The
+Go builder (`spa.Options{CSP: ...}`) has the same default and the same opt-in.
 
 HSTS is the TLS terminator's job; there is no compression (a proxy or CDN compresses) and no CORS.
 

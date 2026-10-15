@@ -6,10 +6,11 @@ import java.util.regex.Pattern;
 /**
  * The {@code Content-Security-Policy} an SPA is served with (static-assets contract section 7).
  *
- * <p>{@link #baseline()} is the default: it restricts framing, plugins and {@code <base>} only, as
- * the platform does. {@link #strict(String...)} also restricts scripts, styles, images, fonts and
- * connections to the application's own origin and adds {@code Cross-Origin-Opener-Policy} and
- * {@code Permissions-Policy}; it is opt-in until the shared UI package has been shown to run under it.
+ * <p>{@link #strict(String...)} is the default of {@link Spa} (since 2026-10-15; before, the
+ * baseline): scripts, styles, images, fonts and connections from the application's own origin
+ * (plus the hashes of its inline snippets), no framing, {@code Cross-Origin-Opener-Policy} and
+ * {@code Permissions-Policy}. {@link #baseline()} is the opt-in: it restricts framing, plugins and
+ * {@code <base>} only, as the platform does, for pages that cannot run under the strict policy.
  */
 public final class Csp {
 

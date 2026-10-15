@@ -51,8 +51,8 @@ type spaCase struct {
 
 // The SPA fallback answers every request of conformance/http/spa.json as the Java framework does:
 // status, every header except X-Correlation-Id and Content-Length, the body's length (the
-// Content-Length sent, for HEAD) and its SHA-256. The vector's SPA uses the baseline policy (the
-// Java builder's default; Go's default is the strict policy the contract rules).
+// Content-Length sent, for HEAD) and its SHA-256. The vector's SPA uses the default policy in both
+// languages: the strict one with no script hashes (contract section 7).
 func TestSPAVector(t *testing.T) {
 	t.Parallel()
 	var doc spaDoc
@@ -64,7 +64,7 @@ func TestSPAVector(t *testing.T) {
 	for name, text := range doc.Fixture {
 		build[name] = &fstest.MapFile{Data: []byte(text)}
 	}
-	s, err := spa.New(build, spa.Options{Prefix: doc.SPA.Prefix, APIPrefixes: doc.SPA.APIPrefixes, CSP: spa.Baseline()})
+	s, err := spa.New(build, spa.Options{Prefix: doc.SPA.Prefix, APIPrefixes: doc.SPA.APIPrefixes})
 	if err != nil {
 		t.Fatal(err)
 	}

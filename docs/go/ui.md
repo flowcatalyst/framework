@@ -522,8 +522,8 @@ written once for Java and Go and mirroring the platform's F16 handler. Differenc
 the SPA is the router's fallback, not a trailing-wildcard route (so decision 28's amendment of http
 section 2 is not needed); API prefixes are derived from the routes; `index.html` is served for any
 extension-less GET outside them, without an `Accept` check; missing assets and unknown API paths
-answer the JSON envelope; the baseline CSP is the platform's and the strict policy below is opt-in
-in the first Java build; U0 verified Nuxt UI under it, so strict becomes the default
+answer the JSON envelope; the baseline CSP is the platform's and the strict policy below was opt-in
+in the first Java build; U0 verified Nuxt UI under it, so strict became the default (Java 2026-10-15)
 (static-assets contract section 7); no precompressed siblings. The text below is kept as the
 reasoning.*
 

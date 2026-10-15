@@ -4,7 +4,7 @@ Status: written 2026-10-14, before any code, for the UI direction decided that d
 5 of section 12 confirmed by the owner the same day (Nuxt UI SPA as
 the primary UI for the Java and Go frameworks; [`../handover.md`](../handover.md), "UI direction").
 *Built in Java 2026-10-14 (MS, `framework-http`); amendments the build found are marked "Amended
-2026-10-14 (MS)".* *Built in Go 2026-10-15 (G3, `httpfw/spa`; `conformance/http/spa.json` passes; Go's default policy is the strict one, the Java builder's still the baseline).* **Language-neutral**: Java (`framework-http`) builds it first and Go
+2026-10-14 (MS)".* *Built in Go 2026-10-15 (G3, `httpfw/spa`; `conformance/http/spa.json` passes; Go's default policy is the strict one). Java's default flipped to strict 2026-10-15 (G1 of `ui/u3.md`; the vector pins the strict default).* **Language-neutral**: Java (`framework-http`) builds it first and Go
 (`httpfw/spa`, [`../go/capabilities.md`](../go/capabilities.md) section 5) implements the same
 rules. Java names appear only where the Java shape is described.
 
@@ -250,12 +250,15 @@ The table is fixed so Java and Go answer the same bytes (the JDK's and Go's MIME
   built, because Zod 4 otherwise probes `new Function("")`, which is reported as a `script-src`
   violation (`@flowcatalyst/api-runtime` takes this over at U2). The one inline script's hash is
   `COLOR_MODE_SNIPPET_SHA256`, and the exact policy string is built by the CSP helpers, both exported
-  from `@flowcatalyst/ui/csp`; the application passes that hash to the Spa builder. Components
+  from `@flowcatalyst/ui/csp`; the application passes that hash to the Spa builder (a hash left out is a blocked snippet, not a build error). Components
   known to break the policy (`UBanner` with an `id`, `USplitter`) are forbidden by the package's lint.
-- **Follow-up (not done; Java code unchanged by this amendment):** the Java `Spa` builder's default
-  must flip to strict, with the exact CSP and script hash taken from `@flowcatalyst/ui/csp`, and the
-  baseline becomes the explicit opt-in (`Csp.baseline()`). Until that change lands, `Spa` still
-  defaults to the baseline.
+- **Flipped 2026-10-15 (Java; Go had it from G3):** the `Spa` builder's default is
+  `Csp.strict()` with no script hashes, and the baseline is the explicit opt-in (`Csp.baseline()`).
+  An SPA with the colour-mode snippet passes its hash. **BREAKING** for an application that relied
+  on the baseline default: its inline scripts, styles or cross-origin requests are now refused by
+  the browser until it passes hashes or opts back in. `conformance/http/spa.json` pins the default
+  (strict, no hashes) and both languages use their default. Not done: shipping the hash with the
+  SPA (a `csp-hashes` file written by the Vite plugin) so no application copies it.
 - HSTS is the TLS terminator's job (the http contract leaves TLS outside the application).
 
 ## 8. Build integration
@@ -350,8 +353,8 @@ owner may reverse them.
    confirmed; the SPA is built separately and Maven copies `web/dist`.*
 5. **Strict CSP by default** (amended 2026-10-14: U0 showed Nuxt UI runs under it, under the
    conditions of section 7); the baseline is the opt-in. *Owner, 2026-10-14: the strict policy
-   becomes the default if U0 shows Nuxt UI runs under it.* The Java `Spa` default still has to be
-   flipped (section 7, follow-up).
+   becomes the default if U0 shows Nuxt UI runs under it.* The Java `Spa` default was flipped
+   2026-10-15 (section 7).
 6. **No compression** (no precompressed `.br`/`.gz` siblings, as [`../go/ui.md`](../go/ui.md) section 9
    sketched): compression is outside the http contract; a proxy or CDN compresses. Both
    implementations leave it out so they answer the same bytes.

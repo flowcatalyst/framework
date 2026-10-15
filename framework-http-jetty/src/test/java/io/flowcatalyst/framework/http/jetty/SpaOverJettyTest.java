@@ -103,7 +103,10 @@ class SpaOverJettyTest {
           .containsEntry("x-content-type-options", "nosniff")
           .containsEntry("x-frame-options", "DENY")
           .containsEntry("referrer-policy", "same-origin")
-          .containsEntry("content-security-policy", "frame-ancestors 'none'; object-src 'none'; base-uri 'self'")
+          .containsEntry(
+              "content-security-policy",
+              "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self';"
+                  + " frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'")
           .doesNotContainKey("last-modified")
           .doesNotContainKey("accept-ranges");
       assertThat(r.headers().get("etag")).matches("\"[0-9a-f]{32}\"");

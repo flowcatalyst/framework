@@ -172,6 +172,23 @@ rewritten at hand-off and can lag the code in between.
   the Java tests still have to write the HTTP, Datastar, metrics, rate-limit, secrets and receiver
   vectors the other implementations need.
 
+## BREAKING: Spa default CSP (2026-10-15, G1 of `ui/u3.md`, owner approved)
+
+`Spa.classpath(..)/directory(..).build()` without `contentSecurityPolicy(..)` now sends the strict
+policy (`Csp.strict()`, no script hashes, plus `Cross-Origin-Opener-Policy` and `Permissions-Policy`)
+instead of the baseline. Go already defaulted to strict.
+
+| Before | After |
+|---|---|
+| default `Csp.baseline()` (`frame-ancestors 'none'; object-src 'none'; base-uri 'self'`) | default `Csp.strict()`; `Csp.baseline()` is the explicit opt-in |
+| an inline script with the default | blocked: pass its hash, `Csp.strict("sha256-...")` (`COLOR_MODE_SNIPPET_SHA256` of `@flowcatalyst/ui/csp` for the shared UI package) |
+
+`inhance/mono-repo` impact (read-only here, so stated, not edited): `apps/ingest-control-plane`
+serves a placeholder `GET /` page and no SPA through `Spa` yet, so nothing changes until it mounts
+one; the Camel `ingest-runtime` has no SPA. When the control plane mounts its Nuxt UI SPA it either
+passes the colour-mode hash or, for an interim server-rendered page with inline scripts or styles,
+calls `.contentSecurityPolicy(Csp.baseline())`. Needs a fresh `./mvnw install` of the framework.
+
 ## UI direction (decided 2026-10-14)
 
 **Owner ruling:** the framework's UI is **Nuxt UI** (v4 on plain Vue 3 and Vite, strict TypeScript,
@@ -198,7 +215,7 @@ decided; section 7), `go/capabilities.md` sections 5 and 13, `go/milestones.md` 
   `405`; missing assets (under `assets/` or with an asset extension) `404 no-store`; `index.html`
   `no-cache` + strong SHA-256 ETag, hashed assets `immutable`; nosniff, `Referrer-Policy:
   same-origin`, `X-Frame-Options: DENY`, the platform's baseline CSP (`frame-ancestors 'none';
-  object-src 'none'; base-uri 'self'`), the strict CSP opt-in until U0 (U0 passed: strict is now the default, see "U0 built" below; the Java `Spa` default is still the baseline); an index built at start-up;
+  object-src 'none'; base-uri 'self'`), the strict CSP opt-in until U0 (U0 passed: strict is the default; the Java `Spa` default flipped 2026-10-15, see "BREAKING: Spa default CSP" below); an index built at start-up;
   no `index.html` fails start-up outside `local`/`test`; Maven copies `web/dist` and never runs Node;
   nosniff on every framework response (http amendment).
 - `contracts/openapi.md`: `Operation` values declared in `register`, bound in `boot`, handlers return
@@ -223,8 +240,7 @@ repository; a relative path inside this one). Nuxt UI runs under the strict CSP 
 hey-api renders `const` as literal types and `oneOf` + `discriminator` as narrowing unions, so the
 sessions contract's `const` form stands. U1 to U4 are pending. Follow-ups:
 
-- Java: flip the `Spa` builder's default CSP to strict, with the policy and script hash from
-  `@flowcatalyst/ui/csp` (the contract is amended; no Java code changed).
+- ~~Java: flip the `Spa` builder's default CSP to strict~~ done 2026-10-15 (see "BREAKING: Spa default CSP").
 - Zod's `jitless` (`z.config({ jitless: true })` before any schema exists) is owned by
   `@flowcatalyst/api-runtime` from U2; until then the gallery sets it.
 - hey-api names the error component `Error`, which shadows the global `Error` where imported (import
@@ -348,8 +364,8 @@ MO against the same vectors (inside its G3 and G5a) and reuses MU as is.
    `@flowcatalyst` scope (the npm scope must equal the GitHub owner). The `@fw` placeholder is
    renamed in the docs: `@flowcatalyst/ui`, `@flowcatalyst/api-runtime`, `@flowcatalyst/gallery`.
 4. **Strict CSP becomes the default if U0 shows Nuxt UI runs under it**; U0 did (see "U0 built"
-   below), so strict is the contract's default (static assets section 7); the Java `Spa` default is
-   still to flip.
+   below), so strict is the contract's default (static assets section 7); the Java `Spa` default flipped
+   2026-10-15.
 5. **Derived API prefixes accepted**: a client route cannot share a first segment with a server route
    (static assets section 5).
 6. **`BigDecimal` as a JSON string and closed response schemas: confirmed** (openapi section 13,
