@@ -168,7 +168,7 @@ rewritten at hand-off and can lag the code in between.
   `go/`, sqlc plus go-jet/`Filter`, embedded PostgreSQL tests, 27 ordered owner decisions),
   `go/capabilities.md`, `go/orders-showcase.md`, `go/milestones.md` (G0 to G7). Findings: the Java
   dispatch receiver does not follow the 2026-10-12 receiver-principal ruling (no principal, no
-  causation); fcsdk is MPL-2.0, has no module of its own and writes a snake_case outbox payload;
+  causation); fcsdk was MPL-2.0 (Apache-2.0 since 2026-10-13), has no module of its own and writes a snake_case outbox payload;
   the Java tests still have to write the HTTP, Datastar, metrics, rate-limit, secrets and receiver
   vectors the other implementations need.
 
@@ -289,7 +289,7 @@ kit values checked by a unit test) replaces `theme/kit.css`; looks in `fcCompone
 both themes at desktop and phone and with overlays open. The spec catalog test became a **behaviour
 checklist** (`apps/gallery/src/behaviours.ts`, 62 rows): each page marks its rows and a Playwright
 reporter fails a full run in which a row is exercised by no passing test. `pnpm licences` now also
-generates and checks `ui/THIRD-PARTY-NOTICES` from the gallery build (35 shipped packages; Inter OFL
+generates and checks `ui/THIRD-PARTY-NOTICES` from the gallery build (35 shipped packages; IBM Plex Sans OFL
 text, vaul-vue with its repository's MIT text, MPL tools listed as not shipped); the vaul-vue request is
 drafted in [`ui/upstream-vaul-vue-issue.md`](ui/upstream-vaul-vue-issue.md), not posted. `pnpm check`
 green from a clean frozen install: vitest 43 + 36 + 5, Playwright 82 (+ 4 screenshot runs);
@@ -328,7 +328,7 @@ settings are in the contract since 2026-10-14.)
    subtle success 2.95; subtle info 3.61; muted foreground on `bg-elevated` 4.34): change the kit's
    light tokens, or accept them.
 2. Licences: MPL-2.0 for `axe-core`, `@axe-core/playwright` and `lightningcss` (unmodified build and
-   test tools): accept; the OFL-1.1 notice for the Inter font must ship with an application's
+   test tools): accept; the OFL-1.1 notice for the font (IBM Plex Sans since 2026-10-14; Inter at the time) must ship with an application's
    third-party notices; `vaul-vue` 0.4.1 declares no licence in its npm package (its repository is
    MIT) and ships in every bundle that uses `UDashboardSidebar`, `USidebar` or `UDrawer`: accept,
    ask upstream, or replace.

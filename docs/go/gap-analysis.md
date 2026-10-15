@@ -166,9 +166,9 @@ of the Java build and fcsdk gives little there beyond the envelope's shape.
    ([`../typescript/spike.md`](../typescript/spike.md) G5).
 2. **The audit row is per event**, not one per use case, and its `operation` is the command's Go
    type name (by reflection), not the use-case name.
-3. **Licence: MPL-2.0** (`pkg/fcsdk/LICENSE`), not Apache-2.0 like the rest of the platform
-   repository and like this framework. Importing it is allowed (file-level copyleft), but the Rust
-   framework's `deny.toml` refuses MPL (Rust milestones, R0), so the policy is not consistent.
+3. **Licence: was MPL-2.0, now Apache-2.0** (relicensed 2026-10-13, owner-approved, no third-party MPL
+   code in it; `pkg/fcsdk/LICENSE` and `NOTICE`). When this analysis was written it was MPL-2.0, which
+   the Rust framework's `deny.toml` refuses (Rust milestones, R0); no exception is needed any more.
    [Design](design.md) decision 3.
 4. **No module of its own, no version.** fcsdk is a package tree inside the module
    `github.com/flowcatalyst/flowcatalyst-go`, whose `go.mod` requires the AWS SDK, huma, chi, the

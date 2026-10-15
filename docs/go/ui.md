@@ -555,7 +555,7 @@ Cross-Origin-Opener-Policy: same-origin
 Permissions-Policy: camera=(), microphone=(), geolocation=()
 ```
 
-Fonts are self-hosted (Inter from `@fontsource-variable/inter`) so `font-src 'self'` holds.
+Fonts are self-hosted (IBM Plex Sans from `@fontsource-variable/ibm-plex-sans`, the default since 2026-10-14; see [`ui/fonts.md`](ui/fonts.md)) so `font-src 'self'` holds.
 **Unverified:** whether any Nuxt UI or Reka component writes an inline `<style>` element or a
 `style` attribute through markup (setting `element.style` from script is not blocked by
 `style-src`). The gallery runs under this exact policy in Playwright and fails on any
@@ -605,7 +605,7 @@ password with a strength meter (`UInput` + `UProgress`), file import (`UFileUplo
 
 The theme is `@flowcatalyst/ui/theme.css` (was `theme/kit.css`). It sets **only Nuxt UI's variables**
 (`--ui-*`: the five colour aliases, text, backgrounds, borders, `--ui-radius` 2px), light and dark, plus
-self-hosted Inter and the `navy` palette the sidebar uses. Component looks are Nuxt UI variants in
+self-hosted IBM Plex Sans and the `navy` palette the sidebar uses. Component looks are Nuxt UI variants in
 `fcComponentTheme`, passed by `nuxtUiOptions()` to the Vite plugin's `ui` option: `tabs` (bordered),
 `pageHeader` (compact), `alert` (description at full opacity).
 
