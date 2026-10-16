@@ -104,8 +104,8 @@ class OrdersAdminTest {
     TestResponse nav = get("/api/admin/navigation", admin());
 
     assertThat(nav.status()).isEqualTo(200);
-    assertThat(ids(nav)).containsExactly("about", "event-types", "roles", "config", "orders");
-    assertThat(nav.tree().get("sections").get(4).get("path").asString()).isEqualTo("/admin/orders");
+    assertThat(ids(nav)).containsExactly("about", "event-types", "roles", "users", "activity", "config", "orders");
+    assertThat(nav.tree().get("sections").get(6).get("path").asString()).isEqualTo("/admin/orders");
     TestResponse about = get("/api/admin/about", admin());
     assertThat(about.status()).isEqualTo(200);
     assertThat(about.tree().get("application").asString()).isEqualTo("orders-demo");
@@ -125,6 +125,13 @@ class OrdersAdminTest {
             "/api/admin/event-types/et_3",
             "/api/admin/roles",
             "/api/admin/roles/orders-demo:clerk",
+            "/api/admin/users",
+            "/api/admin/users/prn_ada",
+            "/api/admin/invitations",
+            "/api/admin/events",
+            "/api/admin/events/ev_01",
+            "/api/admin/dispatch-jobs",
+            "/api/admin/dispatch-jobs/dj_01",
             "/api/admin/config",
             "/api/admin/config/flowcatalyst.client-secret")) {
       TestResponse r = get(path, clerk());
@@ -143,6 +150,75 @@ class OrdersAdminTest {
     assertThat(field(roles, "name")).containsExactly("orders-demo:admin", "orders-demo:clerk");
     assertThat(roles.body()).doesNotContain("billing");
     assertThat(get("/api/admin/roles/orders-demo:clerk", admin()).tree().get("permissions")).hasSize(2);
+  }
+
+  TestResponse send(String method, String path, String cookie, String body) {
+    TestClient.Call call =
+        client.request(io.flowcatalyst.framework.http.Method.valueOf(method), path).header("Cookie", cookie).header("Accept", "application/json").header("Sec-Fetch-Mode", "cors").header("Sec-Fetch-Site", "same-origin");
+    if (body != null) {
+      call.jsonBody(body);
+    }
+    return call.send();
+  }
+
+  @Test
+  void anAdministratorWorksWithTheApplicationsUsersAndInvitationsThroughTheServiceAccount() {
+    platform.clearRequests();
+    DemoPlatform.resetDirectory(platform);
+
+    TestResponse users = get("/api/admin/users?limit=3", admin());
+    assertThat(users.status()).isEqualTo(200);
+    assertThat(field(users, "email")).containsExactly("ada@example.test", "grace@example.test", "linus@example.test");
+    assertThat(users.tree().get("items").get(0).get("roles")).extracting(JsonNode::asString).containsExactly("orders-demo:admin");
+    assertThat(users.body()).doesNotContain("billing");
+    assertThat(field(get("/api/admin/invitations", admin()), "userId")).containsExactly("prn_linus", "prn_margaret");
+
+    String invite = "{\"email\":\"new@example.test\",\"name\":\"New Person\",\"clientId\":\"acme\",\"roles\":[\"orders-demo:clerk\"],\"returnInviteLink\":true}";
+    TestResponse made = send("POST", "/api/admin/users", admin(), invite);
+    assertThat(made.status()).isEqualTo(201);
+    assertThat(made.tree().get("inviteLink").asString()).contains("set-password");
+    assertThat(made.header("Cache-Control")).contains("no-store");
+    assertThat(field(get("/api/admin/invitations", admin()), "email")).contains("new@example.test");
+    assertThat(get("/api/admin/invitations", admin()).body()).doesNotContain("set-password");
+
+    TestResponse again = send("POST", "/api/admin/users", admin(), invite);
+    assertThat(again.status()).isEqualTo(409);
+    assertThat(again.tree().get("error").asString()).isEqualTo("EMAIL_EXISTS");
+    assertThat(again.tree().get("message").asString()).isEqualTo("a user with this email already exists");
+
+    assertThat(send("POST", "/api/admin/invitations/prn_margaret/resend", admin(), "{}").status()).isEqualTo(200);
+    assertThat(send("DELETE", "/api/admin/invitations/prn_linus", admin(), null).status()).isEqualTo(204);
+    assertThat(field(get("/api/admin/invitations", admin()), "userId")).doesNotContain("prn_linus");
+    // every platform call went to this application's paths, as the service account
+    assertThat(platform.requests())
+        .filteredOn(r -> r.path().startsWith("/api/applications/"))
+        .allMatch(r -> r.path().startsWith("/api/applications/orders-demo/") && r.headers().get("authorization").startsWith("Bearer "));
+  }
+
+  @Test
+  void aClerkCannotInviteResendOrRevokeAndTheServiceAccountIsNotUsed() {
+    platform.clearRequests();
+    String invite = "{\"email\":\"x@example.test\",\"name\":\"X\",\"clientId\":\"acme\",\"roles\":[\"orders-demo:clerk\"]}";
+    assertThat(send("POST", "/api/admin/users", clerk(), invite).status()).isEqualTo(403);
+    assertThat(send("POST", "/api/admin/invitations/prn_linus/resend", clerk(), "{}").status()).isEqualTo(403);
+    assertThat(send("DELETE", "/api/admin/invitations/prn_linus", clerk(), null).status()).isEqualTo(403);
+    assertThat(platform.requests()).noneMatch(r -> r.path().startsWith("/api/applications/"));
+  }
+
+  @Test
+  void anAdministratorReadsTheApplicationsEventsAndTheJobsThatDeliverThem() {
+    TestResponse events = get("/api/admin/events?limit=4", admin());
+    assertThat(events.status()).isEqualTo(200);
+    assertThat(field(events, "id")).hasSize(4).noneMatch(id -> id.equals("ev_x1"));
+    assertThat(events.body()).doesNotContain("billing:invoice");
+    TestResponse one = get("/api/admin/events/ev_02", admin());
+    assertThat(one.tree().get("dispatchJobs").get(0).get("id").asString()).isEqualTo("dj_02");
+    assertThat(one.tree().get("dispatchJobs").get(0).get("targetUrl").asString()).isEqualTo("https://billing.example.test/hooks/orders");
+    TestResponse job = get("/api/admin/dispatch-jobs/dj_02", admin());
+    assertThat(job.tree().get("attempts")).hasSize(2);
+    assertThat(job.tree().get("attempts").get(0).get("responseBody").asString()).isEqualTo("upstream exploded");
+    assertThat(get("/api/admin/events/ev_x1", admin()).status()).isEqualTo(404);
+    assertThat(field(get("/api/admin/dispatch-jobs?status=FAILED", admin()), "id")).containsExactly("dj_08", "dj_02");
   }
 
   @Test
@@ -171,11 +247,16 @@ class OrdersAdminTest {
     assertThat(report.of(io.flowcatalyst.framework.flowcatalyst.DefinitionSync.Category.ROLES).codes()).containsExactly("admin");
     assertThat(app.get(io.flowcatalyst.framework.flowcatalyst.DefinitionCatalog.class).roles().get(0).permissions())
         .containsExactly(
+            "orders-demo:admin:activity:view",
             "orders-demo:admin:config:view",
             "orders-demo:admin:console:view",
             "orders-demo:admin:event-types:view",
             "orders-demo:admin:orders:view",
-            "orders-demo:admin:roles:view");
+            "orders-demo:admin:roles:view",
+            "orders-demo:admin:users:invite",
+            "orders-demo:admin:users:resend",
+            "orders-demo:admin:users:revoke",
+            "orders-demo:admin:users:view");
   }
 
   static List<String> field(TestResponse r, String name) {

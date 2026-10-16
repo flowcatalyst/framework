@@ -42,12 +42,12 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <ul>
  *   <li>{@code /control/sign-in-as?roles=orders-demo:clerk,...&name=...} the next sign-in
- *   <li>{@code /control/reset} deletes every order (sessions stay)
+ *   <li>{@code /control/reset} deletes every order and puts the fake platform's users and invitations back (sessions stay)
  *   <li>{@code /control/end-sessions} deletes every session, as an expiry would
  *   <li>{@code /control/provider-down?value=true|false} makes the platform answer 503
  *   <li>{@code /control/login-rate-limit?value=true|false} puts a real limiter of one request a minute on the sign-in routes
  *       (a fresh budget each time it is switched on); the suite otherwise runs without a limit
- *   <li>{@code /control/platform-reads?value=403|500} makes the platform's reads (event types, roles) fail (empty: normal)
+ *   <li>{@code /control/platform-reads?value=403|500} makes the platform's reads and writes (event types, roles, users, invitations, events, dispatch jobs) fail (empty: normal)
  *   <li>{@code /control/authorize-error?value=access_denied} makes the platform refuse the next sign-ins (empty: normal)
  * </ul>
  */
@@ -114,6 +114,7 @@ public final class OrdersE2e {
         "/control/reset",
         e -> {
           pg.execute("TRUNCATE order_lines, orders, outbox_messages CASCADE");
+          DemoPlatform.resetDirectory(platform);
           reply(e, 200, "ok");
         });
     control.createContext(

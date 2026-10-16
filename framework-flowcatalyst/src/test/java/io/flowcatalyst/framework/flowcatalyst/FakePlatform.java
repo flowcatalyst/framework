@@ -105,6 +105,9 @@ public final class FakePlatform implements AutoCloseable {
   private final Map<String, Failing> failing = new ConcurrentHashMap<>();
   private final Map<String, Canned> reads = new ConcurrentHashMap<>();
   private final Map<String, Function<Recorded, Reply>> routes = new ConcurrentHashMap<>();
+  private final List<PatternRoute> patternRoutes = new CopyOnWriteArrayList<>();
+
+  private record PatternRoute(String method, Pattern path, Function<Recorded, Reply> handler) {}
   private volatile int tokenFailure;
   private final Set<String> issued = ConcurrentHashMap.newKeySet();
   private volatile String tokenSub = SERVICE_PRINCIPAL;
@@ -268,6 +271,18 @@ public final class FakePlatform implements AutoCloseable {
   }
 
   /**
+   * As {@link #route}, for every path that matches a regular expression (ids in the path); an exact
+   * {@link #route} wins over a pattern. The first pattern added that matches answers.
+   *
+   * @param method the HTTP method
+   * @param pathRegex matched against the whole path, without the query string
+   * @param handler the answer, from the recorded request
+   */
+  public void routeMatching(String method, String pathRegex, Function<Recorded, Reply> handler) {
+    patternRoutes.add(new PatternRoute(method, Pattern.compile(pathRegex), handler));
+  }
+
+  /**
    * Makes one method and path answer with a fixed response.
    *
    * @param method the HTTP method
@@ -368,6 +383,17 @@ public final class FakePlatform implements AutoCloseable {
         Reply answer = route.apply(recorded);
         reply(ex, answer.status(), answer.body());
         return;
+      }
+      for (PatternRoute pr : patternRoutes) {
+        if (pr.method().equals(ex.getRequestMethod()) && pr.path().matcher(path).matches()) {
+          if (!bearer(headers)) {
+            reply(ex, 401, "{\"error\":\"unauthorized\"}");
+            return;
+          }
+          Reply answer = pr.handler().apply(recorded);
+          reply(ex, answer.status(), answer.body());
+          return;
+        }
       }
       Canned read = reads.get(path);
       if (read != null && "GET".equals(ex.getRequestMethod())) {

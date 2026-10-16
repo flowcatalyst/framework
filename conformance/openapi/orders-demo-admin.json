@@ -179,6 +179,225 @@
         "x-fw-permission": "orders-demo:admin:config:view"
       }
     },
+    "/api/admin/dispatch-jobs": {
+      "get": {
+        "operationId": "listAdminDispatchJobs",
+        "summary": "The dispatch jobs of the application's own events, newest first",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageGroup",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAdminDispatchJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: the cursor is not one this server gave\nINVALID_STATUS: the status is an upper-case word\nINVALID_TIMESTAMP: since and until are RFC 3339 times",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:activity:view"
+      }
+    },
+    "/api/admin/dispatch-jobs/{id}": {
+      "get": {
+        "operationId": "getAdminDispatchJob",
+        "summary": "One dispatch job with its delivery attempts",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDispatchJobDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "DISPATCH_JOB_NOT_FOUND: there is no such dispatch job of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:activity:view"
+      }
+    },
     "/api/admin/event-types": {
       "get": {
         "operationId": "listAdminEventTypes",
@@ -377,6 +596,506 @@
           }
         ],
         "x-fw-permission": "orders-demo:admin:event-types:view"
+      }
+    },
+    "/api/admin/events": {
+      "get": {
+        "operationId": "listAdminEvents",
+        "summary": "The application's own events, newest first",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "correlationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAdminEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: the cursor is not one this server gave\nINVALID_TIMESTAMP: since and until are RFC 3339 times",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:activity:view"
+      }
+    },
+    "/api/admin/events/{id}": {
+      "get": {
+        "operationId": "getAdminEvent",
+        "summary": "One event with its payload and the dispatch jobs that deliver it",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminEventDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "EVENT_NOT_FOUND: there is no such event of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:activity:view"
+      }
+    },
+    "/api/admin/invitations": {
+      "get": {
+        "operationId": "listAdminInvitations",
+        "summary": "The invitations that have not been accepted",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "EXPIRED"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAdminInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: the cursor is not one this server gave",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:users:view"
+      }
+    },
+    "/api/admin/invitations/{id}": {
+      "delete": {
+        "operationId": "revokeAdminInvitation",
+        "summary": "Revoke an invitation: the user is deactivated and the links stop working",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "INVITATION_NOT_FOUND: there is no such invitation of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:users:revoke"
+      }
+    },
+    "/api/admin/invitations/{id}/resend": {
+      "post": {
+        "operationId": "resendAdminInvitation",
+        "summary": "Send an invitation again; the earlier link stops working",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVITATION_DELIVERY_REQUIRED: the invitation has nowhere to go",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "INVITATION_NOT_FOUND: there is no such invitation of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "INVITE_DELIVERY_FAILED: the invitation could not be delivered; try again\nPLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:users:resend"
       }
     },
     "/api/admin/navigation": {
@@ -635,6 +1354,309 @@
           }
         ],
         "x-fw-permission": "orders-demo:admin:roles:view"
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "operationId": "listAdminUsers",
+        "summary": "The users who hold this application's roles",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roles",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAdminUser"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: the cursor is not one this server gave",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:users:view"
+      },
+      "post": {
+        "operationId": "inviteAdminUser",
+        "summary": "Invite a user into this application with its roles",
+        "tags": [
+          "admin"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ROLES_REQUIRED: give at least one of the application's roles\nUNKNOWN_ROLE: a role is not a role of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "description": "CLIENT_NOT_AVAILABLE: the client is not available to this application\nROLE_APP_FORBIDDEN: a role belongs to another application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "EMAIL_EXISTS: a user with this email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:users:invite"
+      }
+    },
+    "/api/admin/users/{id}": {
+      "get": {
+        "operationId": "getAdminUser",
+        "summary": "One user of this application",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUser"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "USER_NOT_FOUND: there is no such user of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:users:view"
       }
     },
     "/api/orders": {
@@ -1140,6 +2162,51 @@
         ],
         "additionalProperties": false
       },
+      "AdminAttempt": {
+        "type": "object",
+        "properties": {
+          "attemptNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attemptedAt": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": "string"
+          },
+          "durationMillis": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "responseCode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "responseBody": {
+            "type": "string"
+          },
+          "responseBodyTruncated": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "errorType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attemptNumber",
+          "attemptedAt",
+          "responseBodyTruncated",
+          "success"
+        ],
+        "additionalProperties": false
+      },
       "AdminCheck": {
         "type": "object",
         "properties": {
@@ -1259,6 +2326,192 @@
         ],
         "additionalProperties": false
       },
+      "AdminContextEntry": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "AdminDispatchJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "subscriptionId": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "messageGroup": {
+            "type": "string"
+          },
+          "descriptor": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastAttemptAt": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": "string"
+          },
+          "attemptCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "kind",
+          "targetUrl",
+          "mode",
+          "createdAt",
+          "attemptCount"
+        ],
+        "additionalProperties": false
+      },
+      "AdminDispatchJobDetail": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/AdminDispatchJob"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxRetries": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "retryStrategy": {
+            "type": "string"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAttempt"
+            }
+          }
+        },
+        "required": [
+          "job",
+          "attempts"
+        ],
+        "additionalProperties": false
+      },
+      "AdminEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "messageGroup": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "source",
+          "time"
+        ],
+        "additionalProperties": false
+      },
+      "AdminEventDetail": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/AdminEvent"
+          },
+          "data": {
+            "type": "string"
+          },
+          "dataTruncated": {
+            "type": "boolean"
+          },
+          "context": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminContextEntry"
+            }
+          },
+          "causationId": {
+            "type": "string"
+          },
+          "dispatchJobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDispatchJob"
+            }
+          }
+        },
+        "required": [
+          "event",
+          "dataTruncated",
+          "context",
+          "dispatchJobs"
+        ],
+        "additionalProperties": false
+      },
       "AdminEventType": {
         "type": "object",
         "properties": {
@@ -1342,6 +2595,52 @@
         "required": [
           "ready",
           "checks"
+        ],
+        "additionalProperties": false
+      },
+      "AdminInvitation": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "EXPIRED"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "name",
+          "clientId",
+          "roles",
+          "status",
+          "createdAt"
         ],
         "additionalProperties": false
       },
@@ -1461,6 +2760,55 @@
         "required": [
           "version",
           "status"
+        ],
+        "additionalProperties": false
+      },
+      "AdminUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "idpType": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "invitation": {
+            "type": "string"
+          },
+          "lastLoginAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "active",
+          "clientId",
+          "idpType",
+          "roles",
+          "createdAt"
         ],
         "additionalProperties": false
       },
@@ -1664,6 +3012,72 @@
         ],
         "additionalProperties": false
       },
+      "InviteBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "pattern": "^(?:[^@\\s]+@[^@\\s]+\\.[^@\\s]+)$",
+            "minLength": 1,
+            "maxLength": 254
+          },
+          "name": {
+            "type": "string",
+            "pattern": "\\S",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "clientId": {
+            "type": "string",
+            "pattern": "\\S",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "\\S",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "minItems": 1,
+            "maxItems": 50
+          },
+          "sendInvitation": {
+            "type": "boolean"
+          },
+          "returnInviteLink": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "clientId",
+          "roles"
+        ],
+        "additionalProperties": false
+      },
+      "InviteResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "invitationSent": {
+            "type": "boolean"
+          },
+          "inviteLink": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "invitationSent"
+        ],
+        "additionalProperties": false
+      },
       "OrderLineView": {
         "type": "object",
         "properties": {
@@ -1801,6 +3215,42 @@
         ],
         "additionalProperties": false
       },
+      "PageAdminDispatchJob": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDispatchJob"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "PageAdminEvent": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminEvent"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "PageAdminEventType": {
         "type": "object",
         "properties": {
@@ -1819,6 +3269,24 @@
         ],
         "additionalProperties": false
       },
+      "PageAdminInvitation": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminInvitation"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "PageAdminRole": {
         "type": "object",
         "properties": {
@@ -1826,6 +3294,24 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AdminRole"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "PageAdminUser": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminUser"
             }
           },
           "nextCursor": {
@@ -1868,6 +3354,27 @@
         "required": [
           "customer"
         ],
+        "additionalProperties": false
+      },
+      "ResendBody": {
+        "type": "object",
+        "properties": {
+          "returnInviteLink": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResendResult": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string"
+          },
+          "inviteLink": {
+            "type": "string"
+          }
+        },
         "additionalProperties": false
       }
     },

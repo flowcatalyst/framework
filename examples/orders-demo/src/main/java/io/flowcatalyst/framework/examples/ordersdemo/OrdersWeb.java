@@ -10,7 +10,9 @@ import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Launch;
 import io.flowcatalyst.framework.flowcatalyst.FlowCatalystModule;
+import io.flowcatalyst.framework.flowcatalyst.PlatformActivityAdminModule;
 import io.flowcatalyst.framework.flowcatalyst.PlatformAdminModule;
+import io.flowcatalyst.framework.flowcatalyst.PlatformUsersAdminModule;
 import io.flowcatalyst.framework.http.jetty.JettyHttpModule;
 import java.util.Map;
 import java.util.Set;
@@ -50,10 +52,13 @@ public final class OrdersWeb {
     return withoutAdmin(customise)
         // The admin area (M4d): the skeleton's navigation and about, and the demo's own section.
         .module(AdminModule.of(APPLICATION))
-        // M4e: the application's event types and roles as the platform holds them (read through the
-        // application's service account), and its configuration and secret status.
+        // M4e: the application's event types, roles, users and invitations, and events and dispatch
+        // jobs as the platform holds them (through the application's service account), and its
+        // configuration and secret status.
         .module(new FlowCatalystModule())
         .module(PlatformAdminModule.of(APPLICATION))
+        .module(PlatformUsersAdminModule.of(APPLICATION))
+        .module(PlatformActivityAdminModule.of(APPLICATION))
         .module(AdminConfigModule.of(APPLICATION))
         .module(new OrdersAdminModule());
   }

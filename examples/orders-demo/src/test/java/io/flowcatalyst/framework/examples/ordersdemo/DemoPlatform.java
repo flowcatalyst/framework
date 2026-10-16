@@ -20,6 +20,7 @@ final class DemoPlatform {
    */
   static FakePlatform start() {
     FakePlatform platform = FakePlatform.start();
+    DemoDirectory.install(platform);
     reads(platform, 200);
     return platform;
   }
@@ -31,6 +32,10 @@ final class DemoPlatform {
    * @param status 200 for the demo's catalogue, anything else for an error answer on every read
    */
   static void reads(FakePlatform platform, int status) {
+    DemoDirectory directory = DemoDirectory.of(platform);
+    if (directory != null) {
+      directory.refuse(status == 200 ? 0 : status);
+    }
     if (status != 200) {
       for (String path : List.of("/api/event-types", "/api/event-types/et_3", "/api/roles", "/api/roles/orders-demo:clerk")) {
         platform.respondGet(path, status, "{\"error\":\"refused\"}");
@@ -66,6 +71,14 @@ final class DemoPlatform {
             + "],\"total\":3}");
     platform.respondGet(
         "/api/roles/orders-demo:clerk", 200, role("rol_2", "orders-demo:clerk", "Clerk", "orders-demo:order:read", "orders-demo:order:manage"));
+  }
+
+  /** Puts the users and invitations back to where they started (the end-to-end suite calls it between specs). */
+  static void resetDirectory(FakePlatform platform) {
+    DemoDirectory directory = DemoDirectory.of(platform);
+    if (directory != null) {
+      directory.reset();
+    }
   }
 
   /**
