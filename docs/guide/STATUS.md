@@ -48,6 +48,8 @@ compare. Nothing is published.
 
 ## The Go implementation
 
+**PARKED (owner, 2026-10-16).** The Go application framework is parked: G0 to G4 are built and tested, G5a, G5b and G6 onward are not started, and nothing more is built until the owner resumes. Core domains are built on the Java framework. The FlowCatalyst platform itself, `pkg/fcsdk` and the function runner stay Go. To resume, see the banner in [`go/milestones.md`](../go/milestones.md).
+
 A further implementation of the contracts, in `go/` ([overview](go/index.md), design in
 [`docs/go/`](../go/design.md): gap analysis against the Go SDK and platform, design, capabilities,
 the orders example, the UI, milestones G0 to G7). It shares the contracts and the conformance
