@@ -293,7 +293,7 @@ in the application's own `web/` and linking the shared packages by path.
 
 | File | Role |
 |---|---|
-| `web/package.json` | scripts `dev` (Vite on 5176), `build`, `typecheck` (`tsc` 7 plus `vue-tsc`), `generate` (`openapi-ts`); `@flowcatalyst/ui` and `@flowcatalyst/api-runtime` as `link:` paths to a framework checkout; Node 24, pnpm 10.27 |
+| `web/package.json` | scripts `dev` (Vite on 5176), `build`, `typecheck` (`tsc` 7 plus `vue-tsc`), `generate` (`openapi-ts`); `@flowcatalyst/ui` and `@flowcatalyst/api-runtime` as `link:` paths to a framework checkout; Node 24, pnpm 10.27; since 2026-10-16 also the peers of `@flowcatalyst/ui` the application did not list (`@fontsource-variable/ibm-plex-sans`, `@vueuse/core`, `reka-ui`: a `link:` package's imports otherwise resolve outside the lockfile), and the tsconfigs extend `@flowcatalyst/ui/tsconfig.base.json` (`ui/README.md`, "Extending the presets from another repository") |
 | `web/pnpm-workspace.yaml` | pnpm's settings only (`packages: []`): release-age gate, no install scripts, TypeScript 7 as the compiler and 6.0.x behind the compatibility package for `vue-tsc` and hey-api, copied from the framework's `ui/pnpm-workspace.yaml` |
 | `web/vite.config.ts` | `vue()`, `@nuxt/ui/vite` with `nuxtUiOptions({ icons })`, `flowcatalystUi(options)`; `outDir: "dist"`, `sourcemap: false`; dev proxy for `/api` and `/auth` to the backend (`INGEST_BACKEND`, default `http://127.0.0.1:8090`) |
 | `web/openapi-ts.config.ts` | `fwOpenApiConfig({ input: "openapi.json", output: "src/api/ingest" })`, which carries the contract's hey-api settings (`baseUrl: false`, `int64` kept a number) |
