@@ -44,7 +44,7 @@ Read from the tree, without building or running anything there:
 | 11 | Java tests | **Done** |
 | 12 | Playwright end-to-end tests | **Not started** |
 | 13 | CI order | **Not started** (the mono-repo has no pipeline) |
-| 14 | Retire the fixed bearer and the basic login | **Open owner decision** |
+| 14 | Retire the fixed bearer and the basic login | **Decided 2026-10-16: retire both now** (not yet done in the tree) |
 | 15 | One run against the real platform | **Not done** |
 
 So the page reads two ways. A newcomer can follow the steps to see how each piece is built and what
@@ -605,6 +605,12 @@ days.
    application's build.
 
 ## Decisions for the owner
+
+**Ruled 2026-10-16 (owner):** decision 1: retire both the basic login and the fixed bearer now (this goes
+further than the recommendation; anything using the fixed bearer must move to a FlowCatalyst token first);
+decision 3: **cursor paging now**, with `hasMore` and the search on the server (`FwCursorPager`); decision 5:
+add the read-only permission `ingestor:admin:ingestion:view` for list and read, keeping `manage` for writes.
+Still open: 2, 4, 6 to 9. The text below is kept as written.
 
 1. **Retire the basic login and the fixed bearer?** Recommended: basic now, the fixed bearer when the
    tools have service accounts (step 14).

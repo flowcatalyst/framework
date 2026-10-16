@@ -424,6 +424,8 @@ Vector `conformance/admin/activity.json`.
 
 ### 12.3 Rulings taken (defaults applied; owner to confirm)
 
+**Owner 2026-10-16: ruling 1 confirmed** (application-wide; the permission is the gate). Rulings 2 to 5 are still defaults.
+
 1. The admin pages are **application-wide**: they are not narrowed to the signed-in user's client. The permission
    is the gate; the service account reaches every client the application is enabled for. (Narrowing by the
    session's client would be a one-line filter if wanted.)
