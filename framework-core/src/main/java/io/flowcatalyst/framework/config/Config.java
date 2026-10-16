@@ -22,16 +22,22 @@ public final class Config {
   private final Map<String, Setting<?>> declared;
   private final Map<String, Object> values;
   private final Sources sources;
+  private final Map<String, String> modules;
+  private final Map<String, String> origins;
 
   private Config(
       String environment,
       Map<String, Setting<?>> declared,
       Map<String, Object> values,
-      Sources sources) {
+      Sources sources,
+      Map<String, String> modules,
+      Map<String, String> origins) {
     this.environment = environment;
     this.declared = declared;
     this.values = values;
     this.sources = sources;
+    this.modules = modules;
+    this.origins = origins;
   }
 
   /** The outcome of {@link #load}. */
@@ -100,6 +106,7 @@ public final class Config {
     Map<String, Setting<?>> declared = new LinkedHashMap<>();
     Map<String, String> declaredBy = new LinkedHashMap<>();
     Map<String, Object> values = new LinkedHashMap<>();
+    Map<String, String> origins = new LinkedHashMap<>();
     for (Declaration d : declarations) {
       Setting<?> s = d.setting();
       String earlier = declaredBy.get(s.key());
@@ -114,7 +121,7 @@ public final class Config {
       }
       declared.put(s.key(), s);
       declaredBy.put(s.key(), d.module());
-      resolve(d.module(), s, sources, values, problems);
+      resolve(d.module(), s, sources, values, origins, problems);
     }
 
     checkEnvironmentNames(declarations, leaves, problems);
@@ -123,7 +130,7 @@ public final class Config {
     if (!problems.isEmpty()) {
       return new Failed(problems);
     }
-    return new Ok(new Config(environment, declared, values, sources));
+    return new Ok(new Config(environment, declared, values, sources, declaredBy, origins));
   }
 
   /**
@@ -195,6 +202,7 @@ public final class Config {
       Setting<?> s,
       Sources sources,
       Map<String, Object> values,
+      Map<String, String> origins,
       List<ConfigProblem> problems) {
     String envName = s.envName();
     @Nullable Object raw = null;
@@ -213,6 +221,7 @@ public final class Config {
     if (raw != null) {
       try {
         values.put(s.key(), s.type().parse(raw));
+        origins.put(s.key(), source);
       } catch (ValueFormatException e) {
         String found = s.isSecret() ? "" : ", found '" + (raw instanceof List<?> ? "a list" : raw) + "'";
         problems.add(
@@ -223,6 +232,7 @@ public final class Config {
     Object def = s.defaultValue();
     if (def != null) {
       values.put(s.key(), def);
+      origins.put(s.key(), "default");
     } else if (s.required()) {
       problems.add(
           new ConfigProblem(
@@ -280,6 +290,23 @@ public final class Config {
     }
     Object v = values.get(setting.key());
     return v == null ? Optional.empty() : Optional.of(setting.type().cast(v));
+  }
+
+  /**
+   * What the configuration says about every declared setting, in declaration order: whether it has
+   * a value, where the value came from, and the value itself unless it is a secret (see {@link
+   * SettingStatus}). Safe to show to an administrator; it never carries a secret's text.
+   *
+   * @return one status per declared setting
+   */
+  public List<SettingStatus> statuses() {
+    List<SettingStatus> out = new ArrayList<>();
+    for (Setting<?> s : declared.values()) {
+      Object value = values.get(s.key());
+      String origin = value == null ? "not set" : origins.getOrDefault(s.key(), "default");
+      out.add(SettingStatus.of(modules.getOrDefault(s.key(), ""), s, value, origin));
+    }
+    return List.copyOf(out);
   }
 
   /**
