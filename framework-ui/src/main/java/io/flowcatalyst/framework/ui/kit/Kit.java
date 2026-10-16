@@ -527,4 +527,243 @@ public final class Kit {
   public static Content tabs(Props.Tabs p, Map<String, Content> panels) {
     return component("tabs", params(p, "panels", panels));
   }
+
+  // ---- overlays, forms, code, shell
+
+  /**
+   * dialog component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @param footer the footer slot
+   * @return the component
+   */
+  public static Content dialog(Props.Dialog p, @Nullable Content body, @Nullable Content footer) {
+    return component("dialog", params(p, "body", body, "footer", footer));
+  }
+
+  /**
+   * confirmDialog component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content confirmDialog(Props.ConfirmDialog p) {
+    return component("confirm_dialog", params(p));
+  }
+
+  /**
+   * sheet component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @param footer the footer slot
+   * @return the component
+   */
+  public static Content sheet(Props.Sheet p, @Nullable Content body, @Nullable Content footer) {
+    return component("sheet", params(p, "body", body, "footer", footer));
+  }
+
+  /**
+   * drawer component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @param extras the extras slot
+   * @param footer the footer slot
+   * @return the component
+   */
+  public static Content drawer(Props.Drawer p, @Nullable Content body, @Nullable Content extras, @Nullable Content footer) {
+    return component("drawer", params(p, "body", body, "extras", extras, "footer", footer));
+  }
+
+  /**
+   * drawerContent component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @param extras the extras slot
+   * @param footer the footer slot
+   * @return the component
+   */
+  public static Content drawerContent(Props.Drawer p, @Nullable Content body, @Nullable Content extras, @Nullable Content footer) {
+    return component("drawer_content", params(p, "body", body, "extras", extras, "footer", footer));
+  }
+
+  /**
+   * formDialog component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content formDialog(Props.FormDialog p, @Nullable Content body) {
+    return component("form_dialog", params(p, "body", body));
+  }
+
+  /**
+   * formSection component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @param actions the actions slot
+   * @return the component
+   */
+  public static Content formSection(Props.FormSection p, @Nullable Content body, @Nullable Content actions) {
+    return component("form_section", params(p, "body", body, "actions", actions));
+  }
+
+  /**
+   * autocomplete component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content autocomplete(Props.Autocomplete p) {
+    return component("autocomplete", params(p));
+  }
+
+  /**
+   * autocompleteOptions component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content autocompleteOptions(Props.AutocompleteOptions p) {
+    return component("autocomplete_options", params(p));
+  }
+
+  /**
+   * pickList component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content pickList(Props.PickList p) {
+    return component("pick_list", params(p));
+  }
+
+  /**
+   * multiSelect component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content multiSelect(Props.MultiSelect p) {
+    return component("multi_select", params(p));
+  }
+
+  /**
+   * multiSelectSummary component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content multiSelectSummary(Props.MultiSelect p) {
+    return component("multi_select_summary", params(p));
+  }
+
+  /**
+   * multiSelectOptions component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content multiSelectOptions(Props.MultiSelect p) {
+    return component("multi_select_options", params(p));
+  }
+
+  /**
+   * codeChips component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content codeChips(Props.CodeChips p) {
+    return component("code_chips", params(p));
+  }
+
+  /**
+   * codeBlock component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content codeBlock(Props.CodeBlock p, @Nullable Content body) {
+    return component("code_block", params(p, "body", body));
+  }
+
+  /**
+   * appShell component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content appShell(Props.AppShell p, @Nullable Content body) {
+    return component("app_shell", params(p, "body", body));
+  }
+
+  /**
+   * appSidebar component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content appSidebar(Props.AppShell p) {
+    return component("app_sidebar", params(p));
+  }
+
+  /**
+   * userMenu component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content userMenu(Props.AppShell p) {
+    return component("user_menu", params(p));
+  }
+
+  /**
+   * detail-field.md: a read-only labelled value. Without a value the slot is the value; with
+   * neither it is a dash.
+   *
+   * @param p props
+   * @param body markup for the value, used when the value is empty
+   * @return the component
+   */
+  public static Content detailField(Props.DetailField p, @Nullable Content body) {
+    return output -> {
+      String slot = body == null ? null : Markup.render(body);
+      if (slot != null && slot.isBlank()) {
+        slot = null;
+      }
+      ENGINE.render("kit/detail_field.jte", params(p, "slot", slot), output);
+    };
+  }
+
+  /**
+   * form-dialog.md's form-level error region: always present so a failed submit patches it by id.
+   *
+   * @param dialogId the dialog id
+   * @param message the error, or null for an empty region
+   * @return the component
+   */
+  public static Content formDialogError(String dialogId, @Nullable String message) {
+    Map<String, Object> m = new HashMap<>();
+    m.put("dialogId", dialogId);
+    m.put("message", message);
+    return component("form_dialog_error", m);
+  }
+
+  /**
+   * The theme picker of the user menu.
+   *
+   * @param current system, light or dark
+   * @return the component
+   */
+  public static Content themeChoices(String current) {
+    return component("theme_choices", Map.of("current", current));
+  }
 }

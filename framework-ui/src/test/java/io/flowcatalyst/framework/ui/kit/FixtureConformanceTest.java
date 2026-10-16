@@ -29,24 +29,7 @@ import tools.jackson.databind.node.ObjectNode;
 class FixtureConformanceTest {
 
   /** Fixture directories this module does not render yet. Shrinks to empty as the kit grows. */
-  static final Set<String> NOT_YET = Set.of(
-          "app-shell",
-          "app-sidebar",
-          "autocomplete",
-          "autocomplete-options",
-          "code-block",
-          "code-chips",
-          "confirm-dialog",
-          "detail-field",
-          "dialog",
-          "drawer",
-          "drawer-content",
-          "form-dialog",
-          "form-section",
-          "multi-select",
-          "pick-list",
-          "sheet",
-          "user-menu");
+  static final Set<String> NOT_YET = Set.of();
 
   private static final ObjectMapper MAPPER =
       JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();

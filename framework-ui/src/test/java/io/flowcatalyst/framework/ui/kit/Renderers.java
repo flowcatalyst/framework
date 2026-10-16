@@ -95,6 +95,35 @@ final class Renderers {
           }
           return Kit.tabs(p, panels);
         });
+    r("dialog", Props.Dialog.class, (p, s) -> Kit.dialog(p, s.get("default"), s.get("footer")));
+    r("confirm-dialog", Props.ConfirmDialog.class, (p, s) -> Kit.confirmDialog(p));
+    r("sheet", Props.Sheet.class, (p, s) -> Kit.sheet(p, s.get("default"), s.get("footer")));
+    r(
+        "drawer",
+        Props.Drawer.class,
+        (p, s) -> Kit.drawer(p, s.get("default"), s.get("extras"), s.get("footer")));
+    r(
+        "drawer-content",
+        Props.Drawer.class,
+        (p, s) -> Kit.drawerContent(p, s.get("default"), s.get("extras"), s.get("footer")));
+    r("form-dialog", Props.FormDialog.class, (p, s) -> Kit.formDialog(p, s.get("default")));
+    r(
+        "form-section",
+        Props.FormSection.class,
+        (p, s) -> Kit.formSection(p, s.get("default"), s.get("actions")));
+    r("detail-field", Props.DetailField.class, (p, s) -> Kit.detailField(p, s.get("default")));
+    r("autocomplete", Props.Autocomplete.class, (p, s) -> Kit.autocomplete(p));
+    r(
+        "autocomplete-options",
+        Props.AutocompleteOptions.class,
+        (p, s) -> Kit.autocompleteOptions(p));
+    r("pick-list", Props.PickList.class, (p, s) -> Kit.pickList(p));
+    r("multi-select", Props.MultiSelect.class, (p, s) -> Kit.multiSelect(p));
+    r("code-chips", Props.CodeChips.class, (p, s) -> Kit.codeChips(p));
+    r("code-block", Props.CodeBlock.class, (p, s) -> Kit.codeBlock(p, s.get("default")));
+    r("app-shell", Props.AppShell.class, (p, s) -> Kit.appShell(p, s.get("default")));
+    r("app-sidebar", Props.AppShell.class, (p, s) -> Kit.appSidebar(p));
+    r("user-menu", Props.AppShell.class, (p, s) -> Kit.userMenu(p));
   }
 
   private static Content nn(@Nullable Content c) {
