@@ -29,6 +29,7 @@
     - { title: HTTP client, path: guide/http-client.md }
     - { title: Rate limiting, path: guide/rate-limiting.md }
     - { title: Static assets and the SPA, path: guide/static-assets-and-spa.md }
+    - { title: Server-rendered pages (JTE), path: guide/ui-jte.md }
     - { title: Typed operations and OpenAPI, path: guide/openapi.md }
     - { title: The admin area, path: guide/admin.md }
     - { title: Sessions and login, path: guide/sessions-and-login.md }

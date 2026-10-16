@@ -161,14 +161,30 @@ rewritten at hand-off and can lag the code in between.
   runnable T0 plan, TypeScript slice against a Go slice), `typescript/milestones.md` (T0 to T9 with
   T4a auth, T4b workers, T4c worker-pool dispatcher). Contract amendments proposed: http routing
   syntax and wildcard, opt-in CORS, static assets; an M4c auth contract written once for all three.
+- **M-UI built 2026-10-16** (owner-approved, optional, secondary to the Nuxt UI package): `framework-ui`
+  (precompiled JTE 3.2.4 templates, no compiler or reflection at run time; `Kit`/`Props` for all 59
+  `ui-kit/fixtures` directories, 170 cases, strict props, compared with the goldens through a jsoup
+  normaliser that follows `fixtures/README.md`), `Views` (full page or Datastar patch of `#fw-page`),
+  `Patches`, `UiAssets`/`UiModule` (vendored Datastar 1.0.4, committed `kit.css` built by
+  `framework-ui/assets/build.sh`), `ViewCsp`; `examples/orders-demo-jte` (in memory, no sign-in) with
+  `e2e/browser-check.mjs` (Chromium + axe via the `ui/` workspace's packages; run by hand against a demo on a
+  free port, not part of `mvn verify`). Guide: `guide/ui-jte.md`. Found, for the owner: (1) Datastar
+  needs `'unsafe-eval'` and the kit needs `style-src-attr 'unsafe-inline'`, so the page policy is weaker
+  than the SPA's strict one; (2) Datastar's morph leaves a closed-by-attribute modal dialog in the top layer,
+  so a form dialog must be replaced (`Patches.replace`), the spec's self-removing `data-init` close can run after
+  the morph (form-dialog.md should say so; not edited); (3) axe finds serious issues in the kit itself:
+  `aria-label` on the disabled paginator spans and contrast of white on `--primary` (3.35:1), the
+  success/info badges, the page subtitle and the outline button (kit spec and theme, shared with the Go
+  platform's port; pinned as a ratchet in the browser check, not fixed). Not done: a flash cookie helper, a
+  kit-templates jar for `@template` calls from application templates, CI wiring of the browser check.
 - UI kit (`ui-kit/`) is now being dogfooded by the Go platform's templ port (`/ui` in
   `flowcatalyst-go`). Since 2026-10-09 the kit gained: Props tables and 124+ fixtures with golden
   HTML (the conformance authority), specs for row actions, flash stack, form dialog, autocomplete,
   confirm dialog and server-loaded drawer, a 90-icon sprite built by `ui-kit/icons/build-sprite.sh`,
   an error contract for Datastar actions (handled failures answer 200 plus patches; mutations send
   `retryMaxCount: 0`), a phone-width shell and server-rendered theme cookies. Defects and gaps are
-  in `ui-kit/PORTING-NOTES.md`. JTE (`framework-ui`, M-UI) has not started; it reuses the same
-  fixtures. Plan: `ui-dogfood-plan.md`.
+  in `ui-kit/PORTING-NOTES.md`. JTE (`framework-ui`, M-UI) was built 2026-10-16 on the same
+  fixtures (see the entry below). Plan: `ui-dogfood-plan.md`.
 - Rust and TypeScript are **parked** (owner, 2026-10-13): no further work on either until resumed. Rust: R0 to R2 built, R3 onward not started (banner in `rust/design.md`). TypeScript: design only, drafted and parked the same day in favour of Go, spike not run (banner in `typescript/design.md`).
 - Java follow-ups found while designing the others: (1) the dispatch receiver builds its `Context` with no principal and no causation, against the 2026-10-12 receiver-principal ruling (service principal of kind Service, dispatch job id as cause; *done in Java 2026-10-14, vector `receivers/context.json`, which Go G4 passes*); (2) the Java tests have not yet written the HTTP, Datastar, metrics, rate-limit (the Lua script and the GCRA numbers: Go compares the script with `RedisRateLimiter.java`'s text block), secrets, signature, receiver-response and htmlnorm conformance vectors the other implementations compare against; (3) the contracts need the principal kind and the source of the service principal's id spelled out; (4) the platform findings (dispatch-jobs `clientCode`, object-shaped `metadata`) are listed under 'Platform work found' above.
 - Go framework: G0 to G4 built (G4 on 2026-10-15: `ratelimit`, `httpclient`, `secrets` and the `flowcatalyst` module with both receivers; differences, the fcsdk resolution (now the released `pkg/fcsdk/v0.0.2`; `FCSDK=<path>` for unreleased work) and the end-to-end result are in `go/milestones.md` under "G4 as built"; pages `guide/go/{rate-limiting,http-client,secrets,flowcatalyst}.md`; G3 on 2026-10-15: `httpfw`, `httpfw/spa`, typed operations and the
