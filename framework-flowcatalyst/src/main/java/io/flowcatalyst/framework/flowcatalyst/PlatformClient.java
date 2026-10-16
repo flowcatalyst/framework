@@ -26,6 +26,7 @@ public final class PlatformClient {
   private final @Nullable FlowCatalystClient sdk;
   private final @Nullable FlowCatalystClient reporting;
   private final @Nullable ApplicationCode application;
+  private final @Nullable PlatformHttp http;
 
   /** The service principal, with the token it was read from (contract section 4b). */
   private record Resolved(String token, PrincipalId principal) {
@@ -40,14 +41,16 @@ public final class PlatformClient {
   private PlatformClient(
       @Nullable FlowCatalystClient sdk,
       @Nullable FlowCatalystClient reporting,
-      @Nullable ApplicationCode application) {
+      @Nullable ApplicationCode application,
+      @Nullable PlatformHttp http) {
     this.sdk = sdk;
     this.reporting = reporting;
     this.application = application;
+    this.http = http;
   }
 
   static PlatformClient disabled() {
-    return new PlatformClient(null, null, null);
+    return new PlatformClient(null, null, null, null);
   }
 
   static PlatformClient create(
@@ -67,7 +70,19 @@ public final class PlatformClient {
         builder(baseUrl, clientId, clientSecret, timeout, subscriptionTargetBaseUrl)
             .retryAttempts(0)
             .build();
-    return new PlatformClient(main, reporting, application);
+    // The routes the pinned SDK has no methods for (users, invitations, events, dispatch jobs: the
+    // admin pages) go over plain HTTP with the same service-account token (interim, admin contract 12).
+    PlatformHttp http = new PlatformHttp(baseUrl, timeout, () -> tokenOf(main), () -> main.tokenManager().clearCache());
+    return new PlatformClient(main, reporting, application, http);
+  }
+
+  private static String tokenOf(FlowCatalystClient client) {
+    try {
+      return client.tokenManager().getToken();
+    } catch (FlowCatalystException e) {
+      String message = e.getMessage();
+      throw new PlatformException(message == null ? "platform call failed" : message, e);
+    }
   }
 
   private static FlowCatalystClient.Builder builder(
@@ -379,6 +394,203 @@ public final class PlatformClient {
     } catch (FlowCatalystException e) {
       throw failed(e);
     }
+  }
+
+  // ---- users, invitations, events and dispatch jobs for the admin pages (M4e slices 1 and 4) -------
+  //
+  // The pinned SDK (0.0.11) has no methods for these routes (the platform's F20 added them to a later,
+  // unreleased SDK), so they go over plain HTTP with the service account's token. Every method below
+  // is for THIS application: the application code in a path is always the configured one.
+
+  /**
+   * Lists the application's users: {@code GET /api/applications/{app}/users}.
+   *
+   * @param query filters and page
+   * @return the page
+   * @throws PlatformException when the platform refuses or cannot be reached
+   * @throws IllegalStateException when the module is disabled
+   */
+  public PlatformAdminData.UserPage users(PlatformAdminData.UserQuery query) {
+    java.util.Map<String, @Nullable String> q = new java.util.LinkedHashMap<>();
+    q.put("q", query.q());
+    q.put("active", query.active() == null ? null : String.valueOf(query.active()));
+    q.put("clientId", query.clientId());
+    q.put("roles", query.roles().isEmpty() ? null : String.join(",", query.roles()));
+    q.put("page", String.valueOf(query.page()));
+    q.put("pageSize", String.valueOf(query.pageSize()));
+    q.put("sortField", query.sortField());
+    q.put("sortOrder", query.sortOrder());
+    return PlatformAdminParsing.users(http().call("GET", appPath() + "/users", q, null));
+  }
+
+  /**
+   * Reads one of the application's users: {@code GET /api/applications/{app}/users/{id}}.
+   *
+   * @param id the user's id
+   * @return the user
+   * @throws PlatformException (kind {@code NOT_FOUND}) when the platform has no such user of the application
+   */
+  public PlatformAdminData.UserInfo user(String id) {
+    return PlatformAdminParsing.user(http().call("GET", appPath() + "/users/" + PlatformHttp.enc(id), java.util.Map.of(), null));
+  }
+
+  /**
+   * Invites a user holding the application's roles: {@code POST /api/applications/{app}/users}. The
+   * result may hold the invitation link: hand it to the person who asked and to nobody else.
+   *
+   * @param request the invitation
+   * @return the new user's id and, when asked for, the link
+   * @throws PlatformException (kind {@code REJECTED} with the platform's code and message, for example
+   *     {@code EMAIL_EXISTS} or {@code ROLE_APP_FORBIDDEN}) when the platform says no
+   */
+  public PlatformAdminData.InviteResult invite(PlatformAdminData.InviteRequest request) {
+    java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("email", request.email());
+    body.put("name", request.name());
+    body.put("clientId", request.clientId());
+    body.put("roles", request.roles());
+    body.put("sendInvitation", request.sendInvitation());
+    body.put("returnInviteLink", request.returnInviteLink());
+    return PlatformAdminParsing.invite(http().call("POST", appPath() + "/users", java.util.Map.of(), body));
+  }
+
+  /**
+   * Lists the application's outstanding invitations: {@code GET /api/applications/{app}/invitations}.
+   * The platform never sends a link here.
+   *
+   * @param status {@code PENDING} or {@code EXPIRED}, or null for both
+   * @param page the 0-based page
+   * @param pageSize the page size
+   * @return the page
+   */
+  public PlatformAdminData.InvitationPage invitations(@Nullable String status, int page, int pageSize) {
+    java.util.Map<String, @Nullable String> q = new java.util.LinkedHashMap<>();
+    q.put("status", status);
+    q.put("page", String.valueOf(page));
+    q.put("pageSize", String.valueOf(pageSize));
+    return PlatformAdminParsing.invitations(http().call("GET", appPath() + "/invitations", q, null));
+  }
+
+  /**
+   * Resends an invitation: {@code POST /api/applications/{app}/invitations/{id}/resend}. The earlier
+   * link stops working. The result may hold the link: hand it to the person who asked and to nobody else.
+   *
+   * @param userId the invited user's id
+   * @param sendInvitation whether the platform emails the invitation
+   * @param returnInviteLink whether the platform returns the link instead
+   * @return the expiry and, when asked for, the link
+   */
+  public PlatformAdminData.ResendResult resendInvitation(String userId, boolean sendInvitation, boolean returnInviteLink) {
+    java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("sendInvitation", sendInvitation);
+    body.put("returnInviteLink", returnInviteLink);
+    return PlatformAdminParsing.resend(
+        http().call("POST", appPath() + "/invitations/" + PlatformHttp.enc(userId) + "/resend", java.util.Map.of(), body));
+  }
+
+  /**
+   * Revokes an invitation: {@code DELETE /api/applications/{app}/invitations/{id}}. The platform
+   * deactivates the user and deletes the invite links.
+   *
+   * @param userId the invited user's id
+   */
+  public void revokeInvitation(String userId) {
+    http().call("DELETE", appPath() + "/invitations/" + PlatformHttp.enc(userId), java.util.Map.of(), null);
+  }
+
+  /**
+   * Lists events, newest first: {@code GET /api/events}. The platform confines an application
+   * service account to its own application's events; {@code applications=} is sent as well.
+   *
+   * @param query filters and page
+   * @return the events (the platform answers a bare array)
+   */
+  public List<PlatformAdminData.EventInfo> events(PlatformAdminData.EventQuery query) {
+    java.util.Map<String, @Nullable String> q = new java.util.LinkedHashMap<>();
+    q.put("applications", application().value());
+    q.put("type", query.type());
+    q.put("subject", query.subject());
+    q.put("correlationId", query.correlationId());
+    q.put("clientId", query.clientId());
+    q.put("since", query.since());
+    q.put("until", query.until());
+    q.put("limit", String.valueOf(query.limit()));
+    q.put("offset", String.valueOf(query.offset()));
+    return PlatformAdminParsing.events(http().call("GET", "/api/events", q, null));
+  }
+
+  /**
+   * Reads one event with its payload: {@code GET /api/events/{id}}.
+   *
+   * @param id the event id
+   * @return the event
+   * @throws PlatformException (kind {@code NOT_FOUND}) when there is no such event of the application
+   */
+  public PlatformAdminData.EventDetail event(String id) {
+    return PlatformAdminParsing.eventDetail(http().call("GET", "/api/events/" + PlatformHttp.enc(id), java.util.Map.of(), null));
+  }
+
+  /**
+   * Lists dispatch jobs, newest first: {@code GET /api/dispatch-jobs}.
+   *
+   * @param query filters and page
+   * @return the jobs (the platform answers a bare array)
+   */
+  public List<PlatformAdminData.JobInfo> dispatchJobs(PlatformAdminData.JobQuery query) {
+    java.util.Map<String, @Nullable String> q = new java.util.LinkedHashMap<>();
+    q.put("applications", application().value());
+    q.put("statuses", query.statuses().isEmpty() ? null : String.join(",", query.statuses()));
+    q.put("code", query.code());
+    q.put("clientId", query.clientId());
+    q.put("messageGroup", query.messageGroup());
+    q.put("since", query.since());
+    q.put("until", query.until());
+    q.put("limit", String.valueOf(query.limit()));
+    q.put("offset", String.valueOf(query.offset()));
+    return PlatformAdminParsing.jobs(http().call("GET", "/api/dispatch-jobs", q, null));
+  }
+
+  /**
+   * Reads one dispatch job: {@code GET /api/dispatch-jobs/{id}}.
+   *
+   * @param id the job id
+   * @return the job
+   * @throws PlatformException (kind {@code NOT_FOUND}) when there is no such job of the application
+   */
+  public PlatformAdminData.JobInfo dispatchJob(String id) {
+    return PlatformAdminParsing.job(http().call("GET", "/api/dispatch-jobs/" + PlatformHttp.enc(id), java.util.Map.of(), null));
+  }
+
+  /**
+   * Reads a dispatch job's delivery attempts: {@code GET /api/dispatch-jobs/{id}/attempts}.
+   *
+   * @param id the job id
+   * @return the attempts, oldest first as the platform sends them
+   */
+  public List<PlatformAdminData.AttemptInfo> dispatchJobAttempts(String id) {
+    return PlatformAdminParsing.attempts(http().call("GET", "/api/dispatch-jobs/" + PlatformHttp.enc(id) + "/attempts", java.util.Map.of(), null));
+  }
+
+  /**
+   * Lists the dispatch jobs an event raised: {@code GET /api/dispatch-jobs/event/{eventId}}.
+   *
+   * @param eventId the event id
+   * @return the jobs
+   */
+  public List<PlatformAdminData.JobInfo> dispatchJobsOfEvent(String eventId) {
+    return PlatformAdminParsing.jobs(http().call("GET", "/api/dispatch-jobs/event/" + PlatformHttp.enc(eventId), java.util.Map.of(), null));
+  }
+
+  private String appPath() {
+    return "/api/applications/" + PlatformHttp.enc(application().value());
+  }
+
+  private PlatformHttp http() {
+    PlatformHttp h = http;
+    if (h == null) {
+      throw disabledException();
+    }
+    return h;
   }
 
   private static EventTypeInfo eventType(io.flowcatalyst.sdk.generated.model.EventTypeResponse r) {

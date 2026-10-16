@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
@@ -87,6 +88,14 @@ public final class FakePlatform implements AutoCloseable {
 
   private record Canned(int status, String body) {}
 
+  /**
+   * An answer of a route made with {@link #route}.
+   *
+   * @param status the HTTP status
+   * @param body the response body
+   */
+  public record Reply(int status, String body) {}
+
   private record Failing(int status, AtomicInteger remaining) {}
 
   private final HttpServer server;
@@ -95,6 +104,7 @@ public final class FakePlatform implements AutoCloseable {
   private final AtomicInteger tokens = new AtomicInteger();
   private final Map<String, Failing> failing = new ConcurrentHashMap<>();
   private final Map<String, Canned> reads = new ConcurrentHashMap<>();
+  private final Map<String, Function<Recorded, Reply>> routes = new ConcurrentHashMap<>();
   private volatile int tokenFailure;
   private final Set<String> issued = ConcurrentHashMap.newKeySet();
   private volatile String tokenSub = SERVICE_PRINCIPAL;
@@ -245,6 +255,31 @@ public final class FakePlatform implements AutoCloseable {
   }
 
   /**
+   * Makes any method and path answer with a function of the request (the admin pages' writes and
+   * stateful reads). The path is matched exactly, without the query string. A bearer token the fake
+   * did not issue is refused with {@code 401} before the function runs.
+   *
+   * @param method the HTTP method
+   * @param path for example {@code /api/applications/orders/users}
+   * @param handler the answer, from the recorded request
+   */
+  public void route(String method, String path, Function<Recorded, Reply> handler) {
+    routes.put(method + " " + path, handler);
+  }
+
+  /**
+   * Makes one method and path answer with a fixed response.
+   *
+   * @param method the HTTP method
+   * @param path the path, without the query
+   * @param status the HTTP status
+   * @param body the response body
+   */
+  public void respondTo(String method, String path, int status, String body) {
+    route(method, path, request -> new Reply(status, body));
+  }
+
+  /**
    * Makes the next calls to an instance callback fail.
    *
    * @param action {@code complete} or {@code log}
@@ -322,6 +357,16 @@ public final class FakePlatform implements AutoCloseable {
           return;
         }
         reply(ex, 204, "");
+        return;
+      }
+      Function<Recorded, Reply> route = routes.get(ex.getRequestMethod() + " " + path);
+      if (route != null) {
+        if (!bearer(headers)) {
+          reply(ex, 401, "{\"error\":\"unauthorized\"}");
+          return;
+        }
+        Reply answer = route.apply(recorded);
+        reply(ex, answer.status(), answer.body());
         return;
       }
       Canned read = reads.get(path);

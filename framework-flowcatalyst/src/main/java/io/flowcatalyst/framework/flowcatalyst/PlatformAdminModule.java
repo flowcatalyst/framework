@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The admin sections projected from the platform (M4e slice 2): the application's <b>event types</b>
@@ -41,8 +39,6 @@ public final class PlatformAdminModule implements Module {
 
   /** The module id. */
   public static final String ID = "admin-platform";
-
-  private static final Logger LOG = LoggerFactory.getLogger(PlatformAdminModule.class);
 
   private final ApplicationCode application;
   private final PlatformAdminApi.Operations operations;
@@ -241,29 +237,11 @@ public final class PlatformAdminModule implements Module {
 
   /** Runs a platform read; a failure is the standard 502 (or 503 when there is no connection). */
   private static <T> T platform(PlatformClient client, Supplier<T> read) {
-    return platformOrNotFound(client, read, null, null);
+    return AdminPlatform.call(client, read, null, null);
   }
 
   private static <T> T platformOrNotFound(
       PlatformClient client, Supplier<T> read, @Nullable String notFoundCode, @Nullable String notFoundMessage) {
-    if (!client.isEnabled()) {
-      throw new HttpException(503, "PLATFORM_NOT_CONFIGURED", "the application has no platform connection (flowcatalyst.enabled is false)");
-    }
-    try {
-      return read.get();
-    } catch (PlatformException e) {
-      if (e.kind() == PlatformException.Kind.NOT_FOUND && notFoundCode != null) {
-        throw new HttpException(404, notFoundCode, notFoundMessage == null ? "not found" : notFoundMessage);
-      }
-      // The cause can name hosts and request details: it goes to the log, not to the browser.
-      LOG.warn("an admin read of the platform failed ({}): {}", e.kind(), e.getMessage());
-      if (e.kind() == PlatformException.Kind.FORBIDDEN) {
-        throw new HttpException(
-            502,
-            "PLATFORM_ERROR",
-            "the platform refused this read for the application's service account; it needs the platform's view permission for this resource");
-      }
-      throw new HttpException(502, "PLATFORM_ERROR", "the platform could not be reached or answered with an error");
-    }
+    return AdminPlatform.call(client, read, notFoundCode, notFoundMessage);
   }
 }
