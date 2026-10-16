@@ -1,0 +1,538 @@
+{
+  "description" : "The admin activity section (admin contract section 12): GET /api/admin/events[/{id}] and GET /api/admin/dispatch-jobs[/{id}], permission activity:view. Setup as for users.json (platform routes are 'GET path'). The platform is asked with applications=orders; lists ask for limit + 1 rows and page by offset (nextCursor = offset + limit when more rows came back); only events whose type starts with 'orders:' and jobs whose code's first segment is 'orders' are kept (a list keeps them, by id anything else is 404 EVENT_NOT_FOUND / DISPATCH_JOB_NOT_FOUND and, for a job, its attempts are not asked); a type/code filter of another application is an empty page without a call; an event detail lists this application's jobs for it; targetUrl is shown without user info, query and fragment; an event payload is cut at 20000 characters and an attempt's responseBody at 4000 ('...Truncated' says so). 'calls' and the failure rules are as in users.json.",
+  "application" : "orders",
+  "platform" : {
+    "GET /api/events" : {
+      "status" : 200,
+      "body" : [ {
+        "id" : "ev_2",
+        "type" : "orders:sales:order:shipped",
+        "source" : "orders:sales",
+        "subject" : "s-ev_2",
+        "time" : "2026-10-16T08:04:00.000Z",
+        "application" : "orders",
+        "subdomain" : "sales",
+        "aggregate" : "order",
+        "correlationId" : "c-ev_2",
+        "projectedAt" : "2026-10-16T08:00:01.000Z"
+      }, {
+        "id" : "ev_1",
+        "type" : "orders:sales:order:placed",
+        "source" : "orders:sales",
+        "subject" : "s-ev_1",
+        "time" : "2026-10-16T08:04:00.000Z",
+        "application" : "orders",
+        "subdomain" : "sales",
+        "aggregate" : "order",
+        "correlationId" : "c-ev_1",
+        "projectedAt" : "2026-10-16T08:00:01.000Z"
+      }, {
+        "id" : "ev_other",
+        "type" : "billing:invoice:invoice:issued",
+        "source" : "billing:invoice",
+        "subject" : "s-ev_other",
+        "time" : "2026-10-16T08:08:00.000Z",
+        "application" : "billing",
+        "subdomain" : "invoice",
+        "aggregate" : "invoice",
+        "correlationId" : "c-ev_other",
+        "projectedAt" : "2026-10-16T08:00:01.000Z"
+      } ]
+    },
+    "GET /api/events/ev_1" : {
+      "status" : 200,
+      "body" : {
+        "id" : "ev_1",
+        "type" : "orders:sales:order:placed",
+        "source" : "orders:sales",
+        "subject" : "s-ev_1",
+        "time" : "2026-10-16T08:04:00.000Z",
+        "application" : "orders",
+        "subdomain" : "sales",
+        "aggregate" : "order",
+        "correlationId" : "c-ev_1",
+        "projectedAt" : "2026-10-16T08:00:01.000Z",
+        "specVersion" : "1.0",
+        "data" : {
+          "orderId" : "o1"
+        },
+        "contextData" : [ {
+          "key" : "region",
+          "value" : "eu"
+        } ],
+        "causationId" : "cause-1",
+        "deduplicationId" : "d-1"
+      }
+    },
+    "GET /api/events/ev_other" : {
+      "status" : 200,
+      "body" : {
+        "id" : "ev_other",
+        "type" : "billing:invoice:invoice:issued",
+        "source" : "billing:invoice",
+        "subject" : "s-ev_other",
+        "time" : "2026-10-16T08:08:00.000Z",
+        "application" : "billing",
+        "subdomain" : "invoice",
+        "aggregate" : "invoice",
+        "correlationId" : "c-ev_other",
+        "projectedAt" : "2026-10-16T08:00:01.000Z",
+        "specVersion" : "1.0",
+        "data" : { },
+        "contextData" : [ {
+          "key" : "region",
+          "value" : "eu"
+        } ],
+        "causationId" : "cause-1",
+        "deduplicationId" : "d-1"
+      }
+    },
+    "GET /api/dispatch-jobs" : {
+      "status" : 200,
+      "body" : [ {
+        "id" : "dj_2",
+        "eventId" : "ev_2",
+        "subscriptionId" : "sub_1",
+        "code" : "orders:sales:order:shipped",
+        "status" : "FAILED",
+        "kind" : "EVENT",
+        "targetUrl" : "https://user:pw@billing.example.com/hooks/x?token=URL-SECRET#frag",
+        "mode" : "IMMEDIATE",
+        "descriptor" : "Billing sync",
+        "createdAt" : "2026-10-16T08:00:02.000Z",
+        "updatedAt" : "2026-10-16T08:00:03.000Z",
+        "attemptCount" : 1,
+        "protocol" : "HTTP_WEBHOOK",
+        "timeoutSeconds" : 30,
+        "maxRetries" : 3,
+        "retryStrategy" : "EXPONENTIAL",
+        "payload" : "{\"secret\":\"PAYLOAD-LEAK\"}",
+        "serviceAccountId" : "sa_LEAK"
+      }, {
+        "id" : "dj_1",
+        "eventId" : "ev_1",
+        "subscriptionId" : "sub_1",
+        "code" : "orders:sales:order:placed",
+        "status" : "COMPLETED",
+        "kind" : "EVENT",
+        "targetUrl" : "https://user:pw@billing.example.com/hooks/x?token=URL-SECRET#frag",
+        "mode" : "IMMEDIATE",
+        "descriptor" : "Billing sync",
+        "createdAt" : "2026-10-16T08:00:02.000Z",
+        "updatedAt" : "2026-10-16T08:00:03.000Z",
+        "attemptCount" : 1,
+        "protocol" : "HTTP_WEBHOOK",
+        "timeoutSeconds" : 30,
+        "maxRetries" : 3,
+        "retryStrategy" : "EXPONENTIAL",
+        "payload" : "{\"secret\":\"PAYLOAD-LEAK\"}",
+        "serviceAccountId" : "sa_LEAK"
+      }, {
+        "id" : "dj_x",
+        "eventId" : "ev_x",
+        "subscriptionId" : "sub_1",
+        "code" : "billing:x:y:z",
+        "status" : "PENDING",
+        "kind" : "EVENT",
+        "targetUrl" : "https://user:pw@billing.example.com/hooks/x?token=URL-SECRET#frag",
+        "mode" : "IMMEDIATE",
+        "descriptor" : "Billing sync",
+        "createdAt" : "2026-10-16T08:00:02.000Z",
+        "updatedAt" : "2026-10-16T08:00:03.000Z",
+        "attemptCount" : 1,
+        "protocol" : "HTTP_WEBHOOK",
+        "timeoutSeconds" : 30,
+        "maxRetries" : 3,
+        "retryStrategy" : "EXPONENTIAL",
+        "payload" : "{\"secret\":\"PAYLOAD-LEAK\"}",
+        "serviceAccountId" : "sa_LEAK"
+      } ]
+    },
+    "GET /api/dispatch-jobs/event/ev_1" : {
+      "status" : 200,
+      "body" : [ {
+        "id" : "dj_1",
+        "eventId" : "ev_1",
+        "subscriptionId" : "sub_1",
+        "code" : "orders:sales:order:placed",
+        "status" : "COMPLETED",
+        "kind" : "EVENT",
+        "targetUrl" : "https://user:pw@billing.example.com/hooks/x?token=URL-SECRET#frag",
+        "mode" : "IMMEDIATE",
+        "descriptor" : "Billing sync",
+        "createdAt" : "2026-10-16T08:00:02.000Z",
+        "updatedAt" : "2026-10-16T08:00:03.000Z",
+        "attemptCount" : 1,
+        "protocol" : "HTTP_WEBHOOK",
+        "timeoutSeconds" : 30,
+        "maxRetries" : 3,
+        "retryStrategy" : "EXPONENTIAL",
+        "payload" : "{\"secret\":\"PAYLOAD-LEAK\"}",
+        "serviceAccountId" : "sa_LEAK"
+      }, {
+        "id" : "dj_x",
+        "eventId" : "ev_1",
+        "subscriptionId" : "sub_1",
+        "code" : "billing:x:y:z",
+        "status" : "PENDING",
+        "kind" : "EVENT",
+        "targetUrl" : "https://user:pw@billing.example.com/hooks/x?token=URL-SECRET#frag",
+        "mode" : "IMMEDIATE",
+        "descriptor" : "Billing sync",
+        "createdAt" : "2026-10-16T08:00:02.000Z",
+        "updatedAt" : "2026-10-16T08:00:03.000Z",
+        "attemptCount" : 1,
+        "protocol" : "HTTP_WEBHOOK",
+        "timeoutSeconds" : 30,
+        "maxRetries" : 3,
+        "retryStrategy" : "EXPONENTIAL",
+        "payload" : "{\"secret\":\"PAYLOAD-LEAK\"}",
+        "serviceAccountId" : "sa_LEAK"
+      } ]
+    },
+    "GET /api/dispatch-jobs/dj_1" : {
+      "status" : 200,
+      "body" : {
+        "id" : "dj_1",
+        "eventId" : "ev_1",
+        "subscriptionId" : "sub_1",
+        "code" : "orders:sales:order:placed",
+        "status" : "COMPLETED",
+        "kind" : "EVENT",
+        "targetUrl" : "https://user:pw@billing.example.com/hooks/x?token=URL-SECRET#frag",
+        "mode" : "IMMEDIATE",
+        "descriptor" : "Billing sync",
+        "createdAt" : "2026-10-16T08:00:02.000Z",
+        "updatedAt" : "2026-10-16T08:00:03.000Z",
+        "attemptCount" : 1,
+        "protocol" : "HTTP_WEBHOOK",
+        "timeoutSeconds" : 30,
+        "maxRetries" : 3,
+        "retryStrategy" : "EXPONENTIAL",
+        "payload" : "{\"secret\":\"PAYLOAD-LEAK\"}",
+        "serviceAccountId" : "sa_LEAK"
+      }
+    },
+    "GET /api/dispatch-jobs/dj_1/attempts" : {
+      "status" : 200,
+      "body" : [ {
+        "attemptNumber" : 1,
+        "attemptedAt" : "2026-10-16T08:00:03.000Z",
+        "completedAt" : "2026-10-16T08:00:04.000Z",
+        "durationMillis" : 812,
+        "responseCode" : 500,
+        "responseBody" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "success" : false,
+        "errorMessage" : "HTTP 500",
+        "errorType" : "HTTP_ERROR",
+        "request" : {
+          "signedBy" : "sa-LEAK"
+        }
+      }, {
+        "attemptNumber" : 2,
+        "attemptedAt" : "2026-10-16T08:01:03.000Z",
+        "durationMillis" : 50,
+        "responseCode" : 200,
+        "responseBody" : "ok",
+        "success" : true
+      } ]
+    },
+    "GET /api/dispatch-jobs/dj_x" : {
+      "status" : 200,
+      "body" : {
+        "id" : "dj_x",
+        "eventId" : "ev_1",
+        "subscriptionId" : "sub_1",
+        "code" : "billing:x:y:z",
+        "status" : "PENDING",
+        "kind" : "EVENT",
+        "targetUrl" : "https://user:pw@billing.example.com/hooks/x?token=URL-SECRET#frag",
+        "mode" : "IMMEDIATE",
+        "descriptor" : "Billing sync",
+        "createdAt" : "2026-10-16T08:00:02.000Z",
+        "updatedAt" : "2026-10-16T08:00:03.000Z",
+        "attemptCount" : 1,
+        "protocol" : "HTTP_WEBHOOK",
+        "timeoutSeconds" : 30,
+        "maxRetries" : 3,
+        "retryStrategy" : "EXPONENTIAL",
+        "payload" : "{\"secret\":\"PAYLOAD-LEAK\"}",
+        "serviceAccountId" : "sa_LEAK"
+      }
+    },
+    "GET /api/dispatch-jobs/dj_x/attempts" : {
+      "status" : 200,
+      "body" : [ {
+        "attemptNumber" : 1,
+        "attemptedAt" : "2026-10-16T08:00:03.000Z",
+        "completedAt" : "2026-10-16T08:00:04.000Z",
+        "durationMillis" : 812,
+        "responseCode" : 500,
+        "responseBody" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "success" : false,
+        "errorMessage" : "HTTP 500",
+        "errorType" : "HTTP_ERROR",
+        "request" : {
+          "signedBy" : "sa-LEAK"
+        }
+      }, {
+        "attemptNumber" : 2,
+        "attemptedAt" : "2026-10-16T08:01:03.000Z",
+        "durationMillis" : 50,
+        "responseCode" : 200,
+        "responseBody" : "ok",
+        "success" : true
+      } ]
+    }
+  },
+  "cases" : [ {
+    "name" : "events, this application's only",
+    "method" : "GET",
+    "path" : "/api/admin/events",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/events" ],
+      "answerHasLink" : false,
+      "items" : [ "ev_2", "ev_1" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "events, a page with a next",
+    "method" : "GET",
+    "path" : "/api/admin/events?limit=2&after=4",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/events" ],
+      "answerHasLink" : false,
+      "items" : [ "ev_2", "ev_1" ],
+      "nextCursor" : "6"
+    }
+  }, {
+    "name" : "events, the last page",
+    "method" : "GET",
+    "path" : "/api/admin/events?limit=3",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/events" ],
+      "answerHasLink" : false,
+      "items" : [ "ev_2", "ev_1" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "events, filters",
+    "method" : "GET",
+    "path" : "/api/admin/events?type=orders:sales:order:placed&correlationId=c&since=2026-10-16T08:00:00Z",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/events" ],
+      "answerHasLink" : false,
+      "items" : [ "ev_2", "ev_1" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "events, another application's type",
+    "method" : "GET",
+    "path" : "/api/admin/events?type=billing:invoice:invoice:issued",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ ],
+      "answerHasLink" : false,
+      "items" : [ ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "events, a bad time",
+    "method" : "GET",
+    "path" : "/api/admin/events?since=yesterday",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 400,
+      "calls" : [ ],
+      "error" : "INVALID_TIMESTAMP",
+      "message" : "since and until are RFC 3339 times, such as 2026-10-16T08:00:00Z"
+    }
+  }, {
+    "name" : "an event with its jobs",
+    "method" : "GET",
+    "path" : "/api/admin/events/ev_1",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/events/ev_1", "GET /api/dispatch-jobs/event/ev_1" ],
+      "answerHasLink" : false,
+      "id" : "ev_1",
+      "dataTruncated" : false,
+      "dispatchJobs" : [ "dj_1" ]
+    }
+  }, {
+    "name" : "another application's event",
+    "method" : "GET",
+    "path" : "/api/admin/events/ev_other",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 404,
+      "calls" : [ "GET /api/events/ev_other" ],
+      "error" : "EVENT_NOT_FOUND",
+      "message" : "there is no such event"
+    }
+  }, {
+    "name" : "an event id that could change the path",
+    "method" : "GET",
+    "path" : "/api/admin/events/a.b",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 404,
+      "calls" : [ ],
+      "error" : "EVENT_NOT_FOUND",
+      "message" : "there is no such event"
+    }
+  }, {
+    "name" : "events, no permission",
+    "method" : "GET",
+    "path" : "/api/admin/events",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:activity:view"
+    }
+  }, {
+    "name" : "events, the users permission is not enough",
+    "method" : "GET",
+    "path" : "/api/admin/events",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:activity:view"
+    }
+  }, {
+    "name" : "events, the platform refuses",
+    "method" : "GET",
+    "path" : "/api/admin/events",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "override" : {
+      "GET /api/events" : {
+        "status" : 403,
+        "body" : {
+          "error" : "FORBIDDEN"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "calls" : [ "GET /api/events" ],
+      "error" : "PLATFORM_ERROR",
+      "message" : "the platform refused this read for the application's service account; it needs the platform's view permission for this resource"
+    }
+  }, {
+    "name" : "jobs, this application's only",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/dispatch-jobs" ],
+      "answerHasLink" : false,
+      "items" : [ "dj_2", "dj_1" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "jobs, a status",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs?status=FAILED",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/dispatch-jobs" ],
+      "answerHasLink" : false,
+      "items" : [ "dj_2", "dj_1" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "jobs, another application's code",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs?code=billing:x:y:z",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ ],
+      "answerHasLink" : false,
+      "items" : [ ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "jobs, a bad status",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs?status=drop%20table",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 400,
+      "calls" : [ ],
+      "error" : "INVALID_STATUS",
+      "message" : "the status is an upper-case word, such as COMPLETED"
+    }
+  }, {
+    "name" : "a job with its attempts",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs/dj_1",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/dispatch-jobs/dj_1", "GET /api/dispatch-jobs/dj_1/attempts" ],
+      "answerHasLink" : false,
+      "id" : "dj_1",
+      "targetUrl" : "https://billing.example.com/hooks/x",
+      "attemptBodyLengths" : [ 4000, 2 ],
+      "attemptBodyTruncated" : [ true, false ]
+    }
+  }, {
+    "name" : "another application's job",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs/dj_x",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "expect" : {
+      "status" : 404,
+      "calls" : [ "GET /api/dispatch-jobs/dj_x" ],
+      "error" : "DISPATCH_JOB_NOT_FOUND",
+      "message" : "there is no such dispatch job"
+    }
+  }, {
+    "name" : "jobs, no permission",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:activity:view"
+    }
+  }, {
+    "name" : "jobs, the platform fails",
+    "method" : "GET",
+    "path" : "/api/admin/dispatch-jobs",
+    "permissions" : [ "orders:admin:activity:view" ],
+    "override" : {
+      "GET /api/dispatch-jobs" : {
+        "status" : 500,
+        "body" : {
+          "error" : "boom"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "calls" : [ "GET /api/dispatch-jobs" ],
+      "error" : "PLATFORM_ERROR",
+      "message" : "the platform could not be reached or answered with an error"
+    }
+  } ]
+}

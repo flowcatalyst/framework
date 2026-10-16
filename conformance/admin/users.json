@@ -1,0 +1,738 @@
+{
+  "description" : "The admin users section (admin contract section 12): GET /api/admin/users[/{id}], GET /api/admin/invitations, POST /api/admin/users, POST /api/admin/invitations/{id}/resend, DELETE /api/admin/invitations/{id}. Setup: application 'orders' (flowcatalyst.application); the platform answers the routes in 'platform' ('METHOD path' to {status, body}) unless a case has 'override' entries of the same shape. The service account is the caller on the platform; the signed-in user's permissions decide first (users:view, :invite, :resend, :revoke; a wildcard grant counts): without the operation's permission the answer is 403 FORBIDDEN and the platform is not called. 'calls' lists the platform requests in order as 'METHOD path' (the application code in a path is always 'orders'); 'platformBody' is the JSON the first call sent. Lists page by cursor = the next platform page number (nextCursor present when (page + 1) * limit < total); roles shown are the application's own ('orders:'-prefixed); a role filter keeps only own roles and asks nothing when none is left; an id outside [A-Za-z0-9_-]{1,64} is 404 without a call; invite refuses another application's role (403 ROLE_APP_FORBIDDEN) before the platform. The invite link is a credential: 'answerHasLink' is true only when the caller asked for it (returnInviteLink), whatever the platform sends, and no list carries it. A platform answer of 400/409/422, or 403/500 with a reason of its own, is passed on in the platform's words (status, code, message; 500 becomes 502; a 403 FORBIDDEN 'client is not available to this application' becomes CLIENT_NOT_AVAILABLE); any other failure is 502 PLATFORM_ERROR with a message that names no host, token or platform text; a platform 404 of a single record is 404 USER_NOT_FOUND / INVITATION_NOT_FOUND.",
+  "application" : "orders",
+  "platform" : {
+    "GET /api/applications/orders/users" : {
+      "status" : 200,
+      "body" : {
+        "users" : [ {
+          "id" : "prn_1",
+          "email" : "ann@example.com",
+          "name" : "Ann",
+          "active" : true,
+          "clientId" : "clt_1",
+          "idpType" : "INTERNAL",
+          "roles" : [ "orders:clerk", "billing:admin" ],
+          "lastLoginAt" : "2026-10-01T08:00:00.000Z",
+          "createdAt" : "2026-09-01T08:00:00.000Z",
+          "passwordHash" : "$argon2id$LEAK",
+          "inviteLink" : "https://platform.example/set-password?token=SECRET-LINK-TOKEN-1",
+          "token" : "LEAK-TOKEN"
+        }, {
+          "id" : "prn_2",
+          "email" : "bob@example.com",
+          "name" : "Bob",
+          "active" : true,
+          "clientId" : "clt_1",
+          "idpType" : "INTERNAL",
+          "roles" : [ "orders:admin" ],
+          "invitation" : "PENDING",
+          "lastLoginAt" : "2026-10-01T08:00:00.000Z",
+          "createdAt" : "2026-09-01T08:00:00.000Z",
+          "passwordHash" : "$argon2id$LEAK",
+          "inviteLink" : "https://platform.example/set-password?token=SECRET-LINK-TOKEN-1",
+          "token" : "LEAK-TOKEN"
+        } ],
+        "total" : 5,
+        "page" : 0,
+        "pageSize" : 2
+      }
+    },
+    "GET /api/applications/orders/users/prn_1" : {
+      "status" : 200,
+      "body" : {
+        "id" : "prn_1",
+        "email" : "ann@example.com",
+        "name" : "Ann",
+        "active" : true,
+        "clientId" : "clt_1",
+        "idpType" : "INTERNAL",
+        "roles" : [ "orders:clerk", "billing:admin" ],
+        "lastLoginAt" : "2026-10-01T08:00:00.000Z",
+        "createdAt" : "2026-09-01T08:00:00.000Z",
+        "passwordHash" : "$argon2id$LEAK",
+        "inviteLink" : "https://platform.example/set-password?token=SECRET-LINK-TOKEN-1",
+        "token" : "LEAK-TOKEN"
+      }
+    },
+    "GET /api/applications/orders/invitations" : {
+      "status" : 200,
+      "body" : {
+        "invitations" : [ {
+          "userId" : "prn_2",
+          "email" : "bob@example.com",
+          "name" : "Bob",
+          "clientId" : "clt_1",
+          "roles" : [ "orders:admin", "billing:x" ],
+          "status" : "PENDING",
+          "createdAt" : "2026-09-01T08:00:00.000Z",
+          "expiresAt" : "2026-10-20T10:00:00.000Z",
+          "inviteLink" : "https://platform.example/set-password?token=SECRET-LINK-TOKEN-1"
+        }, {
+          "userId" : "prn_3",
+          "email" : "cy@example.com",
+          "name" : "Cy",
+          "clientId" : "clt_1",
+          "roles" : [ "orders:clerk" ],
+          "status" : "EXPIRED",
+          "createdAt" : "2026-08-01T08:00:00.000Z"
+        } ],
+        "total" : 2,
+        "page" : 0,
+        "pageSize" : 50
+      }
+    },
+    "POST /api/applications/orders/users" : {
+      "status" : 201,
+      "body" : {
+        "id" : "prn_9",
+        "inviteLink" : "https://platform.example/set-password?token=SECRET-LINK-TOKEN-1",
+        "invitationSent" : false
+      }
+    },
+    "POST /api/applications/orders/invitations/prn_2/resend" : {
+      "status" : 200,
+      "body" : {
+        "inviteLink" : "https://platform.example/set-password?token=SECRET-LINK-TOKEN-2",
+        "expiresAt" : "2026-10-20T10:00:00.000Z"
+      }
+    },
+    "DELETE /api/applications/orders/invitations/prn_2" : {
+      "status" : 204,
+      "body" : null
+    }
+  },
+  "cases" : [ {
+    "name" : "users, a page",
+    "method" : "GET",
+    "path" : "/api/admin/users?limit=2",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/applications/orders/users" ],
+      "answerHasLink" : false,
+      "items" : [ "prn_1", "prn_2" ],
+      "nextCursor" : "1"
+    }
+  }, {
+    "name" : "users, a later page",
+    "method" : "GET",
+    "path" : "/api/admin/users?limit=2&after=1",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/applications/orders/users" ],
+      "answerHasLink" : false,
+      "items" : [ "prn_1", "prn_2" ],
+      "nextCursor" : "2"
+    }
+  }, {
+    "name" : "users, the last page has no cursor",
+    "method" : "GET",
+    "path" : "/api/admin/users?limit=2&after=2",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/applications/orders/users" ],
+      "answerHasLink" : false,
+      "items" : [ "prn_1", "prn_2" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "users, a bad cursor",
+    "method" : "GET",
+    "path" : "/api/admin/users?after=x",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 400,
+      "calls" : [ ],
+      "error" : "INVALID_CURSOR",
+      "message" : "the cursor is not one this server gave"
+    }
+  }, {
+    "name" : "users, filters",
+    "method" : "GET",
+    "path" : "/api/admin/users?q=ann&active=true&clientId=clt_1&roles=orders:clerk",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/applications/orders/users" ],
+      "answerHasLink" : false,
+      "items" : [ "prn_1", "prn_2" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "users, a foreign role filter asks nothing",
+    "method" : "GET",
+    "path" : "/api/admin/users?roles=billing:admin",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ ],
+      "answerHasLink" : false,
+      "items" : [ ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "a user",
+    "method" : "GET",
+    "path" : "/api/admin/users/prn_1",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/applications/orders/users/prn_1" ],
+      "answerHasLink" : false,
+      "id" : "prn_1",
+      "roles" : [ "orders:clerk" ]
+    }
+  }, {
+    "name" : "a user id that could change the path",
+    "method" : "GET",
+    "path" : "/api/admin/users/a.b",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 404,
+      "calls" : [ ],
+      "error" : "USER_NOT_FOUND",
+      "message" : "there is no such user"
+    }
+  }, {
+    "name" : "a user the platform does not know",
+    "method" : "GET",
+    "path" : "/api/admin/users/prn_404",
+    "permissions" : [ "orders:admin:users:view" ],
+    "override" : {
+      "GET /api/applications/orders/users/prn_404" : {
+        "status" : 404,
+        "body" : {
+          "error" : "User_NOT_FOUND"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 404,
+      "calls" : [ "GET /api/applications/orders/users/prn_404" ],
+      "error" : "USER_NOT_FOUND",
+      "message" : "there is no such user"
+    }
+  }, {
+    "name" : "users, no permission",
+    "method" : "GET",
+    "path" : "/api/admin/users",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:users:view"
+    }
+  }, {
+    "name" : "users, the invite permission is not enough",
+    "method" : "GET",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:users:view"
+    }
+  }, {
+    "name" : "users, the platform refuses the service account",
+    "method" : "GET",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:view" ],
+    "override" : {
+      "GET /api/applications/orders/users" : {
+        "status" : 403,
+        "body" : {
+          "error" : "FORBIDDEN",
+          "message" : "internal"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "calls" : [ "GET /api/applications/orders/users" ],
+      "error" : "PLATFORM_ERROR",
+      "message" : "the platform refused this read for the application's service account; it needs the platform's view permission for this resource"
+    }
+  }, {
+    "name" : "invitations, a page",
+    "method" : "GET",
+    "path" : "/api/admin/invitations?status=PENDING&limit=1",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "GET /api/applications/orders/invitations" ],
+      "answerHasLink" : false,
+      "items" : [ "prn_2", "prn_3" ],
+      "nextCursor" : "1"
+    }
+  }, {
+    "name" : "invitations, a bad status",
+    "method" : "GET",
+    "path" : "/api/admin/invitations?status=NOPE",
+    "permissions" : [ "orders:admin:users:view" ],
+    "expect" : {
+      "status" : 400,
+      "calls" : [ ],
+      "error" : "VALIDATION",
+      "message" : "request is invalid"
+    }
+  }, {
+    "name" : "invite, the link asked for",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ],
+      "returnInviteLink" : true
+    },
+    "expect" : {
+      "status" : 201,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "orders:clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : true
+      },
+      "answerHasLink" : true,
+      "id" : "prn_9",
+      "invitationSent" : false
+    }
+  }, {
+    "name" : "invite, by email (the platform sends a link anyway)",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ]
+    },
+    "expect" : {
+      "status" : 201,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "orders:clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "answerHasLink" : false,
+      "id" : "prn_9",
+      "invitationSent" : false
+    }
+  }, {
+    "name" : "invite, a short role name is left to the platform",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "clerk" ]
+    },
+    "expect" : {
+      "status" : 201,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "answerHasLink" : false,
+      "id" : "prn_9",
+      "invitationSent" : false
+    }
+  }, {
+    "name" : "invite, another application's role",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk", "billing:admin" ]
+    },
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "ROLE_APP_FORBIDDEN",
+      "message" : "a role belongs to another application: roles must be this application's"
+    }
+  }, {
+    "name" : "invite, no roles",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ ]
+    },
+    "expect" : {
+      "status" : 400,
+      "calls" : [ ],
+      "error" : "VALIDATION",
+      "message" : "request is invalid"
+    }
+  }, {
+    "name" : "invite, no permission",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:view" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ]
+    },
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:users:invite"
+    }
+  }, {
+    "name" : "invite, the email exists",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ]
+    },
+    "override" : {
+      "POST /api/applications/orders/users" : {
+        "status" : 409,
+        "body" : {
+          "error" : "EMAIL_EXISTS",
+          "message" : "a user with this email already exists"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 409,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "orders:clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "error" : "EMAIL_EXISTS",
+      "message" : "a user with this email already exists"
+    }
+  }, {
+    "name" : "invite, the platform refuses the role",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ]
+    },
+    "override" : {
+      "POST /api/applications/orders/users" : {
+        "status" : 403,
+        "body" : {
+          "error" : "ROLE_APP_FORBIDDEN",
+          "message" : "role belongs to another application"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 403,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "orders:clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "error" : "ROLE_APP_FORBIDDEN",
+      "message" : "role belongs to another application"
+    }
+  }, {
+    "name" : "invite, the client is not available",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ]
+    },
+    "override" : {
+      "POST /api/applications/orders/users" : {
+        "status" : 403,
+        "body" : {
+          "error" : "FORBIDDEN",
+          "message" : "client is not available to this application"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 403,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "orders:clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "error" : "CLIENT_NOT_AVAILABLE",
+      "message" : "client is not available to this application"
+    }
+  }, {
+    "name" : "invite, delivery fails",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ]
+    },
+    "override" : {
+      "POST /api/applications/orders/users" : {
+        "status" : 500,
+        "body" : {
+          "error" : "INVITE_DELIVERY_FAILED",
+          "message" : "the invitation could not be delivered; try again"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "orders:clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "error" : "INVITE_DELIVERY_FAILED",
+      "message" : "the invitation could not be delivered; try again"
+    }
+  }, {
+    "name" : "invite, the platform fails",
+    "method" : "POST",
+    "path" : "/api/admin/users",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : {
+      "email" : "dee@example.com",
+      "name" : "Dee",
+      "clientId" : "acme",
+      "roles" : [ "orders:clerk" ]
+    },
+    "override" : {
+      "POST /api/applications/orders/users" : {
+        "status" : 500,
+        "body" : {
+          "error" : "INTERNAL",
+          "message" : "internal-host-7"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "calls" : [ "POST /api/applications/orders/users" ],
+      "platformBody" : {
+        "email" : "dee@example.com",
+        "name" : "Dee",
+        "clientId" : "acme",
+        "roles" : [ "orders:clerk" ],
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "error" : "PLATFORM_ERROR",
+      "message" : "the platform could not be reached or answered with an error"
+    }
+  }, {
+    "name" : "resend, by email",
+    "method" : "POST",
+    "path" : "/api/admin/invitations/prn_2/resend",
+    "permissions" : [ "orders:admin:users:resend" ],
+    "body" : { },
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "POST /api/applications/orders/invitations/prn_2/resend" ],
+      "platformBody" : {
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "answerHasLink" : false,
+      "expiresAt" : "2026-10-20T10:00:00.000Z"
+    }
+  }, {
+    "name" : "resend, the link asked for",
+    "method" : "POST",
+    "path" : "/api/admin/invitations/prn_2/resend",
+    "permissions" : [ "orders:admin:users:resend" ],
+    "body" : {
+      "returnInviteLink" : true
+    },
+    "expect" : {
+      "status" : 200,
+      "calls" : [ "POST /api/applications/orders/invitations/prn_2/resend" ],
+      "platformBody" : {
+        "sendInvitation" : false,
+        "returnInviteLink" : true
+      },
+      "answerHasLink" : true,
+      "expiresAt" : "2026-10-20T10:00:00.000Z"
+    }
+  }, {
+    "name" : "resend, no permission",
+    "method" : "POST",
+    "path" : "/api/admin/invitations/prn_2/resend",
+    "permissions" : [ "orders:admin:users:invite" ],
+    "body" : { },
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:users:resend"
+    }
+  }, {
+    "name" : "resend, unknown",
+    "method" : "POST",
+    "path" : "/api/admin/invitations/prn_none/resend",
+    "permissions" : [ "orders:admin:users:resend" ],
+    "body" : { },
+    "override" : {
+      "POST /api/applications/orders/invitations/prn_none/resend" : {
+        "status" : 404,
+        "body" : {
+          "error" : "Invitation_NOT_FOUND"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 404,
+      "calls" : [ "POST /api/applications/orders/invitations/prn_none/resend" ],
+      "platformBody" : {
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "error" : "INVITATION_NOT_FOUND",
+      "message" : "there is no such invitation"
+    }
+  }, {
+    "name" : "resend, delivery fails",
+    "method" : "POST",
+    "path" : "/api/admin/invitations/prn_2/resend",
+    "permissions" : [ "orders:admin:users:resend" ],
+    "body" : { },
+    "override" : {
+      "POST /api/applications/orders/invitations/prn_2/resend" : {
+        "status" : 500,
+        "body" : {
+          "error" : "INVITE_DELIVERY_FAILED",
+          "message" : "the invitation could not be delivered; try again"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "calls" : [ "POST /api/applications/orders/invitations/prn_2/resend" ],
+      "platformBody" : {
+        "sendInvitation" : true,
+        "returnInviteLink" : false
+      },
+      "error" : "INVITE_DELIVERY_FAILED",
+      "message" : "the invitation could not be delivered; try again"
+    }
+  }, {
+    "name" : "revoke",
+    "method" : "DELETE",
+    "path" : "/api/admin/invitations/prn_2",
+    "permissions" : [ "orders:admin:users:revoke" ],
+    "expect" : {
+      "status" : 204,
+      "calls" : [ "DELETE /api/applications/orders/invitations/prn_2" ]
+    }
+  }, {
+    "name" : "revoke, by wildcard",
+    "method" : "DELETE",
+    "path" : "/api/admin/invitations/prn_2",
+    "permissions" : [ "orders:admin:*:*" ],
+    "expect" : {
+      "status" : 204,
+      "calls" : [ "DELETE /api/applications/orders/invitations/prn_2" ]
+    }
+  }, {
+    "name" : "revoke, no permission",
+    "method" : "DELETE",
+    "path" : "/api/admin/invitations/prn_2",
+    "permissions" : [ "orders:admin:users:resend" ],
+    "expect" : {
+      "status" : 403,
+      "calls" : [ ],
+      "error" : "FORBIDDEN",
+      "message" : "this needs the permission orders:admin:users:revoke"
+    }
+  }, {
+    "name" : "revoke, an id that could change the path",
+    "method" : "DELETE",
+    "path" : "/api/admin/invitations/a.b",
+    "permissions" : [ "orders:admin:users:revoke" ],
+    "expect" : {
+      "status" : 404,
+      "calls" : [ ],
+      "error" : "INVITATION_NOT_FOUND",
+      "message" : "there is no such invitation"
+    }
+  }, {
+    "name" : "revoke, unknown",
+    "method" : "DELETE",
+    "path" : "/api/admin/invitations/prn_none",
+    "permissions" : [ "orders:admin:users:revoke" ],
+    "override" : {
+      "DELETE /api/applications/orders/invitations/prn_none" : {
+        "status" : 404,
+        "body" : {
+          "error" : "Invitation_NOT_FOUND"
+        }
+      }
+    },
+    "expect" : {
+      "status" : 404,
+      "calls" : [ "DELETE /api/applications/orders/invitations/prn_none" ],
+      "error" : "INVITATION_NOT_FOUND",
+      "message" : "there is no such invitation"
+    }
+  } ]
+}
