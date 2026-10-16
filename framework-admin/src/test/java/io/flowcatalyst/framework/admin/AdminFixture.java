@@ -105,10 +105,14 @@ final class AdminFixture {
   }
 
   static AppBuilder builder(Module... extra) {
+    return builder(Map.of("APP_ENV", "test"), extra);
+  }
+
+  static AppBuilder builder(Map<String, String> environment, Module... extra) {
     AppBuilder b =
         App.builder()
             .configDirectory(Path.of("no-such-config"))
-            .environment(Map.of("APP_ENV", "test"))
+            .environment(environment)
             .instantSource(() -> Instant.parse("2026-10-16T08:00:00Z"))
             .module(http())
             .module(AdminModule.of(APP));

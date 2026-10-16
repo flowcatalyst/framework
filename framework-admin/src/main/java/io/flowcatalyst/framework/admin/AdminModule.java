@@ -2,14 +2,12 @@ package io.flowcatalyst.framework.admin;
 
 import io.flowcatalyst.framework.admin.AdminApi.AdminAbout;
 import io.flowcatalyst.framework.admin.AdminApi.AdminCheck;
-import io.flowcatalyst.framework.admin.AdminApi.AdminCheckStatus;
 import io.flowcatalyst.framework.admin.AdminApi.AdminNavigation;
 import io.flowcatalyst.framework.admin.AdminApi.AdminSectionView;
 import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.HealthReport;
-import io.flowcatalyst.framework.core.HealthResult;
 import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
@@ -109,8 +107,7 @@ public final class AdminModule implements Module {
         operations.about,
         r -> {
           HealthReport report = app.health().check();
-          List<AdminCheck> checks = new ArrayList<>();
-          report.results().forEach((name, result) -> checks.add(new AdminCheck(name, status(result), !report.informational().contains(name))));
+          List<AdminCheck> checks = AdminApi.checks(report);
           return Outcome.ok(
               new AdminAbout(
                   application.value(),
@@ -120,13 +117,5 @@ public final class AdminModule implements Module {
                   report.isReady(),
                   checks));
         });
-  }
-
-  private static AdminCheckStatus status(HealthResult result) {
-    return switch (result) {
-      case HealthResult.Up up -> AdminCheckStatus.UP;
-      case HealthResult.Down down -> AdminCheckStatus.DOWN;
-      case HealthResult.TimedOut timedOut -> AdminCheckStatus.TIMED_OUT;
-    };
   }
 }

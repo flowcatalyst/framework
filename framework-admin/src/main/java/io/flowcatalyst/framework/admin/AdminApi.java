@@ -71,6 +71,30 @@ public final class AdminApi {
       boolean ready,
       List<AdminCheck> checks) {}
 
+  /**
+   * The checks of a health report, without failure messages.
+   *
+   * @param report the report
+   * @return one entry per check, in the report's order
+   */
+  static List<AdminCheck> checks(io.flowcatalyst.framework.core.HealthReport report) {
+    List<AdminCheck> out = new java.util.ArrayList<>();
+    report
+        .results()
+        .forEach(
+            (name, result) ->
+                out.add(new AdminCheck(name, status(result), !report.informational().contains(name))));
+    return out;
+  }
+
+  private static AdminCheckStatus status(io.flowcatalyst.framework.core.HealthResult result) {
+    return switch (result) {
+      case io.flowcatalyst.framework.core.HealthResult.Up up -> AdminCheckStatus.UP;
+      case io.flowcatalyst.framework.core.HealthResult.Down down -> AdminCheckStatus.DOWN;
+      case io.flowcatalyst.framework.core.HealthResult.TimedOut timedOut -> AdminCheckStatus.TIMED_OUT;
+    };
+  }
+
   /** The skeleton's operations for one application. */
   static final class Operations {
     final Operation<NoBody, AdminNavigation> navigation;
