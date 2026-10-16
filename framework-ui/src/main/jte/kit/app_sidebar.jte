@@ -3,7 +3,7 @@
 @param Props.AppShell p
 <aside id="fc-sidebar" class="fc-sidebar">
 <div class="fc-sidebar-header">
-<a href="${p.logoHref()}" class="fc-sidebar-logo" style="height: 32px"><span style="width: 32px; height: 32px">@template.kit.logo()</span></a>
+<a href="${url(p.logoHref())}" class="fc-sidebar-logo" style="height: 32px"><span style="width: 32px; height: 32px">@template.kit.logo()</span></a>
 <button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label="Close navigation" data-on:click="${AppShells.MOBILE_CLOSE}">@template.kit.icon(name = "x", cls = "size-[1.25rem]")</button>
 <button type="button" class="fc-collapse-btn" aria-label="Collapse sidebar" aria-expanded="true" data-attr:aria-expanded="$sidebarCollapsed ? 'false' : 'true'" data-on:click="${AppShells.COLLAPSE}">@template.kit.icon(name = "chevron-left", cls = "size-[1rem]")</button>
 </div>
@@ -13,9 +13,9 @@
 @if(g.items() != null)@for(var it : g.items())@if(it.children() != null && !it.children().isEmpty())<details open="${it.open()}">
 <summary class="fc-nav-item" title="${it.label()}">@template.kit.icon(name = it.icon())<span class="fc-nav-label">${it.label()}</span>@template.kit.icon(name = "chevron-right", cls = "fc-nav-chevron")</summary>
 <div class="fc-nav-children">
-@for(var c : it.children())<a href="${c.href()}" class="fc-nav-child" aria-current="${c.current() ? "page" : null}">@template.kit.icon(name = c.icon())<span class="fc-nav-label">${c.label()}</span></a>@endfor
+@for(var c : it.children())<a href="${url(c.href())}" class="fc-nav-child" aria-current="${c.current() ? "page" : null}">@template.kit.icon(name = c.icon())<span class="fc-nav-label">${c.label()}</span></a>@endfor
 </div>
-</details>@else<a href="${it.href()}" class="fc-nav-item" title="${it.label()}" aria-current="${it.current() ? "page" : null}">@template.kit.icon(name = it.icon())<span class="fc-nav-label">${it.label()}</span></a>@endif@endfor@endif
+</details>@else<a href="${url(it.href())}" class="fc-nav-item" title="${it.label()}" aria-current="${it.current() ? "page" : null}">@template.kit.icon(name = it.icon())<span class="fc-nav-label">${it.label()}</span></a>@endif@endfor@endif
 </div>@endfor@endif
 </nav>
 <div class="fc-sidebar-footer">

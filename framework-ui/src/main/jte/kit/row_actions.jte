@@ -7,7 +7,7 @@
 @for(int i = 0; i < actions.size(); i++)!{var a = actions.get(i); var inline = a.destructive() ? "fc-icon-btn fc-icon-btn-danger" : "fc-icon-btn";}
 @if(nz(a.disabledReason()) != null)<button type="button" class="${inline}" title="${a.label() + ": " + a.disabledReason()}" aria-label="${p.withRow(a.label())}" aria-disabled="true" aria-describedby="${p.partId("a", i)}">@template.kit.icon(name = a.icon(), cls = "size-[1rem]")</button>
 <span id="${p.partId("a", i)}" hidden>${a.disabledReason()}</span>
-@elseif(nz(a.href()) != null)<a href="${a.href()}" class="${inline}" title="${a.label()}" aria-label="${p.withRow(a.label())}"$unsafe{attrs(a.attrs())}>@template.kit.icon(name = a.icon(), cls = "size-[1rem]")</a>
+@elseif(nz(a.href()) != null)<a href="${url(a.href())}" class="${inline}" title="${a.label()}" aria-label="${p.withRow(a.label())}"$unsafe{attrs(a.attrs())}>@template.kit.icon(name = a.icon(), cls = "size-[1rem]")</a>
 @else<button type="button" class="${inline}" title="${a.label()}" aria-label="${p.withRow(a.label())}"$unsafe{attrs(a.attrs())}>@template.kit.icon(name = a.icon(), cls = "size-[1rem]")</button>
 @endif
 @endfor
@@ -16,7 +16,7 @@
 @for(int i = 0; i < menu.size(); i++)!{var a = menu.get(i); var item = a.destructive() ? "fc-menu-item danger" : "fc-menu-item";}
 @if(p.separatorBefore(i))<div role="separator" class="fc-menu-separator"></div>@endif
 @if(nz(a.disabledReason()) != null)<button type="button" class="${item}" aria-disabled="true" aria-label="${a.label()}" aria-describedby="${p.partId("m", i)}">@template.kit.icon(name = a.icon(), cls = "size-[1rem]")<span>${a.label()}<span id="${p.partId("m", i)}" class="fc-menu-hint">${a.disabledReason()}</span></span></button>
-@elseif(nz(a.href()) != null)<a href="${a.href()}" class="${item}" data-on:click__capture="${CLOSE_MENU}"$unsafe{attrs(a.attrs())}>@template.kit.icon(name = a.icon(), cls = "size-[1rem]")<span>${a.label()}</span></a>
+@elseif(nz(a.href()) != null)<a href="${url(a.href())}" class="${item}" data-on:click__capture="${CLOSE_MENU}"$unsafe{attrs(a.attrs())}>@template.kit.icon(name = a.icon(), cls = "size-[1rem]")<span>${a.label()}</span></a>
 @else<button type="button" class="${item}" data-on:click__capture="${CLOSE_MENU}"$unsafe{attrs(a.attrs())}>@template.kit.icon(name = a.icon(), cls = "size-[1rem]")<span>${a.label()}</span></button>
 @endif
 @endfor

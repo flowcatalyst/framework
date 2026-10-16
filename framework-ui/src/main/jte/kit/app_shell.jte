@@ -8,7 +8,7 @@
 <div class="fc-main">
 <header class="fc-topbar">
 <button type="button" id="fc-topbar-menu" class="fc-topbar-menu" aria-label="Open navigation" aria-controls="fc-sidebar" aria-expanded="false" data-attr:aria-expanded="$sidebarMobileOpen ? 'true' : 'false'" data-on:click="${AppShells.MOBILE_OPEN}">@template.kit.icon(name = "menu", cls = "size-[1.25rem]")</button>
-<a href="${p.logoHref()}" class="fc-topbar-logo">@template.kit.logo()</a>
+<a href="${url(p.logoHref())}" class="fc-topbar-logo">@template.kit.logo()</a>
 </header>
 <main class="p-[24px]">@if(body != null)${body}@endif</main>
 </div>

@@ -3,7 +3,7 @@
 @param Props.ConfirmDialog p
 !{var tone = Classes.oneOf(p.tone(), "default", "confirm tone", "default", "danger", "warn");}
 <dialog id="${id(p.id())}" class="fc-dialog w-[28rem] max-w-[calc(100vw-2rem)]" closedby="any" aria-labelledby="${p.id() + "-title"}" data-on:click="${LIGHT_DISMISS}">
-<form method="post" action="${p.action()}"$unsafe{attrs(p.formAttrs())}>
+<form method="post" action="${url(p.action())}"$unsafe{attrs(p.formAttrs())}>
 <div class="fc-dialog-header"><span id="${p.id() + "-title"}">${p.title()}</span></div>
 <div class="fc-dialog-body flex items-start gap-3 text-subtle-foreground">
 @template.kit.icon(name = "triangle-alert", cls = tone.equals("danger") ? "size-6 mt-0.5 shrink-0 text-red-600" : "size-6 mt-0.5 shrink-0 text-amber-600")

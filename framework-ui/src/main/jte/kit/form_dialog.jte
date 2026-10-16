@@ -3,7 +3,7 @@
 @param Props.FormDialog p
 @param gg.jte.Content body = null
 @template.kit.dialog(p = new Props.Dialog(p.id(), p.title(), p.description(), null, p.width(), true, false, null, p.dialogAttrs()), body = @`
-<form id="${Props.FormDialog.formId(p.id())}" method="post" action="${p.action()}" class="flex flex-col gap-4" data-signals="${p.signalsExpr()}" data-indicator="${p.busyName()}" data-init="${"el.dataset.snapshot = " + Props.FormDialog.SNAPSHOT}" data-on:input="${p.dirtyExpr()}" data-on:submit="${SUBMIT_FORM}" data-attr:aria-busy="${p.ariaBusyExpr()}">
+<form id="${Props.FormDialog.formId(p.id())}" method="post" action="${url(p.action())}" class="flex flex-col gap-4" data-signals="${p.signalsExpr()}" data-indicator="${p.busyName()}" data-init="${"el.dataset.snapshot = " + Props.FormDialog.SNAPSHOT}" data-on:input="${p.dirtyExpr()}" data-on:submit="${SUBMIT_FORM}" data-attr:aria-busy="${p.ariaBusyExpr()}">
 @template.kit.form_dialog_error(dialogId = p.id(), message = p.error())
 @if(p.hidden() != null)@for(var h : p.hidden())<input type="hidden" name="${h.name()}" value="${h.value()}"$unsafe{attrs(h.attrs())}>@endfor@endif
 @if(body != null)${body}@endif

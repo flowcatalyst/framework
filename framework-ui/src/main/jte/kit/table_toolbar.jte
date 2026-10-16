@@ -2,7 +2,7 @@
 @import static io.flowcatalyst.framework.ui.kit.Markup.*
 @param Props.TableToolbar p
 @param gg.jte.Content filters = null
-<form id="${id(p.id())}" method="get" action="${p.action()}" class="fc-table-toolbar"$unsafe{attrs(p.formAttrs())}>
+<form id="${id(p.id())}" method="get" action="${url(p.action())}" class="fc-table-toolbar"$unsafe{attrs(p.formAttrs())}>
 <div class="fc-toolbar-start">
 @if(!p.hideSearch())<div class="fc-input-icon fc-toolbar-search">
 @template.kit.icon(name = "search", cls = "size-[1rem]")

@@ -7,12 +7,12 @@
 <div class="min-w-0"><p class="truncate text-[15px] font-semibold">${p.user().name()}</p><p class="truncate text-[13px] text-muted-foreground">${p.user().email()}</p></div>
 </div>
 <div class="border-t border-border p-2">
-<a href="${p.profileHref()}" class="fc-menu-item">@template.kit.icon(name = "user", cls = "size-[1.1rem]") Profile</a>
-@if(nz(p.resetPasswordHref()) != null)<a href="${p.resetPasswordHref()}" class="fc-menu-item">@template.kit.icon(name = "key-round", cls = "size-[1.1rem]") Reset Password</a>@endif
+<a href="${url(p.profileHref())}" class="fc-menu-item">@template.kit.icon(name = "user", cls = "size-[1.1rem]") Profile</a>
+@if(nz(p.resetPasswordHref()) != null)<a href="${url(p.resetPasswordHref())}" class="fc-menu-item">@template.kit.icon(name = "key-round", cls = "size-[1.1rem]") Reset Password</a>@endif
 </div>
 @if(nz(p.theme()) != null)<div class="border-t border-border p-2">@template.kit.theme_choices(current = p.theme())</div>@endif
 <div class="border-t border-border p-2">
-<form method="post" action="${p.signOutAction()}"$unsafe{attrs(p.signOutAttrs())}>
+<form method="post" action="${url(p.signOutAction())}"$unsafe{attrs(p.signOutAttrs())}>
 <button type="submit" class="fc-menu-item danger">@template.kit.icon(name = "log-out", cls = "size-[1.1rem]") Sign Out</button>
 </form>
 </div>

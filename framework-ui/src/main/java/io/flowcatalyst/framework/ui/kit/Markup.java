@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.ui.kit;
 
 import gg.jte.Content;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
@@ -244,10 +245,60 @@ public final class Markup {
       }
       out.append(' ').append(name);
       if (!Boolean.TRUE.equals(v)) {
-        out.append("=\"").append(escape(String.valueOf(v))).append('"');
+        String text = String.valueOf(v);
+        if (URL_ATTRS.contains(name.toLowerCase(java.util.Locale.ROOT))) {
+          text = Objects.requireNonNullElse(url(text), "");
+        }
+        out.append("=\"").append(escape(text)).append('"');
       }
     }
     return out.toString();
+  }
+
+  /** What a refused URL becomes. */
+  public static final String BLOCKED_URL = "about:invalid#blocked";
+
+  private static final java.util.Set<String> URL_ATTRS =
+      java.util.Set.of("href", "action", "formaction", "src", "xlink:href");
+
+  /**
+   * A URL for an {@code href} or {@code action}: relative references and the schemes {@code http},
+   * {@code https}, {@code mailto} and {@code tel} pass; anything else ({@code javascript:}, {@code
+   * data:}, {@code vbscript:}, a scheme hidden by whitespace or control characters) becomes {@link
+   * #BLOCKED_URL}. JTE already neutralises {@code javascript:}; this closes the rest.
+   *
+   * @param url the URL, or null
+   * @return the URL, or null when absent or empty
+   */
+  public static @Nullable String url(@Nullable String url) {
+    if (url == null || url.isEmpty()) {
+      return null;
+    }
+    StringBuilder compact = new StringBuilder(url.length());
+    for (int i = 0; i < url.length(); i++) {
+      char c = url.charAt(i);
+      if (c > 0x20 && c != 0x7f) {
+        compact.append(c);
+      }
+    }
+    String s = compact.toString();
+    int end = s.length();
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (c == '/' || c == '?' || c == '#') {
+        end = i;
+        break;
+      }
+    }
+    int colon = s.substring(0, end).indexOf(':');
+    if (colon < 0) {
+      return url;
+    }
+    String scheme = s.substring(0, colon).toLowerCase(java.util.Locale.ROOT);
+    return switch (scheme) {
+      case "http", "https", "mailto", "tel" -> url;
+      default -> BLOCKED_URL;
+    };
   }
 
   /**

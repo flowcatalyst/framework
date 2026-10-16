@@ -2,14 +2,14 @@
 @import static io.flowcatalyst.framework.ui.kit.Markup.*
 @param Props.Paginator p
 <nav id="${nz(p.id())}" class="fc-paginator" aria-label="Pagination">
-@if(p.currentPage() > 1)<a class="fc-page-link" href="${p.href(1)}" aria-label="First"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevrons-left", cls = "size-[1rem]")</a>
-<a class="fc-page-link" href="${p.href(p.currentPage() - 1)}" aria-label="Previous"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevron-left", cls = "size-[1rem]")</a>
+@if(p.currentPage() > 1)<a class="fc-page-link" href="${url(p.href(1))}" aria-label="First"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevrons-left", cls = "size-[1rem]")</a>
+<a class="fc-page-link" href="${url(p.href(p.currentPage() - 1))}" aria-label="Previous"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevron-left", cls = "size-[1rem]")</a>
 @else<span class="fc-page-link" aria-disabled="true" aria-label="First">@template.kit.icon(name = "chevrons-left", cls = "size-[1rem]")</span>
 <span class="fc-page-link" aria-disabled="true" aria-label="Previous">@template.kit.icon(name = "chevron-left", cls = "size-[1rem]")</span>
 @endif
-@for(int n : p.window())@if(n == p.currentPage())<span class="fc-page-link" aria-current="page">${n}</span>@else<a class="fc-page-link" href="${p.href(n)}"$unsafe{attrs(p.linkAttrs())}>${n}</a>@endif@endfor
-@if(p.currentPage() < p.pageCount())<a class="fc-page-link" href="${p.href(p.currentPage() + 1)}" aria-label="Next"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevron-right", cls = "size-[1rem]")</a>
-<a class="fc-page-link" href="${p.href(p.pageCount())}" aria-label="Last"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevrons-right", cls = "size-[1rem]")</a>
+@for(int n : p.window())@if(n == p.currentPage())<span class="fc-page-link" aria-current="page">${n}</span>@else<a class="fc-page-link" href="${url(p.href(n))}"$unsafe{attrs(p.linkAttrs())}>${n}</a>@endif@endfor
+@if(p.currentPage() < p.pageCount())<a class="fc-page-link" href="${url(p.href(p.currentPage() + 1))}" aria-label="Next"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevron-right", cls = "size-[1rem]")</a>
+<a class="fc-page-link" href="${url(p.href(p.pageCount()))}" aria-label="Last"$unsafe{attrs(p.linkAttrs())}>@template.kit.icon(name = "chevrons-right", cls = "size-[1rem]")</a>
 @else<span class="fc-page-link" aria-disabled="true" aria-label="Next">@template.kit.icon(name = "chevron-right", cls = "size-[1rem]")</span>
 <span class="fc-page-link" aria-disabled="true" aria-label="Last">@template.kit.icon(name = "chevrons-right", cls = "size-[1rem]")</span>
 @endif
