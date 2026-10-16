@@ -358,4 +358,173 @@ public final class Kit {
   public static Content toggleGroup(Props.ToggleGroup p) {
     return component("toggle_group", params(p));
   }
+
+  // ---- tables, lists, tabs, time
+
+  /**
+   * table component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content table(Props.Table p, @Nullable Content body) {
+    return component("table", params(p, "body", body));
+  }
+
+  /**
+   * tableRow component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content tableRow(Props.TR p, @Nullable Content body) {
+    return component("table_row", params(p, "body", body));
+  }
+
+  /**
+   * tableHead component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content tableHead(Props.TH p, @Nullable Content body) {
+    return component("table_head", params(p, "body", body));
+  }
+
+  /**
+   * tableCell component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content tableCell(Props.TD p, @Nullable Content body) {
+    return component("table_cell", params(p, "body", body));
+  }
+
+  /**
+   * sortableHeader component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content sortableHeader(Props.SortableHeader p) {
+    return component("sortable_header", params(p));
+  }
+
+  /**
+   * emptyRow component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content emptyRow(Props.EmptyRow p) {
+    return component("empty_row", params(p));
+  }
+
+  /**
+   * dataTable component (see its spec).
+   *
+   * @param p props
+   * @param body the body slot
+   * @return the component
+   */
+  public static Content dataTable(Props.DataTable p, @Nullable Content body) {
+    return component("data_table", params(p, "body", body));
+  }
+
+  /**
+   * rowActions component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content rowActions(Props.RowActions p) {
+    return component("row_actions", params(p));
+  }
+
+  /**
+   * tableToolbar component (see its spec).
+   *
+   * @param p props
+   * @param filters the filters slot
+   * @return the component
+   */
+  public static Content tableToolbar(Props.TableToolbar p, @Nullable Content filters) {
+    return component("table_toolbar", params(p, "filters", filters));
+  }
+
+  /**
+   * tableToolbarState component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content tableToolbarState(Props.TableToolbarState p) {
+    return component("table_toolbar_state", params(p));
+  }
+
+  /**
+   * pagination component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content pagination(Props.Pagination p) {
+    return component("pagination", params(p));
+  }
+
+  /**
+   * cursorPager component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content cursorPager(Props.CursorPager p) {
+    return component("cursor_pager", params(p));
+  }
+
+  /**
+   * paginator component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content paginator(Props.Paginator p) {
+    return component("paginator", params(p));
+  }
+
+  /**
+   * localTime component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content localTime(Props.LocalTime p) {
+    return component("local_time", params(p));
+  }
+
+  /**
+   * dateRange component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content dateRange(Props.DateRange p) {
+    return component("date_range", params(p));
+  }
+
+  /**
+   * tabs.md: client tabs; the panels are the slots, by tab value.
+   *
+   * @param p props
+   * @param panels each tab's content by value
+   * @return the component
+   */
+  public static Content tabs(Props.Tabs p, Map<String, Content> panels) {
+    return component("tabs", params(p, "panels", panels));
+  }
 }

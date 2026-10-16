@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.ui.kit;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -454,4 +455,536 @@ public final class Props {
       @Nullable List<String> selected,
       @Nullable Map<String, Object> attrs,
       @Nullable Map<String, Object> inputAttrs) {}
+
+  // ---- tables and lists
+
+  /**
+   * table.md: the scrolling container and the table.
+   *
+   * @param id the container id
+   * @param caption the caption
+   * @param dense the list-page cell padding
+   * @param cls extra classes for the table
+   * @param attrs extra attributes for the table
+   */
+  public record Table(
+      @Nullable String id,
+      @Nullable String caption,
+      boolean dense,
+      @Nullable String cls,
+      @Nullable Map<String, Object> attrs) {}
+
+  /**
+   * table.md, row.
+   *
+   * @param isStatic header row, no hover tint (the {@code static} prop)
+   * @param clickable adds the pointer cursor
+   * @param id the row id
+   * @param cls extra classes
+   * @param attrs extra attributes
+   */
+  public record TR(
+      boolean isStatic,
+      boolean clickable,
+      @Nullable String id,
+      @Nullable String cls,
+      @Nullable Map<String, Object> attrs) {}
+
+  /**
+   * table.md, head cell.
+   *
+   * @param cls extra classes
+   * @param attrs extra attributes
+   */
+  public record TH(@Nullable String cls, @Nullable Map<String, Object> attrs) {}
+
+  /**
+   * table.md, cell.
+   *
+   * @param colspan column span, 0 for none
+   * @param cls extra classes
+   * @param attrs extra attributes
+   */
+  public record TD(int colspan, @Nullable String cls, @Nullable Map<String, Object> attrs) {}
+
+  /**
+   * data-table.md, server-sorted heading.
+   *
+   * @param label the text
+   * @param href the URL that sorts by this column
+   * @param direction asc or desc when this column is the sort, else null
+   * @param cls extra classes
+   * @param linkAttrs attributes for the link
+   */
+  public record SortableHeader(
+      @Nullable String label,
+      @Nullable String href,
+      @Nullable String direction,
+      @Nullable String cls,
+      @Nullable Map<String, Object> linkAttrs) {}
+
+  /**
+   * table.md, the row shown instead of rows.
+   *
+   * @param colspan the column count
+   * @param empty the empty state inside
+   */
+  public record EmptyRow(int colspan, EmptyState empty) {}
+
+  /**
+   * One action of a row (row-actions.md).
+   *
+   * @param icon the icon
+   * @param label the visible menu text and the inline tooltip
+   * @param href makes the action a link
+   * @param attrs the handler of a button action
+   * @param destructive red; asks for confirmation
+   * @param disabledReason renders the action disabled with this reason
+   */
+  public record RowAction(
+      @Nullable String icon,
+      @Nullable String label,
+      @Nullable String href,
+      @Nullable Map<String, Object> attrs,
+      boolean destructive,
+      @Nullable String disabledReason) {}
+
+  /**
+   * row-actions.md.
+   *
+   * @param id prefix of the generated ids; required with a menu or a disabled action
+   * @param rowLabel the row's name for accessible names
+   * @param actions the inline actions
+   * @param menu the overflow menu
+   * @param attrs attributes for the cell
+   */
+  public record RowActions(
+      @Nullable String id,
+      @Nullable String rowLabel,
+      @Nullable List<RowAction> actions,
+      @Nullable List<RowAction> menu,
+      @Nullable Map<String, Object> attrs) {
+
+    /**
+     * An accessible name with the row appended.
+     *
+     * @param label the action
+     * @return the name
+     */
+    public String withRow(@Nullable String label) {
+      String l = label == null ? "" : label;
+      return Markup.nz(rowLabel) == null ? l : l + " " + rowLabel;
+    }
+
+    /**
+     * The overflow button's label.
+     *
+     * @return the label
+     */
+    public String moreLabel() {
+      return Markup.nz(rowLabel) == null ? "More actions" : "More actions for " + rowLabel;
+    }
+
+    /**
+     * A generated id.
+     *
+     * @param kind a or m
+     * @param i the index
+     * @return the id
+     */
+    public String partId(String kind, int i) {
+      return Markup.id(id) + "-" + kind + i;
+    }
+
+    /**
+     * The menu's id.
+     *
+     * @return the id
+     */
+    public String menuId() {
+      return Markup.id(id) + "-menu";
+    }
+
+    /**
+     * Whether menu item i is the first destructive one with a plain one before it.
+     *
+     * @param i the index
+     * @return true when a separator goes before it
+     */
+    public boolean separatorBefore(int i) {
+      List<RowAction> m = menu == null ? List.of() : menu;
+      if (!m.get(i).destructive()) {
+        return false;
+      }
+      boolean plain = false;
+      for (RowAction a : m.subList(0, i)) {
+        if (a.destructive()) {
+          return false;
+        }
+        plain = true;
+      }
+      return plain;
+    }
+  }
+
+  /**
+   * One column of a data table.
+   *
+   * @param label the heading
+   * @param href makes the column sortable (the URL that sorts by it)
+   * @param direction asc or desc when it is the active sort
+   * @param cls extra classes
+   * @param linkAttrs attributes for the sort link
+   */
+  public record DataColumn(
+      @Nullable String label,
+      @Nullable String href,
+      @Nullable String direction,
+      @Nullable String cls,
+      @Nullable Map<String, Object> linkAttrs) {}
+
+  /**
+   * data-table.md: the list-page table.
+   *
+   * @param id the container id
+   * @param bodyId the tbody id, the rows' patch target
+   * @param columns the columns
+   * @param empty when set, replaces the rows with an empty row
+   */
+  public record DataTable(
+      @Nullable String id,
+      @Nullable String bodyId,
+      @Nullable List<DataColumn> columns,
+      @Nullable EmptyState empty) {}
+
+  /**
+   * A hidden input carried by a form.
+   *
+   * @param name the name
+   * @param value the value
+   * @param attrs extra attributes
+   */
+  public record HiddenField(
+      @Nullable String name, @Nullable String value, @Nullable Map<String, Object> attrs) {}
+
+  /**
+   * The toolbar's result-size select.
+   *
+   * @param options the sizes
+   * @param selected the chosen size
+   */
+  public record ResultSize(@Nullable List<Integer> options, int selected) {}
+
+  /**
+   * table-toolbar.md.
+   *
+   * @param id the form id
+   * @param action the form action
+   * @param searchPlaceholder the search placeholder
+   * @param searchValue the search value
+   * @param hideSearch omits the search box
+   * @param size the result-size select
+   * @param hideRefresh omits the refresh button
+   * @param clearHref renders Clear All
+   * @param clearAttrs attributes for Clear All
+   * @param activeFilterCount the badge count
+   * @param hidden hidden inputs
+   * @param searchAttrs attributes for the search input
+   * @param formAttrs attributes for the form
+   */
+  public record TableToolbar(
+      String id,
+      @Nullable String action,
+      @Nullable String searchPlaceholder,
+      @Nullable String searchValue,
+      boolean hideSearch,
+      @Nullable ResultSize size,
+      boolean hideRefresh,
+      @Nullable String clearHref,
+      @Nullable Map<String, Object> clearAttrs,
+      int activeFilterCount,
+      @Nullable List<HiddenField> hidden,
+      @Nullable Map<String, Object> searchAttrs,
+      @Nullable Map<String, Object> formAttrs) {
+
+    /**
+     * The state part of this toolbar: render it alone (and patch it by id) after a live update.
+     *
+     * @param hasFilters whether the toolbar has a filters popover (the Filters button)
+     * @return the state props
+     */
+    public TableToolbarState state(boolean hasFilters) {
+      return new TableToolbarState(
+          id, hidden, clearHref, clearAttrs, activeFilterCount, hasFilters);
+    }
+  }
+
+  /**
+   * table-toolbar.md, the state part.
+   *
+   * @param formId the toolbar form's id
+   * @param hidden hidden inputs
+   * @param clearHref renders Clear All
+   * @param clearAttrs attributes for Clear All
+   * @param activeFilterCount the badge count
+   * @param filters renders the Filters button
+   */
+  public record TableToolbarState(
+      String formId,
+      @Nullable List<HiddenField> hidden,
+      @Nullable String clearHref,
+      @Nullable Map<String, Object> clearAttrs,
+      int activeFilterCount,
+      boolean filters) {}
+
+  /**
+   * One entry of a pagination.
+   *
+   * @param page the page number
+   * @param href the link
+   * @param ellipsis an ellipsis instead of a page
+   */
+  public record PageItem(int page, @Nullable String href, boolean ellipsis) {}
+
+  /**
+   * pagination.md.
+   *
+   * @param items the entries
+   * @param current the current page
+   * @param prevHref the previous link, null for the disabled form
+   * @param nextHref the next link, null for the disabled form
+   * @param primaryCurrent fills the current page with the primary colour
+   * @param linkAttrs attributes for every page link
+   */
+  public record Pagination(
+      @Nullable List<PageItem> items,
+      int current,
+      @Nullable String prevHref,
+      @Nullable String nextHref,
+      boolean primaryCurrent,
+      @Nullable Map<String, Object> linkAttrs) {}
+
+  /**
+   * cursor-pager.md.
+   *
+   * @param id the footer id
+   * @param summary the summary text
+   * @param newestHref the Newest link, null for the disabled form
+   * @param olderHref the Older link, null for the disabled form
+   * @param linkAttrs attributes for the links
+   */
+  public record CursorPager(
+      @Nullable String id,
+      @Nullable String summary,
+      @Nullable String newestHref,
+      @Nullable String olderHref,
+      @Nullable Map<String, Object> linkAttrs) {}
+
+  /**
+   * paginator.md.
+   *
+   * @param id the nav id
+   * @param page the current page
+   * @param pages the page count
+   * @param total the row count
+   * @param rows the rows per page
+   * @param rowsOptions the choices, default 50, 100, 250, 500
+   * @param noun the noun in the report
+   * @param hrefPattern a page link with the placeholder {@code {page}}
+   * @param formId the list's form, for the rows select; empty for none
+   * @param linkAttrs attributes for the page links
+   */
+  public record Paginator(
+      @Nullable String id,
+      int page,
+      int pages,
+      int total,
+      int rows,
+      @Nullable List<Integer> rowsOptions,
+      @Nullable String noun,
+      @Nullable String hrefPattern,
+      @Nullable String formId,
+      @Nullable Map<String, Object> linkAttrs) {
+
+    private static final List<Integer> DEFAULT_ROWS = List.of(50, 100, 250, 500);
+
+    /**
+     * The page count, at least one.
+     *
+     * @return the pages
+     */
+    public int pageCount() {
+      return Math.max(pages, 1);
+    }
+
+    /**
+     * The current page clamped to the range.
+     *
+     * @return the page
+     */
+    public int currentPage() {
+      return Math.min(Math.max(page, 1), pageCount());
+    }
+
+    /**
+     * The rows per page.
+     *
+     * @return rows, 50 when unset
+     */
+    public int rowCount() {
+      return rows <= 0 ? DEFAULT_ROWS.get(0) : rows;
+    }
+
+    /**
+     * The rows-per-page choices.
+     *
+     * @return the options
+     */
+    public List<Integer> rowChoices() {
+      return rowsOptions == null || rowsOptions.isEmpty() ? DEFAULT_ROWS : rowsOptions;
+    }
+
+    /**
+     * A page link.
+     *
+     * @param n the page
+     * @return the pattern with the page filled in
+     */
+    public String href(int n) {
+      return (hrefPattern == null ? "" : hrefPattern).replace("{page}", Integer.toString(n));
+    }
+
+    /**
+     * The five page numbers around the current page.
+     *
+     * @return the window
+     */
+    public List<Integer> window() {
+      int pg = pageCount();
+      int cur = currentPage();
+      int start = Math.max(1, Math.min(Math.max(cur - 2, 1), Math.max(pg - 4, 1)));
+      int end = Math.min(start + 4, pg);
+      List<Integer> out = new java.util.ArrayList<>();
+      for (int n = start; n <= end; n++) {
+        out.add(n);
+      }
+      return out;
+    }
+
+    /**
+     * The "Showing a to b of c" text.
+     *
+     * @return the report
+     */
+    public String report() {
+      int first = 0;
+      int last = 0;
+      if (total > 0) {
+        first = (currentPage() - 1) * rowCount() + 1;
+        last = Math.min(currentPage() * rowCount(), total);
+      }
+      return "Showing " + first + " to " + last + " of " + total + " " + (noun == null ? "" : noun);
+    }
+  }
+
+  /**
+   * One trigger of tabs.
+   *
+   * @param value an id fragment, part of the panel id and of the trigger's expression
+   * @param label the text
+   */
+  public record TabItem(String value, String label) {}
+
+  /**
+   * tabs.md: client tabs, one signal holds the selected value. The panels are slots by value.
+   *
+   * @param signal the signal name, camelCase
+   * @param tabs the tabs
+   * @param selected the initial tab, default the first
+   * @param listClass extra classes for the trigger row
+   * @param cls extra classes for the root
+   */
+  public record Tabs(
+      String signal,
+      List<TabItem> tabs,
+      @Nullable String selected,
+      @Nullable String listClass,
+      @Nullable String cls) {
+
+    /**
+     * The initially selected value.
+     *
+     * @return the value, empty when there are no tabs
+     */
+    public String initial() {
+      if (Markup.nz(selected) != null) {
+        return Markup.id(selected);
+      }
+      return tabs.isEmpty() ? "" : Markup.id(tabs.get(0).value());
+    }
+
+    /**
+     * A panel's id.
+     *
+     * @param value the tab value
+     * @return the id
+     */
+    public String panelId(String value) {
+      return Markup.signal(signal) + "-" + Markup.id(value);
+    }
+
+    /**
+     * The expression that is true while the tab is selected.
+     *
+     * @param value the tab value
+     * @return the expression
+     */
+    public String is(String value) {
+      return "$" + Markup.signal(signal) + " === '" + Markup.id(value) + "'";
+    }
+
+    /**
+     * The expression that selects the tab.
+     *
+     * @param value the tab value
+     * @return the expression
+     */
+    public String select(String value) {
+      return "$" + Markup.signal(signal) + " = '" + Markup.id(value) + "'";
+    }
+  }
+
+  /**
+   * local-time.md.
+   *
+   * @param at the instant; null renders the empty text
+   * @param dateOnly the date without the time
+   * @param empty the text for a null instant, default a dash
+   */
+  public record LocalTime(
+      @Nullable Instant at, boolean dateOnly, @Nullable String empty) {}
+
+  /**
+   * date-range.md.
+   *
+   * @param id derives the parts: -label, -from, -to
+   * @param label the group label
+   * @param fromName default from
+   * @param toName default to
+   * @param from the start date
+   * @param to the end date
+   * @param fromLabel default From
+   * @param toLabel default To
+   * @param attrs attributes for both inputs
+   */
+  public record DateRange(
+      String id,
+      @Nullable String label,
+      @Nullable String fromName,
+      @Nullable String toName,
+      @Nullable String from,
+      @Nullable String to,
+      @Nullable String fromLabel,
+      @Nullable String toLabel,
+      @Nullable Map<String, Object> attrs) {}
 }

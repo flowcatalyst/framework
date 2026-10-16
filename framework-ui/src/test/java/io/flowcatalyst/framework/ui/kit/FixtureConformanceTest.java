@@ -37,31 +37,15 @@ class FixtureConformanceTest {
           "code-block",
           "code-chips",
           "confirm-dialog",
-          "cursor-pager",
-          "data-table",
-          "date-range",
           "detail-field",
           "dialog",
           "drawer",
           "drawer-content",
-          "empty-row",
           "form-dialog",
           "form-section",
-          "local-time",
           "multi-select",
-          "pagination",
-          "paginator",
           "pick-list",
-          "row-actions",
           "sheet",
-          "sortable-header",
-          "table",
-          "table-cell",
-          "table-head",
-          "table-row",
-          "table-toolbar",
-          "table-toolbar-state",
-          "tabs",
           "user-menu");
 
   private static final ObjectMapper MAPPER =
@@ -82,7 +66,7 @@ class FixtureConformanceTest {
               e -> {
                 String k = e.getKey();
                 if (!attrs) {
-                  k = k.equals("class") ? "cls" : k.equals("for") ? "forId" : k;
+                  k = k.equals("class") ? "cls" : k.equals("for") ? "forId" : k.equals("static") ? "isStatic" : k;
                 }
                 out.set(k, rename(e.getValue(), e.getKey()));
               });

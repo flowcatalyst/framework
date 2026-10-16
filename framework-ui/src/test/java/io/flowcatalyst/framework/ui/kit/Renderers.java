@@ -67,6 +67,34 @@ final class Renderers {
     r("search-input", Props.SearchInput.class, (p, s) -> Kit.searchInput(p));
     r("filter-select", Props.FilterSelect.class, (p, s) -> Kit.filterSelect(p));
     r("toggle-group", Props.ToggleGroup.class, (p, s) -> Kit.toggleGroup(p));
+    r("table", Props.Table.class, (p, s) -> Kit.table(p, s.get("default")));
+    r("table-row", Props.TR.class, (p, s) -> Kit.tableRow(p, s.get("default")));
+    r("table-head", Props.TH.class, (p, s) -> Kit.tableHead(p, s.get("default")));
+    r("table-cell", Props.TD.class, (p, s) -> Kit.tableCell(p, s.get("default")));
+    r("sortable-header", Props.SortableHeader.class, (p, s) -> Kit.sortableHeader(p));
+    r("empty-row", Props.EmptyRow.class, (p, s) -> Kit.emptyRow(p));
+    r("data-table", Props.DataTable.class, (p, s) -> Kit.dataTable(p, s.get("default")));
+    r("row-actions", Props.RowActions.class, (p, s) -> Kit.rowActions(p));
+    r("table-toolbar", Props.TableToolbar.class, (p, s) -> Kit.tableToolbar(p, s.get("filters")));
+    r("table-toolbar-state", Props.TableToolbarState.class, (p, s) -> Kit.tableToolbarState(p));
+    r("pagination", Props.Pagination.class, (p, s) -> Kit.pagination(p));
+    r("cursor-pager", Props.CursorPager.class, (p, s) -> Kit.cursorPager(p));
+    r("paginator", Props.Paginator.class, (p, s) -> Kit.paginator(p));
+    r("local-time", Props.LocalTime.class, (p, s) -> Kit.localTime(p));
+    r("date-range", Props.DateRange.class, (p, s) -> Kit.dateRange(p));
+    r(
+        "tabs",
+        Props.Tabs.class,
+        (p, s) -> {
+          Map<String, Content> panels = new HashMap<>();
+          for (Props.TabItem t : p.tabs()) {
+            Content c = s.get(t.value());
+            if (c != null) {
+              panels.put(t.value(), c);
+            }
+          }
+          return Kit.tabs(p, panels);
+        });
   }
 
   private static Content nn(@Nullable Content c) {

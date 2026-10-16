@@ -44,6 +44,23 @@ public final class Markup {
   /** Submits a confirm dialog's form and closes the dialog. */
   public static final String SUBMIT_CONFIRM = SUBMIT_FORM + "; el.closest('dialog').close()";
 
+  /**
+   * Positions a popover 6px under its trigger (the element right before it), right-aligned
+   * (table-toolbar.md).
+   */
+  public static final String POPOVER_ANCHOR =
+      "evt.newState === 'open' && (el.style.top = (el.previousElementSibling.getBoundingClientRect().bottom + 6) + 'px'); evt.newState === 'open' && (el.style.left = Math.max(16, el.previousElementSibling.getBoundingClientRect().right - el.offsetWidth) + 'px')";
+
+  /**
+   * table-toolbar.md's live Clear All handler: empties the search box and the filter fields,
+   * focuses the search box and submits the form.
+   */
+  public static final String CLEAR_FILTERS =
+      "const f = el.closest('form'); f.querySelectorAll('.fc-toolbar-search [name], .fc-filter-popover [name]').forEach(c => c.type === 'checkbox' || c.type === 'radio' ? c.checked = false : c.value = ''); f.querySelector('.fc-toolbar-search input')?.focus(); f.requestSubmit()";
+
+  /** Closes the popover menu containing the element (row-action menu items). */
+  public static final String CLOSE_MENU = "el.closest('[popover]').hidePopover()";
+
   /** The expression a filter select uses to submit its form. */
   public static final String SUBMIT_ON_CHANGE = "el.form.requestSubmit()";
 
