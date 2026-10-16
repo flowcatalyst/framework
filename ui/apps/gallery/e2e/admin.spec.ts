@@ -21,7 +21,7 @@ test("an administrator sees the sections the server lists and the application ha
   expect(warnings.some((text) => text.includes("'events'"))).toBe(true);
   await expect(sidebar(page).getByRole("link", { name: "About" })).toHaveAttribute("aria-current", "page");
   await sidebar(page).getByRole("link", { name: "Back to the gallery" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Admin shell" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Admin area" })).toBeVisible();
   await csp.expectClean();
 });
 
@@ -40,7 +40,7 @@ test("a route needs its permission: the not-permitted page opens without it", co
   await page.goto("/admin/about?as=none");
   await expect(page.getByRole("heading", { level: 1, name: "Not permitted" })).toBeVisible();
   // The landing route /admin leads to About, which is guarded the same way.
-  await page.goto("/admin");
+  await page.goto("/admin?as=none");
   await expect(page.getByRole("heading", { level: 1, name: "Not permitted" })).toBeVisible();
   await csp.expectClean();
 });
@@ -75,7 +75,7 @@ for (const scheme of ["light", "dark"] as const) {
         ["/admin/about?as=admin", "About"],
         ["/admin/users", "Users"],
         ["/not-permitted?as=none", "Not permitted"],
-        ["/admin-shell", "Admin shell"],
+        ["/admin-shell", "Admin area"],
       ] as const) {
         await openPage(page, path, heading);
         expect(await axeViolations(page), `${path} ${scheme} ${String(size.width)}`).toEqual([]);

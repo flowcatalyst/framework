@@ -5,7 +5,7 @@ import GallerySection from "../components/GallerySection.vue";
 
 <template>
   <div class="space-y-6">
-    <UPageHeader title="Admin shell" description="FwAdminShell: the application's administration area (M4d)" />
+    <UPageHeader title="Admin area" description="FwAdminShell: the application's administration area (M4d)" />
     <GallerySection
       :behaviours="['admin-nav-permissions', 'admin-unlisted-section']"
       title="Navigation from the server and the session"
