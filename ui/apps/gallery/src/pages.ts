@@ -22,5 +22,6 @@ export const pages: readonly GalleryPage[] = [
   { path: "/orders", title: "Orders (partials)", heading: "Orders", icon: "i-lucide-shopping-cart" },
   { path: "/standalone", title: "Standalone pages", heading: "Standalone pages", icon: "i-lucide-panel-top" },
   { path: "/shell", title: "Shell", heading: "Application shell", icon: "i-lucide-panel-left" },
+  { path: "/admin-shell", title: "Admin shell", heading: "Admin shell", icon: "i-lucide-shield-check" },
   { path: "/fonts", title: "Fonts", heading: "Font comparison", icon: "i-lucide-type" },
 ];

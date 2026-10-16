@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
-import { FwSignedOutPage, FwSignInFailedPage, FwUnavailablePage } from "@flowcatalyst/ui";
+import { adminRoutes, FwSignedOutPage, FwSignInFailedPage, FwUnavailablePage } from "@flowcatalyst/ui";
+import { adminPages } from "./admin/pages.ts";
+import { rememberViewer } from "./fake-server.ts";
 import { pages } from "./pages.ts";
 
 const components: Readonly<Record<string, RouteRecordRaw["component"]>> = {
@@ -13,6 +15,7 @@ const components: Readonly<Record<string, RouteRecordRaw["component"]>> = {
   "/lists": () => import("./pages/ListsPage.vue"),
   "/standalone": () => import("./pages/StandalonePage.vue"),
   "/shell": () => import("./pages/ShellPage.vue"),
+  "/admin-shell": () => import("./pages/AdminShellPage.vue"),
   "/fonts": () => import("./pages/FontsPage.vue"),
 };
 
@@ -31,6 +34,9 @@ const routes: RouteRecordRaw[] = [
   { path: "/standalone/signed-out", component: FwSignedOutPage, props: { appName: "Gallery", returnTo: "/standalone" }, meta: { title: "Signed out", public: true } },
   { path: "/standalone/sign-in-failed", component: FwSignInFailedPage, props: { appName: "Gallery", returnTo: "/standalone" }, meta: { title: "Sign-in failed", public: true } },
   { path: "/standalone/unavailable", component: FwUnavailablePage, props: { appName: "Gallery", retryTo: "/standalone" }, meta: { title: "Unavailable", public: true } },
+  // The admin area (M4d): rendered in FwAdminShell (App.vue), each route guarded by its permission.
+  ...adminRoutes(adminPages),
+  { path: "/not-permitted", component: () => import("./pages/NotPermittedPage.vue"), meta: { title: "Not permitted" } },
   { path: "/signed-out", component: () => import("./pages/SignedOutPage.vue"), meta: { title: "Signed out" } },
   // Components known to break the strict CSP, kept so the e2e suite notices when that changes.
   { path: "/probes/drawer", component: () => import("./pages/probes/DrawerProbe.vue") },
@@ -43,6 +49,8 @@ export const router = createRouter({ history: createWebHistory(), routes });
 
 // The font comparison's `?font=` stays on while the reviewer moves between pages (src/fonts.ts).
 router.beforeEach((to, from) => {
+  // `?as=admin|users|none|down` chooses who the fake session is, for the admin shell's demonstration.
+  rememberViewer(to.query["as"]);
   const font = from.query["font"];
   if (typeof font === "string" && to.query["font"] === undefined) {
     return { path: to.path, query: { ...to.query, font }, hash: to.hash };

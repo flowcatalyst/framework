@@ -1,0 +1,14 @@
+// The admin area's constants that the Vite config also needs: data only, no .vue import (the config is
+// bundled before the Vue plugin runs). Icons named in .ts data are listed for Nuxt UI's bundle scan.
+
+/** Opens the admin area at all (`AdminModule.consoleView`). */
+export const ADMIN_CONSOLE = "orders-demo:admin:console:view";
+/** The demo's own section (`OrdersAdminModule.VIEW`). */
+export const ADMIN_ORDERS_VIEW = "orders-demo:admin:orders:view";
+
+export const ICON_ABOUT = "i-lucide-info";
+export const ICON_ORDERS = "i-lucide-chart-no-axes-column";
+/** The sidebar entry that leads into the area. */
+export const ICON_ADMIN = "i-lucide-shield";
+
+export const ADMIN_ICONS: readonly string[] = [ICON_ABOUT, ICON_ORDERS, ICON_ADMIN];

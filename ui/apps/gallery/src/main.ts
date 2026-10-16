@@ -1,5 +1,5 @@
 // FIRST: @flowcatalyst/api-runtime sets Zod to jitless before any schema exists (strict CSP).
-import { createApiRuntime } from "@flowcatalyst/api-runtime";
+import { createApiRuntime, installSessionGuard } from "@flowcatalyst/api-runtime";
 import ui from "@nuxt/ui/vue-plugin";
 import { flowcatalystUi } from "@flowcatalyst/ui";
 import { createApp } from "vue";
@@ -22,6 +22,9 @@ const api = createApiRuntime({
   },
   signedOutUrl: "/signed-out",
 });
+
+// The session guard (admin routes carry `meta.permission`): a session without it opens /not-permitted.
+installSessionGuard(router, api.session, { notPermitted: () => "/not-permitted" });
 
 // The font comparison (dev server and `--mode fonts` only): `?font=<id>` swaps the font on <html>.
 router.afterEach((to) => {

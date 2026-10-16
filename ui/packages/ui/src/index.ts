@@ -37,6 +37,14 @@ export { default as FwSignInFailedPage } from "./pages/FwSignInFailedPage.vue";
 export { default as FwUnavailablePage } from "./pages/FwUnavailablePage.vue";
 export { SIGN_IN_FAILURE_MESSAGES, signInFailureMessage } from "./lib/signInFailure.ts";
 
+// M4d: the admin skeleton (docs/contracts/admin.md section 6): the shell, the page-kit contract, the
+// pure navigation / routes / breadcrumbs, the navigation loader and the about page.
+export { default as FwAdminShell } from "./layouts/FwAdminShell.vue";
+export { default as FwAdminAbout } from "./partials/FwAdminAbout.vue";
+export { ADMIN_BASE, adminBreadcrumbs, adminNavigation, adminRoutes, sectionsWithoutPage, type Crumb } from "./admin/navigation.ts";
+export type { AdminAboutView, AdminCheckView, AdminNavigationView, AdminPage, AdminSectionView } from "./admin/types.ts";
+export { useAdminNavigation, type AdminNavigation } from "./composables/useAdminNavigation.ts";
+
 // Composables.
 export { announce, announcements } from "./composables/useAnnouncer.ts";
 export { useColorMode, type ColorMode, type ColorModePreference } from "./composables/useColorMode.ts";

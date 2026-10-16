@@ -21,6 +21,7 @@
     "playwright.fonts.config.ts",
     "src/pages.ts",
     "src/font-list.ts",
-    "src/behaviours.ts"
+    "src/behaviours.ts",
+    "src/admin/icons.ts"
   ]
 }

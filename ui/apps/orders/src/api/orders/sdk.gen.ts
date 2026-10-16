@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddOrderLineData, AddOrderLineErrors, AddOrderLineResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, GetAuthSessionData, GetAuthSessionErrors, GetAuthSessionResponses, GetOrderData, GetOrderErrors, GetOrderResponses, ListOrdersData, ListOrdersErrors, ListOrdersResponses, LogoutData, LogoutErrors, LogoutResponses, PlaceOrderData, PlaceOrderErrors, PlaceOrderResponses } from './types.gen';
+import type { AddOrderLineData, AddOrderLineErrors, AddOrderLineResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, GetAdminAboutData, GetAdminAboutErrors, GetAdminAboutResponses, GetAdminNavigationData, GetAdminNavigationErrors, GetAdminNavigationResponses, GetAdminOrdersOverviewData, GetAdminOrdersOverviewErrors, GetAdminOrdersOverviewResponses, GetAuthSessionData, GetAuthSessionErrors, GetAuthSessionResponses, GetOrderData, GetOrderErrors, GetOrderResponses, ListOrdersData, ListOrdersErrors, ListOrdersResponses, LogoutData, LogoutErrors, LogoutResponses, PlaceOrderData, PlaceOrderErrors, PlaceOrderResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,45 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * What the application is and whether it is healthy
+ */
+export const getAdminAbout = <ThrowOnError extends boolean = false>(options?: Options<GetAdminAboutData, ThrowOnError>): RequestResult<GetAdminAboutResponses, GetAdminAboutErrors, ThrowOnError> => (options?.client ?? client).get<GetAdminAboutResponses, GetAdminAboutErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/about',
+    ...options
+});
+
+/**
+ * The admin sections the caller may use
+ */
+export const getAdminNavigation = <ThrowOnError extends boolean = false>(options?: Options<GetAdminNavigationData, ThrowOnError>): RequestResult<GetAdminNavigationResponses, GetAdminNavigationErrors, ThrowOnError> => (options?.client ?? client).get<GetAdminNavigationResponses, GetAdminNavigationErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/navigation',
+    ...options
+});
+
+/**
+ * Count the client's orders by status
+ */
+export const getAdminOrdersOverview = <ThrowOnError extends boolean = false>(options?: Options<GetAdminOrdersOverviewData, ThrowOnError>): RequestResult<GetAdminOrdersOverviewResponses, GetAdminOrdersOverviewErrors, ThrowOnError> => (options?.client ?? client).get<GetAdminOrdersOverviewResponses, GetAdminOrdersOverviewErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/orders/overview',
+    ...options
+});
 
 /**
  * List the client's orders

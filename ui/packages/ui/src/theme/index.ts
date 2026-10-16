@@ -36,11 +36,13 @@ export const fcColorAliases = [
  * app config's `ui.icons`: loading, close, chevrons, ...) are bundled by its plugin.
  */
 export const fcIcons = [
+  "i-lucide-arrow-left",
   "i-lucide-check",
   "i-lucide-chevron-left",
   "i-lucide-chevron-right",
   "i-lucide-chevrons-left",
   "i-lucide-circle",
+  "i-lucide-circle-alert",
   "i-lucide-circle-check",
   "i-lucide-circle-user",
   "i-lucide-circle-x",

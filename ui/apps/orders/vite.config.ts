@@ -2,10 +2,11 @@ import ui from "@nuxt/ui/vite";
 import { flowcatalystUi, nuxtUiOptions } from "@flowcatalyst/ui/vite";
 import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
+import { ADMIN_ICONS } from "./src/admin/icons.ts";
 import { pages } from "./src/pages.ts";
 
 // Icons named in .ts data (the sidebar's) are not found by Nuxt UI's scan of .vue files: listed.
-const options = nuxtUiOptions({ icons: pages.map((page) => page.icon) });
+const options = nuxtUiOptions({ icons: [...pages.map((page) => page.icon), ...ADMIN_ICONS] });
 
 // The build goes to the Java demo's web/dist, which its pom copies into the jar under fw-spa
 // (static-assets contract section 8: Maven never runs Node).

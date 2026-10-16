@@ -3,14 +3,38 @@
 // without a backend. It is a gallery fixture, not a model of the server: it answers the shapes of the
 // document and the error envelope of the http contract, and it reads request bodies with JSON.parse,
 // so what the page sends must be real JSON (the int64 proof). Nothing leaves the page.
-import type { AuthSession } from "@flowcatalyst/api-runtime";
+import { hasPermission, type AuthSessionAuthenticated } from "@flowcatalyst/api-runtime";
+import type { AdminAboutView, AdminNavigationView, AdminSectionView } from "@flowcatalyst/ui";
 import { shallowReactive } from "vue";
 import type { OrderLineView, OrderSummaryView, OrderView } from "./api/orders-demo/types.gen.ts";
 
 /** Every request the fake server answered, newest last (the gallery shows the last body). */
 export const requests = shallowReactive<{ method: string; path: string; body: string }[]>([]);
 
-const session: AuthSession = {
+// Who the fake session is, for the admin shell's demonstration: `?as=admin|users|none|down` (router.ts) is
+// remembered for the tab. `down`: an administrator whose navigation fails once.
+type Viewer = "admin" | "users" | "none" | "down";
+const ADMIN_PERMISSIONS: Readonly<Record<Viewer, readonly string[]>> = {
+  admin: ["gallery:admin:*:*"],
+  users: ["gallery:admin:console:view", "gallery:admin:users:view"],
+  none: [],
+  down: ["gallery:admin:*:*"],
+};
+let navigationFailures = 1;
+let current: Viewer = "admin";
+
+/** Remembers `?as=` until the page is loaded again (router.ts calls it on every navigation). */
+export function rememberViewer(value: unknown): void {
+  if (value === "admin" || value === "users" || value === "none" || value === "down") {
+    current = value;
+  }
+}
+
+function viewer(): Viewer {
+  return current;
+}
+
+const baseSession: AuthSessionAuthenticated = {
   authenticated: true,
   principal: { id: "prn_0HZXEQ5Y8JY5Z", kind: "USER", name: "Ada Lovelace", email: "ada@example.com" },
   tier: "CLIENT",
@@ -101,7 +125,13 @@ async function answer(request: Request): Promise<Response> {
   const path = url.pathname;
 
   if (path === "/auth/session" && request.method === "GET") {
-    return json(200, session);
+    return json(200, { ...baseSession, permissions: [...baseSession.permissions, ...ADMIN_PERMISSIONS[viewer()]] });
+  }
+  if (path === "/api/admin/navigation" && request.method === "GET") {
+    return adminNavigation();
+  }
+  if (path === "/api/admin/about" && request.method === "GET") {
+    return can("gallery:admin:console:view") ? json(200, ABOUT) : failure(403, "FORBIDDEN", "this needs the permission gallery:admin:console:view");
   }
   if (path === "/auth/logout" && request.method === "POST") {
     return json(200, { loggedOut: true });
@@ -176,6 +206,60 @@ async function answer(request: Request): Promise<Response> {
   order.totalCents = total(order.lines);
   order.version += 1;
   return json(200, order);
+}
+
+const ABOUT: AdminAboutView = {
+  application: "gallery",
+  framework: "0.1.0-SNAPSHOT",
+  environment: "local",
+  startedAt: "2026-10-16T08:00:00Z",
+  ready: true,
+  checks: [
+    { name: "database:main", status: "UP", critical: true },
+    { name: "flowcatalyst", status: "DOWN", critical: false },
+  ],
+};
+
+// The server's sections, as AdminModule would list them (registration order). `events` has no page in the gallery.
+const SECTIONS: AdminSectionView[] = [
+  { id: "about", title: "About", path: "/admin/about", permission: "gallery:admin:console:view", icon: "i-lucide-info" },
+  { id: "users", title: "Users", path: "/admin/users", permission: "gallery:admin:users:view", icon: "i-lucide-users" },
+  { id: "roles", title: "Roles", path: "/admin/roles", permission: "gallery:admin:roles:view", icon: "i-lucide-key-round" },
+  { id: "events", title: "Events", path: "/admin/events", permission: "gallery:admin:events:view", icon: "i-lucide-radio" },
+];
+
+function can(permission: string): boolean {
+  return ADMIN_PERMISSIONS[viewer()].some((held) => hasPermission([held], permission));
+}
+
+function adminNavigation(): Response {
+  if (!can("gallery:admin:console:view")) {
+    return failure(403, "FORBIDDEN", "this needs the permission gallery:admin:console:view");
+  }
+  if (viewer() === "down" && navigationFailures > 0) {
+    navigationFailures -= 1;
+    return failure(503, "UNAVAILABLE", "the navigation is temporarily unavailable");
+  }
+  return json(200, { sections: visibleSections() });
+}
+
+function visibleSections(): AdminSectionView[] {
+  return SECTIONS.filter((section) => can(section.permission));
+}
+
+/** The admin navigation as the shell's `load` takes it: the fake server's answer, a refusal throws. */
+export async function fakeAdminNavigation(): Promise<AdminNavigationView> {
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  const response = adminNavigation();
+  if (!response.ok) {
+    throw new Error(String(response.status));
+  }
+  return { sections: visibleSections() };
+}
+
+/** The about answer. */
+export function fakeAdminAbout(): AdminAboutView {
+  return ABOUT;
 }
 
 /** A `fetch` for the generated clients: same-origin requests answered in the page. */

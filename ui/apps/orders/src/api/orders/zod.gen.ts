@@ -8,6 +8,38 @@ export const zAddLineBody = z.object({
     unitPriceCents: z.int().gte(0).lte(100000000)
 });
 
+export const zAdminCheck = z.object({
+    name: z.string(),
+    status: z.enum([
+        'UP',
+        'DOWN',
+        'TIMED_OUT'
+    ]),
+    critical: z.boolean()
+});
+
+export const zAdminAbout = z.object({
+    application: z.string(),
+    framework: z.string().optional(),
+    environment: z.string(),
+    startedAt: z.iso.datetime(),
+    ready: z.boolean(),
+    checks: z.array(zAdminCheck)
+});
+
+export const zAdminSectionView = z.object({
+    id: z.string(),
+    title: z.string(),
+    path: z.string(),
+    permission: z.string(),
+    icon: z.string().optional(),
+    description: z.string().optional()
+});
+
+export const zAdminNavigation = z.object({
+    sections: z.array(zAdminSectionView)
+});
+
 export const zAuthCsrf = z.object({
     mode: z.literal('fetch-metadata'),
     jsonBodies: z.literal(true)
@@ -91,6 +123,12 @@ export const zOrderView = z.object({
     totalCents: z.int()
 });
 
+export const zOrdersOverview = z.object({
+    open: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+    cancelled: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+    openTotalCents: z.int()
+});
+
 export const zPageOrderSummaryView = z.object({
     items: z.array(zOrderSummaryView),
     nextCursor: z.string().optional()
@@ -99,6 +137,21 @@ export const zPageOrderSummaryView = z.object({
 export const zPlaceOrderBody = z.object({
     customer: z.string().min(1).max(200).regex(/\S/)
 });
+
+/**
+ * OK
+ */
+export const zGetAdminAboutResponse = zAdminAbout;
+
+/**
+ * OK
+ */
+export const zGetAdminNavigationResponse = zAdminNavigation;
+
+/**
+ * OK
+ */
+export const zGetAdminOrdersOverviewResponse = zOrdersOverview;
 
 export const zListOrdersQuery = z.object({
     status: z.enum(['OPEN', 'CANCELLED']).optional(),

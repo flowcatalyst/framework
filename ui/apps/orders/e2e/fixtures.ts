@@ -18,6 +18,8 @@ declare global {
 /** The roles of the demo (OrdersWeb): who may read, and who may also change. */
 export const CLERK = "orders-demo:clerk";
 export const VIEWER = "orders-demo:viewer";
+/** The administrator of the demo's admin area (M4d). */
+export const ADMIN = "orders-demo:admin";
 
 export async function control(path: string): Promise<void> {
   const response = await fetch(`${CONTROL}${path}`, { method: "POST" });

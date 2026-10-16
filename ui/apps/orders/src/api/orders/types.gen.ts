@@ -10,6 +10,34 @@ export type AddLineBody = {
     unitPriceCents: number;
 };
 
+export type AdminAbout = {
+    application: string;
+    framework?: string;
+    environment: string;
+    startedAt: string;
+    ready: boolean;
+    checks: Array<AdminCheck>;
+};
+
+export type AdminCheck = {
+    name: string;
+    status: 'UP' | 'DOWN' | 'TIMED_OUT';
+    critical: boolean;
+};
+
+export type AdminNavigation = {
+    sections: Array<AdminSectionView>;
+};
+
+export type AdminSectionView = {
+    id: string;
+    title: string;
+    path: string;
+    permission: string;
+    icon?: string;
+    description?: string;
+};
+
 export type AuthCsrf = {
     mode: 'fetch-metadata';
     jsonBodies: true;
@@ -88,6 +116,12 @@ export type OrderView = {
     totalCents: number;
 };
 
+export type OrdersOverview = {
+    open: number;
+    cancelled: number;
+    openTotalCents: number;
+};
+
 export type PageOrderSummaryView = {
     items: Array<OrderSummaryView>;
     nextCursor?: string;
@@ -96,6 +130,105 @@ export type PageOrderSummaryView = {
 export type PlaceOrderBody = {
     customer: string;
 };
+
+export type GetAdminAboutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/admin/about';
+};
+
+export type GetAdminAboutErrors = {
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminAboutError = GetAdminAboutErrors[keyof GetAdminAboutErrors];
+
+export type GetAdminAboutResponses = {
+    /**
+     * OK
+     */
+    200: AdminAbout;
+};
+
+export type GetAdminAboutResponse = GetAdminAboutResponses[keyof GetAdminAboutResponses];
+
+export type GetAdminNavigationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/admin/navigation';
+};
+
+export type GetAdminNavigationErrors = {
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminNavigationError = GetAdminNavigationErrors[keyof GetAdminNavigationErrors];
+
+export type GetAdminNavigationResponses = {
+    /**
+     * OK
+     */
+    200: AdminNavigation;
+};
+
+export type GetAdminNavigationResponse = GetAdminNavigationResponses[keyof GetAdminNavigationResponses];
+
+export type GetAdminOrdersOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/admin/orders/overview';
+};
+
+export type GetAdminOrdersOverviewErrors = {
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminOrdersOverviewError = GetAdminOrdersOverviewErrors[keyof GetAdminOrdersOverviewErrors];
+
+export type GetAdminOrdersOverviewResponses = {
+    /**
+     * OK
+     */
+    200: OrdersOverview;
+};
+
+export type GetAdminOrdersOverviewResponse = GetAdminOrdersOverviewResponses[keyof GetAdminOrdersOverviewResponses];
 
 export type ListOrdersData = {
     body?: never;

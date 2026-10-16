@@ -31,6 +31,13 @@ export const behaviours = [
   { id: "shell-phone-sidebar", behaviour: "On a phone the sidebar opens from the navbar and closes again", by: "FwAppShell (UDashboardSidebar)", page: "/shell" },
   { id: "colour-mode", behaviour: "Light, dark or system colour mode, stored, switched without an inline style", by: "FwColorModeButton + useColorMode", page: "/shell" },
 
+  // Admin shell (M4d).
+  { id: "admin-nav-permissions", behaviour: "The admin navigation shows only the sections the server lists for the caller and the session's permissions open, with a way back to the application", by: "FwAdminShell + adminNavigation + useAdminNavigation", page: "/admin-shell" },
+  { id: "admin-unlisted-section", behaviour: "A section the server lists that the application has no page for is not shown (a development warning names it)", by: "adminNavigation + sectionsWithoutPage", page: "/admin-shell" },
+  { id: "admin-route-guard", behaviour: "A route of the admin area needs its permission: a session without it opens the not-permitted page", by: "adminRoutes (meta.permission) + installSessionGuard", page: "/admin-shell" },
+  { id: "admin-breadcrumbs", behaviour: "Breadcrumbs run Admin, section, record; the current page is text with aria-current, the others links", by: "FwAdminShell (UBreadcrumb) + adminBreadcrumbs", page: "/admin-shell" },
+  { id: "admin-nav-failed", behaviour: "A navigation that cannot be loaded is an inline error with Try again; the page still opens", by: "FwAdminShell + useAdminNavigation", page: "/admin-shell" },
+
   // Lists.
   { id: "list-url-state", behaviour: "Filters live in the query string: replaced, not pushed, and they survive a reload", by: "useListState", page: "/orders" },
   { id: "list-filter-count", behaviour: "The Filters button's name carries the active-filter count; the popover returns focus to it", by: "FwTableToolbar (UPopover)", page: "/lists" },
