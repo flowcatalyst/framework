@@ -32,6 +32,7 @@
     - { title: Typed operations and OpenAPI, path: guide/openapi.md }
     - { title: Sessions and login, path: guide/sessions-and-login.md }
     - { title: Migrating from flowcatalyst-token, path: guide/migrating-from-flowcatalyst-token.md }
+    - { title: Migrating the ingest control plane, path: guide/migrating-the-ingest-control-plane.md }
 - group: FlowCatalyst
   items:
     - { title: The FlowCatalyst module, path: guide/flowcatalyst-module.md }

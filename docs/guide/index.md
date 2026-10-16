@@ -34,6 +34,7 @@ describes what is built and says plainly where something is not.
 | [Rate limiting](rate-limiting.md) | 429 with `Retry-After`: limiters in memory or Redis, choosing a safe key |
 | [The FlowCatalyst module](flowcatalyst-module.md) | The platform client, definition sync, how the outbox is delivered, health |
 | [Receivers](receivers.md) | Handling dispatch jobs and scheduled-job firings the platform delivers (and switching the routes off) |
+| [Migrating the ingest control plane](migrating-the-ingest-control-plane.md) | The first application's operator API and pages, step by step: typed operations, a `web/` SPA, sessions, the strict CSP, tests, open gaps and decisions |
 | [Testing](testing.md) | Testing an application today, and the known limitation |
 | [STATUS](STATUS.md) | What exists, what is planned, known gaps |
 | [Contracts](reference/contracts.md) | The specifications |
