@@ -1706,4 +1706,38 @@ public final class Props {
       @Nullable String signOutAction,
       @Nullable Map<String, Object> signOutAttrs,
       @Nullable String theme) {}
+
+  // ---- document
+
+  /**
+   * The full HTML document around a page.
+   *
+   * @param title the page title
+   * @param htmlAttrs attributes of the html element (theme and shell signals, the dark class)
+   * @param cssUrl the stylesheet
+   * @param jsUrl the Datastar script, loaded as a module
+   * @param loginPath when set, a request answered 401 navigates there (with a return path); a local
+   *     path
+   */
+  public record Document(
+      String title,
+      @Nullable Map<String, Object> htmlAttrs,
+      String cssUrl,
+      String jsUrl,
+      @Nullable String loginPath) {
+
+    /**
+     * The handler that sends a user whose session expired to the sign-in page.
+     *
+     * @return the expression, or null when no login path is set
+     */
+    public @Nullable String sessionExpiredExpr() {
+      if (loginPath == null) {
+        return null;
+      }
+      return "evt.detail.type === 'error' && evt.detail.argsRaw.status === '401' && window.location.assign('"
+          + Markup.path(loginPath)
+          + "?redirect=' + encodeURIComponent(location.pathname + location.search))";
+    }
+  }
 }

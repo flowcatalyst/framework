@@ -31,7 +31,7 @@ class FixtureConformanceTest {
   /** Fixture directories this module does not render yet. Shrinks to empty as the kit grows. */
   static final Set<String> NOT_YET = Set.of();
 
-  private static final ObjectMapper MAPPER =
+  static final ObjectMapper MAPPER =
       JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
 
   static Path fixtures() {
@@ -64,7 +64,10 @@ class FixtureConformanceTest {
   }
 
   static String renderFixture(String component, Path json) throws IOException {
-    JsonNode root = MAPPER.readTree(Files.readString(json));
+    return render(component, MAPPER.readTree(Files.readString(json)));
+  }
+
+  static String render(String component, JsonNode root) {
     Set<String> allowed = Set.of("props", "slots", "source", "notes");
     root.propertyNames().forEach(k -> assertThat(allowed).as("fixture key " + k).contains(k));
     Renderers.Renderer renderer = Renderers.ALL.get(component);

@@ -1,0 +1,34 @@
+/* Tailwind input for framework-ui's stylesheet (src/main/resources/fw-ui/kit.css).
+
+   Build with ./build.sh (Tailwind standalone CLI, no Node). Tailwind emits only the utility classes
+   it finds in the files named by @source: every template and Java file of this module, and the
+   demo's templates. An application with its own templates writes its own input that imports
+   ui-kit/theme the same way and adds its @source lines. */
+
+@import "tailwindcss";
+
+@source "../src/main/jte";
+@source "../src/main/java";
+@source "../../examples/orders-demo-jte/src/main/jte";
+@source "../../examples/orders-demo-jte/src/main/java";
+
+@import "../../ui-kit/theme/tokens.css";
+@import "../../ui-kit/theme/fc-components.css";
+
+@layer base {
+  html {
+    /* The SPA's 12.6px base: every rem shrinks with it. */
+    font-size: 12.6px;
+    scrollbar-gutter: stable;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}

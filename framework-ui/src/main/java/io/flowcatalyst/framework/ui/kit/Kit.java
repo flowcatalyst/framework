@@ -766,4 +766,15 @@ public final class Kit {
   public static Content themeChoices(String current) {
     return component("theme_choices", Map.of("current", current));
   }
+
+  /**
+   * The full HTML document around a page: head with the stylesheet and Datastar, the body.
+   *
+   * @param p props
+   * @param body everything inside the body element
+   * @return the component
+   */
+  public static Content document(Props.Document p, Content body) {
+    return component("document", params(p, "body", body));
+  }
 }
