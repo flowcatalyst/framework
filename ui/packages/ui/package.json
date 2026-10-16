@@ -14,10 +14,14 @@
     "./theme": "./src/theme/index.ts",
     "./theme.css": "./src/theme/theme.css",
     "./vite": "./src/vite.ts",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.generated-client.json": "./tsconfig.generated-client.json",
     "./package.json": "./package.json"
   },
   "files": [
-    "src"
+    "src",
+    "tsconfig.base.json",
+    "tsconfig.generated-client.json"
   ],
   "scripts": {
     "build": "node scripts/nuxt-ui-types.ts",

@@ -1,6 +1,6 @@
 {
   "$comment": "SCOPED EXCEPTION (docs/go/ui.md section 3.1, ui/README.md): hey-api 0.99.0's bundled fetch client only (the client/ and core/ folders of each generated client), without exactOptionalPropertyTypes: it passes `x: T | undefined` to `x?: T` in 12 places. The generated types.gen.ts, sdk.gen.ts, zod.gen.ts and client.gen.ts are NOT here: they compile with the flag on, in tsconfig.app.json and tsconfig.test.json, and read these folders through their declarations.",
-  "extends": "../../tsconfig.base.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "exactOptionalPropertyTypes": false,
     "noEmit": false,

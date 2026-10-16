@@ -1,0 +1,4 @@
+{
+  "$comment": "The canonical settings are in @flowcatalyst/api-runtime (tsconfig.base.json), whose own generated-client project needs them; this file is the name an application extends: \"@flowcatalyst/ui/tsconfig.base.json\".",
+  "extends": "@flowcatalyst/api-runtime/tsconfig.base.json"
+}

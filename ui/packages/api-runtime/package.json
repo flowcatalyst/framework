@@ -13,6 +13,8 @@
     ".": "./src/index.ts",
     "./zod": "./src/zod-config.ts",
     "./openapi-ts": "./src/openapi-ts.ts",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.generated.json": "./tsconfig.generated.json",
     "./package.json": "./package.json"
   },
   "bin": {
@@ -20,7 +22,9 @@
   },
   "files": [
     "src",
-    "bin"
+    "bin",
+    "tsconfig.base.json",
+    "tsconfig.generated.json"
   ],
   "scripts": {
     "generate": "openapi-ts",

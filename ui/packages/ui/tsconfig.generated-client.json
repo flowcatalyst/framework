@@ -1,0 +1,11 @@
+{
+  "$comment": "The one scoped exception for hey-api's bundled fetch client (src/api/*/client, src/api/*/core), without exactOptionalPropertyTypes (ui/README.md, 'Strict TypeScript: exceptions'). Extend it as \"@flowcatalyst/ui/tsconfig.generated-client.json\" and set tsBuildInfoFile, outDir and include in your own file (relative paths in a preset would point into this package).",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "types": []
+  }
+}

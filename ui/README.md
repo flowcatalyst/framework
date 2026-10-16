@@ -12,7 +12,7 @@ FlowCatalyst behaviour).
 ```
 ui/
   pnpm-workspace.yaml   catalog (exact versions), minimumReleaseAge 7 days, no install scripts
-  tsconfig.base.json    the strict settings every project extends
+  tsconfig.base.json    the strict settings every project extends (the file itself: packages/api-runtime/tsconfig.base.json)
   eslint.config.ts      typescript-eslint strictTypeChecked + eslint-plugin-vue, one config for all
   scripts/              check-licences.ts (and the THIRD-PARTY-NOTICES it writes), api-drift.ts
   THIRD-PARTY-NOTICES   the licences of the shipped bundle, generated from the gallery build
@@ -186,6 +186,39 @@ configs and `vue-tsc --build` for its app project.
    tooling stays on 6 until 7.x has a stable API.
 3. TypeScript 7.1 (or later) with the programmatic API those two build on; `next` is 7.1.0-dev today.
    @hey-api/openapi-ts must then also work without the TypeScript 6 API (0.99.0 imports it).
+
+## Extending the presets from another repository
+
+An application that consumes the packages with `link:` extends the presets by package name, not by a
+relative path to this checkout (a relative path breaks when either repository moves):
+
+```jsonc
+// web/tsconfig.app.json
+{
+  "extends": "@flowcatalyst/ui/tsconfig.base.json",
+  "compilerOptions": { "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo", "types": ["vite/client"] },
+  "include": ["src/**/*.ts", "src/**/*.vue"],
+  "exclude": ["src/api/*/client/**", "src/api/*/core/**"],
+  "references": [
+    { "path": "./tsconfig.generated.json" },
+    { "path": "./node_modules/@flowcatalyst/api-runtime/tsconfig.generated.json" }
+  ]
+}
+// web/tsconfig.generated.json (the hey-api client folders, exception 1 below)
+{
+  "extends": "@flowcatalyst/ui/tsconfig.generated-client.json",
+  "compilerOptions": { "outDir": "./node_modules/.tmp/generated", "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.generated.tsbuildinfo" },
+  "include": ["src/api/*/client/**/*.ts", "src/api/*/core/**/*.ts"]
+}
+```
+
+`tsBuildInfoFile`, `outDir` and `include` are always yours: a relative path in a preset would resolve
+inside the package. A project reference is a path (TypeScript has no package-name form), so the
+runtime's generated-client project is reached through your own `node_modules`, which is the same
+location for every checkout layout. `packages/ui/test/tsconfig-presets.test.ts` builds such a consumer
+(with symlinks, as `link:` makes them). The canonical settings file is
+`packages/api-runtime/tsconfig.base.json`; `ui/tsconfig.base.json` and `@flowcatalyst/ui/tsconfig.base.json`
+both extend it.
 
 ## Strict TypeScript: exceptions
 

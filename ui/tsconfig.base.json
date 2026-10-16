@@ -1,42 +1,4 @@
 {
-  "$comment": "docs/go/ui.md section 3.1: the platform SPA's settings plus exactOptionalPropertyTypes and verbatimModuleSyntax. Every project extends this; a project may add settings, never relax one (exceptions are recorded in ui/README.md).",
-  "compilerOptions": {
-    "target": "ES2023",
-    "lib": [
-      "ES2023",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noImplicitOverride": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "allowUnreachableCode": false,
-    "allowUnusedLabels": false,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "forceConsistentCasingInFileNames": true,
-    "allowImportingTsExtensions": true,
-    "allowArbitraryExtensions": true,
-    "resolveJsonModule": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "composite": true,
-    "types": []
-  },
-  "vueCompilerOptions": {
-    "strictTemplates": true,
-    "dataAttributes": [
-      "data-*",
-      "aria-*"
-    ]
-  }
+  "$comment": "The canonical settings are packages/api-runtime/tsconfig.base.json (applications extend @flowcatalyst/ui/tsconfig.base.json); this file keeps the workspace's relative extends working.",
+  "extends": "./packages/api-runtime/tsconfig.base.json"
 }
