@@ -1,0 +1,162 @@
+{
+  "description" : "GET /api/admin/navigation (admin contract 4.1 and section 3). Setup: application 'acme' with the admin module (its own section 'about', permission acme:admin:console:view, first) and the sections below, registered in this order after it. A caller gets 200 with the ids of the sections whose permission its held permissions grant (the platform's wildcard rule: same number of ':'-separated segments, '*' in a held segment matches), in registration order, provided it holds the console permission; otherwise 403 with error code FORBIDDEN. A section's own permission never opens the console. 'sectionsDetail' gives the full body for the cases that name it. Absent optional fields (icon, description) are omitted, not null.",
+  "application" : "acme",
+  "sections" : [ {
+    "id" : "things",
+    "title" : "Things",
+    "path" : "/admin/things",
+    "permission" : "acme:admin:things:view",
+    "icon" : "i-lucide-box"
+  }, {
+    "id" : "users",
+    "title" : "Users",
+    "path" : "/admin/users",
+    "permission" : "acme:admin:users:view",
+    "description" : "Who may sign in."
+  } ],
+  "cases" : [ {
+    "name" : "no permissions",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "another section's permission alone",
+    "permissions" : [ "acme:admin:things:view" ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "console alone",
+    "permissions" : [ "acme:admin:console:view" ],
+    "expect" : {
+      "status" : 200,
+      "sections" : [ "about" ]
+    }
+  }, {
+    "name" : "console and users",
+    "permissions" : [ "acme:admin:console:view", "acme:admin:users:view" ],
+    "expect" : {
+      "status" : 200,
+      "sections" : [ "about", "users" ]
+    }
+  }, {
+    "name" : "console, things and users (order is the registry's)",
+    "permissions" : [ "acme:admin:users:view", "acme:admin:console:view", "acme:admin:things:view" ],
+    "expect" : {
+      "status" : 200,
+      "sections" : [ "about", "things", "users" ],
+      "sectionsDetail" : [ {
+        "id" : "about",
+        "title" : "About",
+        "path" : "/admin/about",
+        "permission" : "acme:admin:console:view",
+        "icon" : "i-lucide-info",
+        "description" : "What this application is and whether it is healthy."
+      }, {
+        "id" : "things",
+        "title" : "Things",
+        "path" : "/admin/things",
+        "permission" : "acme:admin:things:view",
+        "icon" : "i-lucide-box"
+      }, {
+        "id" : "users",
+        "title" : "Users",
+        "path" : "/admin/users",
+        "permission" : "acme:admin:users:view",
+        "description" : "Who may sign in."
+      } ]
+    }
+  }, {
+    "name" : "every admin permission by wildcard",
+    "permissions" : [ "acme:admin:*:*" ],
+    "expect" : {
+      "status" : 200,
+      "sections" : [ "about", "things", "users" ],
+      "sectionsDetail" : [ {
+        "id" : "about",
+        "title" : "About",
+        "path" : "/admin/about",
+        "permission" : "acme:admin:console:view",
+        "icon" : "i-lucide-info",
+        "description" : "What this application is and whether it is healthy."
+      }, {
+        "id" : "things",
+        "title" : "Things",
+        "path" : "/admin/things",
+        "permission" : "acme:admin:things:view",
+        "icon" : "i-lucide-box"
+      }, {
+        "id" : "users",
+        "title" : "Users",
+        "path" : "/admin/users",
+        "permission" : "acme:admin:users:view",
+        "description" : "Who may sign in."
+      } ]
+    }
+  }, {
+    "name" : "every view by wildcard",
+    "permissions" : [ "acme:admin:*:view" ],
+    "expect" : {
+      "status" : 200,
+      "sections" : [ "about", "things", "users" ],
+      "sectionsDetail" : [ {
+        "id" : "about",
+        "title" : "About",
+        "path" : "/admin/about",
+        "permission" : "acme:admin:console:view",
+        "icon" : "i-lucide-info",
+        "description" : "What this application is and whether it is healthy."
+      }, {
+        "id" : "things",
+        "title" : "Things",
+        "path" : "/admin/things",
+        "permission" : "acme:admin:things:view",
+        "icon" : "i-lucide-box"
+      }, {
+        "id" : "users",
+        "title" : "Users",
+        "path" : "/admin/users",
+        "permission" : "acme:admin:users:view",
+        "description" : "Who may sign in."
+      } ]
+    }
+  }, {
+    "name" : "every manage by wildcard",
+    "permissions" : [ "acme:admin:*:manage" ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "a wildcard of another application",
+    "permissions" : [ "other:admin:*:*" ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "a wildcard with fewer segments",
+    "permissions" : [ "acme:admin:*" ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "a wildcard with more segments",
+    "permissions" : [ "acme:admin:*:*:*" ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "a different case",
+    "permissions" : [ "ACME:admin:console:view" ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  } ]
+}
