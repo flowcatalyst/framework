@@ -72,6 +72,39 @@ public final class AdminApi {
       List<AdminCheck> checks) {}
 
   /**
+   * One page of a list, by cursor.
+   *
+   * @param <T> the item type
+   * @param items the items
+   * @param nextCursor pass it as {@code after} for the next page; absent on the last page
+   */
+  public record Page<T>(List<T> items, @Nullable String nextCursor) {}
+
+  /**
+   * Cuts one page out of a list sorted by key: the items after {@code after}, at most {@code limit}.
+   * The cursor is the key of the last item (opaque to callers).
+   *
+   * @param <T> the item type
+   * @param sorted the whole list, sorted ascending by {@code key}, keys unique
+   * @param key the sort key of an item
+   * @param after the previous page's {@code nextCursor}, or null for the first page
+   * @param limit the page size; below 1 is 1, above 200 is 200
+   * @return the page
+   */
+  public static <T> Page<T> page(List<T> sorted, java.util.function.Function<T, String> key, @Nullable String after, int limit) {
+    int size = Math.max(1, Math.min(200, limit));
+    int start = 0;
+    if (after != null) {
+      while (start < sorted.size() && key.apply(sorted.get(start)).compareTo(after) <= 0) {
+        start++;
+      }
+    }
+    int end = Math.min(sorted.size(), start + size);
+    List<T> items = List.copyOf(sorted.subList(start, end));
+    return new Page<>(items, end < sorted.size() ? key.apply(sorted.get(end - 1)) : null);
+  }
+
+  /**
    * The checks of a health report, without failure messages.
    *
    * @param report the report

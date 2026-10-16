@@ -28,6 +28,11 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-locks</artifactId>
     </dependency>
+    <!-- The admin sections projected from the platform (M4e): event types and roles. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-admin</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.flowcatalyst</groupId>
       <artifactId>flowcatalyst-sdk</artifactId>

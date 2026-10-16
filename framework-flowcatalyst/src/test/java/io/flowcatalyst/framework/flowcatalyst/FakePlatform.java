@@ -94,6 +94,7 @@ public final class FakePlatform implements AutoCloseable {
   private final Map<String, Canned> canned = new ConcurrentHashMap<>();
   private final AtomicInteger tokens = new AtomicInteger();
   private final Map<String, Failing> failing = new ConcurrentHashMap<>();
+  private final Map<String, Canned> reads = new ConcurrentHashMap<>();
   private volatile int tokenFailure;
   private final Set<String> issued = ConcurrentHashMap.newKeySet();
   private volatile String tokenSub = SERVICE_PRINCIPAL;
@@ -232,6 +233,18 @@ public final class FakePlatform implements AutoCloseable {
   }
 
   /**
+   * Makes a {@code GET} of one path answer with a fixed response (the platform's read endpoints,
+   * for the admin pages). The path is matched without the query string, which is recorded.
+   *
+   * @param path for example {@code /api/event-types} or {@code /api/roles/orders:clerk}
+   * @param status the HTTP status
+   * @param body the response body
+   */
+  public void respondGet(String path, int status, String body) {
+    reads.put(path, new Canned(status, body));
+  }
+
+  /**
    * Makes the next calls to an instance callback fail.
    *
    * @param action {@code complete} or {@code log}
@@ -309,6 +322,15 @@ public final class FakePlatform implements AutoCloseable {
           return;
         }
         reply(ex, 204, "");
+        return;
+      }
+      Canned read = reads.get(path);
+      if (read != null && "GET".equals(ex.getRequestMethod())) {
+        if (!bearer(headers)) {
+          reply(ex, 401, "{\"error\":\"unauthorized\"}");
+          return;
+        }
+        reply(ex, read.status(), read.body());
         return;
       }
       Matcher m = SYNC.matcher(path);
