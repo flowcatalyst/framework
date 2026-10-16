@@ -639,12 +639,12 @@ envelope; to a browser navigation it is answered by the login failure handler wi
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | a cookie request's body is not JSON |
 | 429 | `RATE_LIMITED` (rate-limiting contract) | over the limit on `/auth/login` or `/auth/callback`; to a browser navigation the failure handler's answer with this code (4.1.1) |
 | 502 | `PLATFORM_UNAVAILABLE` | discovery, keys or the token endpoint cannot be reached during login (a browser navigation to `/auth/login`: the failure handler's answer, 4.1.1) |
+| 503 | `UNAVAILABLE` | the keys cannot be read to check a bearer token |
 
 The codes a failure handler can receive, and so a failure page's `?error=`, are eight: the seven
 of 4.2 (`INVALID_CALLBACK`, `LOGIN_NOT_STARTED_HERE`, `INVALID_STATE`, `LOGIN_REFUSED`,
 `LOGIN_FAILED`, `INVALID_ID_TOKEN`, `PLATFORM_UNAVAILABLE`) and `RATE_LIMITED`. The UI
 kit's `signInFailureMessage` has a sentence for each.
-| 503 | `UNAVAILABLE` | the keys cannot be read to check a bearer token |
 
 ## 11. Tests
 

@@ -66,7 +66,7 @@ final class AuthRoutes {
       url = rp.authorizeUrl(login);
     } catch (PlatformUnavailableException e) {
       LOG.warn("sign-in could not start: {} (correlation id {})", e.getMessage(), request.correlationId());
-      // a browser navigation gets the application's failure answer (contract 4.1 step 2); an API call keeps the envelope
+      // a browser navigation gets the application's failure answer (contract 4.1.1); an API call keeps the envelope
       if (AuthMiddleware.isNavigation(request)) {
         return fail(request, null, 502, "PLATFORM_UNAVAILABLE", "the sign-in service cannot be reached; try again", Map.of());
       }

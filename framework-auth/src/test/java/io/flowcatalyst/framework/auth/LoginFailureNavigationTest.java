@@ -120,7 +120,7 @@ class LoginFailureNavigationTest {
     ObjectNode doc = JsonVectors.mapper().createObjectNode();
     doc.put(
         "description",
-        "A sign-in that cannot start (sessions contract 4.1 step 2 and section 8). Setup: the application's failure handler redirects to "
+        "A sign-in that cannot start (sessions contract 4.1.1 and section 8). Setup: the application's failure handler redirects to "
             + PAGE
             + " ('?error=CODE'); condition RATE_LIMITED = the client address has used its budget (the request then sent is refused with 429),"
             + " PLATFORM_UNAVAILABLE = discovery cannot be read (502). A browser navigation (GET or HEAD, no Authorization, Sec-Fetch-Mode"
