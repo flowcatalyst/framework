@@ -185,6 +185,11 @@ class PlatformAdminTest {
     FakePlatform.Recorded read = platform.requests().stream().filter(x -> x.path().equals("/api/event-types")).findFirst().orElseThrow();
     assertThat(read.query()).contains("status=ARCHIVED").contains("subdomain=stock").contains("aggregate=item");
 
+    // a platform that ignores the filters (the fake does) cannot widen the answer
+    assertThat(field(get("/api/admin/event-types?status=ARCHIVED", ET).tree(), "code")).containsExactly("orders:stock:item:counted");
+    assertThat(field(get("/api/admin/event-types?subdomain=sales&aggregate=order", ET).tree(), "code"))
+        .containsExactly("orders:sales:order:placed", "orders:sales:order:shipped");
+
     TestResponse q = get("/api/admin/event-types?q=SHIPPED", ET);
     assertThat(field(q.tree(), "code")).containsExactly("orders:sales:order:shipped");
   }

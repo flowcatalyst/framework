@@ -132,7 +132,13 @@ public final class PlatformAdminModule implements Module {
               platform(client, () -> client.eventTypes(own, status == null ? null : status.name(), subdomain, aggregate));
           List<AdminEventType> items = new ArrayList<>();
           for (PlatformClient.EventTypeInfo e : found) {
-            if (!e.application().equals(own) || !matches(q, e.code(), e.name(), e.description())) {
+            // The filters were sent to the platform; applying them here too keeps the answer right
+            // whatever the platform does with them.
+            if (!e.application().equals(own)
+                || (status != null && !status.name().equalsIgnoreCase(e.status()))
+                || (subdomain != null && !subdomain.equals(e.subdomain()))
+                || (aggregate != null && !aggregate.equals(e.aggregate()))
+                || !matches(q, e.code(), e.name(), e.description())) {
               continue;
             }
             items.add(eventType(e));
