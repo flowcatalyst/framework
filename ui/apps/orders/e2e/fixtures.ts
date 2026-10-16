@@ -99,6 +99,7 @@ export { expect };
 /** Empties the orders and makes the next sign-in a clerk. */
 export async function freshData(): Promise<void> {
   await control("/control/reset");
+  await control("/control/platform-reads?value=");
   await signInAs(CLERK);
 }
 

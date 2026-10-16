@@ -27,6 +27,65 @@ export const zAdminAbout = z.object({
     checks: z.array(zAdminCheck)
 });
 
+export const zAdminConfigSetting = z.object({
+    key: z.string(),
+    module: z.string(),
+    type: z.string(),
+    secret: z.boolean(),
+    required: z.boolean(),
+    state: z.enum([
+        'SET',
+        'DEFAULT',
+        'UNSET'
+    ]),
+    source: z.string(),
+    value: z.string().optional(),
+    withheld: z.boolean(),
+    description: z.string().optional()
+});
+
+export const zAdminEventType = z.object({
+    id: z.string(),
+    code: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    subdomain: z.string(),
+    aggregate: z.string(),
+    event: z.string(),
+    status: z.enum(['CURRENT', 'ARCHIVED']),
+    versionCount: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+});
+
+export const zAdminHealth = z.object({
+    ready: z.boolean(),
+    checks: z.array(zAdminCheck)
+});
+
+export const zAdminConfig = z.object({
+    environment: z.string(),
+    total: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+    set: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+    defaulted: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+    unset: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+    settings: z.array(zAdminConfigSetting),
+    health: zAdminHealth
+});
+
+export const zAdminRole = z.object({
+    id: z.string(),
+    name: z.string(),
+    displayName: z.string(),
+    description: z.string().optional(),
+    source: z.string(),
+    clientManaged: z.boolean(),
+    permissionCount: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+});
+
+export const zAdminRoleDetail = z.object({
+    role: zAdminRole,
+    permissions: z.array(z.string())
+});
+
 export const zAdminSectionView = z.object({
     id: z.string(),
     title: z.string(),
@@ -38,6 +97,17 @@ export const zAdminSectionView = z.object({
 
 export const zAdminNavigation = z.object({
     sections: z.array(zAdminSectionView)
+});
+
+export const zAdminSpecVersion = z.object({
+    version: z.string(),
+    status: z.string(),
+    schema: z.string().optional()
+});
+
+export const zAdminEventTypeDetail = z.object({
+    eventType: zAdminEventType,
+    versions: z.array(zAdminSpecVersion)
 });
 
 export const zAuthCsrf = z.object({
@@ -129,6 +199,16 @@ export const zOrdersOverview = z.object({
     openTotalCents: z.int()
 });
 
+export const zPageAdminEventType = z.object({
+    items: z.array(zAdminEventType),
+    nextCursor: z.string().optional()
+});
+
+export const zPageAdminRole = z.object({
+    items: z.array(zAdminRole),
+    nextCursor: z.string().optional()
+});
+
 export const zPageOrderSummaryView = z.object({
     items: z.array(zOrderSummaryView),
     nextCursor: z.string().optional()
@@ -143,6 +223,53 @@ export const zPlaceOrderBody = z.object({
  */
 export const zGetAdminAboutResponse = zAdminAbout;
 
+export const zListAdminConfigQuery = z.object({
+    state: z.enum([
+        'SET',
+        'DEFAULT',
+        'UNSET'
+    ]).optional(),
+    secret: z.boolean().optional(),
+    q: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zListAdminConfigResponse = zAdminConfig;
+
+export const zGetAdminConfigSettingPath = z.object({
+    key: z.string()
+});
+
+/**
+ * OK
+ */
+export const zGetAdminConfigSettingResponse = zAdminConfigSetting;
+
+export const zListAdminEventTypesQuery = z.object({
+    status: z.enum(['CURRENT', 'ARCHIVED']).optional(),
+    subdomain: z.string().optional(),
+    aggregate: z.string().optional(),
+    q: z.string().optional(),
+    limit: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional().default(50),
+    after: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zListAdminEventTypesResponse = zPageAdminEventType;
+
+export const zGetAdminEventTypePath = z.object({
+    id: z.string()
+});
+
+/**
+ * OK
+ */
+export const zGetAdminEventTypeResponse = zAdminEventTypeDetail;
+
 /**
  * OK
  */
@@ -152,6 +279,27 @@ export const zGetAdminNavigationResponse = zAdminNavigation;
  * OK
  */
 export const zGetAdminOrdersOverviewResponse = zOrdersOverview;
+
+export const zListAdminRolesQuery = z.object({
+    source: z.string().optional(),
+    q: z.string().optional(),
+    limit: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional().default(50),
+    after: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zListAdminRolesResponse = zPageAdminRole;
+
+export const zGetAdminRolePath = z.object({
+    name: z.string()
+});
+
+/**
+ * OK
+ */
+export const zGetAdminRoleResponse = zAdminRoleDetail;
 
 export const zListOrdersQuery = z.object({
     status: z.enum(['OPEN', 'CANCELLED']).optional(),

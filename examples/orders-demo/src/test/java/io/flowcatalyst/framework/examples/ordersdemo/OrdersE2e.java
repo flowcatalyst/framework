@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.flowcatalyst.framework.auth.TestOidcProvider;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.database.PostgresFixture;
+import io.flowcatalyst.framework.flowcatalyst.FakePlatform;
 import io.flowcatalyst.framework.http.Request;
 import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.ratelimit.KeyResolvers;
@@ -46,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>{@code /control/provider-down?value=true|false} makes the platform answer 503
  *   <li>{@code /control/login-rate-limit?value=true|false} puts a real limiter of one request a minute on the sign-in routes
  *       (a fresh budget each time it is switched on); the suite otherwise runs without a limit
+ *   <li>{@code /control/platform-reads?value=403|500} makes the platform's reads (event types, roles) fail (empty: normal)
  *   <li>{@code /control/authorize-error?value=access_denied} makes the platform refuse the next sign-ins (empty: normal)
  * </ul>
  */
@@ -67,6 +69,8 @@ public final class OrdersE2e {
     String origin = args.length > 2 ? args[2] : "http://127.0.0.1:" + appPort;
 
     PostgresFixture pg = PostgresFixture.start();
+    // The platform the admin pages read (event types, roles): a fake, never a real one.
+    FakePlatform platform = DemoPlatform.start();
     TestOidcProvider provider = TestOidcProvider.start(Instant::now);
     provider.client("orders-web", "", origin + "/auth/callback");
     // The platform sends the browser back to the post-logout redirect; this one goes to the SPA's
@@ -84,6 +88,7 @@ public final class OrdersE2e {
     env.put("AUTH_ISSUER", provider.issuer().toString());
     env.put("AUTH_CLIENT_ID", "orders-web");
     env.put("AUTH_PUBLIC_BASE_URL", origin);
+    env.putAll(DemoPlatform.env(platform));
     // No limit unless the suite asks (a test run signs in far more than 20 times a minute); then a real
     // limiter, one request a minute, so a refused navigation can be seen.
     AtomicReference<Middleware<Request, Response>> limit = new AtomicReference<>();
@@ -139,6 +144,14 @@ public final class OrdersE2e {
           reply(e, 200, "ok");
         });
     control.createContext(
+        "/control/platform-reads",
+        e -> {
+          // status=403 (or 500): the platform refuses the admin pages' reads; empty: normal again
+          String status = query(e.getRequestURI()).getOrDefault("value", "");
+          DemoPlatform.reads(platform, status.isEmpty() ? 200 : Integer.parseInt(status));
+          reply(e, 200, "ok");
+        });
+    control.createContext(
         "/control/provider-down",
         e -> {
           provider.down("true".equals(query(e.getRequestURI()).get("value")));
@@ -153,6 +166,7 @@ public final class OrdersE2e {
                   control.stop(0);
                   app.close();
                   provider.close();
+                  platform.close();
                   pg.close();
                 }));
     System.out.println("READY app=http://127.0.0.1:" + appPort + " public=" + origin + " control=http://127.0.0.1:" + controlPort);

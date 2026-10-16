@@ -138,8 +138,7 @@ class OrdersAdminTest {
   void anAdministratorReadsTheApplicationsEventTypesAndRolesFromThePlatform() {
     TestResponse et = get("/api/admin/event-types", admin());
     assertThat(et.status()).isEqualTo(200);
-    assertThat(field(et, "code"))
-        .containsExactly("orders-demo:sales:order:cancelled", "orders-demo:sales:order:placed", "orders-demo:stock:item:counted");
+    assertThat(field(et, "code")).hasSize(9).contains("orders-demo:sales:order:placed").noneMatch(c -> c.startsWith("billing"));
     TestResponse roles = get("/api/admin/roles", admin());
     assertThat(field(roles, "name")).containsExactly("orders-demo:admin", "orders-demo:clerk");
     assertThat(roles.body()).doesNotContain("billing");

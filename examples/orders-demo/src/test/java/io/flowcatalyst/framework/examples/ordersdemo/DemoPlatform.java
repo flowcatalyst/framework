@@ -20,6 +20,23 @@ final class DemoPlatform {
    */
   static FakePlatform start() {
     FakePlatform platform = FakePlatform.start();
+    reads(platform, 200);
+    return platform;
+  }
+
+  /**
+   * Sets how the fake answers the admin pages' reads.
+   *
+   * @param platform the fake
+   * @param status 200 for the demo's catalogue, anything else for an error answer on every read
+   */
+  static void reads(FakePlatform platform, int status) {
+    if (status != 200) {
+      for (String path : List.of("/api/event-types", "/api/event-types/et_3", "/api/roles", "/api/roles/orders-demo:clerk")) {
+        platform.respondGet(path, status, "{\"error\":\"refused\"}");
+      }
+      return;
+    }
     platform.respondGet(
         "/api/event-types",
         200,
@@ -27,6 +44,12 @@ final class DemoPlatform {
             + eventType("et_3", "orders-demo:sales:order:placed", "Order placed", "orders-demo", "CURRENT", true) + ","
             + eventType("et_4", "orders-demo:sales:order:cancelled", "Order cancelled", "orders-demo", "CURRENT", false) + ","
             + eventType("et_5", "orders-demo:stock:item:counted", "Item counted", "orders-demo", "ARCHIVED", false) + ","
+            + eventType("et_6", "orders-demo:sales:order:paid", "Order paid", "orders-demo", "CURRENT", false) + ","
+            + eventType("et_7", "orders-demo:sales:order:shipped", "Order shipped", "orders-demo", "CURRENT", false) + ","
+            + eventType("et_8", "orders-demo:sales:order:refunded", "Order refunded", "orders-demo", "CURRENT", false) + ","
+            + eventType("et_10", "orders-demo:sales:order:returned", "Order returned", "orders-demo", "CURRENT", false) + ","
+            + eventType("et_11", "orders-demo:stock:item:received", "Item received", "orders-demo", "CURRENT", false) + ","
+            + eventType("et_12", "orders-demo:stock:item:adjusted", "Item adjusted", "orders-demo", "CURRENT", false) + ","
             + eventType("et_9", "billing:invoice:invoice:issued", "Invoice issued", "billing", "CURRENT", false)
             + "]}");
     platform.respondGet(
@@ -43,7 +66,6 @@ final class DemoPlatform {
             + "],\"total\":3}");
     platform.respondGet(
         "/api/roles/orders-demo:clerk", 200, role("rol_2", "orders-demo:clerk", "Clerk", "orders-demo:order:read", "orders-demo:order:manage"));
-    return platform;
   }
 
   /**

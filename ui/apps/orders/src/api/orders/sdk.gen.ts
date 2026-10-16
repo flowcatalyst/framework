@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddOrderLineData, AddOrderLineErrors, AddOrderLineResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, GetAdminAboutData, GetAdminAboutErrors, GetAdminAboutResponses, GetAdminNavigationData, GetAdminNavigationErrors, GetAdminNavigationResponses, GetAdminOrdersOverviewData, GetAdminOrdersOverviewErrors, GetAdminOrdersOverviewResponses, GetAuthSessionData, GetAuthSessionErrors, GetAuthSessionResponses, GetOrderData, GetOrderErrors, GetOrderResponses, ListOrdersData, ListOrdersErrors, ListOrdersResponses, LogoutData, LogoutErrors, LogoutResponses, PlaceOrderData, PlaceOrderErrors, PlaceOrderResponses } from './types.gen';
+import type { AddOrderLineData, AddOrderLineErrors, AddOrderLineResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, GetAdminAboutData, GetAdminAboutErrors, GetAdminAboutResponses, GetAdminConfigSettingData, GetAdminConfigSettingErrors, GetAdminConfigSettingResponses, GetAdminEventTypeData, GetAdminEventTypeErrors, GetAdminEventTypeResponses, GetAdminNavigationData, GetAdminNavigationErrors, GetAdminNavigationResponses, GetAdminOrdersOverviewData, GetAdminOrdersOverviewErrors, GetAdminOrdersOverviewResponses, GetAdminRoleData, GetAdminRoleErrors, GetAdminRoleResponses, GetAuthSessionData, GetAuthSessionErrors, GetAuthSessionResponses, GetOrderData, GetOrderErrors, GetOrderResponses, ListAdminConfigData, ListAdminConfigErrors, ListAdminConfigResponses, ListAdminEventTypesData, ListAdminEventTypesErrors, ListAdminEventTypesResponses, ListAdminRolesData, ListAdminRolesErrors, ListAdminRolesResponses, ListOrdersData, ListOrdersErrors, ListOrdersResponses, LogoutData, LogoutErrors, LogoutResponses, PlaceOrderData, PlaceOrderErrors, PlaceOrderResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -32,6 +32,58 @@ export const getAdminAbout = <ThrowOnError extends boolean = false>(options?: Op
 });
 
 /**
+ * The application's settings, where they came from, and secret status
+ */
+export const listAdminConfig = <ThrowOnError extends boolean = false>(options?: Options<ListAdminConfigData, ThrowOnError>): RequestResult<ListAdminConfigResponses, ListAdminConfigErrors, ThrowOnError> => (options?.client ?? client).get<ListAdminConfigResponses, ListAdminConfigErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/config',
+    ...options
+});
+
+/**
+ * One setting
+ */
+export const getAdminConfigSetting = <ThrowOnError extends boolean = false>(options: Options<GetAdminConfigSettingData, ThrowOnError>): RequestResult<GetAdminConfigSettingResponses, GetAdminConfigSettingErrors, ThrowOnError> => (options.client ?? client).get<GetAdminConfigSettingResponses, GetAdminConfigSettingErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/config/{key}',
+    ...options
+});
+
+/**
+ * The application's event types, as the platform holds them
+ */
+export const listAdminEventTypes = <ThrowOnError extends boolean = false>(options?: Options<ListAdminEventTypesData, ThrowOnError>): RequestResult<ListAdminEventTypesResponses, ListAdminEventTypesErrors, ThrowOnError> => (options?.client ?? client).get<ListAdminEventTypesResponses, ListAdminEventTypesErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/event-types',
+    ...options
+});
+
+/**
+ * One event type with its specification versions
+ */
+export const getAdminEventType = <ThrowOnError extends boolean = false>(options: Options<GetAdminEventTypeData, ThrowOnError>): RequestResult<GetAdminEventTypeResponses, GetAdminEventTypeErrors, ThrowOnError> => (options.client ?? client).get<GetAdminEventTypeResponses, GetAdminEventTypeErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/event-types/{id}',
+    ...options
+});
+
+/**
  * The admin sections the caller may use
  */
 export const getAdminNavigation = <ThrowOnError extends boolean = false>(options?: Options<GetAdminNavigationData, ThrowOnError>): RequestResult<GetAdminNavigationResponses, GetAdminNavigationErrors, ThrowOnError> => (options?.client ?? client).get<GetAdminNavigationResponses, GetAdminNavigationErrors, ThrowOnError>({
@@ -54,6 +106,32 @@ export const getAdminOrdersOverview = <ThrowOnError extends boolean = false>(opt
             type: 'apiKey'
         }, { scheme: 'bearer', type: 'http' }],
     url: '/api/admin/orders/overview',
+    ...options
+});
+
+/**
+ * The application's roles, as the platform holds them
+ */
+export const listAdminRoles = <ThrowOnError extends boolean = false>(options?: Options<ListAdminRolesData, ThrowOnError>): RequestResult<ListAdminRolesResponses, ListAdminRolesErrors, ThrowOnError> => (options?.client ?? client).get<ListAdminRolesResponses, ListAdminRolesErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/roles',
+    ...options
+});
+
+/**
+ * One role with its permissions
+ */
+export const getAdminRole = <ThrowOnError extends boolean = false>(options: Options<GetAdminRoleData, ThrowOnError>): RequestResult<GetAdminRoleResponses, GetAdminRoleErrors, ThrowOnError> => (options.client ?? client).get<GetAdminRoleResponses, GetAdminRoleErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: '__Host-fw_session',
+            type: 'apiKey'
+        }, { scheme: 'bearer', type: 'http' }],
+    url: '/api/admin/roles/{name}',
     ...options
 });
 

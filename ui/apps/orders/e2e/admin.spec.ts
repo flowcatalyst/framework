@@ -4,7 +4,7 @@
 // is an inline error with Try again. Strict axe in both themes, desktop and 390 px; strict CSP.
 import type { Page } from "@playwright/test";
 import { axeViolations } from "./axe-tools.ts";
-import { ADMIN, CLERK, expect, fetchJson, freshData, openPage, placeOrder, signInAs, test } from "./fixtures.ts";
+import { ADMIN, CLERK, control, expect, fetchJson, freshData, openPage, placeOrder, signInAs, test } from "./fixtures.ts";
 
 async function signInFresh(page: Page, ...roles: string[]): Promise<void> {
   await signInAs(...roles);
@@ -12,6 +12,8 @@ async function signInFresh(page: Page, ...roles: string[]): Promise<void> {
 }
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Main" });
+const ALL_LINKS = ["About", "Event types", "Roles", "Configuration", "Orders overview", "Back to Orders"];
+const rows = (page: Page) => page.getByTestId("fw-list-table").locator("tbody tr");
 
 test.beforeEach(async () => {
   await freshData();
@@ -23,7 +25,7 @@ test("an administrator lands on About: the sections the server lists, Back, brea
   await expect(page.getByRole("heading", { level: 1, name: "About" })).toBeVisible();
   await expect(page).toHaveURL(/\/admin\/about$/);
 
-  await expect(sidebar(page).getByRole("link")).toHaveText(["About", "Orders overview", "Back to Orders"]);
+  await expect(sidebar(page).getByRole("link")).toHaveText(ALL_LINKS);
   await expect(sidebar(page).getByRole("link", { name: "About" })).toHaveAttribute("aria-current", "page");
   const crumbs = page.getByTestId("fw-admin-breadcrumbs");
   await expect(crumbs.getByRole("link", { name: "Admin" })).toBeVisible();
@@ -64,7 +66,14 @@ test("a clerk has no Administration entry, is refused the route, and the server 
   await page.goto("/admin");
   await expect(page.getByRole("heading", { level: 1, name: "Not permitted" })).toBeVisible();
 
-  for (const path of ["/api/admin/navigation", "/api/admin/about", "/api/admin/orders/overview"]) {
+  for (const path of [
+    "/api/admin/navigation",
+    "/api/admin/about",
+    "/api/admin/orders/overview",
+    "/api/admin/event-types",
+    "/api/admin/roles",
+    "/api/admin/config",
+  ]) {
     const answer = await fetchJson(page, path);
     expect(answer.status, path).toBe(403);
     expect(answer.body, path).toMatchObject({ error: "FORBIDDEN" });
@@ -113,7 +122,100 @@ test("a navigation that cannot be loaded is an inline error with Try again, and 
   await page.unroute("**/api/admin/navigation");
   await page.getByTestId("fw-admin-nav-retry").click();
   await expect(failed).toHaveCount(0);
-  await expect(sidebar(page).getByRole("link")).toHaveText(["About", "Orders overview", "Back to Orders"]);
+  await expect(sidebar(page).getByRole("link")).toHaveText(ALL_LINKS);
+  await csp.expectClean();
+});
+
+test("event types: the application's own, paged by cursor, filtered, with a drawer that deep-links", async ({ page, csp }) => {
+  await signInFresh(page, ADMIN);
+  await openPage(page, "/admin/event-types", "Event types");
+  // nine of this application's event types (the platform also holds another application's: never shown)
+  await expect(rows(page)).toHaveCount(8);
+  await expect(page.getByTestId("fw-list-table")).not.toContainText("billing");
+  await page.getByRole("button", { name: "Older" }).click();
+  await expect(rows(page)).toHaveCount(1);
+  await page.getByRole("button", { name: "Newest" }).click();
+  await expect(rows(page)).toHaveCount(8);
+
+  // the status filter goes to the server
+  await page.getByRole("button", { name: /Filters/ }).click();
+  await page.getByTestId("filter-status").click();
+  await page.getByRole("option", { name: "Archived" }).click();
+  await expect(rows(page)).toHaveCount(1);
+  await expect(rows(page).first()).toContainText("orders-demo:stock:item:counted");
+  await page.keyboard.press("Escape");
+
+  // a drawer by deep link: fields, versions and the schema
+  await page.goto("/admin/event-types/et_3");
+  const drawer = page.getByRole("dialog", { name: "Order placed" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText("orders-demo:sales:order:placed");
+  await expect(drawer.getByTestId("spec-version")).toContainText("Version 1.0");
+  await expect(drawer.getByLabel("Schema of version 1.0", { exact: true })).toContainText("orderId");
+  await expect(page.getByTestId("fw-admin-breadcrumbs").locator('[aria-current="page"]')).toHaveText("Event types");
+  await page.getByRole("button", { name: "Close" }).first().click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page).toHaveURL(/\/admin\/event-types$/);
+  await csp.expectClean();
+});
+
+test("roles: only this application's, and a drawer lists the permissions (the role name is the route)", async ({ page, csp }) => {
+  await signInFresh(page, ADMIN);
+  await openPage(page, "/admin/roles", "Roles");
+  await expect(rows(page)).toHaveCount(2);
+  await expect(page.getByTestId("fw-list-table")).toContainText("orders-demo:clerk");
+  await expect(page.getByTestId("fw-list-table")).not.toContainText("billing");
+
+  await rows(page).filter({ hasText: "orders-demo:clerk" }).getByRole("link").click();
+  const drawer = page.getByRole("dialog", { name: "Clerk" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByTestId("role-permissions")).toContainText("orders-demo:order:manage");
+  await expect(page).toHaveURL(/\/admin\/roles\/orders-demo(:|%3A)clerk/);
+
+  // another application's role is not found, by the page and by the API
+  await page.goto("/admin/roles/billing:admin");
+  await expect(page.getByTestId("drawer-error")).toBeVisible();
+  expect((await fetchJson(page, "/api/admin/roles/billing:admin")).status).toBe(404);
+  await csp.expectClean();
+});
+
+test("config: settings with their source, the client secret as set and never shown, filters, health", async ({ page, csp }) => {
+  await signInFresh(page, ADMIN);
+  await openPage(page, "/admin/config", "Configuration");
+  const table = page.getByTestId("fw-list-table");
+  const secret = rows(page).filter({ hasText: "flowcatalyst.client-secret" });
+  await expect(secret).toContainText("Set (secret)");
+  await expect(secret).toContainText("environment variable FLOWCATALYST_CLIENT_SECRET");
+  await expect(secret).toContainText("hidden");
+  await expect(rows(page).filter({ hasText: "flowcatalyst.timeout" })).toContainText("Default");
+  await expect(page.getByTestId("config-health")).toContainText("Ready");
+  await expect(page.getByTestId("config-summary")).toContainText("using their default");
+  // the secret's text is nowhere on the page or in the API's answer
+  expect(await page.content()).not.toContain("fake-secret");
+  expect(JSON.stringify((await fetchJson(page, "/api/admin/config")).body)).not.toContain("fake-secret");
+
+  await page.getByRole("button", { name: /Filters/ }).click();
+  await page.getByTestId("filter-state").click();
+  await page.getByRole("option", { name: "Not set" }).click();
+  await expect(table).not.toContainText("flowcatalyst.client-secret");
+  await expect(table).toContainText("flowcatalyst.subscription-target-base-url");
+  await csp.expectClean();
+});
+
+test("a platform that refuses the reads is shown on the page in the server's words, not as an empty list", async ({ page, csp }) => {
+  await signInFresh(page, ADMIN);
+  await control("/control/platform-reads?value=403");
+  await openPage(page, "/admin/roles", "Roles");
+  const failed = page.getByTestId("platform-error");
+  await expect(failed).toContainText("service account");
+  await expect(failed).not.toContainText("127.0.0.1");
+  expect((await fetchJson(page, "/api/admin/event-types")).status).toBe(502);
+  expect(await axeViolations(page), "platform error").toEqual([]);
+
+  await control("/control/platform-reads?value=");
+  await page.getByRole("button", { name: /Refresh/ }).click();
+  await expect(failed).toHaveCount(0);
+  await expect(rows(page)).toHaveCount(2);
   await csp.expectClean();
 });
 
@@ -125,6 +227,9 @@ for (const scheme of ["light", "dark"] as const) {
       await page.setViewportSize(size);
       for (const [path, heading] of [
         ["/admin/about", "About"],
+        ["/admin/event-types", "Event types"],
+        ["/admin/roles", "Roles"],
+        ["/admin/config", "Configuration"],
         ["/admin/orders", "Orders overview"],
       ] as const) {
         await openPage(page, path, heading);

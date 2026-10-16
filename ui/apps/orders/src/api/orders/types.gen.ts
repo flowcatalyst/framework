@@ -25,8 +25,68 @@ export type AdminCheck = {
     critical: boolean;
 };
 
+export type AdminConfig = {
+    environment: string;
+    total: number;
+    set: number;
+    defaulted: number;
+    unset: number;
+    settings: Array<AdminConfigSetting>;
+    health: AdminHealth;
+};
+
+export type AdminConfigSetting = {
+    key: string;
+    module: string;
+    type: string;
+    secret: boolean;
+    required: boolean;
+    state: 'SET' | 'DEFAULT' | 'UNSET';
+    source: string;
+    value?: string;
+    withheld: boolean;
+    description?: string;
+};
+
+export type AdminEventType = {
+    id: string;
+    code: string;
+    name: string;
+    description?: string;
+    subdomain: string;
+    aggregate: string;
+    event: string;
+    status: 'CURRENT' | 'ARCHIVED';
+    versionCount: number;
+};
+
+export type AdminEventTypeDetail = {
+    eventType: AdminEventType;
+    versions: Array<AdminSpecVersion>;
+};
+
+export type AdminHealth = {
+    ready: boolean;
+    checks: Array<AdminCheck>;
+};
+
 export type AdminNavigation = {
     sections: Array<AdminSectionView>;
+};
+
+export type AdminRole = {
+    id: string;
+    name: string;
+    displayName: string;
+    description?: string;
+    source: string;
+    clientManaged: boolean;
+    permissionCount: number;
+};
+
+export type AdminRoleDetail = {
+    role: AdminRole;
+    permissions: Array<string>;
 };
 
 export type AdminSectionView = {
@@ -36,6 +96,12 @@ export type AdminSectionView = {
     permission: string;
     icon?: string;
     description?: string;
+};
+
+export type AdminSpecVersion = {
+    version: string;
+    status: string;
+    schema?: string;
 };
 
 export type AuthCsrf = {
@@ -122,6 +188,16 @@ export type OrdersOverview = {
     openTotalCents: number;
 };
 
+export type PageAdminEventType = {
+    items: Array<AdminEventType>;
+    nextCursor?: string;
+};
+
+export type PageAdminRole = {
+    items: Array<AdminRole>;
+    nextCursor?: string;
+};
+
 export type PageOrderSummaryView = {
     items: Array<OrderSummaryView>;
     nextCursor?: string;
@@ -163,6 +239,193 @@ export type GetAdminAboutResponses = {
 };
 
 export type GetAdminAboutResponse = GetAdminAboutResponses[keyof GetAdminAboutResponses];
+
+export type ListAdminConfigData = {
+    body?: never;
+    path?: never;
+    query?: {
+        state?: 'SET' | 'DEFAULT' | 'UNSET';
+        secret?: boolean;
+        q?: string;
+    };
+    url: '/api/admin/config';
+};
+
+export type ListAdminConfigErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ListAdminConfigError = ListAdminConfigErrors[keyof ListAdminConfigErrors];
+
+export type ListAdminConfigResponses = {
+    /**
+     * OK
+     */
+    200: AdminConfig;
+};
+
+export type ListAdminConfigResponse = ListAdminConfigResponses[keyof ListAdminConfigResponses];
+
+export type GetAdminConfigSettingData = {
+    body?: never;
+    path: {
+        key: string;
+    };
+    query?: never;
+    url: '/api/admin/config/{key}';
+};
+
+export type GetAdminConfigSettingErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * SETTING_NOT_FOUND: no such setting is declared
+     */
+    404: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminConfigSettingError = GetAdminConfigSettingErrors[keyof GetAdminConfigSettingErrors];
+
+export type GetAdminConfigSettingResponses = {
+    /**
+     * OK
+     */
+    200: AdminConfigSetting;
+};
+
+export type GetAdminConfigSettingResponse = GetAdminConfigSettingResponses[keyof GetAdminConfigSettingResponses];
+
+export type ListAdminEventTypesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        status?: 'CURRENT' | 'ARCHIVED';
+        subdomain?: string;
+        aggregate?: string;
+        q?: string;
+        limit?: number;
+        after?: string;
+    };
+    url: '/api/admin/event-types';
+};
+
+export type ListAdminEventTypesErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ListAdminEventTypesError = ListAdminEventTypesErrors[keyof ListAdminEventTypesErrors];
+
+export type ListAdminEventTypesResponses = {
+    /**
+     * OK
+     */
+    200: PageAdminEventType;
+};
+
+export type ListAdminEventTypesResponse = ListAdminEventTypesResponses[keyof ListAdminEventTypesResponses];
+
+export type GetAdminEventTypeData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/admin/event-types/{id}';
+};
+
+export type GetAdminEventTypeErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * EVENT_TYPE_NOT_FOUND: there is no such event type of this application
+     */
+    404: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminEventTypeError = GetAdminEventTypeErrors[keyof GetAdminEventTypeErrors];
+
+export type GetAdminEventTypeResponses = {
+    /**
+     * OK
+     */
+    200: AdminEventTypeDetail;
+};
+
+export type GetAdminEventTypeResponse = GetAdminEventTypeResponses[keyof GetAdminEventTypeResponses];
 
 export type GetAdminNavigationData = {
     body?: never;
@@ -229,6 +492,107 @@ export type GetAdminOrdersOverviewResponses = {
 };
 
 export type GetAdminOrdersOverviewResponse = GetAdminOrdersOverviewResponses[keyof GetAdminOrdersOverviewResponses];
+
+export type ListAdminRolesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        source?: string;
+        q?: string;
+        limit?: number;
+        after?: string;
+    };
+    url: '/api/admin/roles';
+};
+
+export type ListAdminRolesErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ListAdminRolesError = ListAdminRolesErrors[keyof ListAdminRolesErrors];
+
+export type ListAdminRolesResponses = {
+    /**
+     * OK
+     */
+    200: PageAdminRole;
+};
+
+export type ListAdminRolesResponse = ListAdminRolesResponses[keyof ListAdminRolesResponses];
+
+export type GetAdminRoleData = {
+    body?: never;
+    path: {
+        name: string;
+    };
+    query?: never;
+    url: '/api/admin/roles/{name}';
+};
+
+export type GetAdminRoleErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * ROLE_NOT_FOUND: there is no such role of this application
+     */
+    404: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminRoleError = GetAdminRoleErrors[keyof GetAdminRoleErrors];
+
+export type GetAdminRoleResponses = {
+    /**
+     * OK
+     */
+    200: AdminRoleDetail;
+};
+
+export type GetAdminRoleResponse = GetAdminRoleResponses[keyof GetAdminRoleResponses];
 
 export type ListOrdersData = {
     body?: never;
