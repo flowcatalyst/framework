@@ -174,7 +174,7 @@ Backend-agnostic: the package holds no generated client. The application loads t
 with its own generated `getAdminNavigation` and passes the result in.
 
 - **`AdminPage`** (the page-kit contract M4e pages fill): `{ id, title, icon, permission, path
-  (relative to `/admin`), component: () => Promise<Component> }`. A page is built from the kit's
+  (absolute, `/admin` or under it, equal to the server section's `path`), component: () => Promise<Component>, children? }`. A page is built from the kit's
   patterns: `FwListPage` + `FwRecordDrawer` (+ `useDrawerRoute`) + `FwFormDialog`
   (+ `useDirtyForm`, `useConfirm`, `useListState`); every page's route carries `meta.permission`
   and the page's `permission` must equal its server section's.
@@ -206,7 +206,10 @@ registration order; the gate (a caller without the permission gets `403 FORBIDDE
 shape, with it `200`; wildcard grants; a caller with a *different* section's permission is refused);
 the navigation filter; about (checks, readiness); the OpenAPI document contains both operations with
 `x-fw-permission`; the vector (section 8). **Mutation check:** a build of the operation gate that
-skips the permission check must fail a test (done and recorded in `ui/` and the guide page). In
+skips the permission check must fail a test (done 2026-10-16: three server mutants, the gate in
+`OperationRoute`, the navigation filter and the foreign-application check, each failed tests; three
+UI mutants, the `can()` filter, the route permission rule and `meta.permission`, each failed a vitest or
+a Playwright test). In
 `orders-demo`: two principals, an administrator and a clerk; the committed `web/openapi.json`. UI:
 vitest for the pure functions, the gallery page under strict axe and CSP in both colour modes at
 desktop and 390 px, and an orders end-to-end run against the real Java demo for both principals.
@@ -217,6 +220,22 @@ desktop and 390 px, and an orders end-to-end run against the real Java demo for 
 sections (id, title, path, permission, icon) and, per case, the caller's permission set and the
 expected response (`200` with the section ids, or `403` with the error code). Matching rules are
 the wildcard rule of core section 3. Go compares.
+
+## 8a. As built (2026-10-16)
+
+- The checked registry is a service, `AdminRegistry` (provided by `AdminModule`), built when the module's
+  `boot` asks for it, after every module registered; the registry-wide rules (3) run there and fail
+  start-up with a `StartupException`. The per-section rules (1, 2 without the application check, 4 and
+  the path prefix) are in `AdminSection`'s constructor, so they fail in `register` and in the `openapi`
+  command too. "About first" holds when `AdminModule` is listed before the modules that add sections.
+- `FwAdminAbout` is a presentational partial (the application loads `getAdminAbout` and passes the answer
+  in); `adminNavigation` lists a page when the server listed its section **and** the session holds both
+  the section's and the page's permission; an icon named in `.ts` data goes in the Vite plugin's `icons`
+  from a data-only file (the config cannot import `.vue`).
+- The demo (`orders-demo`) has an administrator role (`orders-demo:admin` grants `orders-demo:admin:*:*`)
+  and one section of its own, `orders` (`orders-demo:admin:orders:view`). Its committed document includes
+  the admin operations (vector `openapi/orders-demo-admin.json`); the orders-only document stays the
+  shared vector `openapi/orders-demo.json` until the Go framework builds admin (G6).
 
 ## 9. Rulings pending owner (defaults applied)
 

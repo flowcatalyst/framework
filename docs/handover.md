@@ -123,6 +123,21 @@ rewritten at hand-off and can lag the code in between.
   `contracts/openapi.md`, `sessions-and-login.md` 4.4/4.5, `core.md` 5. Found for the UI package:
   hey-api's Zod plugin writes `int64` as `z.coerce.bigint()` while the type is `number` (0.93.1 and
   0.99.0), which a form posting `unitPriceCents` would trip over; configure it at U2/U3.
+- **M4d built 2026-10-16** (admin skeleton). Contract `contracts/admin.md` (written first, owner
+  questions in its section 9, defaults applied), guide `guide/admin.md`. Java: new module
+  `framework-admin` (core and http only; `AdminSection`, `Admin`, `AdminModule`, `AdminRegistry`,
+  `AdminApi`): every operation of a section needs a four-segment permission and a path under
+  `/api/admin/` (start-up fails otherwise), `getAdminNavigation` lists only the sections the caller may
+  use, `getAdminAbout` reports checks without failure messages, both behind
+  `{app}:admin:console:view`; the gate is the existing operation permission check (403 `FORBIDDEN`
+  envelope). Vector `conformance/admin/navigation.json` (Java writes, Go compares). `orders-demo` has
+  an administrator, a section of its own and a committed `web/openapi.json` with admin
+  (`openapi/orders-demo-admin.json`; `openapi/orders-demo.json` stays the orders-only vector). UI:
+  `FwAdminShell`, `FwAdminAbout`, `AdminPage`, `adminRoutes`, `adminNavigation`, `useAdminNavigation`;
+  gallery page `/admin-shell` (5 new behaviour rows) and the orders `/admin` area with Playwright
+  against the real demo. Next: M4e, one slice at a time (users and invitations first), each a section +
+  operations + an `AdminPage`; owner decision 4 of the contract (how admin reaches the platform) comes
+  before the first slice.
 - Next: MU (U1 onward; U3 can generate from the committed orders-demo document now). Platform work
   for scoped event/dispatch-job reads is listed in `contracts/flowcatalyst.md` section 5.
 - Rulings: the platform delivers the outbox; handler failure/timeout in a receiver is a

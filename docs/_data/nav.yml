@@ -30,6 +30,7 @@
     - { title: Rate limiting, path: guide/rate-limiting.md }
     - { title: Static assets and the SPA, path: guide/static-assets-and-spa.md }
     - { title: Typed operations and OpenAPI, path: guide/openapi.md }
+    - { title: The admin area, path: guide/admin.md }
     - { title: Sessions and login, path: guide/sessions-and-login.md }
     - { title: Migrating from flowcatalyst-token, path: guide/migrating-from-flowcatalyst-token.md }
     - { title: Migrating the ingest control plane, path: guide/migrating-the-ingest-control-plane.md }
@@ -83,6 +84,7 @@
     - { title: Sessions and login contract, path: contracts/sessions-and-login.md }
     - { title: Static assets and SPA contract, path: contracts/static-assets-and-spa.md }
     - { title: OpenAPI contract, path: contracts/openapi.md }
+    - { title: Admin skeleton contract, path: contracts/admin.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }
