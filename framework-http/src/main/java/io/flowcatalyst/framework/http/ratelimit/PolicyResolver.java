@@ -14,7 +14,8 @@ public interface PolicyResolver {
    * The policy.
    *
    * @param request the request
-   * @return the policy, or null for the limiter's default policy; a thrown exception is a policy
+   * @return the policy, {@link RateLimitPolicy#UNLIMITED} for a caller with no limit, or null for the
+   *     limiter's default policy (never unlimited); a thrown exception is a policy
    *     failure, which follows {@link RateLimit.OnStoreFailure}
    */
   @Nullable RateLimitPolicy policy(Request request);

@@ -102,7 +102,8 @@ public final class RateLimit {
     /**
      * Decides each request with the policy {@code resolver} returns for it (contract section 3a).
      *
-     * @param resolver the policy per request; null from it means the limiter's default policy
+     * @param resolver the policy per request; null from it means the limiter's default policy, and
+     *     {@link RateLimitPolicy#UNLIMITED} means no limit for that request
      * @return this builder
      */
     public Builder policy(PolicyResolver resolver) {
@@ -170,6 +171,9 @@ public final class RateLimit {
             resolved = resolver.policy(request);
           } catch (RuntimeException e) {
             problem = "the policy resolver threw " + e;
+          }
+          if (resolved != null && resolved.isUnlimited()) {
+            return next.handle(request);
           }
           if (resolved != null && resolved.burst() < c) {
             problem = "the resolved burst " + resolved.burst() + " is below the cost " + c;

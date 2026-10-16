@@ -420,6 +420,43 @@ class RateLimitTest {
   }
 
   @Test
+  void aResolverThatReturnsUnlimitedLetsThatCallerThroughWithoutUsingTheBucket() {
+    Metrics metrics = Metrics.memory(100, nanos::get);
+    plane.put("free", RateLimitPolicy.UNLIMITED);
+    TestClient c =
+        client(
+            RateLimit.by(limiter(1, Duration.ofMinutes(1), 1), KeyResolvers.header("X-Ingestion"))
+                .policy(fromPlane())
+                .metrics(metrics)
+                .build());
+    for (int i = 0; i < 50; i++) {
+      TestResponse r = send(c, "free");
+      assertThat(r.status()).isEqualTo(200);
+      // no budget to report
+      assertThat(r.header("RateLimit-Limit")).isNull();
+    }
+    // the bucket was never touched: the same key under a real policy starts full
+    plane.put("free", new RateLimitPolicy(10, Duration.ofMinutes(1), 3));
+    TestResponse r = send(c, "free");
+    assertThat(r.header("RateLimit-Remaining")).isEqualTo("2");
+    // other callers are still limited, and a null is still the default policy, never unlimited
+    assertThat(send(c, "other").status()).isEqualTo(200);
+    assertThat(send(c, "other").status()).isEqualTo(429);
+    assertThat(counter(metrics, "fw_http_rate_limit_policy_failures_total")).isZero();
+  }
+
+  @Test
+  void anEqualLookingPolicyIsNotUnlimited() {
+    // only the UNLIMITED constant means no limit; a policy with the same numbers is a policy
+    RateLimitPolicy lookalike =
+        new RateLimitPolicy(
+            RateLimitPolicy.UNLIMITED.limit(), RateLimitPolicy.UNLIMITED.period(), RateLimitPolicy.UNLIMITED.burst());
+    assertThat(lookalike.isUnlimited()).isFalse();
+    assertThat(RateLimitPolicy.UNLIMITED.isUnlimited()).isTrue();
+    assertThat(RateLimitPolicy.of(5, Duration.ofSeconds(1)).isUnlimited()).isFalse();
+  }
+
+  @Test
   void aResolverThatThrowsIsCountedAndDecidedWithTheDefaultPolicy() {
     Metrics metrics = Metrics.memory(100, nanos::get);
     TestClient c =

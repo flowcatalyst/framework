@@ -116,6 +116,13 @@ RateLimit.by(ingest, ingestionKey).policy(request -> plane.policyFor(request)).b
 key resolver, and the request is decided with the policy it returns (`acquire(key, cost, policy)`).
 Without a resolver every request uses the limiter's default policy, exactly as before.
 
+**No limit (2026-10-16, additive).** A resolver returns the constant `RateLimitPolicy.UNLIMITED` to
+let a request through unlimited: the middleware calls the handler without computing a decision, reads
+and writes no state, and sends no `RateLimit-*` headers. It is recognised by identity only
+(`isUnlimited()`), so a policy with equal numbers, a null, or a throwing resolver can never mean "no
+limit" (section 5). Not for `RateLimiter.acquire` called directly. Go and Rust have no equivalent
+yet; the shared vectors do not cover per-request policies.
+
 **State and the key namespace.** GCRA stores one TAT per key, an absolute time; the policy is an
 input to each decision and is never stored, and it is not part of the key. So a change to a key's
 policy takes effect from that key's next request, on every replica and on both drivers, with no

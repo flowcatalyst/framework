@@ -15,6 +15,16 @@ public record RateLimitPolicy(int limit, Duration period, int burst) {
 
   static final int MAX = 1_000_000;
 
+  /**
+   * "No limit", for a {@link PolicyResolver} to return for a caller that has none (rate-limiting
+   * contract, section 3a). Only this instance means that ({@link #isUnlimited()} compares identity):
+   * a policy with the same numbers is an ordinary policy, and {@code null} from a resolver is still
+   * the limiter's default policy, never unlimited. The rate-limit middleware lets such a request
+   * through without touching the limiter's state and without {@code RateLimit-*} headers. Limiters
+   * called directly do not know it.
+   */
+  public static final RateLimitPolicy UNLIMITED = new RateLimitPolicy(MAX, Duration.ofSeconds(1), MAX);
+
   /** The largest window {@code burst * period / limit}, in nanoseconds (about 73 years). */
   static final long MAX_WINDOW_NANOS = Long.MAX_VALUE / 4;
 
@@ -55,5 +65,14 @@ public record RateLimitPolicy(int limit, Duration period, int burst) {
    */
   public long intervalNanos() {
     return period.toNanos() / limit;
+  }
+
+  /**
+   * Whether this is {@link #UNLIMITED}.
+   *
+   * @return true only for that instance
+   */
+  public boolean isUnlimited() {
+    return this == UNLIMITED;
   }
 }

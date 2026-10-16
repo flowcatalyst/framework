@@ -124,6 +124,13 @@ RateLimit.by(limiter(1, Duration.ofMinutes(1), 1), KeyResolvers.header("X-Ingest
   what the new policy's bucket can hold, it counts as an empty bucket, and the next request is
   allowed after one interval (`period / limit`) of the new policy.
 - **Null** from the resolver means the limiter's default policy. It is never "no limit".
+- **No limit** is said out loud: return `RateLimitPolicy.UNLIMITED` for a caller that has none (an
+  ingestion whose limit is "none" in the control plane). The request goes straight to the handler;
+  the bucket is not read or written (so a later real policy for that key starts full) and the answer
+  has no `RateLimit-*` headers, because there is no budget to report. Only that constant counts
+  (`isUnlimited()` is an identity check): a policy with the same numbers is an ordinary policy, a
+  resolver that throws is still a policy failure, and `acquire` called directly on a limiter does
+  not know it. The same rule as above applies to where the value comes from: never from the caller.
 - **A resolver that throws** (or returns a policy whose burst is below `.cost(n)`) is a policy
   failure: counted in `fw_http_rate_limit_policy_failures_total{limiter}`, logged at WARN at most
   once a minute, then handled like a store failure: with `ALLOW` (the default) the request is
