@@ -52,6 +52,21 @@ framework uses the **code** everywhere:
   `clientCode` (and in the row's `client_id` column), which is how the platform learns whose event
   it is.
 
+Three things get called "client id" in this framework and the platform. Which one you hold decides
+where it may go:
+
+| What | Looks like | Where the framework uses it |
+|---|---|---|
+| The client's **code** (identifier) | `acme`: `[a-z0-9][a-z0-9-]*`, never contains `_` | `new ClientId("acme")`, so `Context.client()`; the outbox's `clientCode` and `client_id` column; `LockKey.client(...)`; `ClientSelector` results; `DispatchDelivery.client().code()`; the `clients` token entry's part after `:`; `X-FlowCatalyst-Client`'s part after `:` |
+| The client's **platform id** | `clt_0HZ...` (at most 17 characters) | `DispatchDelivery.client().id()`; the part before `:` in `clients` and in `X-FlowCatalyst-Client`; the session's `homeClient`; the dispatch-jobs batch's `clientId` (set from `platformClientId`, never derived from the `Context`); `AccessToken.mayActFor(...)` accepts either |
+| An **OAuth client id** (credentials) | whatever the platform issued for the application | `FlowCatalystClient`/`PlatformClient` authenticate the application's service account with it (`clientCredentials(clientId, secret)`); it names an application, not a tenant |
+
+Rules of thumb. A field of your own API or table that says which tenant a record belongs to should
+be named for what it holds (`clientCode`, or `clientId` only if it is the `clt_` id) and should be
+the same kind as `Context.client()`, so a filter and a `Context` compare equal; the wire name is
+yours, the framework does not read it. If the page has to show or accept the other kind, translate
+at the edge: the `clients` entry of the principal pairs the two (`clt_1:acme`).
+
 So when you build a `Context` yourself, for example in a `ContextResolver`, put the client **code**
 in `new ClientId(...)`. Putting a `clt_...` id there writes events the platform cannot attribute to
 the client you meant. Nothing in the type or the framework can tell the two apart, because both are
