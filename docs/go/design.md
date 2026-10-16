@@ -1,5 +1,7 @@
 # Go framework: design (draft 1, 2026-10-13)
 
+**PARKED (owner, 2026-10-16).** This is the Go *application framework* (`go/`), not the FlowCatalyst platform, which stays Go. G0 to G4 are built and tested (core, config, locks, write path and checked SQL, HTTP, OpenAPI and the SPA, rate limiting, HTTP client, secrets, the FlowCatalyst module and receivers; vectors pass against the Java writer). G5a (the orders SPA on the Go server), G5b (sessions and login) and G6 onward are not started and nothing more is built until the owner resumes. Core domains are built on the Java framework. To resume: read [`milestones.md`](milestones.md), run `make -C go go-check`, and re-check the conformance vectors against the Java writer (`conformance/`). Nothing is published.
+
 Status: a design. Nothing is built; building starts after the owner has reviewed this page and
 taken the decisions in section 9. Package and module names are placeholders (implementation plan,
 open question 6).
