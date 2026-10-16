@@ -163,6 +163,16 @@ rewritten at hand-off and can lag the code in between.
   questions: show non-secret config values at all (default yes, `withoutValues()` switches off); the config
   page does not list database/Redis instance settings or range-check results. Next: slice 1 and slice 4 when
   the platform work lands; Go G6 builds the server half against the three admin vectors.
+- **M4e completed 2026-10-16** (slices 1 and 4: users/invitations and scoped events/dispatch jobs), after the platform's F20.
+  `PlatformUsersAdminModule` and `PlatformActivityAdminModule` (`framework-flowcatalyst`), `PlatformClient` reads/writes over
+  plain HTTP (`PlatformHttp`, `PlatformAdminData`; the pinned SDK 0.0.11 lacks the F20 resources, nothing released or published),
+  `PlatformException.Kind.REJECTED` (+`status/code/serverMessage`) so the platform's reasons reach the admin in its words. Contract
+  `contracts/admin.md` section 12 (rulings 12.3 for the owner: pages are application-wide not client-narrowed; no `inviteRedirectUri`;
+  payloads shown; writes not audited per user). The invite link is a credential: only in the answer that asked for it, `no-store`,
+  never logged. Tests `PlatformUsersAdminTest`, `PlatformActivityAdminTest` (mutation-checked: every gate, link handling, confinement),
+  vectors `conformance/admin/users.json`, `activity.json`, demo `DemoDirectory` (stateful fake) and an `orders-demo:auditor` role,
+  UI pages + `admin-data.spec.ts`. Every application service account must mint a new token for F20's permissions.
+  Platform gaps: see `contracts/flowcatalyst.md` section 5 item 7. Go G6 builds the server half against the five admin vectors.
 - Next: MU (U1 onward; U3 can generate from the committed orders-demo document now). Platform work
   for scoped event/dispatch-job reads is listed in `contracts/flowcatalyst.md` section 5.
 - Rulings: the platform delivers the outbox; handler failure/timeout in a receiver is a

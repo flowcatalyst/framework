@@ -1,13 +1,13 @@
-<!-- types: AdminModule, AdminSection, Admin, AdminApi, AdminRegistry, AdminConfigModule, AdminConfigApi, PlatformAdminModule, PlatformAdminApi, PlatformClient, SettingStatus, Definitions, Operation, Context -->
+<!-- types: AdminModule, AdminSection, Admin, AdminApi, AdminRegistry, AdminConfigModule, AdminConfigApi, PlatformAdminModule, PlatformAdminApi, PlatformUsersAdminModule, PlatformUsersApi, PlatformActivityAdminModule, PlatformActivityApi, PlatformAdminData, PlatformClient, SettingStatus, Definitions, Operation, Context -->
 # The admin area
 
 Every application gets the same small administration area, inside its own SPA and behind its own
 sign-in: a registry of **sections**, a permission gate in front of every operation, two operations
 that need no platform data (the navigation and the about page), and a shared shell in
 `@flowcatalyst/ui` that builds its menu from what the server says and what the session may open.
-This page covers the skeleton (M4d) and the first data sections (M4e): **event types**, **roles**
-and **configuration**. The sections that need platform work (users and invitations, scoped events and
-dispatch jobs) are not built; they plug in the same way.
+This page covers the skeleton (M4d) and the data sections (M4e): **event types**, **roles**,
+**configuration**, **users and invitations** and **activity** (the application's events and dispatch jobs).
+They plug in the same way.
 
 The specification, language-neutral and shared with the Go framework, is
 [contracts/admin.md](../contracts/admin.md).
@@ -24,6 +24,8 @@ needs.
 | `AdminModule`, `AdminSection`, `Admin` (the registry), the two operations | `framework-admin` |
 | `AdminConfigModule`: the config section (reads the application's own `Config`) | `framework-admin` |
 | `PlatformAdminModule`: the event types and roles sections (read the platform) | `framework-flowcatalyst` |
+| `PlatformUsersAdminModule`: users, invitations, invite / resend / revoke | `framework-flowcatalyst` |
+| `PlatformActivityAdminModule`: events and dispatch jobs with attempts | `framework-flowcatalyst` |
 | `FwAdminShell`, `FwAdminAbout`, `adminRoutes`, `adminNavigation`, `useAdminNavigation`, `AdminPage` | `@flowcatalyst/ui` |
 
 `framework-admin` depends on `framework-core` and `framework-http` only: no database, no write path
@@ -37,6 +39,8 @@ and no auth module (the gate reads `Context.permissions`, which any `ContextReso
 .module(AdminModule.of(APPLICATION))                 // the skeleton: navigation and about
 .module(new FlowCatalystModule())                    // the platform connection the next line reads
 .module(PlatformAdminModule.of(APPLICATION))         // event types and roles, from the platform
+.module(PlatformUsersAdminModule.of(APPLICATION))    // users and invitations, through the service account
+.module(PlatformActivityAdminModule.of(APPLICATION)) // events and dispatch jobs
 .module(AdminConfigModule.of(APPLICATION))           // configuration and secret status
 .module(new OrdersAdminModule())                     // your own section(s)
 ```
@@ -124,6 +128,50 @@ no host and no token; a 403 from the platform tells the admin the service accoun
 view permission, so the page shows a missing grant instead of an empty list. Another application's
 record is `404`.
 
+## Users and invitations
+
+Section `users` (`/admin/users`): `GET /api/admin/users[/{id}]`, `GET /api/admin/invitations`, `POST
+/api/admin/users` (invite), `POST /api/admin/invitations/{id}/resend`, `DELETE /api/admin/invitations/{id}`.
+Permissions: `{app}:admin:users:view` (lists and reads), `:invite`, `:resend`, `:revoke`; give an auditor only
+`view` and the pages offer nothing to change (the demo's `orders-demo:auditor`). Behind them the application
+calls the platform's application-user routes as its own service account, **over plain HTTP** until the
+SDK that has them is released (the pinned SDK is 0.0.11; the interim is `PlatformHttp`, one retry after a `401`).
+The platform's `application-service` role needs the user and invitation permissions of platform change F20, and
+**every application service account must mint a new token** to carry them.
+
+What the framework adds, and tests (`PlatformUsersAdminTest`, with mutation checks):
+
+- The application code in every platform path is the configured one; an id that is not `[A-Za-z0-9_-]{1,64}` is a
+  `404` without a call. Only the application's roles are shown, filtered by, or accepted on an invitation (another
+  application's role is `403 ROLE_APP_FORBIDDEN` here as well).
+- **The invite link is a credential.** Ask for it with `returnInviteLink: true` on the invitation (or the resend);
+  it is then in that one answer (`Cache-Control: no-store`) and nowhere else: not in lists, errors or logs, and
+  the page keeps it in one dialog ("Invitation link", shown once) and drops it when the dialog closes. If you add
+  code around these operations, never log an `InviteResult` field or a platform response; `PlatformHttp` logs
+  nothing for that reason.
+- The platform's reasons reach the admin in its own words with its status and code: `EMAIL_EXISTS`,
+  `ROLE_APP_FORBIDDEN`, `UNKNOWN_ROLE`, `ROLES_REQUIRED`, `INVITATION_DELIVERY_REQUIRED`, `CLIENT_NOT_AVAILABLE`,
+  `INVITE_DELIVERY_FAILED` (the invite form shows them in its error region). Anything else is `502
+  PLATFORM_ERROR` with no platform text.
+- Revoking an invitation deactivates the user on the platform; a console action reactivates.
+
+The pages: `AdminUsersPage` (search, a "Show" filter: everyone, invitation pending, invitation expired,
+inactive; the Invite user form in `FwFormDialog` with `FwPickList` for the roles and a switch for "show me the
+link"), `AdminUserDrawer` (fields, roles, the invitation's state, Resend by email, Get a new link, Revoke, each
+asking first with `useConfirm`), and `InviteLinkDialog`.
+
+## Activity: events and dispatch jobs
+
+Section `activity` (`/admin/activity`), one permission `{app}:admin:activity:view`: `GET /api/admin/events[/{id}]`
+and `GET /api/admin/dispatch-jobs[/{id}]`, read-only, newest first, paged by an offset cursor. The platform is
+asked for this application's records and the framework drops anything else again (an event type must start with
+`{app}:`, a job code's first segment must be the application). A job's attempts are asked for only after its code
+was checked. The event drawer lists the event's payload (cut at 20 000 characters) and its jobs; the job drawer lists
+the attempts with the subscriber's answer (cut at 4 000). **A job belongs to the application because its code is
+the application's event type; its target may be another application's subscriber**, so the drawer shows the
+target under "Delivery target" and says so. The target URL is shown without user info and query. Payloads and
+answers are visible to holders of `activity:view`. Tests: `PlatformActivityAdminTest` (with mutation checks).
+
 ## Configuration and secret status
 
 `GET /api/admin/config` (and `/{key}`) lists the settings your modules declare: where each value came
@@ -177,7 +225,8 @@ export const adminPages: readonly AdminPage[] = [
 The M4e pages (`ui/apps/orders/src/pages/admin/`) are `FwListPage` + `FwRecordDrawer` as child routes
 over the generated operations: `AdminEventTypesPage` and its drawer (fields, specification versions with
 the schema in `FwCodeBlock`), `AdminRolesPage` and its drawer (the permissions), `AdminConfigPage`
-(summary, health, filters). Their `AdminPage` entries are in `src/admin/pages.ts` and carry the child
+(summary, health, filters), `AdminUsersPage`/`AdminUserDrawer`, `AdminActivityPage` with `AdminEventDrawer` and
+`AdminJobDrawer` (the activity page has an Events / Dispatch jobs switch and two drawer routes). Their `AdminPage` entries are in `src/admin/pages.ts` and carry the child
 route with the same permission. A platform failure is a persistent alert on the page in the server's
 words; the shared `platform.ts` holds that and the status colours. The generated client is made from the
 committed `examples/orders-demo/web/openapi.json` (`pnpm --filter @flowcatalyst/orders-web generate`).
@@ -188,19 +237,17 @@ committed `examples/orders-demo/web/openapi.json` (`pnpm --filter @flowcatalyst/
 (`AdminFixture`); the demo's `OrdersAdminTest` uses the real sessions, roles and mapping with two
 principals (`AuthTesting.user("prn_admin", "orders-demo:admin")` and a clerk) and a fake platform
 (`DemoPlatform`, on `FakePlatform` from the flowcatalyst module's test-jar; `OrdersE2e` runs the same one).
-`PlatformAdminTest` and `AdminDefinitionsTest` (framework-flowcatalyst) cover the platform sections and
+`PlatformAdminTest`, `PlatformUsersAdminTest`, `PlatformActivityAdminTest` and `AdminDefinitionsTest` (framework-flowcatalyst) cover the platform sections and
 the sync. The shared vectors
-`conformance/admin/navigation.json`, `config.json` and `platform-reads.json` are what the Go framework compares. The SPA side has vitest for
+`conformance/admin/navigation.json`, `config.json`, `platform-reads.json`, `users.json` and `activity.json` are what the Go framework compares.
+The demo's `DemoDirectory` is a stateful fake of the platform's user and invitation routes, events and jobs
+(`/control/reset` puts it back; `/control/platform-reads?value=403` makes everything refuse). The SPA side has vitest for
 the pure functions, the gallery's Admin shell page under strict axe and CSP, and
-`ui/apps/orders/e2e/admin.spec.ts` against the real Java demo.
+`ui/apps/orders/e2e/admin.spec.ts` and `admin-data.spec.ts` against the real Java demo.
 
 ## Not built yet
 
-The users and invitations section and the scoped events and dispatch jobs sections wait on platform
-work: the `application-service` role has no user or invitation permission and there is no endpoint to
-list, resend or revoke invitations; `GET /api/events` and `GET /api/dispatch-jobs` are not confined to
-an application's own records ([flowcatalyst contract](../contracts/flowcatalyst.md), section 5). Also
-not built: writes from any admin page, and the database and Redis instance settings on the config page.
-Not verified against a real platform or in Firefox or WebKit; the platform's real answers to
-`GET /api/event-types` and `GET /api/roles` for an application service account were read from its
-source, not called.
+Writes from the event types, roles and config pages (read-only by design), `inviteRedirectUri` on an invitation,
+a way to hide event payloads, and the database and Redis instance settings on the config page. Not verified
+against a real platform (the routes were taken from the platform's F20 source and its wire contract, not called),
+Firefox or WebKit. See [contracts/admin.md](../contracts/admin.md) section 12 for the rulings and platform gaps.

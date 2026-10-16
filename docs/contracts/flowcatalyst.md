@@ -501,6 +501,8 @@ hands its handler, or the refusal when the service principal cannot be resolved.
 1. **Scoped reads.** `GET /api/events` and `GET /api/dispatch-jobs` scope by client only; the
    `application-service` role has neither view permission, and nothing confines an
    application-scoped caller to its own applications. Needed for M4e (Go, Rust, Java).
+   **Done by platform change F20 (2026-10-16)**: `platform:application-service:event:view` and `:dispatch-job:view`,
+   confined to the credential's applications; used by the admin activity section (admin contract section 12).
 2. **Default login tokens cannot call `/api/*`** (`token_use=identity`). The admin UI (M4d/M4e)
    calls the platform as the application's service account, enforcing the signed-in user's
    permissions in the framework, or uses an `apiAccess` OAuth client. Decision in the M4c/M4d
@@ -509,8 +511,13 @@ hands its handler, or the refusal when the service principal cannot be resolved.
    ported OIDC flow must omit it (M4c).
 4. **Missing platform capabilities for admin:** no endpoint to list, resend or revoke pending
    invitations; the `application-service` role lacks `user:view`, `user:create` and config
-   permissions (M4e).
-5. Java SDK: docs sync; read methods for events and dispatch jobs.
+   permissions (M4e). **Done by F20**: `user:view`, `user:create`, `invitation:view`, `invitation:manage` and the
+   routes `GET/POST /api/applications/{app}/users`, `.../invitations` (list, resend, revoke). Config
+   permissions are still missing. New app service tokens are needed to carry the new permissions.
+5. Java SDK: docs sync; read methods for events and dispatch jobs. F20 added the resources (events,
+   application users, dispatch-job reads) to `flowcatalyst-go/clients/java-sdk`, **unreleased**; until a release
+   the framework calls those routes over plain HTTP (`PlatformHttp`, admin contract section 12) and the pinned SDK
+   stays 0.0.11.
 6. **Audit causation** (found 2026-10-14, section 4b): `POST /api/audit-logs/batch` items have no
    `causationId` or `correlationId`, so an audit entry cannot be linked to the dispatch job or the
    request that caused it; the framework's audit payload already sends `correlationId` and the
@@ -520,7 +527,11 @@ hands its handler, or the refusal when the service principal cannot be resolved.
    application's own, but the platform should confine it as `GET /api/event-types` is. Also missing for
    an application service account: any `user:view`/invitation permission (admin users slice), a read of
    its own platform config (`GET /api/platform-config/{app}` returns secrets unmasked, secrets.md
-   section 5, so it is deliberately not used by the config page).
+   section 5, so it is deliberately not used by the config page). Found with the users and activity slices: a
+   job carries no subscriber application (the admin page cannot name whose endpoint a delivery went to); the
+   platform records admin writes against the service account, not the signed-in user; a `403` for "client is not
+   available to this application" has the same code (`FORBIDDEN`) as a missing permission, so the framework
+   tells them apart by the message (a code of its own would be better).
 
 ## 6. Tests
 

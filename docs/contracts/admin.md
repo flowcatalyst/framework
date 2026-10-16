@@ -22,11 +22,11 @@ slice**, inside that application, behind that application's sign-in, in its own 
 
 | Section (M4e) | What it shows | Source |
 |---|---|---|
-| users and invitations | the users who hold this application's roles; invite, resend, revoke | the platform, as the application's service account |
+| users and invitations | the users who hold this application's roles; invite, resend, revoke (built, section 12) | the platform, as the application's service account |
 | event types | this application's event types and their payload specification versions (built, section 11) | the platform |
 | roles | this application's roles and their permissions, as projected from the platform (built, section 11) | the platform |
 | application config | the application's config and secret *status* (never a secret value; built, section 10) | the application itself |
-| scoped events and dispatch jobs | the application's own events and delivery attempts | the platform (needs a scoped read endpoint, flowcatalyst.md section 5) |
+| scoped events and dispatch jobs | the application's own events and delivery attempts (built, section 12) | the platform (the scoped reads of platform change F20) |
 | health | readiness and the checks | the application itself (`/api/admin/about`, part of this skeleton) |
 
 M4d builds **none** of the data sections. It builds what every one of them needs: the registry in
@@ -87,7 +87,8 @@ is the shape the platform's definition sync accepts (flowcatalyst.md section 2).
 | Permission | Grants |
 |---|---|
 | `{app}:admin:console:view` | the admin area at all: the navigation and the about operation. Held by every admin role |
-| `{app}:admin:{section}:view` | reading a section (M4e built: `event-types`, `roles`, `config`; planned: `users`, `events`, `dispatch-jobs`) |
+| `{app}:admin:{section}:view` | reading a section (M4e: `event-types`, `roles`, `config`, `users`, `activity`) |
+| `{app}:admin:users:invite`, `:resend`, `:revoke` | inviting a user, sending an invitation again, revoking one (section 12) |
 | `{app}:admin:{section}:manage` | changing a section |
 
 One suggested role, `{app}:admin`, grants `{app}:admin:*:*`. The application maps its platform role
@@ -333,3 +334,103 @@ sync without the application declaring them. The role lists the permissions one 
 wildcard in a role; the application's *permission mapping* may still use `{app}:admin:*:*`). An application
 that declares its own role `admin` gets nothing added. Role and permission names obey the platform rules
 (letters, digits and `_.-` per colon-separated segment, no whitespace; the sync adds the `{app}:` prefix).
+
+## 12. Users, invitations and activity (M4e slices 1 and 4, built 2026-10-16)
+
+The platform side exists since its change F20 (`flowcatalyst-go`, `docs/platform-bug-fixes.md` F20,
+`docs/wire-contract.md` "Application admin"): the built-in `platform:application-service` role carries
+`event:view`, `dispatch-job:view`, `user:view`, `user:create`, `invitation:view` and `invitation:manage`,
+every one confined to the applications the credential is bound to. **Every application service account must
+mint a new token** before these work (tokens carry permissions from mint time). Modules (in
+`framework-flowcatalyst`, list them after `AdminModule` and `FlowCatalystModule`):
+`PlatformUsersAdminModule` and `PlatformActivityAdminModule`.
+
+**Transport (interim).** The Java SDK this framework pins (0.0.11) has no methods for these routes (the
+platform's SDK change is unreleased). `PlatformClient` therefore calls them over plain HTTP with the same
+service-account token (one retry after a `401` with a fresh token), and the other framework languages call
+the same routes. When an SDK carrying the resources is released, the methods can move onto it; the
+module and the wire do not change.
+
+### 12.1 Users section: `users`, path `/admin/users`
+
+| Operation | Id | Permission | Platform call |
+|---|---|---|---|
+| `GET /api/admin/users` | `listAdminUsers` | `{app}:admin:users:view` | `GET /api/applications/{app}/users` |
+| `GET /api/admin/users/{id}` | `getAdminUser` | `users:view` | `.../users/{id}` |
+| `POST /api/admin/users` (201) | `inviteAdminUser` | `{app}:admin:users:invite` | `POST .../users` |
+| `GET /api/admin/invitations` | `listAdminInvitations` | `users:view` | `GET .../invitations` |
+| `POST /api/admin/invitations/{id}/resend` | `resendAdminInvitation` | `{app}:admin:users:resend` | `POST .../invitations/{id}/resend` |
+| `DELETE /api/admin/invitations/{id}` (204) | `revokeAdminInvitation` | `{app}:admin:users:revoke` | `DELETE .../invitations/{id}` |
+
+Lists answer `Page<T>` (`items`, `nextCursor`); the cursor is the next platform page number (the platform pages
+by number): `nextCursor` is present when `(page + 1) * limit < total`; `limit` 1 to 200 (default 50), `after` a
+non-negative integer else `400 INVALID_CURSOR`. User filters: `q`, `active`, `clientId`, `roles` (CSV). Invitation
+filter: `status` (`PENDING`, `EXPIRED`). `AdminUser`: `id, email, name, active, clientId, idpType, roles,
+invitation?, lastLoginAt?, createdAt` (never a hash, token, link or second-factor state: the projection reads named
+fields only). `AdminInvitation`: `userId, email, name, clientId, roles, status, createdAt, expiresAt?`.
+Invite body: `{email, name, clientId (id or identifier), roles[1..50], sendInvitation? (default true),
+returnInviteLink? (default false)}` answers `{id, invitationSent, inviteLink?}`; resend body `{returnInviteLink?}`
+(false: the platform emails it) answers `{expiresAt?, inviteLink?}`.
+
+Rules (vector `conformance/admin/users.json`):
+
+1. **The application is the configured one.** The application code in every platform path is
+   `flowcatalyst.application`; nothing the caller sends can change it. An id outside `[A-Za-z0-9_-]{1,64}` is a
+   `404` (`USER_NOT_FOUND`, `INVITATION_NOT_FOUND`) without a platform call, and is percent-encoded anyway.
+2. **Roles are the application's.** Roles shown are the ones prefixed `{app}:` (whatever the platform sends); a role
+   filter keeps own roles only and asks nothing when none is left (a foreign role matches nothing); an invite
+   naming another application's role (`app:role` with another `app`) is `403 ROLE_APP_FORBIDDEN` before the
+   platform is asked (a short name without a colon is left to the platform).
+3. **The invitation link is a credential.** It is in an answer only when the caller asked for it
+   (`returnInviteLink`), whatever the platform sends; that answer has `Cache-Control: no-store`; no list, error
+   answer, log line or exception text carries it (`InviteResult.toString` withholds it); the UI shows it once, in
+   one dialog, and keeps it in no URL, storage or list.
+4. **The platform's reasons reach the person in its words.** A platform `400`, `409` or `422`, a `403` with a reason
+   of its own (`ROLE_APP_FORBIDDEN`, and `FORBIDDEN` "client is not available to this application", which is
+   answered as `403 CLIENT_NOT_AVAILABLE` so it is not mistaken for the admin gate's `FORBIDDEN`) and
+   `500 INVITE_DELIVERY_FAILED` (answered `502`) are passed on with the platform's status, code and message,
+   cleaned of control characters and cut at 300 characters. Known codes: `ROLE_APP_FORBIDDEN`, `UNKNOWN_ROLE`,
+   `ROLES_REQUIRED`, `EMAIL_EXISTS`, `INVITATION_DELIVERY_REQUIRED`, `CLIENT_REQUIRED`, `INVITE_DELIVERY_FAILED`.
+   Every other failure, and a `403 FORBIDDEN` (the service account lacks the platform permission), is
+   `502 PLATFORM_ERROR` with a message naming no host, token or platform text (for a change it says the account
+   needs the platform's permission to manage the resource); a platform `404` of one record is `404`.
+5. Revoke deactivates the user (platform decision 3 of F20); the user then no longer awaits an invitation.
+
+### 12.2 Activity section: `activity`, path `/admin/activity`
+
+One permission, `{app}:admin:activity:view`, for four operations: `GET /api/admin/events` (`listAdminEvents`;
+filters `type` (exact), `subject`, `correlationId`, `clientId`, `since`, `until` (RFC 3339, else `400
+INVALID_TIMESTAMP`)), `GET /api/admin/events/{id}` (`getAdminEvent`: the event, its payload as JSON text cut at
+20 000 characters with `dataTruncated`, `context`, `causationId`, and this application's `dispatchJobs`), `GET
+/api/admin/dispatch-jobs` (`listAdminDispatchJobs`; filters `status` (an upper-case word, else `400
+INVALID_STATUS`), `code` (exact), `clientId`, `messageGroup`, `since`, `until`) and `GET
+/api/admin/dispatch-jobs/{id}` (`getAdminDispatchJob`: the job, `protocol`, `timeoutSeconds`, `maxRetries`,
+`retryStrategy`, `lastError` and the `attempts`, each with the subscriber's `responseBody` cut at 4 000
+characters with `responseBodyTruncated`). Paging: the platform pages by `limit`/`offset`; the framework asks for
+`limit + 1` rows and answers `nextCursor = offset + limit` when more came back (`after` is the offset).
+Vector `conformance/admin/activity.json`.
+
+1. The platform is asked with `applications={app}`, and the framework confines again: an event whose type does not
+   start with `{app}:` and a job whose code's first segment is not the application's are dropped from lists and are
+   `404` (`EVENT_NOT_FOUND`, `DISPATCH_JOB_NOT_FOUND`) by id; a job's attempts are asked for only after its code
+   was checked; an event's jobs are filtered the same way. A `type` or `code` filter of another application is an
+   empty page without a platform call.
+2. **Cross-application deliveries (platform decision 2 of F20).** A job is the application's because its code is
+   the application's event type; its target may be another application's subscriber. The pages show the job and
+   its `targetUrl` under the heading "Delivery target" with a sentence saying so. `targetUrl` loses user info,
+   query and fragment (they often carry the subscriber's credential); its path is shown as is. The platform sends
+   no subscriber application on a job, so the label cannot name it (platform gap).
+3. Payloads (`data`) and subscriber responses are shown to the holders of `activity:view`; both are bounded.
+
+### 12.3 Rulings taken (defaults applied; owner to confirm)
+
+1. The admin pages are **application-wide**: they are not narrowed to the signed-in user's client. The permission
+   is the gate; the service account reaches every client the application is enabled for. (Narrowing by the
+   session's client would be a one-line filter if wanted.)
+2. Users, invitations, events and jobs are one section each (`users`, `activity`) rather than four; invitations
+   are read with `users:view`.
+3. `inviteRedirectUri` is not exposed (the invitee lands on the platform's default page after setting a
+   password); add it as an optional body field when the first application wants it.
+4. Event payloads and attempt bodies are shown (bounded). An option to hide them is a small addition.
+5. Admin writes are not audited by the framework: the platform records them against the service account, not
+   against the signed-in user. (Platform gap: no way to name the acting user.)
