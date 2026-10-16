@@ -44,6 +44,341 @@
         "x-fw-permission": "orders-demo:admin:console:view"
       }
     },
+    "/api/admin/config": {
+      "get": {
+        "operationId": "listAdminConfig",
+        "summary": "The application's settings, where they came from, and secret status",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SET",
+                "DEFAULT",
+                "UNSET"
+              ]
+            }
+          },
+          {
+            "name": "secret",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:config:view"
+      }
+    },
+    "/api/admin/config/{key}": {
+      "get": {
+        "operationId": "getAdminConfigSetting",
+        "summary": "One setting",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConfigSetting"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "SETTING_NOT_FOUND: no such setting is declared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:config:view"
+      }
+    },
+    "/api/admin/event-types": {
+      "get": {
+        "operationId": "listAdminEventTypes",
+        "summary": "The application's event types, as the platform holds them",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CURRENT",
+                "ARCHIVED"
+              ]
+            }
+          },
+          {
+            "name": "subdomain",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "aggregate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAdminEventType"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:event-types:view"
+      }
+    },
+    "/api/admin/event-types/{id}": {
+      "get": {
+        "operationId": "getAdminEventType",
+        "summary": "One event type with its specification versions",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminEventTypeDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "EVENT_TYPE_NOT_FOUND: there is no such event type of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:event-types:view"
+      }
+    },
     "/api/admin/navigation": {
       "get": {
         "operationId": "getAdminNavigation",
@@ -120,6 +455,186 @@
           }
         ],
         "x-fw-permission": "orders-demo:admin:orders:view"
+      }
+    },
+    "/api/admin/roles": {
+      "get": {
+        "operationId": "listAdminRoles",
+        "summary": "The application's roles, as the platform holds them",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageAdminRole"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:roles:view"
+      }
+    },
+    "/api/admin/roles/{name}": {
+      "get": {
+        "operationId": "getAdminRole",
+        "summary": "One role with its permissions",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRoleDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "ROLE_NOT_FOUND: there is no such role of this application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "PLATFORM_ERROR: the platform refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PLATFORM_NOT_CONFIGURED: the application has no platform connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:roles:view"
       }
     },
     "/api/orders": {
@@ -650,6 +1165,186 @@
         ],
         "additionalProperties": false
       },
+      "AdminConfig": {
+        "type": "object",
+        "properties": {
+          "environment": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "set": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaulted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unset": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminConfigSetting"
+            }
+          },
+          "health": {
+            "$ref": "#/components/schemas/AdminHealth"
+          }
+        },
+        "required": [
+          "environment",
+          "total",
+          "set",
+          "defaulted",
+          "unset",
+          "settings",
+          "health"
+        ],
+        "additionalProperties": false
+      },
+      "AdminConfigSetting": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "SET",
+              "DEFAULT",
+              "UNSET"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "withheld": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "module",
+          "type",
+          "secret",
+          "required",
+          "state",
+          "source",
+          "withheld"
+        ],
+        "additionalProperties": false
+      },
+      "AdminEventType": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subdomain": {
+            "type": "string"
+          },
+          "aggregate": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "ARCHIVED"
+            ]
+          },
+          "versionCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "subdomain",
+          "aggregate",
+          "event",
+          "status",
+          "versionCount"
+        ],
+        "additionalProperties": false
+      },
+      "AdminEventTypeDetail": {
+        "type": "object",
+        "properties": {
+          "eventType": {
+            "$ref": "#/components/schemas/AdminEventType"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminSpecVersion"
+            }
+          }
+        },
+        "required": [
+          "eventType",
+          "versions"
+        ],
+        "additionalProperties": false
+      },
+      "AdminHealth": {
+        "type": "object",
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCheck"
+            }
+          }
+        },
+        "required": [
+          "ready",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
       "AdminNavigation": {
         "type": "object",
         "properties": {
@@ -662,6 +1357,61 @@
         },
         "required": [
           "sections"
+        ],
+        "additionalProperties": false
+      },
+      "AdminRole": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "clientManaged": {
+            "type": "boolean"
+          },
+          "permissionCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "displayName",
+          "source",
+          "clientManaged",
+          "permissionCount"
+        ],
+        "additionalProperties": false
+      },
+      "AdminRoleDetail": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/AdminRole"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "permissions"
         ],
         "additionalProperties": false
       },
@@ -692,6 +1442,25 @@
           "title",
           "path",
           "permission"
+        ],
+        "additionalProperties": false
+      },
+      "AdminSpecVersion": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "status"
         ],
         "additionalProperties": false
       },
@@ -1029,6 +1798,42 @@
           "open",
           "cancelled",
           "openTotalCents"
+        ],
+        "additionalProperties": false
+      },
+      "PageAdminEventType": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminEventType"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "PageAdminRole": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminRole"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
         ],
         "additionalProperties": false
       },

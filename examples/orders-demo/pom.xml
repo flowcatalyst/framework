@@ -40,6 +40,11 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-admin</artifactId>
     </dependency>
+    <!-- The admin sections projected from the platform (event types, roles) and the definition sync. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-flowcatalyst</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-auth</artifactId>
@@ -68,6 +73,13 @@
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- FakePlatform: the platform's reads for the admin pages in the tests and the end-to-end launcher. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-flowcatalyst</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>

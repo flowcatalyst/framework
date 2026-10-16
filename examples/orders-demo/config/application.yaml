@@ -11,3 +11,12 @@ database:
       password: ""
       pool: { max: 10, min-idle: 1, connect-timeout: 5s }
       migrate: true
+
+# The admin area's event types and roles read the platform as this application's service account.
+# The demo runs without a platform unless it is switched on: FLOWCATALYST_ENABLED=true with
+# FLOWCATALYST_BASE_URL, FLOWCATALYST_CLIENT_ID and FLOWCATALYST_CLIENT_SECRET (never committed).
+flowcatalyst:
+  enabled: false
+  application: orders-demo
+  receivers:
+    enabled: false
