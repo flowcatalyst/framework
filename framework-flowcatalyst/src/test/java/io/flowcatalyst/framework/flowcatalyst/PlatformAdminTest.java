@@ -238,12 +238,11 @@ class PlatformAdminTest {
     assertThat(one.status()).isEqualTo(200);
     assertThat(one.tree().get("permissions")).extracting(JsonNode::asString).containsExactly("orders:sales:order:read", "orders:sales:order:write");
 
-    long before = platform.requests().size();
     TestResponse foreign = get("/api/admin/roles/billing:admin", ROLES);
     assertThat(foreign.status()).isEqualTo(404);
     assertThat(foreign.tree().get("error").asString()).isEqualTo("ROLE_NOT_FOUND");
     // refused before the platform was asked
-    assertThat(platform.requests().size()).isEqualTo(before);
+    assertThat(platform.requests()).noneMatch(x -> x.path().startsWith("/api/roles/billing"));
   }
 
   // ---- the gate and the platform's answers -----------------------------------------------------
@@ -268,10 +267,9 @@ class PlatformAdminTest {
 
   @Test
   void aRefusedCallerNeverReachesThePlatform() {
-    long before = platform.requests().size();
     get("/api/admin/roles", CONSOLE);
     get("/api/admin/event-types", CONSOLE);
-    assertThat(platform.requests().size()).isEqualTo(before);
+    assertThat(platform.requests()).noneMatch(x -> x.path().startsWith("/api/"));
   }
 
   @Test

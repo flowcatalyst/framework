@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.flowcatalyst;
 
+import io.flowcatalyst.framework.admin.Admin;
 import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.Secret;
 import io.flowcatalyst.framework.config.Setting;
@@ -259,8 +260,14 @@ public final class FlowCatalystModule implements Module {
             return DefinitionCatalog.empty();
           }
           Config config = lookup.get(Config.class);
+          // The admin sections' permissions and the suggested admin role (M4e), unless the
+          // application declared its own admin role.
+          List<Definitions.Contribution> contributions =
+              new ArrayList<>(lookup.contributions(Definitions.Contribution.class));
+          contributions.addAll(
+              AdminDefinitions.contributions(Admin.sections(lookup), List.copyOf(contributions)));
           return DefinitionCatalog.build(
-              lookup.contributions(Definitions.Contribution.class),
+              contributions,
               client.application(),
               config.find(SUBSCRIPTION_TARGET_BASE_URL).isPresent());
         });
