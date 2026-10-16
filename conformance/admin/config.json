@@ -1,0 +1,554 @@
+{
+  "description" : "GET /api/admin/config and /api/admin/config/{key} (admin contract section 10). Setup: application 'acme' with the admin module and the config module; module 'demo' declares 'declare' in order; the process environment is 'environment' and no config files exist. A caller holding acme:admin:config:view gets 200 with the settings that match the filters (state, secret, q = case-insensitive substring of key or module) in declaration order, plus total (matching), set/defaulted/unset (of all) and the health of the application; otherwise 403 FORBIDDEN. Per setting: state SET (environment or file gave a value), DEFAULT, UNSET; source 'environment variable NAME', 'default' or 'not set'; value only when safe: never for a secret, never for a key whose last words name a credential (secret, password, passwd, passphrase, token, credential, api-key, private-key, access-key, signing-key, salt), URLs without user info and query; withheld=true marks a value that exists and is not shown. Durations are ISO-8601 (PT30S). Absent optional fields (value, description) are omitted, not null. The effective values are never part of an error. An implementation declares settings of its own as well (module 'core' and others): the expectations list only the settings of module 'demo', and the counts (total, set, defaulted, unset) are not compared; 'type' is human text and is not compared; 'ready' is the readiness of the case's application. Settings are compared as parsed JSON.",
+  "application" : "acme",
+  "environment" : {
+    "APP_ENV" : "test",
+    "DEMO_MAIL_API_KEY" : "key-material-DO-NOT-SHOW",
+    "DEMO_NAME" : "orders",
+    "DEMO_PASSWORD" : "s3cr3t-value-DO-NOT-SHOW",
+    "DEMO_TAGS" : "a,b",
+    "DEMO_URL" : "https://user:pw999@api.example.test:8443/v1?token=abc",
+    "DEMO_WORKERS" : "4"
+  },
+  "declare" : [ {
+    "key" : "demo.password",
+    "type" : "secret",
+    "description" : "The database password."
+  }, {
+    "key" : "demo.unused-token",
+    "type" : "secret"
+  }, {
+    "key" : "demo.mail-api-key",
+    "type" : "string"
+  }, {
+    "key" : "demo.timeout",
+    "type" : "duration",
+    "default" : "30s",
+    "description" : "Request timeout."
+  }, {
+    "key" : "demo.workers",
+    "type" : "integer"
+  }, {
+    "key" : "demo.url",
+    "type" : "uri"
+  }, {
+    "key" : "demo.name",
+    "type" : "string",
+    "required" : true
+  }, {
+    "key" : "demo.tags",
+    "type" : "list"
+  }, {
+    "key" : "demo.enabled",
+    "type" : "bool",
+    "default" : "true"
+  } ],
+  "cases" : [ {
+    "name" : "everything",
+    "path" : "/api/admin/config",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ {
+          "key" : "demo.password",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_PASSWORD",
+          "withheld" : true,
+          "description" : "The database password."
+        }, {
+          "key" : "demo.unused-token",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "UNSET",
+          "source" : "not set",
+          "withheld" : false
+        }, {
+          "key" : "demo.mail-api-key",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_MAIL_API_KEY",
+          "withheld" : true
+        }, {
+          "key" : "demo.timeout",
+          "module" : "demo",
+          "type" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "PT30S",
+          "withheld" : false,
+          "description" : "Request timeout."
+        }, {
+          "key" : "demo.workers",
+          "module" : "demo",
+          "type" : "an integer",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_WORKERS",
+          "value" : "4",
+          "withheld" : false
+        }, {
+          "key" : "demo.url",
+          "module" : "demo",
+          "type" : "a URI",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_URL",
+          "value" : "https://api.example.test:8443/v1",
+          "withheld" : false
+        }, {
+          "key" : "demo.name",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : false,
+          "required" : true,
+          "state" : "SET",
+          "source" : "environment variable DEMO_NAME",
+          "value" : "orders",
+          "withheld" : false
+        }, {
+          "key" : "demo.tags",
+          "module" : "demo",
+          "type" : "a list of strings (YAML list, or comma-separated text)",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_TAGS",
+          "value" : "a,b",
+          "withheld" : false
+        }, {
+          "key" : "demo.enabled",
+          "module" : "demo",
+          "type" : "true or false",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "true",
+          "withheld" : false
+        } ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "by wildcard",
+    "path" : "/api/admin/config",
+    "permissions" : [ "acme:admin:*:*" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ {
+          "key" : "demo.password",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_PASSWORD",
+          "withheld" : true,
+          "description" : "The database password."
+        }, {
+          "key" : "demo.unused-token",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "UNSET",
+          "source" : "not set",
+          "withheld" : false
+        }, {
+          "key" : "demo.mail-api-key",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_MAIL_API_KEY",
+          "withheld" : true
+        }, {
+          "key" : "demo.timeout",
+          "module" : "demo",
+          "type" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "PT30S",
+          "withheld" : false,
+          "description" : "Request timeout."
+        }, {
+          "key" : "demo.workers",
+          "module" : "demo",
+          "type" : "an integer",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_WORKERS",
+          "value" : "4",
+          "withheld" : false
+        }, {
+          "key" : "demo.url",
+          "module" : "demo",
+          "type" : "a URI",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_URL",
+          "value" : "https://api.example.test:8443/v1",
+          "withheld" : false
+        }, {
+          "key" : "demo.name",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : false,
+          "required" : true,
+          "state" : "SET",
+          "source" : "environment variable DEMO_NAME",
+          "value" : "orders",
+          "withheld" : false
+        }, {
+          "key" : "demo.tags",
+          "module" : "demo",
+          "type" : "a list of strings (YAML list, or comma-separated text)",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_TAGS",
+          "value" : "a,b",
+          "withheld" : false
+        }, {
+          "key" : "demo.enabled",
+          "module" : "demo",
+          "type" : "true or false",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "true",
+          "withheld" : false
+        } ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "not set only",
+    "path" : "/api/admin/config?state=UNSET",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ {
+          "key" : "demo.unused-token",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "UNSET",
+          "source" : "not set",
+          "withheld" : false
+        } ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "defaults only",
+    "path" : "/api/admin/config?state=DEFAULT",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ {
+          "key" : "demo.timeout",
+          "module" : "demo",
+          "type" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "PT30S",
+          "withheld" : false,
+          "description" : "Request timeout."
+        }, {
+          "key" : "demo.enabled",
+          "module" : "demo",
+          "type" : "true or false",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "true",
+          "withheld" : false
+        } ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "secrets only",
+    "path" : "/api/admin/config?secret=true",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ {
+          "key" : "demo.password",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_PASSWORD",
+          "withheld" : true,
+          "description" : "The database password."
+        }, {
+          "key" : "demo.unused-token",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "UNSET",
+          "source" : "not set",
+          "withheld" : false
+        } ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "text is a case-insensitive substring of the key",
+    "path" : "/api/admin/config?q=WORKERS",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ {
+          "key" : "demo.workers",
+          "module" : "demo",
+          "type" : "an integer",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_WORKERS",
+          "value" : "4",
+          "withheld" : false
+        } ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "text matches the module too",
+    "path" : "/api/admin/config?q=dem",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ {
+          "key" : "demo.password",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_PASSWORD",
+          "withheld" : true,
+          "description" : "The database password."
+        }, {
+          "key" : "demo.unused-token",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : true,
+          "required" : false,
+          "state" : "UNSET",
+          "source" : "not set",
+          "withheld" : false
+        }, {
+          "key" : "demo.mail-api-key",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_MAIL_API_KEY",
+          "withheld" : true
+        }, {
+          "key" : "demo.timeout",
+          "module" : "demo",
+          "type" : "a duration such as 500ms, 30s, 5m, 2h, 1d or PT30S",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "PT30S",
+          "withheld" : false,
+          "description" : "Request timeout."
+        }, {
+          "key" : "demo.workers",
+          "module" : "demo",
+          "type" : "an integer",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_WORKERS",
+          "value" : "4",
+          "withheld" : false
+        }, {
+          "key" : "demo.url",
+          "module" : "demo",
+          "type" : "a URI",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_URL",
+          "value" : "https://api.example.test:8443/v1",
+          "withheld" : false
+        }, {
+          "key" : "demo.name",
+          "module" : "demo",
+          "type" : "a string",
+          "secret" : false,
+          "required" : true,
+          "state" : "SET",
+          "source" : "environment variable DEMO_NAME",
+          "value" : "orders",
+          "withheld" : false
+        }, {
+          "key" : "demo.tags",
+          "module" : "demo",
+          "type" : "a list of strings (YAML list, or comma-separated text)",
+          "secret" : false,
+          "required" : false,
+          "state" : "SET",
+          "source" : "environment variable DEMO_TAGS",
+          "value" : "a,b",
+          "withheld" : false
+        }, {
+          "key" : "demo.enabled",
+          "module" : "demo",
+          "type" : "true or false",
+          "secret" : false,
+          "required" : false,
+          "state" : "DEFAULT",
+          "source" : "default",
+          "value" : "true",
+          "withheld" : false
+        } ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "nothing matches",
+    "path" : "/api/admin/config?q=zzz",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "environment" : "test",
+        "settings" : [ ],
+        "ready" : true
+      }
+    }
+  }, {
+    "name" : "one secret",
+    "path" : "/api/admin/config/demo.password",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "key" : "demo.password",
+        "module" : "demo",
+        "type" : "a string",
+        "secret" : true,
+        "required" : false,
+        "state" : "SET",
+        "source" : "environment variable DEMO_PASSWORD",
+        "withheld" : true,
+        "description" : "The database password."
+      }
+    }
+  }, {
+    "name" : "one credential-named string",
+    "path" : "/api/admin/config/demo.mail-api-key",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "key" : "demo.mail-api-key",
+        "module" : "demo",
+        "type" : "a string",
+        "secret" : false,
+        "required" : false,
+        "state" : "SET",
+        "source" : "environment variable DEMO_MAIL_API_KEY",
+        "withheld" : true
+      }
+    }
+  }, {
+    "name" : "one url",
+    "path" : "/api/admin/config/demo.url",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 200,
+      "body" : {
+        "key" : "demo.url",
+        "module" : "demo",
+        "type" : "a URI",
+        "secret" : false,
+        "required" : false,
+        "state" : "SET",
+        "source" : "environment variable DEMO_URL",
+        "value" : "https://api.example.test:8443/v1",
+        "withheld" : false
+      }
+    }
+  }, {
+    "name" : "one unknown key",
+    "path" : "/api/admin/config/no.such.key",
+    "permissions" : [ "acme:admin:config:view" ],
+    "expect" : {
+      "status" : 404,
+      "error" : "SETTING_NOT_FOUND"
+    }
+  }, {
+    "name" : "the console permission alone",
+    "path" : "/api/admin/config",
+    "permissions" : [ "acme:admin:console:view" ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "no permissions",
+    "path" : "/api/admin/config",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "no permissions, one key",
+    "path" : "/api/admin/config/demo.password",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "error" : "FORBIDDEN"
+    }
+  } ]
+}

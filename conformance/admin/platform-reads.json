@@ -1,0 +1,432 @@
+{
+  "description" : "GET /api/admin/event-types, /api/admin/event-types/{id}, /api/admin/roles and /api/admin/roles/{name} (admin contract section 11). Setup: application 'orders' (flowcatalyst.application) with the admin module and the platform admin module; the platform answers the reads in 'platform' (paths relative to its base; the same answer whatever the query, as a real platform that ignores a filter would), unless a case has an 'override' {path, status, body}. The service account is the caller on the platform; the signed-in user's permissions decide first: without the section's permission the answer is 403 FORBIDDEN and the platform is not called. Lists keep only records of the application (an event type's 'application', a role named '{application}:...' whose applicationCode is the application), apply the status/subdomain/aggregate/source and q filters themselves (q: case-insensitive substring of code, name or description / of name, displayName or description), sort ascending by code / name and page by cursor: limit (default 50, 1 to 200), nextCursor = the key of the last item when more follow, after = keys greater than the cursor. A record of another application is 404 EVENT_TYPE_NOT_FOUND / ROLE_NOT_FOUND (a role name outside the application is refused without calling the platform), a 404 from the platform likewise. A platform refusal or failure is 502 PLATFORM_ERROR and the message names no host, token or platform text. Expectations list ids/keys, not full bodies; 'expect.message' is compared where given.",
+  "application" : "orders",
+  "platform" : {
+    "/api/event-types" : {
+      "items" : [ {
+        "id" : "et_2",
+        "code" : "orders:sales:order:shipped",
+        "name" : "Order shipped",
+        "description" : "About Order shipped",
+        "application" : "orders",
+        "subdomain" : "sales",
+        "aggregate" : "order",
+        "eventName" : "shipped",
+        "status" : "CURRENT",
+        "specVersions" : [ ]
+      }, {
+        "id" : "et_1",
+        "code" : "orders:sales:order:placed",
+        "name" : "Order placed",
+        "description" : "About Order placed",
+        "application" : "orders",
+        "subdomain" : "sales",
+        "aggregate" : "order",
+        "eventName" : "placed",
+        "status" : "CURRENT",
+        "specVersions" : [ {
+          "version" : "1.0",
+          "status" : "CURRENT",
+          "schema" : {
+            "type" : "object"
+          }
+        } ]
+      }, {
+        "id" : "et_3",
+        "code" : "orders:stock:item:counted",
+        "name" : "Item counted",
+        "description" : "About Item counted",
+        "application" : "orders",
+        "subdomain" : "stock",
+        "aggregate" : "item",
+        "eventName" : "counted",
+        "status" : "ARCHIVED",
+        "specVersions" : [ ]
+      }, {
+        "id" : "et_other",
+        "code" : "billing:invoice:invoice:issued",
+        "name" : "Issued",
+        "description" : "About Issued",
+        "application" : "billing",
+        "subdomain" : "invoice",
+        "aggregate" : "invoice",
+        "eventName" : "issued",
+        "status" : "CURRENT",
+        "specVersions" : [ ]
+      } ]
+    },
+    "/api/event-types/et_1" : {
+      "id" : "et_1",
+      "code" : "orders:sales:order:placed",
+      "name" : "Order placed",
+      "description" : "About Order placed",
+      "application" : "orders",
+      "subdomain" : "sales",
+      "aggregate" : "order",
+      "eventName" : "placed",
+      "status" : "CURRENT",
+      "specVersions" : [ {
+        "version" : "1.0",
+        "status" : "CURRENT",
+        "schema" : {
+          "type" : "object"
+        }
+      } ]
+    },
+    "/api/event-types/et_other" : {
+      "id" : "et_other",
+      "code" : "billing:invoice:invoice:issued",
+      "name" : "Issued",
+      "description" : "About Issued",
+      "application" : "billing",
+      "subdomain" : "invoice",
+      "aggregate" : "invoice",
+      "eventName" : "issued",
+      "status" : "CURRENT",
+      "specVersions" : [ ]
+    },
+    "/api/roles" : {
+      "roles" : [ {
+        "id" : "rol_1",
+        "name" : "orders:clerk",
+        "applicationCode" : "orders",
+        "displayName" : "Clerk",
+        "source" : "SDK",
+        "clientManaged" : false,
+        "permissions" : [ "orders:sales:order:write", "orders:sales:order:read" ]
+      }, {
+        "id" : "rol_2",
+        "name" : "orders:admin",
+        "applicationCode" : "orders",
+        "displayName" : "Administrator",
+        "source" : "SDK",
+        "clientManaged" : false,
+        "permissions" : [ "orders:admin:console:view" ]
+      }, {
+        "id" : "rol_8",
+        "name" : "platform:super-admin",
+        "applicationCode" : "platform",
+        "displayName" : "Super",
+        "source" : "CODE",
+        "clientManaged" : false,
+        "permissions" : [ "platform:*:*:*" ]
+      }, {
+        "id" : "rol_9",
+        "name" : "billing:admin",
+        "applicationCode" : "billing",
+        "displayName" : "Billing admin",
+        "source" : "SDK",
+        "clientManaged" : false,
+        "permissions" : [ "billing:x:y:z" ]
+      } ],
+      "total" : 4
+    },
+    "/api/roles/orders:clerk" : {
+      "id" : "rol_1",
+      "name" : "orders:clerk",
+      "applicationCode" : "orders",
+      "displayName" : "Clerk",
+      "source" : "SDK",
+      "clientManaged" : false,
+      "permissions" : [ "orders:sales:order:write", "orders:sales:order:read" ]
+    }
+  },
+  "cases" : [ {
+    "name" : "event types, sorted, this application's only",
+    "path" : "/api/admin/event-types",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:sales:order:placed", "orders:sales:order:shipped", "orders:stock:item:counted" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "event types, a page of two",
+    "path" : "/api/admin/event-types?limit=2",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:sales:order:placed", "orders:sales:order:shipped" ],
+      "nextCursor" : "orders:sales:order:shipped"
+    }
+  }, {
+    "name" : "event types, the next page",
+    "path" : "/api/admin/event-types?limit=2&after=orders:sales:order:shipped",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:stock:item:counted" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "event types, archived only",
+    "path" : "/api/admin/event-types?status=ARCHIVED",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:stock:item:counted" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "event types, a subdomain and an aggregate",
+    "path" : "/api/admin/event-types?subdomain=sales&aggregate=order",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:sales:order:placed", "orders:sales:order:shipped" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "event types, text",
+    "path" : "/api/admin/event-types?q=SHIPPED",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:sales:order:shipped" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "event types, limit above the maximum is the maximum",
+    "path" : "/api/admin/event-types?limit=1000",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:sales:order:placed", "orders:sales:order:shipped", "orders:stock:item:counted" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "event types, limit below one is one",
+    "path" : "/api/admin/event-types?limit=0",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:sales:order:placed" ],
+      "nextCursor" : "orders:sales:order:placed"
+    }
+  }, {
+    "name" : "an event type",
+    "path" : "/api/admin/event-types/et_1",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "code" : "orders:sales:order:placed",
+      "versions" : [ "1.0" ]
+    }
+  }, {
+    "name" : "another application's event type",
+    "path" : "/api/admin/event-types/et_other",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 404,
+      "platformCalled" : true,
+      "error" : "EVENT_TYPE_NOT_FOUND"
+    }
+  }, {
+    "name" : "an event type the platform does not know",
+    "path" : "/api/admin/event-types/et_none",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "override" : {
+      "path" : "/api/event-types/et_none",
+      "status" : 404,
+      "body" : {
+        "error" : "nope"
+      }
+    },
+    "expect" : {
+      "status" : 404,
+      "platformCalled" : true,
+      "error" : "EVENT_TYPE_NOT_FOUND"
+    }
+  }, {
+    "name" : "event types, the platform refuses",
+    "path" : "/api/admin/event-types",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "override" : {
+      "path" : "/api/event-types",
+      "status" : 403,
+      "body" : {
+        "error" : "forbidden"
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "platformCalled" : true,
+      "error" : "PLATFORM_ERROR",
+      "message" : "the platform refused this read for the application's service account; it needs the platform's view permission for this resource"
+    }
+  }, {
+    "name" : "event types, the platform fails",
+    "path" : "/api/admin/event-types",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "override" : {
+      "path" : "/api/event-types",
+      "status" : 500,
+      "body" : {
+        "error" : "boom"
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "platformCalled" : true,
+      "error" : "PLATFORM_ERROR",
+      "message" : "the platform could not be reached or answered with an error"
+    }
+  }, {
+    "name" : "event types, no permission",
+    "path" : "/api/admin/event-types",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "platformCalled" : false,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "event types, the roles permission is not enough",
+    "path" : "/api/admin/event-types",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 403,
+      "platformCalled" : false,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "event types, by wildcard",
+    "path" : "/api/admin/event-types",
+    "permissions" : [ "orders:admin:*:*" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:sales:order:placed", "orders:sales:order:shipped", "orders:stock:item:counted" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "roles, this application's only",
+    "path" : "/api/admin/roles",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:admin", "orders:clerk" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "roles, by source",
+    "path" : "/api/admin/roles?source=CODE",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "roles, text",
+    "path" : "/api/admin/roles?q=clerk",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:clerk" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "roles, a page of one",
+    "path" : "/api/admin/roles?limit=1",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:admin" ],
+      "nextCursor" : "orders:admin"
+    }
+  }, {
+    "name" : "roles, the next page",
+    "path" : "/api/admin/roles?limit=1&after=orders:admin",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "items" : [ "orders:clerk" ],
+      "nextCursor" : null
+    }
+  }, {
+    "name" : "a role, permissions sorted",
+    "path" : "/api/admin/roles/orders:clerk",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 200,
+      "platformCalled" : true,
+      "name" : "orders:clerk",
+      "permissions" : [ "orders:sales:order:read", "orders:sales:order:write" ]
+    }
+  }, {
+    "name" : "another application's role is refused before the platform",
+    "path" : "/api/admin/roles/billing:admin",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "expect" : {
+      "status" : 404,
+      "platformCalled" : false,
+      "error" : "ROLE_NOT_FOUND"
+    }
+  }, {
+    "name" : "a role the platform does not know",
+    "path" : "/api/admin/roles/orders:none",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "override" : {
+      "path" : "/api/roles/orders:none",
+      "status" : 404,
+      "body" : {
+        "error" : "nope"
+      }
+    },
+    "expect" : {
+      "status" : 404,
+      "platformCalled" : true,
+      "error" : "ROLE_NOT_FOUND"
+    }
+  }, {
+    "name" : "roles, the platform refuses",
+    "path" : "/api/admin/roles",
+    "permissions" : [ "orders:admin:roles:view" ],
+    "override" : {
+      "path" : "/api/roles",
+      "status" : 403,
+      "body" : {
+        "error" : "forbidden"
+      }
+    },
+    "expect" : {
+      "status" : 502,
+      "platformCalled" : true,
+      "error" : "PLATFORM_ERROR",
+      "message" : "the platform refused this read for the application's service account; it needs the platform's view permission for this resource"
+    }
+  }, {
+    "name" : "roles, no permission",
+    "path" : "/api/admin/roles",
+    "permissions" : [ ],
+    "expect" : {
+      "status" : 403,
+      "platformCalled" : false,
+      "error" : "FORBIDDEN"
+    }
+  }, {
+    "name" : "roles, the event types permission is not enough",
+    "path" : "/api/admin/roles",
+    "permissions" : [ "orders:admin:event-types:view" ],
+    "expect" : {
+      "status" : 403,
+      "platformCalled" : false,
+      "error" : "FORBIDDEN"
+    }
+  } ]
+}
