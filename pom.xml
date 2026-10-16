@@ -54,6 +54,7 @@
     <module>framework-auth</module>
     <module>framework-auth-database</module>
     <module>framework-auth-redis</module>
+    <module>framework-ui</module>
     <module>framework-sql</module>
     <module>framework-sql-maven-plugin</module>
     <module>examples/locks-demo</module>

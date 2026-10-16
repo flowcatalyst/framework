@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.flowcatalyst.framework</groupId>
+    <artifactId>framework-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>framework-ui</artifactId>
+  <name>framework-ui</name>
+  <description>Optional (M-UI): server-rendered pages without a JavaScript build. Precompiled JTE templates for the ui-kit components, a view response helper (full page or Datastar patch), the kit's theme CSS. The framework's primary UI is the shared Nuxt UI package.</description>
+
+  <properties>
+    <!-- The build plugin's version; keep equal to jte.version in framework-bom (a BOM's properties are not inherited). -->
+    <jte.plugin.version>3.2.4</jte.plugin.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http</artifactId>
+    </dependency>
+    <!-- Precompiled templates: only the runtime is needed in production (no compiler, no reflection). -->
+    <dependency>
+      <groupId>gg.jte</groupId>
+      <artifactId>jte-runtime</artifactId>
+    </dependency>
+    <!-- Tests only: strict fixture props, and the HTML5 fragment parser behind the normaliser. -->
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Templates are compiled to Java at build time (generate-sources); nothing is compiled at run time. -->
+      <plugin>
+        <groupId>gg.jte</groupId>
+        <artifactId>jte-maven-plugin</artifactId>
+        <version>${jte.plugin.version}</version>
+        <configuration>
+          <sourceDirectory>${project.basedir}/src/main/jte</sourceDirectory>
+          <contentType>Html</contentType>
+        </configuration>
+        <executions>
+          <execution>
+            <id>generate-templates</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

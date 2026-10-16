@@ -1,0 +1,4 @@
+@import io.flowcatalyst.framework.ui.kit.*
+@import static io.flowcatalyst.framework.ui.kit.Markup.*
+@param Props.Textarea p
+<textarea class="${cx("field-sizing-content min-h-16 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50", p.cls())}" id="${nz(p.id())}" name="${nz(p.name())}" placeholder="${nz(p.placeholder())}" rows="${pos(p.rows())}" required="${p.required()}" disabled="${p.disabled()}" aria-invalid="${p.invalid() ? "true" : null}" aria-describedby="${nz(p.describedBy())}"$unsafe{attrs(p.attrs())}>${p.value()}</textarea>
