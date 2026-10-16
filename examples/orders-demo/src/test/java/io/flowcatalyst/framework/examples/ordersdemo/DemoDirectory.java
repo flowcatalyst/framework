@@ -290,6 +290,7 @@ final class DemoDirectory {
     for (U u : users) {
       if (u.id.equals(m.group(1)) && waiting(u)) {
         u.active = false;
+        u.invitation = null;
         return json(204, "");
       }
     }

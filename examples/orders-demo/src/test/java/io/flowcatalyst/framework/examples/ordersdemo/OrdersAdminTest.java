@@ -206,6 +206,22 @@ class OrdersAdminTest {
   }
 
   @Test
+  void anAuditorReadsUsersAndActivityAndCannotChangeAnything() {
+    String auditor = auth.cookie(AuthTesting.user("prn_auditor", "orders-demo:auditor"));
+    assertThat(ids(get("/api/admin/navigation", auditor))).containsExactly("about", "users", "activity");
+    assertThat(get("/api/admin/users", auditor).status()).isEqualTo(200);
+    assertThat(get("/api/admin/invitations", auditor).status()).isEqualTo(200);
+    assertThat(get("/api/admin/events", auditor).status()).isEqualTo(200);
+    assertThat(get("/api/admin/roles", auditor).status()).isEqualTo(403);
+    platform.clearRequests();
+    String invite = "{\"email\":\"x@example.test\",\"name\":\"X\",\"clientId\":\"acme\",\"roles\":[\"orders-demo:clerk\"]}";
+    assertThat(send("POST", "/api/admin/users", auditor, invite).tree().get("message").asString()).isEqualTo("this needs the permission orders-demo:admin:users:invite");
+    assertThat(send("POST", "/api/admin/invitations/prn_linus/resend", auditor, "{}").status()).isEqualTo(403);
+    assertThat(send("DELETE", "/api/admin/invitations/prn_linus", auditor, null).status()).isEqualTo(403);
+    assertThat(platform.requests()).noneMatch(r -> r.method().equals("POST") || r.method().equals("DELETE"));
+  }
+
+  @Test
   void anAdministratorReadsTheApplicationsEventsAndTheJobsThatDeliverThem() {
     TestResponse events = get("/api/admin/events?limit=4", admin());
     assertThat(events.status()).isEqualTo(200);

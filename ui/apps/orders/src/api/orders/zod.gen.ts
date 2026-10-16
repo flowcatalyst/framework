@@ -8,6 +8,19 @@ export const zAddLineBody = z.object({
     unitPriceCents: z.int().gte(0).lte(100000000)
 });
 
+export const zAdminAttempt = z.object({
+    attemptNumber: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+    attemptedAt: z.string(),
+    completedAt: z.string().optional(),
+    durationMillis: z.int().optional(),
+    responseCode: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional(),
+    responseBody: z.string().optional(),
+    responseBodyTruncated: z.boolean(),
+    success: z.boolean(),
+    errorMessage: z.string().optional(),
+    errorType: z.string().optional()
+});
+
 export const zAdminCheck = z.object({
     name: z.string(),
     status: z.enum([
@@ -44,6 +57,59 @@ export const zAdminConfigSetting = z.object({
     description: z.string().optional()
 });
 
+export const zAdminContextEntry = z.object({
+    key: z.string(),
+    value: z.string()
+});
+
+export const zAdminDispatchJob = z.object({
+    id: z.string(),
+    eventId: z.string().optional(),
+    subscriptionId: z.string().optional(),
+    clientId: z.string().optional(),
+    code: z.string(),
+    status: z.string(),
+    kind: z.string(),
+    targetUrl: z.string(),
+    mode: z.string(),
+    messageGroup: z.string().optional(),
+    descriptor: z.string().optional(),
+    createdAt: z.string(),
+    lastAttemptAt: z.string().optional(),
+    completedAt: z.string().optional(),
+    attemptCount: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+});
+
+export const zAdminDispatchJobDetail = z.object({
+    job: zAdminDispatchJob,
+    protocol: z.string().optional(),
+    timeoutSeconds: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional(),
+    maxRetries: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional(),
+    retryStrategy: z.string().optional(),
+    lastError: z.string().optional(),
+    attempts: z.array(zAdminAttempt)
+});
+
+export const zAdminEvent = z.object({
+    id: z.string(),
+    type: z.string(),
+    source: z.string(),
+    subject: z.string().optional(),
+    time: z.string(),
+    messageGroup: z.string().optional(),
+    correlationId: z.string().optional(),
+    clientId: z.string().optional()
+});
+
+export const zAdminEventDetail = z.object({
+    event: zAdminEvent,
+    data: z.string().optional(),
+    dataTruncated: z.boolean(),
+    context: z.array(zAdminContextEntry),
+    causationId: z.string().optional(),
+    dispatchJobs: z.array(zAdminDispatchJob)
+});
+
 export const zAdminEventType = z.object({
     id: z.string(),
     code: z.string(),
@@ -69,6 +135,17 @@ export const zAdminConfig = z.object({
     unset: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
     settings: z.array(zAdminConfigSetting),
     health: zAdminHealth
+});
+
+export const zAdminInvitation = z.object({
+    userId: z.string(),
+    email: z.string(),
+    name: z.string(),
+    clientId: z.string(),
+    roles: z.array(z.string()),
+    status: z.enum(['PENDING', 'EXPIRED']),
+    createdAt: z.string(),
+    expiresAt: z.string().optional()
 });
 
 export const zAdminRole = z.object({
@@ -108,6 +185,19 @@ export const zAdminSpecVersion = z.object({
 export const zAdminEventTypeDetail = z.object({
     eventType: zAdminEventType,
     versions: z.array(zAdminSpecVersion)
+});
+
+export const zAdminUser = z.object({
+    id: z.string(),
+    email: z.string(),
+    name: z.string(),
+    active: z.boolean(),
+    clientId: z.string(),
+    idpType: z.string(),
+    roles: z.array(z.string()),
+    invitation: z.string().optional(),
+    lastLoginAt: z.string().optional(),
+    createdAt: z.string()
 });
 
 export const zAuthCsrf = z.object({
@@ -166,6 +256,21 @@ export const zError = z.object({
     details: z.record(z.string(), z.string()).optional()
 });
 
+export const zInviteBody = z.object({
+    email: z.string().min(1).max(254).regex(/^(?:[^@\s]+@[^@\s]+\.[^@\s]+)$/),
+    name: z.string().min(1).max(200).regex(/\S/),
+    clientId: z.string().min(1).max(100).regex(/\S/),
+    roles: z.array(z.string().min(1).max(100).regex(/\S/)).min(1).max(50),
+    sendInvitation: z.boolean().optional(),
+    returnInviteLink: z.boolean().optional()
+});
+
+export const zInviteResult = z.object({
+    id: z.string(),
+    invitationSent: z.boolean(),
+    inviteLink: z.string().optional()
+});
+
 export const zOrderLineView = z.object({
     lineId: z.string(),
     sku: z.string(),
@@ -199,13 +304,33 @@ export const zOrdersOverview = z.object({
     openTotalCents: z.int()
 });
 
+export const zPageAdminDispatchJob = z.object({
+    items: z.array(zAdminDispatchJob),
+    nextCursor: z.string().optional()
+});
+
+export const zPageAdminEvent = z.object({
+    items: z.array(zAdminEvent),
+    nextCursor: z.string().optional()
+});
+
 export const zPageAdminEventType = z.object({
     items: z.array(zAdminEventType),
     nextCursor: z.string().optional()
 });
 
+export const zPageAdminInvitation = z.object({
+    items: z.array(zAdminInvitation),
+    nextCursor: z.string().optional()
+});
+
 export const zPageAdminRole = z.object({
     items: z.array(zAdminRole),
+    nextCursor: z.string().optional()
+});
+
+export const zPageAdminUser = z.object({
+    items: z.array(zAdminUser),
     nextCursor: z.string().optional()
 });
 
@@ -216,6 +341,15 @@ export const zPageOrderSummaryView = z.object({
 
 export const zPlaceOrderBody = z.object({
     customer: z.string().min(1).max(200).regex(/\S/)
+});
+
+export const zResendBody = z.object({
+    returnInviteLink: z.boolean().optional()
+});
+
+export const zResendResult = z.object({
+    expiresAt: z.string().optional(),
+    inviteLink: z.string().optional()
 });
 
 /**
@@ -247,6 +381,31 @@ export const zGetAdminConfigSettingPath = z.object({
  */
 export const zGetAdminConfigSettingResponse = zAdminConfigSetting;
 
+export const zListAdminDispatchJobsQuery = z.object({
+    status: z.string().optional(),
+    code: z.string().optional(),
+    clientId: z.string().optional(),
+    messageGroup: z.string().optional(),
+    since: z.string().optional(),
+    until: z.string().optional(),
+    limit: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional().default(50),
+    after: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zListAdminDispatchJobsResponse = zPageAdminDispatchJob;
+
+export const zGetAdminDispatchJobPath = z.object({
+    id: z.string()
+});
+
+/**
+ * OK
+ */
+export const zGetAdminDispatchJobResponse = zAdminDispatchJobDetail;
+
 export const zListAdminEventTypesQuery = z.object({
     status: z.enum(['CURRENT', 'ARCHIVED']).optional(),
     subdomain: z.string().optional(),
@@ -269,6 +428,62 @@ export const zGetAdminEventTypePath = z.object({
  * OK
  */
 export const zGetAdminEventTypeResponse = zAdminEventTypeDetail;
+
+export const zListAdminEventsQuery = z.object({
+    type: z.string().optional(),
+    subject: z.string().optional(),
+    correlationId: z.string().optional(),
+    clientId: z.string().optional(),
+    since: z.string().optional(),
+    until: z.string().optional(),
+    limit: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional().default(50),
+    after: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zListAdminEventsResponse = zPageAdminEvent;
+
+export const zGetAdminEventPath = z.object({
+    id: z.string()
+});
+
+/**
+ * OK
+ */
+export const zGetAdminEventResponse = zAdminEventDetail;
+
+export const zListAdminInvitationsQuery = z.object({
+    status: z.enum(['PENDING', 'EXPIRED']).optional(),
+    limit: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional().default(50),
+    after: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zListAdminInvitationsResponse = zPageAdminInvitation;
+
+export const zRevokeAdminInvitationPath = z.object({
+    id: z.string()
+});
+
+/**
+ * No Content
+ */
+export const zRevokeAdminInvitationResponse = z.void();
+
+export const zResendAdminInvitationBody = zResendBody;
+
+export const zResendAdminInvitationPath = z.object({
+    id: z.string()
+});
+
+/**
+ * OK
+ */
+export const zResendAdminInvitationResponse = zResendResult;
 
 /**
  * OK
@@ -300,6 +515,36 @@ export const zGetAdminRolePath = z.object({
  * OK
  */
 export const zGetAdminRoleResponse = zAdminRoleDetail;
+
+export const zListAdminUsersQuery = z.object({
+    q: z.string().optional(),
+    active: z.boolean().optional(),
+    clientId: z.string().optional(),
+    roles: z.string().optional(),
+    limit: z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }).optional().default(50),
+    after: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zListAdminUsersResponse = zPageAdminUser;
+
+export const zInviteAdminUserBody = zInviteBody;
+
+/**
+ * Created
+ */
+export const zInviteAdminUserResponse = zInviteResult;
+
+export const zGetAdminUserPath = z.object({
+    id: z.string()
+});
+
+/**
+ * OK
+ */
+export const zGetAdminUserResponse = zAdminUser;
 
 export const zListOrdersQuery = z.object({
     status: z.enum(['OPEN', 'CANCELLED']).optional(),

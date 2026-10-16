@@ -1,6 +1,7 @@
 // Shared by the pages that read the platform through the application (event types, roles).
 import { ApiRequestError, toServiceError } from "@flowcatalyst/api-runtime";
 import type { StatusColor } from "@flowcatalyst/ui";
+import type { InjectionKey } from "vue";
 
 export const EVENT_TYPE_COLORS: Readonly<Record<string, StatusColor>> = { CURRENT: "success", ARCHIVED: "neutral" };
 
@@ -19,3 +20,20 @@ export function dataOrThrow<T>(result: { data?: T | undefined; error?: unknown; 
   }
   return result.data;
 }
+
+/** The state of a dispatch job (the platform's words) and its colour; an unknown state is neutral. */
+export const JOB_COLORS: Readonly<Record<string, StatusColor>> = {
+  PENDING: "neutral",
+  QUEUED: "info",
+  IN_PROGRESS: "info",
+  COMPLETED: "success",
+  FAILED: "error",
+  ERROR: "error",
+  CANCELLED: "neutral",
+};
+
+/** An invitation that has not been used: a live link, or one that lapsed. */
+export const INVITATION_COLORS: Readonly<Record<string, StatusColor>> = { PENDING: "info", EXPIRED: "warning" };
+
+/** The users list reloads its page after the drawer changed an invitation. */
+export const REFRESH_USERS: InjectionKey<() => Promise<void>> = Symbol("refresh-users");

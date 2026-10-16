@@ -93,7 +93,14 @@ public final class OrdersWeb {
                                     "orders-demo:clerk", Set.of(OrdersApi.READ, OrdersApi.MANAGE),
                                     "orders-demo:viewer", Set.of(OrdersApi.READ),
                                     // the administrator: the whole admin area (admin contract section 3)
-                                    "orders-demo:admin", Set.of("orders-demo:admin:*:*")))))
+                                    "orders-demo:admin", Set.of("orders-demo:admin:*:*"),
+                                    // an auditor looks, and changes nothing: the admin area, users, invitations,
+                                    // events and dispatch jobs, read-only
+                                    "orders-demo:auditor",
+                                        Set.of(
+                                            "orders-demo:admin:console:view",
+                                            "orders-demo:admin:users:view",
+                                            "orders-demo:admin:activity:view")))))
                 .build())
         .module(new OrdersApiModule())
         .module(new OrdersSpaModule());

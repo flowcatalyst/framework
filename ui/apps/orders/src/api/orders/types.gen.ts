@@ -19,6 +19,19 @@ export type AdminAbout = {
     checks: Array<AdminCheck>;
 };
 
+export type AdminAttempt = {
+    attemptNumber: number;
+    attemptedAt: string;
+    completedAt?: string;
+    durationMillis?: number;
+    responseCode?: number;
+    responseBody?: string;
+    responseBodyTruncated: boolean;
+    success: boolean;
+    errorMessage?: string;
+    errorType?: string;
+};
+
 export type AdminCheck = {
     name: string;
     status: 'UP' | 'DOWN' | 'TIMED_OUT';
@@ -48,6 +61,59 @@ export type AdminConfigSetting = {
     description?: string;
 };
 
+export type AdminContextEntry = {
+    key: string;
+    value: string;
+};
+
+export type AdminDispatchJob = {
+    id: string;
+    eventId?: string;
+    subscriptionId?: string;
+    clientId?: string;
+    code: string;
+    status: string;
+    kind: string;
+    targetUrl: string;
+    mode: string;
+    messageGroup?: string;
+    descriptor?: string;
+    createdAt: string;
+    lastAttemptAt?: string;
+    completedAt?: string;
+    attemptCount: number;
+};
+
+export type AdminDispatchJobDetail = {
+    job: AdminDispatchJob;
+    protocol?: string;
+    timeoutSeconds?: number;
+    maxRetries?: number;
+    retryStrategy?: string;
+    lastError?: string;
+    attempts: Array<AdminAttempt>;
+};
+
+export type AdminEvent = {
+    id: string;
+    type: string;
+    source: string;
+    subject?: string;
+    time: string;
+    messageGroup?: string;
+    correlationId?: string;
+    clientId?: string;
+};
+
+export type AdminEventDetail = {
+    event: AdminEvent;
+    data?: string;
+    dataTruncated: boolean;
+    context: Array<AdminContextEntry>;
+    causationId?: string;
+    dispatchJobs: Array<AdminDispatchJob>;
+};
+
 export type AdminEventType = {
     id: string;
     code: string;
@@ -68,6 +134,17 @@ export type AdminEventTypeDetail = {
 export type AdminHealth = {
     ready: boolean;
     checks: Array<AdminCheck>;
+};
+
+export type AdminInvitation = {
+    userId: string;
+    email: string;
+    name: string;
+    clientId: string;
+    roles: Array<string>;
+    status: 'PENDING' | 'EXPIRED';
+    createdAt: string;
+    expiresAt?: string;
 };
 
 export type AdminNavigation = {
@@ -102,6 +179,19 @@ export type AdminSpecVersion = {
     version: string;
     status: string;
     schema?: string;
+};
+
+export type AdminUser = {
+    id: string;
+    email: string;
+    name: string;
+    active: boolean;
+    clientId: string;
+    idpType: string;
+    roles: Array<string>;
+    invitation?: string;
+    lastLoginAt?: string;
+    createdAt: string;
 };
 
 export type AuthCsrf = {
@@ -155,6 +245,21 @@ export type Error = {
     };
 };
 
+export type InviteBody = {
+    email: string;
+    name: string;
+    clientId: string;
+    roles: Array<string>;
+    sendInvitation?: boolean;
+    returnInviteLink?: boolean;
+};
+
+export type InviteResult = {
+    id: string;
+    invitationSent: boolean;
+    inviteLink?: string;
+};
+
 export type OrderLineView = {
     lineId: string;
     sku: string;
@@ -188,13 +293,33 @@ export type OrdersOverview = {
     openTotalCents: number;
 };
 
+export type PageAdminDispatchJob = {
+    items: Array<AdminDispatchJob>;
+    nextCursor?: string;
+};
+
+export type PageAdminEvent = {
+    items: Array<AdminEvent>;
+    nextCursor?: string;
+};
+
 export type PageAdminEventType = {
     items: Array<AdminEventType>;
     nextCursor?: string;
 };
 
+export type PageAdminInvitation = {
+    items: Array<AdminInvitation>;
+    nextCursor?: string;
+};
+
 export type PageAdminRole = {
     items: Array<AdminRole>;
+    nextCursor?: string;
+};
+
+export type PageAdminUser = {
+    items: Array<AdminUser>;
     nextCursor?: string;
 };
 
@@ -205,6 +330,15 @@ export type PageOrderSummaryView = {
 
 export type PlaceOrderBody = {
     customer: string;
+};
+
+export type ResendBody = {
+    returnInviteLink?: boolean;
+};
+
+export type ResendResult = {
+    expiresAt?: string;
+    inviteLink?: string;
 };
 
 export type GetAdminAboutData = {
@@ -324,6 +458,113 @@ export type GetAdminConfigSettingResponses = {
 
 export type GetAdminConfigSettingResponse = GetAdminConfigSettingResponses[keyof GetAdminConfigSettingResponses];
 
+export type ListAdminDispatchJobsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        status?: string;
+        code?: string;
+        clientId?: string;
+        messageGroup?: string;
+        since?: string;
+        until?: string;
+        limit?: number;
+        after?: string;
+    };
+    url: '/api/admin/dispatch-jobs';
+};
+
+export type ListAdminDispatchJobsErrors = {
+    /**
+     * INVALID_CURSOR: the cursor is not one this server gave
+     * INVALID_STATUS: the status is an upper-case word
+     * INVALID_TIMESTAMP: since and until are RFC 3339 times
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ListAdminDispatchJobsError = ListAdminDispatchJobsErrors[keyof ListAdminDispatchJobsErrors];
+
+export type ListAdminDispatchJobsResponses = {
+    /**
+     * OK
+     */
+    200: PageAdminDispatchJob;
+};
+
+export type ListAdminDispatchJobsResponse = ListAdminDispatchJobsResponses[keyof ListAdminDispatchJobsResponses];
+
+export type GetAdminDispatchJobData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/admin/dispatch-jobs/{id}';
+};
+
+export type GetAdminDispatchJobErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * DISPATCH_JOB_NOT_FOUND: there is no such dispatch job of this application
+     */
+    404: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminDispatchJobError = GetAdminDispatchJobErrors[keyof GetAdminDispatchJobErrors];
+
+export type GetAdminDispatchJobResponses = {
+    /**
+     * OK
+     */
+    200: AdminDispatchJobDetail;
+};
+
+export type GetAdminDispatchJobResponse = GetAdminDispatchJobResponses[keyof GetAdminDispatchJobResponses];
+
 export type ListAdminEventTypesData = {
     body?: never;
     path?: never;
@@ -426,6 +667,272 @@ export type GetAdminEventTypeResponses = {
 };
 
 export type GetAdminEventTypeResponse = GetAdminEventTypeResponses[keyof GetAdminEventTypeResponses];
+
+export type ListAdminEventsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        type?: string;
+        subject?: string;
+        correlationId?: string;
+        clientId?: string;
+        since?: string;
+        until?: string;
+        limit?: number;
+        after?: string;
+    };
+    url: '/api/admin/events';
+};
+
+export type ListAdminEventsErrors = {
+    /**
+     * INVALID_CURSOR: the cursor is not one this server gave
+     * INVALID_TIMESTAMP: since and until are RFC 3339 times
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ListAdminEventsError = ListAdminEventsErrors[keyof ListAdminEventsErrors];
+
+export type ListAdminEventsResponses = {
+    /**
+     * OK
+     */
+    200: PageAdminEvent;
+};
+
+export type ListAdminEventsResponse = ListAdminEventsResponses[keyof ListAdminEventsResponses];
+
+export type GetAdminEventData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/admin/events/{id}';
+};
+
+export type GetAdminEventErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * EVENT_NOT_FOUND: there is no such event of this application
+     */
+    404: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminEventError = GetAdminEventErrors[keyof GetAdminEventErrors];
+
+export type GetAdminEventResponses = {
+    /**
+     * OK
+     */
+    200: AdminEventDetail;
+};
+
+export type GetAdminEventResponse = GetAdminEventResponses[keyof GetAdminEventResponses];
+
+export type ListAdminInvitationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        status?: 'PENDING' | 'EXPIRED';
+        limit?: number;
+        after?: string;
+    };
+    url: '/api/admin/invitations';
+};
+
+export type ListAdminInvitationsErrors = {
+    /**
+     * INVALID_CURSOR: the cursor is not one this server gave
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ListAdminInvitationsError = ListAdminInvitationsErrors[keyof ListAdminInvitationsErrors];
+
+export type ListAdminInvitationsResponses = {
+    /**
+     * OK
+     */
+    200: PageAdminInvitation;
+};
+
+export type ListAdminInvitationsResponse = ListAdminInvitationsResponses[keyof ListAdminInvitationsResponses];
+
+export type RevokeAdminInvitationData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/admin/invitations/{id}';
+};
+
+export type RevokeAdminInvitationErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * INVITATION_NOT_FOUND: there is no such invitation of this application
+     */
+    404: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type RevokeAdminInvitationError = RevokeAdminInvitationErrors[keyof RevokeAdminInvitationErrors];
+
+export type RevokeAdminInvitationResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type RevokeAdminInvitationResponse = RevokeAdminInvitationResponses[keyof RevokeAdminInvitationResponses];
+
+export type ResendAdminInvitationData = {
+    body: ResendBody;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/admin/invitations/{id}/resend';
+};
+
+export type ResendAdminInvitationErrors = {
+    /**
+     * INVITATION_DELIVERY_REQUIRED: the invitation has nowhere to go
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * INVITATION_NOT_FOUND: there is no such invitation of this application
+     */
+    404: Error;
+    /**
+     * Error
+     */
+    413: Error;
+    /**
+     * Error
+     */
+    415: Error;
+    /**
+     * INVITE_DELIVERY_FAILED: the invitation could not be delivered; try again
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ResendAdminInvitationError = ResendAdminInvitationErrors[keyof ResendAdminInvitationErrors];
+
+export type ResendAdminInvitationResponses = {
+    /**
+     * OK
+     */
+    200: ResendResult;
+};
+
+export type ResendAdminInvitationResponse = ResendAdminInvitationResponses[keyof ResendAdminInvitationResponses];
 
 export type GetAdminNavigationData = {
     body?: never;
@@ -593,6 +1100,168 @@ export type GetAdminRoleResponses = {
 };
 
 export type GetAdminRoleResponse = GetAdminRoleResponses[keyof GetAdminRoleResponses];
+
+export type ListAdminUsersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        q?: string;
+        active?: boolean;
+        clientId?: string;
+        roles?: string;
+        limit?: number;
+        after?: string;
+    };
+    url: '/api/admin/users';
+};
+
+export type ListAdminUsersErrors = {
+    /**
+     * INVALID_CURSOR: the cursor is not one this server gave
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type ListAdminUsersError = ListAdminUsersErrors[keyof ListAdminUsersErrors];
+
+export type ListAdminUsersResponses = {
+    /**
+     * OK
+     */
+    200: PageAdminUser;
+};
+
+export type ListAdminUsersResponse = ListAdminUsersResponses[keyof ListAdminUsersResponses];
+
+export type InviteAdminUserData = {
+    body: InviteBody;
+    path?: never;
+    query?: never;
+    url: '/api/admin/users';
+};
+
+export type InviteAdminUserErrors = {
+    /**
+     * ROLES_REQUIRED: give at least one of the application's roles
+     * UNKNOWN_ROLE: a role is not a role of this application
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * CLIENT_NOT_AVAILABLE: the client is not available to this application
+     * ROLE_APP_FORBIDDEN: a role belongs to another application
+     */
+    403: Error;
+    /**
+     * EMAIL_EXISTS: a user with this email already exists
+     */
+    409: Error;
+    /**
+     * Error
+     */
+    413: Error;
+    /**
+     * Error
+     */
+    415: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type InviteAdminUserError = InviteAdminUserErrors[keyof InviteAdminUserErrors];
+
+export type InviteAdminUserResponses = {
+    /**
+     * Created
+     */
+    201: InviteResult;
+};
+
+export type InviteAdminUserResponse = InviteAdminUserResponses[keyof InviteAdminUserResponses];
+
+export type GetAdminUserData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/admin/users/{id}';
+};
+
+export type GetAdminUserErrors = {
+    /**
+     * Error
+     */
+    400: Error;
+    /**
+     * Error
+     */
+    401: Error;
+    /**
+     * Error
+     */
+    403: Error;
+    /**
+     * USER_NOT_FOUND: there is no such user of this application
+     */
+    404: Error;
+    /**
+     * PLATFORM_ERROR: the platform refused or could not be reached
+     */
+    502: Error;
+    /**
+     * PLATFORM_NOT_CONFIGURED: the application has no platform connection
+     */
+    503: Error;
+    /**
+     * Error
+     */
+    default: Error;
+};
+
+export type GetAdminUserError = GetAdminUserErrors[keyof GetAdminUserErrors];
+
+export type GetAdminUserResponses = {
+    /**
+     * OK
+     */
+    200: AdminUser;
+};
+
+export type GetAdminUserResponse = GetAdminUserResponses[keyof GetAdminUserResponses];
 
 export type ListOrdersData = {
     body?: never;

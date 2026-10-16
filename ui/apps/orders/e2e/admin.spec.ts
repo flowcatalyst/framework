@@ -12,7 +12,7 @@ async function signInFresh(page: Page, ...roles: string[]): Promise<void> {
 }
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Main" });
-const ALL_LINKS = ["About", "Event types", "Roles", "Configuration", "Orders overview", "Back to Orders"];
+const ALL_LINKS = ["About", "Event types", "Roles", "Users", "Activity", "Configuration", "Orders overview", "Back to Orders"];
 const rows = (page: Page) => page.getByTestId("fw-list-table").locator("tbody tr");
 
 test.beforeEach(async () => {
@@ -72,6 +72,10 @@ test("a clerk has no Administration entry, is refused the route, and the server 
     "/api/admin/orders/overview",
     "/api/admin/event-types",
     "/api/admin/roles",
+    "/api/admin/users",
+    "/api/admin/invitations",
+    "/api/admin/events",
+    "/api/admin/dispatch-jobs",
     "/api/admin/config",
   ]) {
     const answer = await fetchJson(page, path);
@@ -229,6 +233,8 @@ for (const scheme of ["light", "dark"] as const) {
         ["/admin/about", "About"],
         ["/admin/event-types", "Event types"],
         ["/admin/roles", "Roles"],
+        ["/admin/users", "Users"],
+        ["/admin/activity", "Activity"],
         ["/admin/config", "Configuration"],
         ["/admin/orders", "Orders overview"],
       ] as const) {

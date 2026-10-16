@@ -52,6 +52,7 @@ function toggle(item: PickItem, on: boolean | "indeterminate"): void {
       <ul class="h-[200px] overflow-y-auto p-1" data-testid="fw-pick-available">
         <li v-for="item in visible" :key="item.value" class="rounded-[2px] px-2 py-1.5 hover:bg-elevated has-[[data-state=checked]]:bg-primary/10">
           <UCheckbox
+            :id="`${id}-${item.value}`"
             :model-value="pickedSet.has(item.value)"
             :label="item.label"
             :description="[item.code, item.note].filter((part) => part !== undefined).join(' · ')"

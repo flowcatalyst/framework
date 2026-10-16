@@ -6,19 +6,23 @@
 import type { AdminPage } from "@flowcatalyst/ui";
 
 import {
+  ADMIN_ACTIVITY_VIEW,
   ADMIN_CONFIG_VIEW,
   ADMIN_CONSOLE,
   ADMIN_EVENT_TYPES_VIEW,
   ADMIN_ORDERS_VIEW,
   ADMIN_ROLES_VIEW,
+  ADMIN_USERS_VIEW,
   ICON_ABOUT,
+  ICON_ACTIVITY,
   ICON_CONFIG,
   ICON_EVENT_TYPES,
   ICON_ORDERS,
   ICON_ROLES,
+  ICON_USERS,
 } from "./icons.ts";
 
-export { ADMIN_CONFIG_VIEW, ADMIN_CONSOLE, ADMIN_EVENT_TYPES_VIEW, ADMIN_ORDERS_VIEW, ADMIN_ROLES_VIEW };
+export { ADMIN_ACTIVITY_VIEW, ADMIN_CONFIG_VIEW, ADMIN_CONSOLE, ADMIN_EVENT_TYPES_VIEW, ADMIN_ORDERS_VIEW, ADMIN_ROLES_VIEW, ADMIN_USERS_VIEW };
 
 export const adminPages: readonly AdminPage[] = [
   {
@@ -57,6 +61,42 @@ export const adminPages: readonly AdminPage[] = [
         path: ":id",
         component: () => import("../pages/admin/AdminRoleDrawer.vue"),
         meta: { title: "Roles", permission: ADMIN_ROLES_VIEW, admin: true },
+      },
+    ],
+  },
+  {
+    id: "users",
+    title: "Users",
+    icon: ICON_USERS,
+    permission: ADMIN_USERS_VIEW,
+    path: "/admin/users",
+    component: () => import("../pages/admin/AdminUsersPage.vue").then((m) => m.default),
+    children: [
+      {
+        path: ":id",
+        component: () => import("../pages/admin/AdminUserDrawer.vue"),
+        meta: { title: "Users", permission: ADMIN_USERS_VIEW, admin: true },
+      },
+    ],
+  },
+  {
+    id: "activity",
+    title: "Activity",
+    icon: ICON_ACTIVITY,
+    permission: ADMIN_ACTIVITY_VIEW,
+    path: "/admin/activity",
+    component: () => import("../pages/admin/AdminActivityPage.vue").then((m) => m.default),
+    // Two drawers over one list: an event and a dispatch job (/admin/activity/events/:id, /jobs/:id).
+    children: [
+      {
+        path: "events/:id",
+        component: () => import("../pages/admin/AdminEventDrawer.vue"),
+        meta: { title: "Activity", permission: ADMIN_ACTIVITY_VIEW, admin: true },
+      },
+      {
+        path: "jobs/:id",
+        component: () => import("../pages/admin/AdminJobDrawer.vue"),
+        meta: { title: "Activity", permission: ADMIN_ACTIVITY_VIEW, admin: true },
       },
     ],
   },
