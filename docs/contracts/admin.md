@@ -23,8 +23,9 @@ slice**, inside that application, behind that application's sign-in, in its own 
 | Section (M4e) | What it shows | Source |
 |---|---|---|
 | users and invitations | the users who hold this application's roles; invite, resend, revoke | the platform, as the application's service account |
-| roles | this application's roles and their permissions, as projected from the platform | the platform |
-| application config | the application's config and secret *status* (never a secret value) | the platform |
+| event types | this application's event types and their payload specification versions (built, section 11) | the platform |
+| roles | this application's roles and their permissions, as projected from the platform (built, section 11) | the platform |
+| application config | the application's config and secret *status* (never a secret value; built, section 10) | the application itself |
 | scoped events and dispatch jobs | the application's own events and delivery attempts | the platform (needs a scoped read endpoint, flowcatalyst.md section 5) |
 | health | readiness and the checks | the application itself (`/api/admin/about`, part of this skeleton) |
 
@@ -86,7 +87,7 @@ is the shape the platform's definition sync accepts (flowcatalyst.md section 2).
 | Permission | Grants |
 |---|---|
 | `{app}:admin:console:view` | the admin area at all: the navigation and the about operation. Held by every admin role |
-| `{app}:admin:{section}:view` | reading a section (M4e: `users`, `roles`, `config`, `events`, `dispatch-jobs`) |
+| `{app}:admin:{section}:view` | reading a section (M4e built: `event-types`, `roles`, `config`; planned: `users`, `events`, `dispatch-jobs`) |
 | `{app}:admin:{section}:manage` | changing a section |
 
 One suggested role, `{app}:admin`, grants `{app}:admin:*:*`. The application maps its platform role
@@ -237,7 +238,7 @@ the wildcard rule of core section 3. Go compares.
   the admin operations (vector `openapi/orders-demo-admin.json`); the orders-only document stays the
   shared vector `openapi/orders-demo.json` until the Go framework builds admin (G6).
 
-## 9. Rulings pending owner (defaults applied)
+## 9. Rulings (defaults applied; owner-decided ones marked)
 
 1. **Permission names:** `{app}:admin:{section}:{action}` with `{app}:admin:console:view` for entry
    and one suggested role `{app}:admin`. Alternative: three-segment `{app}:admin:{action}`; not
@@ -249,8 +250,86 @@ the wildcard rule of core section 3. Go compares.
    or `framework-auth`.
 4. **How admin data reaches the platform (M4e):** the application's service account, with the user's
    permissions enforced in the framework first (flowcatalyst.md section 5, item 2). Alternative: an
-   `apiAccess` OAuth client per user. Needs the owner before the first M4e slice.
+   `apiAccess` OAuth client per user. **RULED by the owner 2026-10-16: the service account**, after the
+   application has enforced the signed-in user's admin permission (sections 3 and 11).
 5. **The about answer omits failure messages.** Alternative: include them for holders of a stronger
    permission. Not built.
 6. **The admin area is mounted per application** (the application lists `AdminModule` and the
    shell's routes); the framework never mounts it by itself.
+
+## 10. The config section (M4e slice 3, built 2026-10-16)
+
+Section `config`, path `/admin/config`, permission `{app}:admin:config:view` (module `AdminConfigModule`
+in `framework-admin`; it reads the application's own `Config`, no platform). It shows which settings the
+application declares, whether each has a value, where the value came from and the application's
+health. **No secret value is ever on the wire.**
+
+| Operation | Id | Query | Answers |
+|---|---|---|---|
+| `GET /api/admin/config` | `listAdminConfig` | `state` (`SET`, `DEFAULT`, `UNSET`), `secret` (boolean), `q` (case-insensitive substring of key or module) | `AdminConfig` |
+| `GET /api/admin/config/{key}` | `getAdminConfigSetting` | | `AdminConfigSetting`, or `404 SETTING_NOT_FOUND` |
+
+`AdminConfig`: `environment`; `total` (matching), `set`, `defaulted`, `unset` (all settings); `settings`
+(declaration order); `health` (`ready`, `checks`: the about page's shape). `AdminConfigSetting`: `key`,
+`module`, `type` (human text), `secret`, `required`, `state`, `source` (`default`, `not set`, `environment
+variable NAME` or the file), `value` (optional), `withheld` (boolean), `description` (optional).
+
+Masking (the rule the vector `conformance/admin/config.json` pins; the core's `SettingStatus` holds it):
+
+1. a secret setting has **no** `value`, `withheld` is true when it is set;
+2. a setting whose key contains a credential word (`secret`, `password`, `passwd`, `passphrase`, `token`,
+   `credential`, `api-key`, `private-key`, `access-key`, `signing-key`, `salt`) is withheld the same way,
+   even when declared as plain text (a second line of defence, not a substitute for declaring secrets);
+3. a URL value is shown without user info and without query (`jdbc:` URLs too);
+4. `AdminConfigModule.withoutValues()` withholds every value (state and source only).
+
+Not shown, and why: the database and Redis *instance* sections (they are read through `InstanceConfig`,
+not declared settings, and carry passwords); per-client secrets of `SecretResolver` (looked up by client
+and name); range-check results (a value out of range fails start-up, so every setting shown has passed
+its module's checks; the page says nothing about them). Owner question: whether non-secret values
+should be shown at all (default: shown, with the masking above).
+
+## 11. The platform-projected sections (M4e slice 2, built 2026-10-16)
+
+Sections `event-types` (`/admin/event-types`, `{app}:admin:event-types:view`) and `roles`
+(`/admin/roles`, `{app}:admin:roles:view`), module `PlatformAdminModule` in `framework-flowcatalyst`
+(it needs `PlatformClient`). Read-only. The platform is called with the **application's service
+account** (owner ruling, section 9 item 4) **after** the operation gate checked the signed-in user's
+permission (a refused caller never reaches the platform); the framework adds the confinement the
+platform does not guarantee (below).
+
+| Operation | Id | Query | Answers |
+|---|---|---|---|
+| `GET /api/admin/event-types` | `listAdminEventTypes` | `status` (`CURRENT`, `ARCHIVED`), `subdomain`, `aggregate`, `q`, `limit` (50), `after` | `Page<AdminEventType>` |
+| `GET /api/admin/event-types/{id}` | `getAdminEventType` | | `AdminEventTypeDetail` (`eventType`, `versions[{version,status,schema?}]`), `404 EVENT_TYPE_NOT_FOUND` |
+| `GET /api/admin/roles` | `listAdminRoles` | `source`, `q`, `limit` (50), `after` | `Page<AdminRole>` |
+| `GET /api/admin/roles/{name}` | `getAdminRole` | | `AdminRoleDetail` (`role`, `permissions` sorted), `404 ROLE_NOT_FOUND` |
+
+`Page<T>`: `items`, `nextCursor` (optional). The platform does not page these two lists, so the
+framework sorts (event types by code, roles by name) and pages by **keyset cursor**: `nextCursor` is the
+key of the last item, `after` returns keys greater than it, `limit` is clamped to 1 to 200. Every
+operation also documents `502 PLATFORM_ERROR` and `503 PLATFORM_NOT_CONFIGURED`.
+
+Rules (vector `conformance/admin/platform-reads.json`):
+
+1. only the application's own records are returned, whatever the platform sends (event types by their
+   `application`, roles by `{application}:` prefix and `applicationCode`); a record of another
+   application is `404`, and a role name outside the application is refused **without** calling the
+   platform;
+2. the filters are sent to the platform and applied again locally;
+3. a platform refusal (403), failure or outage is `502 PLATFORM_ERROR` with a message that names no host,
+   token or platform text (the cause is logged); a 403 says the service account needs the platform's view
+   permission; a platform 404 of a single record is `404`; a disabled FlowCatalyst module is `503`.
+
+Reads used (what the platform's `application-service` role allows today): `GET /api/event-types[/{id}]`
+(`event-type:view`; the platform confines an application service account to its own applications) and
+`GET /api/roles[/{name}]` (`role:view`). **Platform gap:** `GET /api/roles` is not confined for an
+application service account, it answers with every role of every application; the framework filters,
+but the platform should (flowcatalyst.md section 5, item 7).
+
+**Definition sync.** The registry's permissions (`Admin.permissions(..)`) and one suggested role `admin`
+(on the platform `{app}:admin`, display name "Administrator") reach the platform through the definition
+sync without the application declaring them. The role lists the permissions one by one (the sync accepts no
+wildcard in a role; the application's *permission mapping* may still use `{app}:admin:*:*`). An application
+that declares its own role `admin` gets nothing added. Role and permission names obey the platform rules
+(letters, digits and `_.-` per colon-separated segment, no whitespace; the sync adds the `{app}:` prefix).

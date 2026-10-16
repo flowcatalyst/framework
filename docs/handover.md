@@ -138,6 +138,31 @@ rewritten at hand-off and can lag the code in between.
   against the real demo. Next: M4e, one slice at a time (users and invitations first), each a section +
   operations + an `AdminPage`; owner decision 4 of the contract (how admin reaches the platform) comes
   before the first slice.
+- **M4e partly built 2026-10-16** (admin data sections; slices 2 and 3 of 4). Owner ruling (decision 4
+  of `contracts/admin.md` section 9): admin pages reach the platform through the **application's own
+  service account**, after the signed-in user's admin permission is enforced. Built: `PlatformAdminModule`
+  (`framework-flowcatalyst`, now depends on `framework-admin`): read-only `event-types` and `roles`
+  sections over `GET /api/event-types[/{id}]` and `GET /api/roles[/{name}]` (the reads the platform's
+  `application-service` role allows; `PlatformClient.eventTypes/eventType/roles/role`,
+  `PlatformException.Kind`), confined to the application's own records (also locally: filters, application,
+  role prefix), sorted and keyset-cursor-paged (`AdminApi.Page`, `AdminApi.page`), `502 PLATFORM_ERROR` /
+  `503 PLATFORM_NOT_CONFIGURED`. `AdminConfigModule` (`framework-admin`) over the new `Config.statuses()` /
+  `SettingStatus` (core): state, source, value only when safe (secrets, credential-named keys withheld, URL
+  user info and query cut). The admin permissions and a suggested `admin` role join the definition sync
+  (`AdminDefinitions`; explicit permissions because the sync rejects `*`; skipped when the application declares
+  its own `admin` role); dry-run and apply tests. Demo: `OrdersWeb` lists `FlowCatalystModule` (disabled in
+  `config/application.yaml`), `PlatformAdminModule`, `AdminConfigModule`; `DemoPlatform` (test) fakes the
+  platform for `OrdersAdminTest` and `OrdersE2e` (`/control/platform-reads?value=403`). UI: three pages and two
+  drawers in `ui/apps/orders/src/pages/admin/`, client regenerated, Playwright (paging, filters, deep links,
+  masking, refusing platform, axe in both themes). Vectors `conformance/admin/config.json`,
+  `platform-reads.json` (Go compares). Mutation checks: secret value returned (core and admin tests fail), config
+  gate weakened, platform ownership filter removed, roles gate swapped (each failed tests). **Platform gaps
+  found** (flowcatalyst.md section 5, item 7): `GET /api/roles` is not confined for an application service
+  account (every application's roles come back); no `user:view`/invitation permissions or invitation
+  endpoints for the service account (slice 1); no scoped event/dispatch-job reads (slice 4). Open owner
+  questions: show non-secret config values at all (default yes, `withoutValues()` switches off); the config
+  page does not list database/Redis instance settings or range-check results. Next: slice 1 and slice 4 when
+  the platform work lands; Go G6 builds the server half against the three admin vectors.
 - Next: MU (U1 onward; U3 can generate from the committed orders-demo document now). Platform work
   for scoped event/dispatch-job reads is listed in `contracts/flowcatalyst.md` section 5.
 - Rulings: the platform delivers the outbox; handler failure/timeout in a receiver is a

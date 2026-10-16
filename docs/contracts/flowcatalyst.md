@@ -60,8 +60,9 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
   The deploy runs it: `java -jar app.jar sync [--dry-run]` through a small command entry point
   the module provides (the application's `main` delegates to `App.command(args)`; unknown
   commands fall through to normal start).
-- The framework's own modules contribute their permissions and roles the same way (the admin
-  module's `admin:*` set, M4d).
+- The framework's own modules contribute their permissions and roles the same way: the admin
+  sections' permissions and a suggested role `admin` join the catalog automatically (M4e, admin
+  contract section 11; skipped when the application declares its own role `admin`).
 - **Docs sync:** the platform has `POST /api/applications/{appCode}/docs/sync` but the Java SDK
   has no docs category. Platform/SDK work: add it to the SDK; until then `docs(...)` definitions
   are accepted and skipped with a warning.
@@ -514,6 +515,12 @@ hands its handler, or the refusal when the service principal cannot be resolved.
    `causationId` or `correlationId`, so an audit entry cannot be linked to the dispatch job or the
    request that caused it; the framework's audit payload already sends `correlationId` and the
    platform drops it.
+7. **`GET /api/roles` is not confined** (found 2026-10-16, M4e): an application service account holding
+   `role:view` gets every role of every application. The admin roles section filters to the
+   application's own, but the platform should confine it as `GET /api/event-types` is. Also missing for
+   an application service account: any `user:view`/invitation permission (admin users slice), a read of
+   its own platform config (`GET /api/platform-config/{app}` returns secrets unmasked, secrets.md
+   section 5, so it is deliberately not used by the config page).
 
 ## 6. Tests
 

@@ -157,6 +157,12 @@ target that is an absolute URL, or a path when `subscription-target-base-url` is
 unique across modules. Permissions travel only inside roles: a declared permission that no role
 grants is logged as a warning.
 
+When the application registers admin sections ([admin](admin.md)), their permissions and a role
+`admin` that grants them one by one join the catalog by themselves (nothing to declare); declaring
+your own role named `admin` turns that off. `PlatformClient` also has read methods for the admin
+pages (`eventTypes`, `eventType`, `roles`, `role`); a failed call is a `PlatformException` whose `kind()`
+says whether the platform refused it (`FORBIDDEN`) or did not know the record (`NOT_FOUND`).
+
 Removing a definition from code does not delete it on the platform; deletions are an operator action.
 
 ## Syncing: the `sync` command
