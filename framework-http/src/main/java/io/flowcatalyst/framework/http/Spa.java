@@ -52,6 +52,13 @@ public final class Spa {
   /** The default limit on the indexed bytes (64 MiB). */
   public static final long DEFAULT_MAX_BYTES = 64L * 1024 * 1024;
 
+  /**
+   * The file the Vite plugin writes beside {@code index.html}: {@code {"scriptHashes":["sha256-..."]}},
+   * one hash per inline script. {@link Spa} reads it, uses it for the default policy and does not
+   * serve it.
+   */
+  public static final String CSP_HASHES_FILE = "csp-hashes.json";
+
   /** A file of the index. */
   @SuppressWarnings("ArrayRecordComponent")
   record File(byte[] bytes, String contentType, String etag) {}
@@ -111,12 +118,12 @@ public final class Spa {
   private final Map<String, File> files;
   private final List<String> problems;
 
-  private Spa(Builder b, Map<String, File> files, List<String> problems) {
+  private Spa(Builder b, Csp csp, Map<String, File> files, List<String> problems) {
     this.source = b.source.describe();
     this.prefix = List.copyOf(b.prefix);
     this.apiPrefixes = Collections.unmodifiableSet(new LinkedHashSet<>(b.apiPrefixes));
     this.assetsDirectory = b.assetsDirectory;
-    this.csp = b.csp;
+    this.csp = csp;
     this.files = Collections.unmodifiableMap(files);
     this.problems = List.copyOf(problems);
   }
@@ -181,7 +188,7 @@ public final class Spa {
     private String assetsDirectory = "assets";
     private int maxFiles = DEFAULT_MAX_FILES;
     private long maxBytes = DEFAULT_MAX_BYTES;
-    private Csp csp = Csp.strict();
+    private @Nullable Csp csp;
 
     private Builder(Source source) {
       this.source = source;
@@ -270,11 +277,14 @@ public final class Spa {
     }
 
     /**
-     * The {@code Content-Security-Policy} on every answer of the SPA; default {@link Csp#strict}
-     * with no script hashes (static-assets contract section 7). An SPA with an inline script (the
-     * colour-mode snippet {@code @flowcatalyst/ui} writes into {@code index.html}) passes its hash:
-     * {@code Csp.strict("sha256-...")}; {@link Csp#baseline()} is the explicit opt-in for pages
-     * that cannot run under the strict policy.
+     * The {@code Content-Security-Policy} on every answer of the SPA. Without this call it is
+     * {@link Csp#strict} with the script hashes the build wrote to {@value Spa#CSP_HASHES_FILE}
+     * ({@code flowcatalystUi()} hashes every inline script of {@code index.html}, the colour-mode
+     * snippet included), or with none when there is no such file (static-assets contract section 7).
+     * Passing a policy replaces all of that, the file included: {@code Csp.strict("sha256-...")}
+     * to name the hashes yourself, {@link Csp#baseline()} as the explicit opt-in for pages that
+     * cannot run under the strict policy. {@code SpaTesting.assertServesBuild} fails when an inline
+     * script of {@code index.html} is not allowed by the policy served.
      *
      * @param policy the policy
      * @return this builder
@@ -300,7 +310,10 @@ public final class Spa {
       } catch (IOException | RuntimeException e) {
         c.problems.add("cannot read the SPA from " + source.describe() + ": " + e);
       }
-      return new Spa(this, c.files, c.problems);
+      // never served, whether or not it is used
+      File hashFile = c.files.remove(CSP_HASHES_FILE);
+      Csp resolved = csp != null ? csp : hashesFromBuild(hashFile, c.problems);
+      return new Spa(this, resolved, c.files, c.problems);
     }
 
     private static String segment(String s, String what) {
@@ -363,6 +376,31 @@ public final class Spa {
 
     private LimitExceeded tooBig() {
       return new LimitExceeded("the SPA has more than " + maxBytes + " bytes (Spa.Builder.maxBytes)");
+    }
+  }
+
+  /** The strict policy with the hashes the build wrote; a malformed file is a start-up problem. */
+  private static Csp hashesFromBuild(@Nullable File file, List<String> problems) {
+    if (file == null) {
+      return Csp.strict();
+    }
+    try {
+      var root = Json.mapper().readTree(file.bytes());
+      var list = root.get("scriptHashes");
+      if (list == null || !list.isArray()) {
+        throw new IllegalArgumentException("it must be {\"scriptHashes\": [\"sha256-...\"]}");
+      }
+      List<String> hashes = new ArrayList<>();
+      for (var h : list) {
+        if (!h.isString()) {
+          throw new IllegalArgumentException("scriptHashes holds a value that is not a string");
+        }
+        hashes.add(h.asString());
+      }
+      return Csp.strict(hashes.toArray(String[]::new));
+    } catch (RuntimeException e) {
+      problems.add("cannot use " + CSP_HASHES_FILE + " (" + e.getMessage() + "); regenerate it with the web build");
+      return Csp.strict();
     }
   }
 

@@ -47,6 +47,7 @@ public final class SpaTesting {
     security(index, base);
 
     String html = index.body();
+    inlineScripts(html, index.header("Content-Security-Policy"), base);
     Matcher m = Pattern.compile("(?:src|href)=\"(" + Pattern.quote(base + "assets/") + "[^\"]+)\"").matcher(html);
     expect(m.find(), "index.html at " + base + " references no file under " + base + "assets/; is this the built index.html?");
     String assetPath = m.group(1);
@@ -68,6 +69,54 @@ public final class SpaTesting {
     expect(unknown.status() == 404, "GET " + api + " answered " + unknown.status() + ", not the JSON 404");
     header(unknown, api, "Content-Type", "application/json");
     expect(!unknown.body().equals(html), "GET " + api + " answered index.html: an unknown API path must never get the SPA");
+  }
+
+  private static final Pattern INLINE_SCRIPT =
+      Pattern.compile("<script(?![^>]*\\bsrc=)([^>]*)>(.*?)</script>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+  private static final Pattern SCRIPT_TYPE = Pattern.compile("\\btype=[\"']([^\"']*)[\"']", Pattern.CASE_INSENSITIVE);
+
+  /**
+   * Every inline script of index.html must be allowed by the script-src of the policy served (by its
+   * hash), or the browser refuses it: a changed snippet, a stale or missing {@code csp-hashes.json}
+   * or a hand-written {@code Csp.strict(hash)} that no longer matches fails here, with the hash to use.
+   */
+  private static void inlineScripts(String html, @org.jspecify.annotations.Nullable String csp, String base) {
+    if (csp == null || !csp.contains("script-src")) {
+      return; // the baseline policy restricts no scripts
+    }
+    String scriptSrc = "";
+    for (String directive : csp.split(";")) {
+      if (directive.trim().startsWith("script-src")) {
+        scriptSrc = directive;
+      }
+    }
+    Matcher m = INLINE_SCRIPT.matcher(html);
+    while (m.find()) {
+      Matcher type = SCRIPT_TYPE.matcher(m.group(1));
+      if (type.find() && !isJavaScript(type.group(1))) {
+        continue; // a data block (JSON, a template) does not run
+      }
+      String hash = sha256(m.group(2));
+      expect(
+          scriptSrc.contains("'" + hash + "'"),
+          "GET " + base + ": an inline script of index.html is not allowed by the Content-Security-Policy ("
+              + scriptSrc.trim() + "); its hash is " + hash
+              + ". Rebuild the web app (flowcatalystUi() writes csp-hashes.json) or pass Csp.strict(\"" + hash + "\")");
+    }
+  }
+
+  private static boolean isJavaScript(String type) {
+    String t = type.trim().toLowerCase(java.util.Locale.ROOT);
+    return t.isEmpty() || t.equals("module") || t.contains("javascript") || t.equals("text/babel");
+  }
+
+  private static String sha256(String script) {
+    try {
+      byte[] sum = java.security.MessageDigest.getInstance("SHA-256").digest(script.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return "sha256-" + java.util.Base64.getEncoder().encodeToString(sum);
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is not available", e);
+    }
   }
 
   private static void etag(TestResponse r, String path) {

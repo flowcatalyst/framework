@@ -613,6 +613,60 @@ class SpaTest {
     }
   }
 
+  // ---- csp-hashes.json, written by the Vite plugin (U3 gap G1) -------------------------------
+
+  private void hashesFile(String json) throws java.io.IOException {
+    java.nio.file.Files.writeString(dist.resolve("csp-hashes.json"), json);
+  }
+
+  @Test
+  void theDefaultPolicyTakesTheHashesTheBuildWrote() throws java.io.IOException {
+    hashesFile("{\"scriptHashes\":[\"sha256-AbC+/09=\",\"sha384-xyz\"]}");
+    TestClient client = client(Spa.directory(dist).build(), SpaTest::appRoutes);
+    for (String path : List.of("/", "/dashboard", "/assets/index-abc123.js", "/assets/missing.js", "/api/x")) {
+      assertThat(client.get(path).send().header("Content-Security-Policy"))
+          .isEqualTo(Csp.strict("sha256-AbC+/09=", "sha384-xyz").value());
+    }
+  }
+
+  @Test
+  void theHashesFileIsNeverServed() throws java.io.IOException {
+    hashesFile("{\"scriptHashes\":[\"sha256-AbC+/09=\"]}");
+    TestResponse r = client(Spa.directory(dist).build(), SpaTest::appRoutes).get("/csp-hashes.json").send();
+    assertThat(r.status()).isEqualTo(404);
+    assertThat(r.body()).doesNotContain("sha256-");
+  }
+
+  @Test
+  void anExplicitPolicyReplacesTheFile() throws java.io.IOException {
+    hashesFile("{\"scriptHashes\":[\"sha256-AbC+/09=\"]}");
+    TestClient strict =
+        client(Spa.directory(dist).contentSecurityPolicy(Csp.strict("sha256-Other=")).build(), SpaTest::appRoutes);
+    assertThat(strict.get("/").send().header("Content-Security-Policy")).isEqualTo(Csp.strict("sha256-Other=").value());
+    TestClient baseline =
+        client(Spa.directory(dist).contentSecurityPolicy(Csp.baseline()).build(), SpaTest::appRoutes);
+    assertThat(baseline.get("/").send().header("Content-Security-Policy")).isEqualTo(BASELINE_CSP);
+  }
+
+  @Test
+  void anEmptyListOrNoFileIsTheStrictDefault() throws java.io.IOException {
+    assertThat(client().get("/").send().header("Content-Security-Policy")).isEqualTo(STRICT_CSP);
+    hashesFile("{\"scriptHashes\":[]}");
+    assertThat(client(Spa.directory(dist).build(), SpaTest::appRoutes).get("/").send().header("Content-Security-Policy"))
+        .isEqualTo(STRICT_CSP);
+  }
+
+  @Test
+  void aBrokenHashesFileIsAStartUpProblem() throws java.io.IOException {
+    for (String bad : List.of("not json", "{}", "{\"scriptHashes\":\"sha256-x=\"}", "{\"scriptHashes\":[\"'unsafe-inline'\"]}",
+        "{\"scriptHashes\":[\"sha256-ok=\", 5]}")) {
+      hashesFile(bad);
+      var e = SpaStartupTest.startupFailure("test", r -> r.forModule("web").spa(Spa.directory(dist).build()));
+      assertThat(e).as(bad).isNotNull();
+      assertThat(SpaStartupTest.messages(e)).as(bad).contains("csp-hashes.json");
+    }
+  }
+
   @Test
   void nosniffIsOnEveryFrameworkResponseApiAndErrorsIncluded() {
     TestClient client = client();

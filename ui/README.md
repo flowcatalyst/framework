@@ -102,7 +102,9 @@ at U0: one Vue in the bundle, `vue-tsc` clean, the package's Tailwind classes an
 
 The strict CSP header the server sends is `strictContentSecurityPolicy()` from `@flowcatalyst/ui/csp`;
 the only hash in it is `COLOR_MODE_SNIPPET_SHA256`, the pre-paint colour-mode snippet the Vite plugin
-writes into `index.html`.
+writes into `index.html`. A Java server need not copy it: the plugin also writes `csp-hashes.json`
+(`{"scriptHashes": [...]}`, every inline script of the built html) beside `index.html`, and `Spa` uses
+it for its default policy.
 
 ## Generating an application's client
 

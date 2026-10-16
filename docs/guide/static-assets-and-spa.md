@@ -122,12 +122,19 @@ The default is the **strict** policy (since 2026-10-15; before, the baseline): s
 images (`data:` too), fonts and connections from the application's own origin only, plus the hashes
 you pass for inline snippets, no framing, `base-uri 'none'`, `form-action 'self'`, no plugins. An
 SPA built with `flowcatalystUi()` from `@flowcatalyst/ui` has one inline script, the colour-mode
-snippet, so it passes that hash (`COLOR_MODE_SNIPPET_SHA256` of `@flowcatalyst/ui/csp`); without it
-the browser blocks the snippet and the page loses its pre-paint colour mode:
+snippet, and the build writes its hash (and that of any other inline script) to `csp-hashes.json`
+beside `index.html`. `Spa` reads that file for its default policy and does not serve it, so there is
+nothing to copy:
 
 ```java
-Spa.directory(dist).contentSecurityPolicy(Csp.strict("sha256-AbC+/09=")).build()
+Spa.classpath("fw-spa").build()   // strict, with the hashes of the build's csp-hashes.json
 ```
+
+You can still name the hashes yourself, which replaces the file
+(`Spa.directory(dist).contentSecurityPolicy(Csp.strict("sha256-AbC+/09=")).build()`). Either way,
+`SpaTesting.assertServesBuild` (below) fails when an inline script of `index.html` is not allowed by
+the policy served, with the hash to use: without it the browser blocks the snippet and the page loses
+its pre-paint colour mode. A file that is not `{"scriptHashes": ["sha256-..."]}` is a start-up problem.
 
 U0 verified that Nuxt UI runs under this policy ([`../ui/u0.md`](../ui/u0.md)) on two conditions:
 the SPA is built with the `flowcatalystUi()` Vite plugin and sets Zod to `jitless` before any

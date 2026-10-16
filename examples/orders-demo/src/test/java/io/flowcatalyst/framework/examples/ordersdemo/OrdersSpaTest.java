@@ -54,14 +54,16 @@ class OrdersSpaTest {
     assertThat(csp).contains("style-src 'self'").doesNotContain("unsafe-inline");
     assertThat(index.header("Cross-Origin-Opener-Policy")).isEqualTo("same-origin");
 
-    // Every inline script in index.html is the one hashed in the policy; a changed snippet in
-    // @flowcatalyst/ui changes the hash and must change OrdersSpaModule.COLOR_MODE_SNIPPET_HASH.
+    // Every inline script in index.html is hashed in the policy, which Spa took from the build's
+    // csp-hashes.json (a changed snippet in @flowcatalyst/ui changes both together); the file itself
+    // is not served.
+    assertThat(client().get("/csp-hashes.json").send().status()).isEqualTo(404);
     Matcher inline = Pattern.compile("<script(?![^>]*\\bsrc=)[^>]*>(.*?)</script>", Pattern.DOTALL).matcher(index.body());
     int found = 0;
     while (inline.find()) {
       found++;
       byte[] digest = MessageDigest.getInstance("SHA-256").digest(inline.group(1).getBytes(StandardCharsets.UTF_8));
-      assertThat("sha256-" + Base64.getEncoder().encodeToString(digest)).isEqualTo(OrdersSpaModule.COLOR_MODE_SNIPPET_HASH);
+      assertThat(csp).contains("'sha256-" + Base64.getEncoder().encodeToString(digest) + "'");
     }
     assertThat(found).as("inline scripts in index.html").isEqualTo(1);
     try (InputStream in = OrdersSpaTest.class.getClassLoader().getResourceAsStream("fw-spa/index.html")) {

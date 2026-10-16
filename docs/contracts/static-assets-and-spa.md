@@ -233,7 +233,20 @@ The table is fixed so Java and Go answer the same bytes (the JDK's and Go's MIME
   `style-src 'self'`, `img-src 'self' data:`, `font-src 'self'`, `connect-src 'self'`,
   `frame-ancestors 'none'`, `base-uri 'none'`, `form-action 'self'`, `object-src 'none'`), with
   `Cross-Origin-Opener-Policy: same-origin` and `Permissions-Policy: camera=(), microphone=(),
-  geolocation=()`. Java: `.contentSecurityPolicy(Csp.strict("sha256-..."))`.
+  geolocation=()`. Java: `.contentSecurityPolicy(Csp.strict("sha256-..."))`, or, without that call,
+  the hashes of **`csp-hashes.json`** (below).
+- **`csp-hashes.json` (2026-10-16, additive).** The `flowcatalystUi()` Vite plugin writes
+  `{"scriptHashes": ["sha256-..."]}` beside the built `index.html`, one hash per inline script of
+  every html page of the bundle (the colour-mode snippet, and anything else inline). A server reads
+  it when its SPA has no policy of its own: Java `Spa` uses `Csp.strict(<those hashes>)` as its
+  default, never serves the file (a request for it is the usual `404`), and a file that is not that
+  shape (not JSON, no `scriptHashes` array, a value that is not `sha256-`, `sha384-` or `sha512-` and
+  base64) is a start-up problem. A policy passed in code (`contentSecurityPolicy(...)`) replaces the
+  file entirely, `Csp.baseline()` included. Without the file the default is `Csp.strict()` with no
+  hashes, as before. `SpaTesting.assertServesBuild` fails when an inline script of `index.html` is
+  not allowed by the `script-src` actually served (naming the hash to use), so a stale file or a
+  hand-copied hash cannot pass the application's tests. Go: not read yet (it builds its policy from
+  its options); the vectors do not cover the file.
 - **Baseline (opt-in, in code):** the platform's policy, which restricts framing, plugins and
   `<base>` only: `frame-ancestors 'none'; object-src 'none'; base-uri 'self'`. It does not restrict
   scripts, styles or connections; an application whose pages cannot run under strict chooses it.
@@ -250,15 +263,15 @@ The table is fixed so Java and Go answer the same bytes (the JDK's and Go's MIME
   built, because Zod 4 otherwise probes `new Function("")`, which is reported as a `script-src`
   violation (`@flowcatalyst/api-runtime` takes this over at U2). The one inline script's hash is
   `COLOR_MODE_SNIPPET_SHA256`, and the exact policy string is built by the CSP helpers, both exported
-  from `@flowcatalyst/ui/csp`; the application passes that hash to the Spa builder (a hash left out is a blocked snippet, not a build error). Components
+  from `@flowcatalyst/ui/csp`; Java reads it from `csp-hashes.json` (above), or the application passes it to the Spa builder (a hash left out is a blocked snippet; `SpaTesting` catches it). Components
   known to break the policy (`UBanner` with an `id`, `USplitter`) are forbidden by the package's lint.
 - **Flipped 2026-10-15 (Java; Go had it from G3):** the `Spa` builder's default is
   `Csp.strict()` with no script hashes, and the baseline is the explicit opt-in (`Csp.baseline()`).
   An SPA with the colour-mode snippet passes its hash. **BREAKING** for an application that relied
   on the baseline default: its inline scripts, styles or cross-origin requests are now refused by
   the browser until it passes hashes or opts back in. `conformance/http/spa.json` pins the default
-  (strict, no hashes) and both languages use their default. Not done: shipping the hash with the
-  SPA (a `csp-hashes` file written by the Vite plugin) so no application copies it.
+  (strict, no hashes) and both languages use their default. The hash ships with the SPA since
+  2026-10-16 (`csp-hashes.json`, above).
 - HSTS is the TLS terminator's job (the http contract leaves TLS outside the application).
 
 ## 8. Build integration

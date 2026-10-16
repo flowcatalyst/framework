@@ -39,7 +39,7 @@ Read from the tree, without building or running anything there:
 | 6 | The committed OpenAPI document | **Done** (`web/openapi.json`, `OpenApiDocumentTest`); the generated client has **no drift check** |
 | 7 | The `web/` workspace | **Done** |
 | 8 | Pages | **Done**, except that the source is edited as JSON (not a form per kind) |
-| 9 | SPA served under the strict CSP | **Done** (`WebModule`, `WebModuleTest`); the script hash is copied by hand |
+| 9 | SPA served under the strict CSP | **Done** (`WebModule`, `WebModuleTest`); since 2026-10-16 the hash comes from the build's `csp-hashes.json`: delete the copied constant (see below) |
 | 10 | Sign-in pages and the failure handler | **Done** |
 | 11 | Java tests | **Done** |
 | 12 | Playwright end-to-end tests | **Not started** |
@@ -355,7 +355,7 @@ assets are `404`, `index.html` is `no-cache` with an ETag, hashed assets are `im
 **Where.** `WebModule`:
 
 ```java
-Spa.classpath("fw-spa").contentSecurityPolicy(Csp.strict(COLOR_MODE_SNIPPET_HASH)).build()
+Spa.classpath("fw-spa").build()
 ```
 
 mounted in `boot` with `app.get(Routes.class).forModule(ID).spa(spa())`, and the pom copies
@@ -366,11 +366,13 @@ mounted in `boot` with `app.get(Routes.class).forModule(ID).spa(spa())`, and the
 `Spa...build()` with no policy now sends `Csp.strict()`: scripts, styles, images, fonts and
 connections from the application's own origin only, no framing, `base-uri 'none'`, plus
 `Cross-Origin-Opener-Policy` and `Permissions-Policy`. The one inline script in a page built with
-`flowcatalystUi()` is the pre-paint colour-mode snippet; its hash is passed
-(`COLOR_MODE_SNIPPET_HASH`, the `COLOR_MODE_SNIPPET_SHA256` of `@flowcatalyst/ui/csp`). If the
-snippet changes, `WebModuleTest.thePolicyAllowsExactlyTheInlineScriptTheBuildContains` fails: it
-finds the inline scripts in the built `index.html`, expects exactly one and expects its SHA-256 to
-equal the constant. Update the constant with the package. An interim server-rendered page with
+`flowcatalystUi()` is the pre-paint colour-mode snippet. Since 2026-10-16 its hash is not passed by
+hand: the Vite build writes `csp-hashes.json` beside `index.html` and `Spa` reads it (an explicit
+`contentSecurityPolicy(Csp.strict(hash))` still works and replaces the file, so the application's
+existing `COLOR_MODE_SNIPPET_HASH` can be deleted at leisure). Keep
+`WebModuleTest.thePolicyAllowsExactlyTheInlineScriptTheBuildContains` (or call
+`SpaTesting.assertServesBuild`, which now checks every inline script against the served policy):
+it fails when the snippet and the policy disagree. An interim server-rendered page with
 inline scripts would need `Csp.baseline()` instead; the pages here need neither.
 
 **Without a build.** The jar starts only with `APP_ENV` `local` or `test` (every SPA request then
@@ -583,9 +585,10 @@ days.
    component that picks a variant and renders its fields, nor a way to place a nested server field
    error (`source.host`) on it. *Proposal:* a `FwUnionField` in U4 driven by the generated Zod
    schema, with field errors by dotted path.
-3. **The CSP hash is copied by hand.** Known (U3 gap G1, remaining). `@flowcatalyst/ui/csp` exports
-   `COLOR_MODE_SNIPPET_SHA256`, but a Java application pastes the string and a test catches drift.
-   *Proposal:* the Vite plugin writes `csp-hashes` beside `index.html` and `Spa` reads it.
+3. **The CSP hash is copied by hand.** **Fixed 2026-10-16** (U3 gap G1): the Vite plugin writes
+   `csp-hashes.json` beside `index.html`, `Spa` reads it for its default policy and does not serve it,
+   `SpaTesting.assertServesBuild` fails on an inline script the policy does not allow. Go does not
+   read the file yet.
 4. **Security schemes per operation.** Not built. An `Operation` lists every scheme the application
    has; it cannot say "session and bearer only", and `bearer` is always described as a JWT.
    *Proposal:* `Operation.Builder.security(String...)` and `SecurityScheme.bearer(format)` chosen by

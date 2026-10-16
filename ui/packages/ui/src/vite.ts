@@ -19,9 +19,14 @@
 //    CSS is lifted out of the module into a real stylesheet at build time.
 // 3. The colour-mode snippet (src/csp.ts) is written into index.html, so the strict CSP allows it
 //    by its hash and a dark page does not flash light.
+//    The hashes of every inline script of the built index.html are written to `csp-hashes.json`
+//    beside it, which the Java `Spa` reads for its strict policy (so no hash is copied into code).
 // 4. Fonts are never inlined as data: URIs (`font-src 'self'`).
 // 5. vue, vue-router, @nuxt/ui and @vueuse/core are deduplicated, so a consumer that links this
 //    package (`"@flowcatalyst/ui": "link:..."`) gets one copy of each.
+import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { NuxtUIOptions } from "@nuxt/ui/vite";
 import tailwindColors from "tailwindcss/colors";
 import type { Plugin } from "vite";
@@ -125,6 +130,51 @@ function tailwindPalettes(): Record<string, Record<string, string>> {
   return result;
 }
 
+/** The file written beside the built index.html: `{"scriptHashes": ["sha256-..."]}`. */
+export const CSP_HASHES_FILE = "csp-hashes.json";
+
+const INLINE_SCRIPT = /<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/gi;
+const SCRIPT_TYPE = /\btype=["']([^"']*)["']/i;
+
+/** Whether a `<script type>` runs (a JSON or template data block does not, so needs no hash). */
+function runs(type: string): boolean {
+  const t = type.trim().toLowerCase();
+  return t === "" || t === "module" || t.includes("javascript");
+}
+
+/** `sha256-<base64>` of each inline script's exact text, in page order, once each. */
+export function inlineScriptHashes(html: string): string[] {
+  const hashes = new Set<string>();
+  for (const match of html.matchAll(INLINE_SCRIPT)) {
+    const type = SCRIPT_TYPE.exec(match[1] ?? "")?.[1];
+    if (type === undefined || runs(type)) {
+      hashes.add(`sha256-${createHash("sha256").update(match[2] ?? "", "utf8").digest("base64")}`);
+    }
+  }
+  return [...hashes];
+}
+
+/** The text of {@link CSP_HASHES_FILE}. */
+export function cspHashesJson(scriptHashes: readonly string[]): string {
+  return `${JSON.stringify({ scriptHashes }, null, 2)}\n`;
+}
+
+type EmittedFile =
+  | { readonly type: "asset"; readonly fileName: string; readonly source: string | Uint8Array }
+  | { readonly type: "chunk"; readonly fileName: string };
+
+/** Writes {@link CSP_HASHES_FILE} into `dir` for the html pages of a bundle. */
+export function writeCspHashes(dir: string, bundle: Readonly<Record<string, EmittedFile>>): void {
+  const hashes = new Set<string>();
+  for (const file of Object.values(bundle)) {
+    if (file.type === "asset" && file.fileName.endsWith(".html")) {
+      const html = typeof file.source === "string" ? file.source : new TextDecoder().decode(file.source);
+      for (const hash of inlineScriptHashes(html)) hashes.add(hash);
+    }
+  }
+  writeFileSync(join(dir, CSP_HASHES_FILE), cspHashesJson([...hashes]));
+}
+
 const VIRTUAL_PREFIX = "virtual:flowcatalyst-ui/";
 const RESOLVED_PREFIX = "/__flowcatalyst-ui/";
 const NUXT_UI_RUNTIME_PLUGIN = /[\\/]@nuxt[\\/]ui[\\/]dist[\\/]runtime[\\/]plugins[\\/]([^\\/]+)\.js$/;
@@ -191,6 +241,12 @@ export function flowcatalystUi(options: NuxtUIOptions): Plugin {
       const name = `injected-${String(lifted.size)}.css`;
       lifted.set(RESOLVED_PREFIX + name, split.css);
       return { code: `import "${VIRTUAL_PREFIX}${name}";\n${split.code}`, map: null };
+    },
+    writeBundle(outputOptions, bundle) {
+      const dir = outputOptions.dir ?? (outputOptions.file === undefined ? undefined : dirname(outputOptions.file));
+      if (dir !== undefined) {
+        writeCspHashes(dir, bundle);
+      }
     },
     transformIndexHtml: {
       order: "pre",

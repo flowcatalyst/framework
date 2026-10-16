@@ -68,4 +68,60 @@ class SpaTestingTest {
     prefixed.spa(Spa.directory(app).prefix("/app").build());
     assertThatCode(() -> SpaTesting.assertServesBuild(TestClient.of(prefixed), "/app")).doesNotThrowAnyException();
   }
+
+  private static String sha256(String script) throws java.security.NoSuchAlgorithmException {
+    byte[] sum = java.security.MessageDigest.getInstance("SHA-256").digest(script.getBytes(StandardCharsets.UTF_8));
+    return "sha256-" + java.util.Base64.getEncoder().encodeToString(sum);
+  }
+
+  private Path withInlineScript(String script, String hashesJson) throws IOException {
+    Path dist = SpaFixture.write(tmp);
+    String html = SpaFixture.INDEX.replace("<head>", "<head><script>" + script + "</script>");
+    Files.writeString(dist.resolve("index.html"), html, StandardCharsets.UTF_8);
+    if (hashesJson != null) {
+      Files.writeString(dist.resolve("csp-hashes.json"), hashesJson, StandardCharsets.UTF_8);
+    }
+    return dist;
+  }
+
+  private static Routes routes(Spa spa) {
+    Routes routes = new Routes("test");
+    routes.forModule("api").get("/api/v1/orders", r -> Response.noContent());
+    routes.forModule("web").spa(spa);
+    return routes;
+  }
+
+  @Test
+  void everyInlineScriptMustBeAllowedByThePolicy() throws Exception {
+    String script = "document.documentElement.className='x';";
+    // the build wrote the right hash: the default policy allows the snippet
+    Path ok = withInlineScript(script, "{\"scriptHashes\":[\"" + sha256(script) + "\"]}");
+    assertThatCode(() -> SpaTesting.assertServesBuild(TestClient.of(routes(Spa.directory(ok).build()))))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void aHashThatIsNotTheSnippetsFailsTheCheckNamingTheHashToUse() throws Exception {
+    String script = "document.documentElement.className='x';";
+    Path stale = withInlineScript(script, "{\"scriptHashes\":[\"sha256-AbC+/09=\"]}");
+    assertThatThrownBy(() -> SpaTesting.assertServesBuild(TestClient.of(routes(Spa.directory(stale).build()))))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("inline script")
+        .hasMessageContaining(sha256(script));
+  }
+
+  @Test
+  void aSnippetWithNoHashAtAllFailsTheCheckToo() throws Exception {
+    String script = "alert(1)";
+    Path none = withInlineScript(script, null);
+    assertThatThrownBy(() -> SpaTesting.assertServesBuild(TestClient.of(routes(Spa.directory(none).build()))))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining(sha256(script));
+    // the baseline policy has no script-src: nothing to check there
+    assertThatCode(
+            () ->
+                SpaTesting.assertServesBuild(
+                    TestClient.of(routes(Spa.directory(none).contentSecurityPolicy(Csp.baseline()).build()))))
+        .doesNotThrowAnyException();
+  }
 }
