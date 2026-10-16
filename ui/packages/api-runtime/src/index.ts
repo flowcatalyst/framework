@@ -25,6 +25,7 @@ export {
   type FieldError,
   type ServiceError,
 } from "./errors.ts";
+export { exactOutput, type ExactOutput } from "./exact-output.ts";
 export { applyServiceError, type AppliedServiceError, type FormErrorTarget } from "./form-errors.ts";
 export { installSessionGuard, type SessionGuardOptions } from "./guard.ts";
 export { hasPermission, permissionMatches } from "./permissions.ts";

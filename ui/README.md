@@ -129,7 +129,15 @@ The generated folder is committed; CI runs `api:drift` (a modified *or new* file
 `client/` and `core/` subfolders need the tsconfig exception below: copy
 `apps/gallery/tsconfig.generated.json` and reference it (and
 `packages/api-runtime/tsconfig.generated.json`) from the application's `tsconfig.app.json`, which
-excludes `src/api/*/client/**` and `src/api/*/core/**`. Import the envelope type as
+excludes `src/api/*/client/**` and `src/api/*/core/**`. A validated form value (Zod's output) is not assignable to the generated request type under
+`exactOptionalPropertyTypes`: Zod writes an optional property `?: T | undefined`, hey-api `?: T`. Do not
+cast; pass it through `exactOutput(...)` from `@flowcatalyst/api-runtime`, which removes the
+`undefined`-valued properties (deeply) and says so in the type:
+`const body: IngestionBody = exactOutput(zIngestionBody.parse(form))`. (`z.exactOptional()` in the
+generated schemas would give the exact type too, but then an explicit `undefined` in form state fails
+validation, so the generator keeps `.optional()`.)
+
+Import the envelope type as
 `ErrorEnvelope`/`ServiceError` from `@flowcatalyst/api-runtime`, never the generated `Error` (it shadows
 the global).
 

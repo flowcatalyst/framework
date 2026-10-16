@@ -523,7 +523,10 @@ Two settings the build found necessary (MU U2, [`../ui/u2.md`](../ui/u2.md); hey
 - **Zod:** the plugin's schemas (zod 4) are passed to Nuxt UI's `UForm`; they carry the section 5.4
   constraints, so the browser checks what the server will check. The SDK's run-time response
   validation stays off, except in the end-to-end tests, where a response that does not match the
-  document fails the test.
+  document fails the test. Zod's output marks an optional property `?: T | undefined` while the generated
+  type says `?: T`, so under `exactOptionalPropertyTypes` a parsed form value is not assignable to a request
+  type: `exactOutput(...)` from `@flowcatalyst/api-runtime` (2026-10-16) removes the undefined-valued properties
+  and types the result exactly, in place of an application cast.
 - **Drift check in CI:** after the Java (or Go) build has checked `openapi.json` (section 9), the web
   build runs `openapi-ts` and runs the drift check (`fc-api-drift`, a bin of `@flowcatalyst/api-runtime`: `git status` on the
   folder, so added and deleted files count, or, without git, `fc-api-drift --run "openapi-ts" src/api`, which compares the folder's file hashes before
