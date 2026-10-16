@@ -489,7 +489,9 @@ Two additions the tree does not have yet:
 - **Client drift.** `OpenApiDocumentTest` proves the *document* is current; nothing proves
   `web/src/api/ingest` was regenerated from it. The framework uses `ui/scripts/api-drift.ts`
   (run after the generator, fails on any difference from the commit, new and deleted files
-  included). Copy it and add `"drift": "openapi-ts && node scripts/api-drift.ts src/api"`.
+  included). Since 2026-10-16 it is `fc-api-drift`, a bin of `@flowcatalyst/api-runtime` (no copy):
+  `"drift": "openapi-ts && fc-api-drift src/api"` with git, or `"drift": "fc-api-drift --run \"openapi-ts\" src/api"`
+  where the build has no git (it hashes the folder, runs the generator, compares).
 - **The dist guard.** Step 4's `test -f` is the guard against the green-but-skipped `WebModuleTest`.
 
 ## 14. The fixed bearer and the basic login: map or retire

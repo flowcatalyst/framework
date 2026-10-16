@@ -15,8 +15,12 @@
     "./openapi-ts": "./src/openapi-ts.ts",
     "./package.json": "./package.json"
   },
+  "bin": {
+    "fc-api-drift": "./bin/api-drift.mjs"
+  },
   "files": [
-    "src"
+    "src",
+    "bin"
   ],
   "scripts": {
     "generate": "openapi-ts",

@@ -24,6 +24,8 @@ export default defineConfig(
       "packages/api-runtime/src/generated/**",
       "packages/api-runtime/test/orders-demo/api/**",
       "apps/*/src/api/**",
+      // Plain JavaScript a consumer runs with node (the drift bin); its types are bin/*.d.mts and test/api-drift.test.ts.
+      "packages/api-runtime/bin/**",
     ],
   },
   tseslint.configs.strictTypeChecked,

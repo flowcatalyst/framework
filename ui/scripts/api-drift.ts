@@ -1,22 +1,9 @@
-// Drift check for generated clients (docs/contracts/openapi.md section 11): run after the generator,
-// it fails when the given folders differ from the commit, new and deleted files included (plain
-// `git diff --exit-code` does not see a file the generator added).
+// The drift check lives in @flowcatalyst/api-runtime (bin `fc-api-drift`, packages/api-runtime/bin/api-drift.mjs):
+// an application outside this repository runs it from its dependency, with or without git. This path
+// stays for the workspace's own `drift` scripts.
 //
-//   openapi-ts && node ../../scripts/api-drift.ts src/generated test/orders-demo/api
-import { execFileSync } from "node:child_process";
+//   openapi-ts && node ../../scripts/api-drift.ts src/api              (git)
+//   node ../../scripts/api-drift.ts --run "openapi-ts" src/api         (no git needed)
+import { main } from "../packages/api-runtime/bin/api-drift.mjs";
 
-const paths = process.argv.slice(2);
-if (paths.length === 0) {
-  console.error("usage: node scripts/api-drift.ts <generated folder>...");
-  process.exit(2);
-}
-
-const status = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", ...paths], {
-  encoding: "utf8",
-});
-if (status.trim() !== "") {
-  console.error(`Generated client out of date (regenerate and commit):\n${status}`);
-  console.error(execFileSync("git", ["diff", "--stat", "--", ...paths], { encoding: "utf8" }));
-  process.exit(1);
-}
-console.log(`no drift: ${paths.join(", ")}`);
+process.exit(main(process.argv.slice(2)));

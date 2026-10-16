@@ -525,7 +525,9 @@ Two settings the build found necessary (MU U2, [`../ui/u2.md`](../ui/u2.md); hey
   validation stays off, except in the end-to-end tests, where a response that does not match the
   document fails the test.
 - **Drift check in CI:** after the Java (or Go) build has checked `openapi.json` (section 9), the web
-  build runs `openapi-ts` and fails on `git diff --exit-code web/src/api`; then `vite build` and
+  build runs `openapi-ts` and runs the drift check (`fc-api-drift`, a bin of `@flowcatalyst/api-runtime`: `git status` on the
+  folder, so added and deleted files count, or, without git, `fc-api-drift --run "openapi-ts" src/api`, which compares the folder's file hashes before
+  and after the generator); then `vite build` and
   `vue-tsc --build`, so a renamed field, a removed operation or a changed enum is a type error in
   the pages that use it.
 - The toolchain, lint and tsconfig rules are those of [`../go/ui.md`](../go/ui.md) sections 2, 3
