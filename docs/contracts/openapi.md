@@ -362,6 +362,54 @@ test in the emitter suite serialises a sample of every row of the 5.1 table with
 typed-operation writer and validates the JSON against the emitted schema, so the table cannot drift
 from Jackson.
 
+### 5.6 Proposed: constraints on the variants of a sealed interface (not built; 2026-10-16)
+
+**Status: proposed, from the first application's feedback (Camel feedback 2026-10-16, item b).**
+Nothing here is built; the owner decides.
+
+*What works today.* A sealed interface is a `oneOf` with a `discriminator` (5.3) and each variant is
+its own record component, so what a kind **requires** is already in the document: an `sftp` source
+has a required `host`, an `http` source does not have one at all, and the generated TypeScript and
+Zod narrow on `source.kind`. A nullable component of a variant is optional, a non-null one is
+required.
+
+*What does not.* The rules that depend on the kind and are not about presence: the pattern a `host`
+must match, the range of a poll interval, the shape of an S3 prefix. `Validator.of(Source.class)` has
+no fields (an interface has no record components), so `.nested("source", IngestionBody::source, ...)`
+cannot carry per-variant rules, and a `Rules.custom` on the field runs at the server but documents
+nothing. The application therefore keeps those rules in code the browser does not see
+(`IngestionRules.check`) and the generated Zod schema accepts a value the server refuses; the server
+answers `400` with the field's path and the page shows it. That is correct but late.
+
+*Proposal.* A validator for a union is a set of validators, one per permitted subtype:
+
+```java
+static final Validator<IngestionBody> BODY =
+    Validator.of(IngestionBody.class)
+        .nested("source", IngestionBody::source,
+            Validator.union(Source.class)
+                .variant(Source.Sftp.class,
+                    Validator.of(Source.Sftp.class).field("host", Source.Sftp::host, Rules.pattern(HOST)))
+                .variant(Source.Http.class, Validator.of(Source.Http.class)
+                    .field("url", Source.Http::url, Rules.pattern(URL))));
+```
+
+- *Run time.* `validate` picks the variant validator by the value's class (a subtype with no
+  validator has no rules) and reports paths as `source.host`, as the application's own checks do
+  today. A null value passes, as for `nested`.
+- *Emitter.* The constraints of a variant validator merge into the **variant's** component
+  (`SourceSftp`), by the existing "one component per type" machinery of 5.4; the `oneOf` and the
+  `discriminator` do not change, so the generated Zod union members carry the pattern and the form
+  marks the field before the request. Dump problems: a `variant(...)` class that is not a permitted
+  subtype of the interface; two operations that give one variant different constraints (as 5.4).
+- *Not proposed.* Rules across fields or across the union and a sibling (the split against the source
+  kind, "interval at least the minimum for this kind"): JSON Schema can say them with `if`/`then`, but
+  hey-api's Zod plugin does not turn those into a schema, so documenting them would only mislead. They
+  stay in `custom` rules, server side.
+- *Cost.* About a day of Java (`Validator.union`, `Rules.valid` for a union, the emitter merge, a dump
+  test for each refusal, an `OpenApiDocumentTest` case and a conformance vector for Go); no change to
+  the TypeScript packages. The application's `IngestionRules` would shrink to the cross-field rules.
+
 ## 6. Errors
 
 One shared component, the http contract's envelope:
