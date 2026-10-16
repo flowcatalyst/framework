@@ -5,6 +5,123 @@
     "version": "1"
   },
   "paths": {
+    "/api/admin/about": {
+      "get": {
+        "operationId": "getAdminAbout",
+        "summary": "What the application is and whether it is healthy",
+        "tags": [
+          "admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAbout"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:console:view"
+      }
+    },
+    "/api/admin/navigation": {
+      "get": {
+        "operationId": "getAdminNavigation",
+        "summary": "The admin sections the caller may use",
+        "tags": [
+          "admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNavigation"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:console:view"
+      }
+    },
+    "/api/admin/orders/overview": {
+      "get": {
+        "operationId": "getAdminOrdersOverview",
+        "summary": "Count the client's orders by status",
+        "tags": [
+          "admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdersOverview"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "orders-demo:admin:orders:view"
+      }
+    },
     "/api/orders": {
       "get": {
         "operationId": "listOrders",
@@ -473,6 +590,111 @@
         ],
         "additionalProperties": false
       },
+      "AdminAbout": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "type": "string"
+          },
+          "framework": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCheck"
+            }
+          }
+        },
+        "required": [
+          "application",
+          "environment",
+          "startedAt",
+          "ready",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
+      "AdminCheck": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UP",
+              "DOWN",
+              "TIMED_OUT"
+            ]
+          },
+          "critical": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "critical"
+        ],
+        "additionalProperties": false
+      },
+      "AdminNavigation": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminSectionView"
+            }
+          }
+        },
+        "required": [
+          "sections"
+        ],
+        "additionalProperties": false
+      },
+      "AdminSectionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "path",
+          "permission"
+        ],
+        "additionalProperties": false
+      },
       "AuthCsrf": {
         "type": "object",
         "properties": {
@@ -787,6 +1009,29 @@
         ],
         "additionalProperties": false
       },
+      "OrdersOverview": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cancelled": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openTotalCents": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "open",
+          "cancelled",
+          "openTotalCents"
+        ],
+        "additionalProperties": false
+      },
       "PageOrderSummaryView": {
         "type": "object",
         "properties": {
@@ -847,6 +1092,9 @@
     }
   },
   "tags": [
+    {
+      "name": "admin"
+    },
     {
       "name": "auth"
     },

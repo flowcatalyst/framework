@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.examples.ordersdemo;
 
+import io.flowcatalyst.framework.admin.AdminModule;
 import io.flowcatalyst.framework.auth.AuthModule;
 import io.flowcatalyst.framework.auth.LoginFailureHandler;
 import io.flowcatalyst.framework.auth.PermissionMapper;
@@ -19,6 +20,9 @@ import java.util.function.UnaryOperator;
  * --out web/openapi.json} writes its OpenAPI document without a database or configuration.
  */
 public final class OrdersWeb {
+
+  /** The application code. */
+  static final ApplicationCode APPLICATION = new ApplicationCode("orders-demo");
 
   private OrdersWeb() {}
 
@@ -40,13 +44,31 @@ public final class OrdersWeb {
    * @return a builder, not started
    */
   public static AppBuilder builder(UnaryOperator<AuthModule.Builder> customise) {
+    return withoutAdmin(customise)
+        // The admin area (M4d): the skeleton's navigation and about, and the demo's own section.
+        .module(AdminModule.of(APPLICATION))
+        .module(new OrdersAdminModule());
+  }
+
+  /**
+   * The web application without its admin area: the orders and the sessions only. This is the
+   * document of the shared vector {@code conformance/openapi/orders-demo.json} (the orders-only
+   * application the other frameworks build).
+   *
+   * @return a builder, not started
+   */
+  public static AppBuilder withoutAdmin() {
+    return withoutAdmin(auth -> auth);
+  }
+
+  private static AppBuilder withoutAdmin(UnaryOperator<AuthModule.Builder> customise) {
     return OrdersDemo.builder()
         .module(new JettyHttpModule())
         .module(new AuthDatabaseModule())
         .module(
             customise
                 .apply(AuthModule.builder())
-                .application(new ApplicationCode("orders-demo"))
+                .application(APPLICATION)
                 .postLogoutRedirect("/signed-out")
                 // A failed sign-in lands on the SPA's page for it, not on the JSON envelope.
                 .loginFailure(LoginFailureHandler.redirectTo("/sign-in-failed"))
@@ -56,7 +78,9 @@ public final class OrdersWeb {
                             PermissionMapper.byRole(
                                 Map.of(
                                     "orders-demo:clerk", Set.of(OrdersApi.READ, OrdersApi.MANAGE),
-                                    "orders-demo:viewer", Set.of(OrdersApi.READ)))))
+                                    "orders-demo:viewer", Set.of(OrdersApi.READ),
+                                    // the administrator: the whole admin area (admin contract section 3)
+                                    "orders-demo:admin", Set.of("orders-demo:admin:*:*")))))
                 .build())
         .module(new OrdersApiModule())
         .module(new OrdersSpaModule());

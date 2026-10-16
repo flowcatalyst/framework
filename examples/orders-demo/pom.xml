@@ -35,6 +35,11 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-http-jetty</artifactId>
     </dependency>
+    <!-- The application admin skeleton (M4d): the /admin area, here with one section of its own. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-admin</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-auth</artifactId>
