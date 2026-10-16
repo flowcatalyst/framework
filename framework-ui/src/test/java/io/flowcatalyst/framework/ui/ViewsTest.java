@@ -53,6 +53,9 @@ class ViewsTest {
       p.inner("#list", Markup.text("<b>" + XSS));
       p.flash("success", "Saved.", null);
       p.remove("#row-1");
+      p.replace("#dlg", Markup.raw("<dialog id=\"dlg\"></dialog>"));
+      p.focus("opener");
+      p.closeDialog("dlg");
     }));
     ASSETS.register(routes.forModule("ui"));
     return TestClient.of(routes);
@@ -131,6 +134,9 @@ class ViewsTest {
     assertThat(body).doesNotContain("<script>");
     assertThat(body).contains("data: selector #flash-stack").contains("data: mode append").contains("fc-flash-success");
     assertThat(body).contains("data: selector #row-1").contains("data: mode remove");
+    assertThat(body).contains("data: selector #dlg").contains("data: mode replace");
+    assertThat(body).contains("document.getElementById(&#39;opener&#39;)?.focus()");
+    assertThat(body).contains("document.getElementById(&#39;dlg&#39;).close()");
   }
 
   @Test
@@ -156,6 +162,14 @@ class ViewsTest {
     assertThat(c.get("/fw-ui/datastar.js").send().body()).startsWith("// Datastar v1.0.4");
     assertThat(c.get("/icons/lucide-sprite.svg").send().header("Content-Type")).startsWith("image/svg+xml");
     assertThat(c.get("/fw-ui/other.js").send().status()).isEqualTo(404);
+  }
+
+  @Test
+  void aContentBlockFromATemplateRendersThroughMarkupRender() {
+    gg.jte.html.HtmlContent block = out -> out.writeUserContent("<i>&");
+    assertThat(Markup.render(block)).isEqualTo("&lt;i&gt;&amp;");
+    gg.jte.Content body = block;
+    assertThat(Markup.render(Kit.detailField(new Props.DetailField("L", null, false), body))).contains("&lt;i&gt;&amp;");
   }
 
   @Test

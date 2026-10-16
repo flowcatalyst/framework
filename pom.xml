@@ -59,6 +59,7 @@
     <module>framework-sql-maven-plugin</module>
     <module>examples/locks-demo</module>
     <module>examples/orders-demo</module>
+    <module>examples/orders-demo-jte</module>
   </modules>
 
   <properties>

@@ -9,6 +9,7 @@ import io.flowcatalyst.framework.ui.kit.Kit;
 import io.flowcatalyst.framework.ui.kit.Markup;
 import io.flowcatalyst.framework.ui.kit.Props;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The patches of one Datastar answer: kit {@link Content} rendered to markup and written as {@code
@@ -35,6 +36,57 @@ public final class Patches {
    */
   public void outer(Content content) {
     sse.patchElements(Markup.render(content));
+  }
+
+  /**
+   * Replaces the page content (the {@code #fw-page} wrapper): what {@link Views#page} sends for a
+   * Datastar request, for a handler that streams more than the page.
+   *
+   * @param content the page content
+   */
+  public void page(Content content) {
+    outer(Views.wrap(content));
+  }
+
+  /**
+   * Replaces the element matching the selector with the content (the element is removed and
+   * inserted, not morphed). Use it for a modal {@code <dialog>} the answer must close: removing an
+   * open modal takes it out of the top layer, whereas a morph that drops its {@code open} attribute
+   * leaves it modal and blocks the page.
+   *
+   * @param selector a CSS selector, normally {@code #id}
+   * @param content the new element
+   */
+  public void replace(String selector, Content content) {
+    patch(selector, ElementPatchMode.REPLACE, content);
+  }
+
+  /**
+   * Moves focus to the element with this id, once the patches before it have been applied (a
+   * dialog that closed hands focus back to its trigger).
+   *
+   * @param id the element id
+   */
+  public void focus(String id) {
+    String attrs =
+        Markup.attrs(
+            Map.of(
+                "data-init",
+                "requestAnimationFrame(() => document.getElementById('" + Markup.id(id) + "')?.focus()); el.remove()"));
+    append("body", Markup.raw("<span hidden" + attrs + "></span>"));
+  }
+
+  /**
+   * Closes the modal dialog with this id, by appending a self-removing element that does it when
+   * Datastar processes it. That processing is asynchronous: a later patch in the same answer that
+   * morphs the dialog can run first and leave it modal without its {@code open} attribute. When
+   * the answer also re-renders the dialog, {@link #replace} it instead.
+   *
+   * @param dialogId the dialog's id
+   */
+  public void closeDialog(String dialogId) {
+    String attrs = Markup.attrs(Map.of("data-init", "document.getElementById('" + Markup.id(dialogId) + "').close(); el.remove()"));
+    append("body", Markup.raw("<span hidden" + attrs + "></span>"));
   }
 
   /**
@@ -87,7 +139,7 @@ public final class Patches {
    * @param summary the headline
    * @param detail the second line, or null
    */
-  public void flash(String kind, String summary, String detail) {
+  public void flash(String kind, String summary, @Nullable String detail) {
     append("#" + flashStackId, Kit.flashMessage(new Props.FlashMessage(kind, summary, detail, false, null)));
   }
 

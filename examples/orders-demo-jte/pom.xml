@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.flowcatalyst.framework</groupId>
+    <artifactId>framework-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+  <artifactId>orders-demo-jte</artifactId>
+  <name>orders-demo-jte</name>
+  <description>The orders list, drawer and create form as server-rendered JTE pages (optional module framework-ui). A second entry point beside orders-demo's Nuxt UI single-page application; it shares no code with it and needs no database.</description>
+
+  <properties>
+    <!-- An example: never published. -->
+    <maven.deploy.skip>true</maven.deploy.skip>
+    <!-- The build plugin's version; keep equal to jte.version in framework-bom. -->
+    <jte.plugin.version>3.2.4</jte.plugin.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-ui</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http-jetty</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>gg.jte</groupId>
+      <artifactId>jte-runtime</artifactId>
+    </dependency>
+    <!-- An application chooses its logging backend; libraries bring none. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>gg.jte</groupId>
+        <artifactId>jte-maven-plugin</artifactId>
+        <version>${jte.plugin.version}</version>
+        <configuration>
+          <sourceDirectory>${project.basedir}/src/main/jte</sourceDirectory>
+          <contentType>Html</contentType>
+        </configuration>
+        <executions>
+          <execution>
+            <id>generate-templates</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

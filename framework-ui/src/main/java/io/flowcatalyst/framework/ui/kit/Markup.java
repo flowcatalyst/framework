@@ -361,7 +361,8 @@ public final class Markup {
    */
   public static String render(Content content) {
     gg.jte.output.StringOutput out = new gg.jte.output.StringOutput();
-    content.writeTo(out);
+    // the HTML output a content block written in a template expects (it casts to it)
+    content.writeTo(new gg.jte.html.OwaspHtmlTemplateOutput(out));
     return out.toString();
   }
 }

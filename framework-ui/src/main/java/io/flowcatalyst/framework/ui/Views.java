@@ -163,11 +163,28 @@ public final class Views {
    * @return the response
    */
   public Response page(Request request, int status, String title, Content content) {
+    return page(request, status, title, content, List.of());
+  }
+
+  /**
+   * A page with flash messages rendered into its flash stack (the flash after a redirect: map a
+   * fixed key to text on the server, never render text from the request). A Datastar answer ignores
+   * them; patch a message with {@link Patches#flash}.
+   *
+   * @param request the request
+   * @param status the status of the full document
+   * @param title the page title (without the suffix)
+   * @param content the page content
+   * @param flashes the messages to show
+   * @return the response
+   */
+  public Response page(
+      Request request, int status, String title, Content content, List<Props.FlashMessage> flashes) {
     Content wrapped = wrap(content);
     if (isDatastar(request)) {
       return stream(request, patches -> patches.outer(wrapped));
     }
-    return document(request, status, title, wrapped);
+    return document(request, status, title, wrapped, flashes);
   }
 
   /**
@@ -193,7 +210,17 @@ public final class Views {
     void run(Patches patches) throws Exception;
   }
 
-  private static Content wrap(Content content) {
+  private static Content flashStack(List<Props.FlashMessage> flashes) {
+    Content messages =
+        out -> {
+          for (Props.FlashMessage m : flashes) {
+            Kit.flashMessage(m).writeTo(out);
+          }
+        };
+    return Kit.flashStack(new Props.FlashStack(FLASH_STACK_ID), messages);
+  }
+
+  static Content wrap(Content content) {
     return output -> {
       output.writeContent("<div id=\"" + PAGE_ID + "\">");
       content.writeTo(output);
@@ -201,7 +228,8 @@ public final class Views {
     };
   }
 
-  private Response document(Request request, int status, String title, Content wrapped) {
+  private Response document(
+      Request request, int status, String title, Content wrapped, List<Props.FlashMessage> flashes) {
     Map<String, String> cookies = cookies(request.header("Cookie"));
     String theme = Theme.normalize(cookies.get(Theme.THEME_COOKIE));
     boolean dark =
@@ -213,7 +241,7 @@ public final class Views {
       Props.AppShell s = shell.apply(request);
       Content inside =
           out -> {
-            Kit.flashStack(new Props.FlashStack(FLASH_STACK_ID), null).writeTo(out);
+            flashStack(flashes).writeTo(out);
             wrapped.writeTo(out);
           };
       Props.AppShell withTheme =
@@ -232,7 +260,7 @@ public final class Views {
       body =
           out -> {
             out.writeContent("<main class=\"mx-auto max-w-xl p-[24px]\">");
-            Kit.flashStack(new Props.FlashStack(FLASH_STACK_ID), null).writeTo(out);
+            flashStack(flashes).writeTo(out);
             wrapped.writeTo(out);
             out.writeContent("</main>");
           };
