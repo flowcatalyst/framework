@@ -22,8 +22,9 @@
 //    The hashes of every inline script of the built index.html are written to `csp-hashes.json`
 //    beside it, which the Java `Spa` reads for its strict policy (so no hash is copied into code).
 // 4. Fonts are never inlined as data: URIs (`font-src 'self'`).
-// 5. vue, vue-router, @nuxt/ui and @vueuse/core are deduplicated, so a consumer that links this
-//    package (`"@flowcatalyst/ui": "link:..."`) gets one copy of each.
+// 5. vue, vue-router, @nuxt/ui, @vueuse/core, reka-ui and zod are deduplicated (DEDUPED_PACKAGES), so a
+//    consumer that links this package (`"@flowcatalyst/ui": "link:..."`) gets one copy of each, from
+//    its own lockfile.
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -130,6 +131,15 @@ function tailwindPalettes(): Record<string, Record<string, string>> {
   return result;
 }
 
+/**
+ * Packages resolved from the application's root, never from this package's own location. A package
+ * linked with `link:` imports from its real path, which is outside the application's lockfile; for
+ * anything that holds module state that would be a second copy (Vue, the router, Nuxt UI and Reka UI
+ * contexts, VueUse, and Zod, whose `jitless` setting is made by @flowcatalyst/api-runtime and must
+ * reach the copy the generated schemas use). Each is a peer dependency, so the application has it.
+ */
+export const DEDUPED_PACKAGES: readonly string[] = ["vue", "vue-router", "@nuxt/ui", "@vueuse/core", "reka-ui", "zod"];
+
 /** The file written beside the built index.html: `{"scriptHashes": ["sha256-..."]}`. */
 export const CSP_HASHES_FILE = "csp-hashes.json";
 
@@ -197,7 +207,7 @@ export function flowcatalystUi(options: NuxtUIOptions): Plugin {
     },
     config() {
       return {
-        resolve: { dedupe: ["vue", "vue-router", "@nuxt/ui", "@vueuse/core"] },
+        resolve: { dedupe: [...DEDUPED_PACKAGES] },
         build: {
           assetsInlineLimit: (file: string) => (/\.(woff2?|ttf|otf|eot)$/i.test(file) ? false : undefined),
         },

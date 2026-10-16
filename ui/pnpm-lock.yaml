@@ -122,6 +122,9 @@ importers:
       '@fontsource-variable/geist':
         specifier: 5.3.0
         version: 5.3.0
+      '@fontsource-variable/ibm-plex-sans':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@fontsource-variable/inter':
         specifier: 'catalog:'
         version: 5.3.0
@@ -140,6 +143,12 @@ importers:
       '@tanstack/vue-table':
         specifier: 'catalog:'
         version: 8.21.3(vue@3.5.43(@typescript/typescript6@6.0.2))
+      '@vueuse/core':
+        specifier: 'catalog:'
+        version: 14.4.0(vue@3.5.43(@typescript/typescript6@6.0.2))
+      reka-ui:
+        specifier: 'catalog:'
+        version: 2.10.5(vue@3.5.43(@typescript/typescript6@6.0.2))
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
@@ -189,6 +198,9 @@ importers:
       '@flowcatalyst/ui':
         specifier: link:../../packages/ui
         version: link:../../packages/ui
+      '@fontsource-variable/ibm-plex-sans':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.140
@@ -198,6 +210,12 @@ importers:
       '@nuxt/ui':
         specifier: 'catalog:'
         version: 4.11.3(5381d10818b58c56bd228d2558632d50)
+      '@vueuse/core':
+        specifier: 'catalog:'
+        version: 14.4.0(vue@3.5.43(@typescript/typescript6@6.0.2))
+      reka-ui:
+        specifier: 'catalog:'
+        version: 2.10.5(vue@3.5.43(@typescript/typescript6@6.0.2))
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
@@ -274,16 +292,10 @@ importers:
       '@flowcatalyst/api-runtime':
         specifier: workspace:*
         version: link:../api-runtime
+    devDependencies:
       '@fontsource-variable/ibm-plex-sans':
         specifier: 'catalog:'
         version: 5.3.0
-      '@vueuse/core':
-        specifier: 'catalog:'
-        version: 14.4.0(vue@3.5.43(@typescript/typescript6@6.0.2))
-      reka-ui:
-        specifier: 'catalog:'
-        version: 2.10.5(vue@3.5.43(@typescript/typescript6@6.0.2))
-    devDependencies:
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.140
@@ -302,9 +314,15 @@ importers:
       '@vue/test-utils':
         specifier: 'catalog:'
         version: 2.5.1(@vue/compiler-dom@3.5.43)(@vue/server-renderer@3.5.43)(vue@3.5.43(@typescript/typescript6@6.0.2))
+      '@vueuse/core':
+        specifier: 'catalog:'
+        version: 14.4.0(vue@3.5.43(@typescript/typescript6@6.0.2))
       happy-dom:
         specifier: 'catalog:'
         version: 20.14.5
+      reka-ui:
+        specifier: 'catalog:'
+        version: 2.10.5(vue@3.5.43(@typescript/typescript6@6.0.2))
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3

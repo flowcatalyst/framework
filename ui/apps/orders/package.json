@@ -17,9 +17,12 @@
   "dependencies": {
     "@flowcatalyst/api-runtime": "link:../../packages/api-runtime",
     "@flowcatalyst/ui": "link:../../packages/ui",
+    "@fontsource-variable/ibm-plex-sans": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@internationalized/date": "catalog:",
     "@nuxt/ui": "catalog:",
+    "@vueuse/core": "catalog:",
+    "reka-ui": "catalog:",
     "tailwindcss": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:",

@@ -96,9 +96,20 @@ createApp(App).use(router).use(ui).use(flowcatalystUi, { api }).mount("#app");
 ```
 
 The application's `tsconfig` maps `#build/ui` and `#build/ui/*` to its own `node_modules/.nuxt-ui/ui`
-(see `apps/gallery/tsconfig.app.json`). `flowcatalystUi()` deduplicates `vue`, `vue-router`, `@nuxt/ui`
-and `@vueuse/core`, so a linked package does not bring a second copy (checked with a scratch consumer
-at U0: one Vue in the bundle, `vue-tsc` clean, the package's Tailwind classes and icons present).
+(see `apps/gallery/tsconfig.app.json`). `flowcatalystUi()` deduplicates `vue`, `vue-router`, `@nuxt/ui`,
+`@vueuse/core`, `reka-ui` and `zod`, so a linked package does not bring a second copy (checked with a
+scratch consumer at U0: one Vue in the bundle, `vue-tsc` clean, the package's Tailwind classes and icons
+present).
+
+**Everything the package imports is a peer dependency** (2026-10-16). pnpm installs nothing for a
+`link:` package, and the bundler resolves its imports from its real path, which is this repository's
+`node_modules`, outside your lockfile (the first application found its fonts there: the package's CSS
+imports `@fontsource-variable/ibm-plex-sans`, which its lockfile did not contain). So an application
+declares `@nuxt/ui`, `tailwindcss`, `vue`, `vue-router`, `zod`, `@vueuse/core`, `reka-ui` and
+`@fontsource-variable/ibm-plex-sans` itself (`strictPeerDependencies` makes a missing one an install
+error), at the versions of this workspace's catalog (`pnpm-workspace.yaml`). The only dependency is
+`@flowcatalyst/api-runtime`, which the application links too. `test/peer-dependencies.test.ts` fails
+when the source imports a package that is not a peer.
 
 The strict CSP header the server sends is `strictContentSecurityPolicy()` from `@flowcatalyst/ui/csp`;
 the only hash in it is `COLOR_MODE_SNIPPET_SHA256`, the pre-paint colour-mode snippet the Vite plugin
