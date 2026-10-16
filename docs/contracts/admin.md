@@ -1,0 +1,237 @@
+# Contract: the application admin skeleton (M4d)
+
+Status: written 2026-10-16 with the build of M4d. Language-neutral: the wire (section 4), the
+permission model (section 3) and the UI contract (section 6) are the same for the Java and the Go
+framework (Go milestone G6 builds the server half against the vector of section 8). Java
+specifics are marked. Owner questions are collected in section 9; the build proceeds on the
+recommended defaults, each recorded there.
+
+Builds on: [core](core.md) (`Context.permissions`, section 3), [http](http.md) (the error
+envelope), [openapi](openapi.md) (typed operations, `x-fw-permission`), [sessions and
+login](sessions-and-login.md) (the session's `permissions`, 4.5 client rules, section 7.3 the
+permission mapping), [flowcatalyst](flowcatalyst.md) (definitions sync; section 5 platform work).
+
+## 1. What an application admin is
+
+The **platform console** (the FlowCatalyst platform's own UI, `/ui` in `flowcatalyst-go`)
+administers the platform: every client, application, role, subscription and connection. It exists
+and is not re-implemented.
+
+The **application admin** is the framework's skeleton for administering **one application's own
+slice**, inside that application, behind that application's sign-in, in its own SPA:
+
+| Section (M4e) | What it shows | Source |
+|---|---|---|
+| users and invitations | the users who hold this application's roles; invite, resend, revoke | the platform, as the application's service account |
+| roles | this application's roles and their permissions, as projected from the platform | the platform |
+| application config | the application's config and secret *status* (never a secret value) | the platform |
+| scoped events and dispatch jobs | the application's own events and delivery attempts | the platform (needs a scoped read endpoint, flowcatalyst.md section 5) |
+| health | readiness and the checks | the application itself (`/api/admin/about`, part of this skeleton) |
+
+M4d builds **none** of the data sections. It builds what every one of them needs: the registry in
+which sections declare themselves, the permission gate, the two data-free operations, and the
+shell that turns the registry and the session into navigation. M4e fills sections in, one slice
+at a time, and each is a pure addition (a section, its operations, its page).
+
+Out of scope: platform-wide administration (the console), end-user features of the application,
+and any bypass of the platform's own authorisation (an admin page never grants what the platform
+refuses; the application's service account is the caller, and the signed-in user's permissions are
+enforced by the framework before it is used, flowcatalyst.md section 5, item 2).
+
+## 2. The registry
+
+A **section** is a value:
+
+| Field | Meaning |
+|---|---|
+| `id` | `[a-z][a-z0-9-]*`, unique; the UI page registry uses the same id |
+| `title` | the navigation label |
+| `path` | the SPA route of the section, an absolute path under `/admin` (`/admin/users`); not a server route |
+| `permission` | the permission that shows the section and is required by **every** operation of the section (section 3); four `:`-separated segments |
+| `icon` | optional Lucide icon name for the navigation |
+| `description` | optional one sentence |
+| `operations` | the typed operations the section serves (server side only, never on the wire) |
+
+Registration is in `register` (like `OpenApi.declare`, so the `openapi` command sees it without
+configuration): Java `Admin.section(app, section)`. Registering also declares the section's
+operations in the OpenAPI document. Handlers are bound in `boot` with `Routes.bind`, as for any
+operation.
+
+**Start-up rules** (a violation fails start-up, and the `openapi` command, before anything
+listens; Java: `IllegalArgumentException` from the section's constructor in `register`, and a
+`StartupException` listing every problem from the module's `boot` check):
+
+1. every operation of a section has a required permission (an admin operation that anyone signed in
+   can call is a defect, not a default);
+2. a section's `permission` and every operation's permission is a four-segment permission of the
+   application (`{app}:admin:{section}:{action}` by convention; the application segment must equal
+   the admin module's application code);
+3. section ids and section paths are unique, and every path is under `/admin`;
+4. every operation's pattern is under `/api/admin/` (so the API prefix `/api` is already derived
+   and a SPA route `/admin` never collides, static-assets contract section 5).
+
+The framework's own two operations are registered through the same registry (section 4), so the
+rules cover them.
+
+## 3. The permission model
+
+Application permissions come from **M4c's permission mapping** (sessions contract 7.3): code that
+maps the signed-in principal's roles to permission strings; `Context.permissions` holds the result;
+`Context.hasPermission` applies the platform's wildcard rule (same number of segments, `*` in a held
+segment matches).
+
+Naming (recommended default, decision 1): `{app}:admin:{section}:{action}`, four segments, which
+is the shape the platform's definition sync accepts (flowcatalyst.md section 2).
+
+| Permission | Grants |
+|---|---|
+| `{app}:admin:console:view` | the admin area at all: the navigation and the about operation. Held by every admin role |
+| `{app}:admin:{section}:view` | reading a section (M4e: `users`, `roles`, `config`, `events`, `dispatch-jobs`) |
+| `{app}:admin:{section}:manage` | changing a section |
+
+One suggested role, `{app}:admin`, grants `{app}:admin:*:*`. The application maps its platform role
+to it in its permission mapping (Java: `PermissionMapper.byRole(Map.of("orders-demo:admin",
+Set.of("orders-demo:admin:*:*")))`) and declares the role and permissions to the platform with
+`Definitions` (the registry exposes `Admin.permissions(..)` for that). Permissions reach the
+platform only through roles that grant them.
+
+**Three layers, in this order** (the server is the only authority):
+
+1. **The operation gate.** Every operation checks its permission before parsing anything (OpenAPI
+   contract section 3): a caller without it gets `403` and the standard error envelope with code
+   `FORBIDDEN`:
+
+   ```json
+   {"error": {"code": "FORBIDDEN", "message": "this needs the permission orders-demo:admin:console:view"}}
+   ```
+
+   The exact envelope is the http contract's; the message names the permission (it is not a
+   secret: the session already lists the caller's permissions). An unauthenticated caller gets
+   `401 UNAUTHENTICATED` first (sessions contract 7.4).
+2. **The navigation filter.** `GET /api/admin/navigation` returns only the sections whose
+   `permission` the caller holds. A section is never advertised to someone who cannot call it.
+3. **The UI.** The shell shows and hides from the session's `permissions` and the route guard
+   refuses a route whose `meta.permission` the session lacks (sessions contract 4.5, rule 5). This
+   is courtesy: layers 1 and 2 decide.
+
+## 4. The skeleton's operations
+
+Both are typed operations (tag `admin`), security `session` and `bearer`, under the application's
+admin application code. Components are fixed here and recorded in `conformance/openapi/` once the
+Go side builds them; `@Nullable`/optional means "may be absent" (OpenAPI contract section 6).
+
+### 4.1 `GET /api/admin/navigation` (`getAdminNavigation`)
+
+Permission: `{app}:admin:console:view`. `200`:
+
+```json
+{"sections": [
+  {"id": "about", "title": "About", "path": "/admin/about", "permission": "orders-demo:admin:console:view", "icon": "i-lucide-info"}
+]}
+```
+
+`AdminNavigation`: `sections` (array of `AdminSectionView`, always present, in registration order
+with the framework's `about` first). `AdminSectionView`: `id`, `title`, `path`, `permission`
+(strings), `icon`, `description` (strings, may be absent). Only sections the caller may use
+(section 3, layer 2). The response is never cached (`Cache-Control: no-store` is the framework's
+default for typed operations' authenticated answers; the contract does not add a header).
+
+### 4.2 `GET /api/admin/about` (`getAdminAbout`)
+
+Permission: `{app}:admin:console:view`. `200`:
+
+```json
+{"application": "orders-demo", "framework": "0.1.0-SNAPSHOT", "environment": "test",
+ "startedAt": "2026-10-16T08:00:00Z", "ready": true,
+ "checks": [{"name": "database:main", "status": "UP", "critical": true}]}
+```
+
+`AdminAbout`: `application` (string), `framework` (string, may be absent: the framework version when
+known), `environment` (string: `APP_ENV`), `startedAt` (`date-time`), `ready` (boolean: the same
+decision `/health/ready` makes), `checks` (array of `AdminCheck`: `name`, `status` (enum `UP`,
+`DOWN`, `TIMED_OUT`), `critical` (boolean)). A failure's *message* is deliberately not on the wire:
+it can carry connection strings and host names; the logs have it.
+
+### 4.3 Errors
+
+Both document `401` and `403`. A section's operations document their own.
+
+## 5. Where it lives (Java)
+
+A **new module `framework-admin`**, depending on `framework-core` and `framework-http` only (no
+database, no write path, no auth module: the gate uses `Context`, which any `ContextResolver`
+fills). `framework-http` stays on core only (the Maven Enforcer rule is unchanged and `framework-admin`
+is covered by the same rule). Not in `framework-auth`: an application with its own resolver gets
+the admin area too. Classes: `AdminSection`, `Admin` (registration, lookup, validation, permission
+export), `AdminModule` (binds the two operations, validates at boot), `AdminApi` (the wire types
+and operations).
+
+Go: a package `admin` of the same shape (G6); the vector of section 8 is the check.
+
+## 6. The shared UI (`@flowcatalyst/ui`)
+
+Backend-agnostic: the package holds no generated client. The application loads the navigation
+with its own generated `getAdminNavigation` and passes the result in.
+
+- **`AdminPage`** (the page-kit contract M4e pages fill): `{ id, title, icon, permission, path
+  (relative to `/admin`), component: () => Promise<Component> }`. A page is built from the kit's
+  patterns: `FwListPage` + `FwRecordDrawer` (+ `useDrawerRoute`) + `FwFormDialog`
+  (+ `useDirtyForm`, `useConfirm`, `useListState`); every page's route carries `meta.permission`
+  and the page's `permission` must equal its server section's.
+- **`adminRoutes(pages)`** builds the vue-router records under `/admin` (the overview at `/admin`
+  included); a page without a permission is refused when the routes are built. The routes carry
+  `meta.permission`, `meta.title` and `meta.breadcrumb`, so `installSessionGuard` (api-runtime)
+  enforces the permission and sends the user to the application's not-permitted page: the **route
+  guard** is the existing one, fed by the registry.
+- **`adminNavigation(pages, sections, can)`**: the navigation items. A page is shown when the
+  server listed its section (`sections`; the server already filtered by permission, layer 2) and
+  `can(page.permission)` (layer 3). A server section without a page is not shown (reported by
+  `console.warn` once, in development); a page without a server section is not shown either.
+- **`useAdminNavigation(load)`**: loads once, exposes `sections`, `loading`, `failed` (a failed load
+  shows the shell with an inline error and an empty navigation, never a blank page).
+- **`FwAdminShell`**: `FwAppShell` with the admin navigation, a **"Back to the application"** link,
+  **breadcrumbs** (`Admin` > section title > record title, from `meta.breadcrumb` of the matched
+  routes, the last one not a link, `aria-current="page"`), and the user menu and colour mode of
+  `FwAppShell`. The standalone pages of U4 (`FwSignedOutPage`, `FwSignInFailedPage`,
+  `FwUnavailablePage`) stay outside the shell and are reused as they are; the not-permitted page is
+  the application's.
+- Behaviour rows (the gallery checklist, `behaviours.ts`): navigation limited to permitted
+  sections; a section the server did not list is absent; a route guard refusal; breadcrumbs;
+  the failed-load state.
+
+## 7. Tests the build must have
+
+Java, in `framework-admin`: section validation (each start-up rule above); the registry in
+registration order; the gate (a caller without the permission gets `403 FORBIDDEN` with the envelope
+shape, with it `200`; wildcard grants; a caller with a *different* section's permission is refused);
+the navigation filter; about (checks, readiness); the OpenAPI document contains both operations with
+`x-fw-permission`; the vector (section 8). **Mutation check:** a build of the operation gate that
+skips the permission check must fail a test (done and recorded in `ui/` and the guide page). In
+`orders-demo`: two principals, an administrator and a clerk; the committed `web/openapi.json`. UI:
+vitest for the pure functions, the gallery page under strict axe and CSP in both colour modes at
+desktop and 390 px, and an orders end-to-end run against the real Java demo for both principals.
+
+## 8. Conformance vector
+
+`conformance/admin/navigation.json`, written by the Java test `AdminConformanceTest`: a set of
+sections (id, title, path, permission, icon) and, per case, the caller's permission set and the
+expected response (`200` with the section ids, or `403` with the error code). Matching rules are
+the wildcard rule of core section 3. Go compares.
+
+## 9. Rulings pending owner (defaults applied)
+
+1. **Permission names:** `{app}:admin:{section}:{action}` with `{app}:admin:console:view` for entry
+   and one suggested role `{app}:admin`. Alternative: three-segment `{app}:admin:{action}`; not
+   chosen because the platform's definition sync expects four segments.
+2. **Navigation is gated** by `console:view` (a non-admin gets `403`, not an empty list). Alternative:
+   open to every signed-in user, answering an empty list; not chosen so the shell can tell "not an
+   admin" from "an admin with nothing yet".
+3. **Module placement:** a new `framework-admin` module (section 5), not additions to `framework-http`
+   or `framework-auth`.
+4. **How admin data reaches the platform (M4e):** the application's service account, with the user's
+   permissions enforced in the framework first (flowcatalyst.md section 5, item 2). Alternative: an
+   `apiAccess` OAuth client per user. Needs the owner before the first M4e slice.
+5. **The about answer omits failure messages.** Alternative: include them for holders of a stronger
+   permission. Not built.
+6. **The admin area is mounted per application** (the application lists `AdminModule` and the
+   shell's routes); the framework never mounts it by itself.
