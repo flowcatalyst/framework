@@ -65,7 +65,7 @@ class TicketsApiTest {
             "AUTH_PUBLIC_BASE_URL", "http://127.0.0.1:4410");
     // Comments are limited to 3 in a burst here, so the test can see the limit.
     app =
-        TicketsWeb.builder(a -> a, new RateLimitPolicy(3, Duration.ofHours(1), 3))
+        TicketsWeb.builder(a -> a, new TicketsWeb.Tuning(new RateLimitPolicy(3, Duration.ofHours(1), 3), Duration.ofSeconds(30)))
             .configDirectory(Path.of("config"))
             .environment(env)
             .start();

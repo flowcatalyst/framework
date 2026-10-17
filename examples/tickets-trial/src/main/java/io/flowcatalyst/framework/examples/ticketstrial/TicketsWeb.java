@@ -9,8 +9,17 @@ import io.flowcatalyst.framework.auth.database.AuthDatabaseModule;
 import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Launch;
+import io.flowcatalyst.framework.flowcatalyst.FlowCatalystModule;
 import io.flowcatalyst.framework.http.jetty.JettyHttpModule;
 import io.flowcatalyst.framework.http.ratelimit.RateLimitPolicy;
+import io.flowcatalyst.framework.httpclient.module.HttpClientModule;
+import io.flowcatalyst.framework.httpclient.module.HttpClientOptions;
+import io.flowcatalyst.framework.locks.LocksModule;
+import io.flowcatalyst.framework.locks.database.DatabaseLockStores;
+import io.flowcatalyst.framework.locks.database.LocksDatabaseModule;
+import io.flowcatalyst.framework.secrets.SecretStores;
+import io.flowcatalyst.framework.secrets.SecretsModule;
+import java.time.Duration;
 import java.util.function.UnaryOperator;
 
 /**
@@ -24,6 +33,24 @@ public final class TicketsWeb {
   /** The application code. */
   static final ApplicationCode APPLICATION = new ApplicationCode(Permissions.APPLICATION);
 
+  /**
+   * The numbers a test changes: how often one person may comment, and how often the gauges refresh.
+   *
+   * @param commentLimit how often one person may comment
+   * @param gaugeInterval how often the gauges of active and overdue tickets are refreshed
+   */
+  public record Tuning(RateLimitPolicy commentLimit, Duration gaugeInterval) {
+
+    /**
+     * The numbers of a deployment.
+     *
+     * @return thirty comments a minute and a refresh every thirty seconds
+     */
+    public static Tuning defaults() {
+      return new Tuning(TicketsApiModule.COMMENT_LIMIT, TicketsReceiversModule.GAUGE_INTERVAL);
+    }
+  }
+
   private TicketsWeb() {}
 
   /**
@@ -32,19 +59,18 @@ public final class TicketsWeb {
    * @return a builder, not started
    */
   public static AppBuilder builder() {
-    return builder(auth -> auth, TicketsApiModule.COMMENT_LIMIT);
+    return builder(auth -> auth, Tuning.defaults());
   }
 
   /**
-   * The application's modules, with the auth module's builder adjusted and another comment limit
-   * (the end-to-end launcher switches the sign-in rate limit off, a test makes the comment limit
-   * small).
+   * The application's modules, with the auth module's builder adjusted and other numbers (the
+   * end-to-end launcher switches the sign-in rate limit off, a test makes the comment limit small).
    *
    * @param customise changes to the auth module's builder
-   * @param commentLimit how often one person may comment
+   * @param tuning the numbers a test changes
    * @return a builder, not started
    */
-  public static AppBuilder builder(UnaryOperator<AuthModule.Builder> customise, RateLimitPolicy commentLimit) {
+  public static AppBuilder builder(UnaryOperator<AuthModule.Builder> customise, Tuning tuning) {
     return TicketsCore.builder()
         .module(new JettyHttpModule())
         .module(new AuthDatabaseModule())
@@ -62,7 +88,18 @@ public final class TicketsWeb {
         .module(AdminModule.of(APPLICATION))
         .module(AdminConfigModule.of(APPLICATION))
         .module(new TicketsAdminModule())
-        .module(new TicketsApiModule(commentLimit))
+        // The platform: the service account, the definitions the sync sends, the receivers.
+        .module(new FlowCatalystModule())
+        .module(new TicketsDefinitionsModule())
+        // The scheduled-job receiver takes an overlap lock; the database store is shared by replicas.
+        .module(LocksModule.builder().store("main", DatabaseLockStores.database()).build())
+        .module(new LocksDatabaseModule())
+        // A client's key for the notification service: one environment variable per client
+        // (TICKETS_NOTIFY_<CLIENT>__NOTIFY_KEY). The base URL of the service is configuration.
+        .module(SecretsModule.builder().store("env", SecretStores.env("TICKETS_NOTIFY_")).build())
+        .module(HttpClientModule.builder().client(NotifyAssignee.CLIENT, HttpClientOptions.defaults()).build())
+        .module(new TicketsReceiversModule(tuning.gaugeInterval()))
+        .module(new TicketsApiModule(tuning.commentLimit()))
         .module(new TicketsSpaModule());
   }
 

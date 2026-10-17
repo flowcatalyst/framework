@@ -47,6 +47,19 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-auth-database</artifactId>
     </dependency>
+    <!-- The platform: definitions, receivers; the notification service client; the locks; per-client secrets. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-flowcatalyst</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-httpclient-module</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-locks-database</artifactId>
+    </dependency>
     <!-- An application chooses its logging backend; libraries bring none. -->
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -67,6 +80,13 @@
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- FakePlatform: the platform's token and sync endpoints and the job-completion calls, in the tests. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-flowcatalyst</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
