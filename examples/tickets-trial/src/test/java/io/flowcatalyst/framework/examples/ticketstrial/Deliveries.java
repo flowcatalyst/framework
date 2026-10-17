@@ -48,10 +48,9 @@ final class Deliveries {
         .send();
   }
 
-  /** A scheduled-job firing, as the platform posts it. */
-  static TestResponse fire(TestClient client, Instant now, String jobCode, String instanceId) {
-    String body =
-        "{\"jobId\":\"sj_1\",\"jobCode\":\""
+  /** The body of a scheduled-job firing, as the platform posts it. */
+  static String firingBody(Instant now, String jobCode, String instanceId) {
+    return "{\"jobId\":\"sj_1\",\"jobCode\":\""
             + jobCode
             + "\",\"instanceId\":\""
             + instanceId
@@ -62,6 +61,11 @@ final class Deliveries {
             + "\",\"triggerKind\":\"CRON\",\"correlationId\":\"corr-"
             + instanceId
             + "\",\"tracksCompletion\":true,\"concurrent\":false}";
+  }
+
+  /** A scheduled-job firing, as the platform posts it. */
+  static TestResponse fire(TestClient client, Instant now, String jobCode, String instanceId) {
+    String body = firingBody(now, jobCode, instanceId);
     String ts = String.valueOf(now.getEpochSecond());
     return client
         .post("/fc/scheduled-jobs")

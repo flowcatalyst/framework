@@ -25,6 +25,8 @@ ui/
                         a generated orders client against an in-page fake server; strict-CSP server, Playwright
   apps/orders/          @flowcatalyst/orders-web (U3): the orders application on the Java examples/orders-demo, built into its
                         web/dist, Playwright against the real backend (../docs/ui/u3.md)
+  apps/tickets/         @flowcatalyst/tickets-web (M4f): the second application, support tickets on the Java examples/tickets-trial,
+                        built into its web/dist, Playwright against the real backend (../docs/m4f-trial-service.md)
   samples/openapi/      a hand-written OpenAPI 3.1 document and the hey-api client generated from it (U0 check)
 ```
 
@@ -44,6 +46,8 @@ Node 24 and pnpm 10.27 (`packageManager`); nothing is installed globally. From `
 | `pnpm licences:write` | rewrites `THIRD-PARTY-NOTICES` from the gallery build (an application: `node scripts/check-licences.ts --write --dist <dist> --out <file>`) |
 | `pnpm gallery:e2e` | builds the gallery, serves it with the strict CSP (port 4391) and runs Playwright + strict axe; fails when a row of the behaviour checklist is exercised by no passing test |
 | `pnpm orders:e2e` | builds the orders application into `examples/orders-demo/web/dist` and runs Playwright against the real Java demo (Maven, Docker for PostgreSQL; ports 4392 and 4393); `MAVEN_ARGS=-o` builds offline |
+| `pnpm tickets:e2e` | builds the tickets application into `examples/tickets-trial/web/dist` and runs Playwright against the real Java service (Maven, Docker for PostgreSQL; ports 4394 and 4395); `MAVEN_ARGS=-o` builds offline |
+| `pnpm tickets:dev` | Vite dev server for the tickets application on 5176, proxying `/api` and `/auth` to `TICKETS_BACKEND` |
 | `pnpm orders:dev` | Vite dev server for the orders application on 5175, proxying `/api` and `/auth` to `ORDERS_BACKEND` |
 | `pnpm check` | all of the above, in that order |
 | `pnpm gallery:dev` | Vite dev server for the gallery on 5174 (no CSP in development) |
