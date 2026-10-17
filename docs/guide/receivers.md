@@ -1,4 +1,4 @@
-<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, Database, Databases, FlowCatalystModule, PlatformClient, PlatformException, Context, PrincipalKind, Locks, LockStore -->
+<!-- types: Receivers, DispatchHandler, DispatchResult, DispatchDelivery, OnceResult, OnceWork, ScheduledJobHandler, JobOptions, JobResult, ScheduledJobFiring, Database, Databases, FlowCatalystModule, PlatformClient, PlatformException, Context, PrincipalKind, Locks, LockStore, ReceiverTesting -->
 # Receivers: dispatch jobs and scheduled jobs
 
 The platform delivers work **to** your application over HTTP: dispatch jobs (an event, fanned out by
@@ -357,21 +357,19 @@ handler, and before the body is read into one.
 `FakePlatform` (the module's test-jar) serves the token endpoint and records the completion and log
 calls a scheduled job makes (`instanceCalls`, `awaitInstanceCalls`, `failInstanceCalls`; see
 [Testing](testing.md#the-fake-platform)). `TestClient` (in `framework-http`'s main jar, no test-jar needed) posts to the
-routes without a socket. A signed dispatch delivery, from the framework's `ReceiverSecretsTest`
-(its `sign` helper is the hex HMAC-SHA256 of the timestamp header value followed by the body, keyed
-with the secret):
+routes without a socket, and `ReceiverTesting` (the same test-jar) signs what the platform signs: the
+hex HMAC-SHA256 of the timestamp header's text followed by the body, keyed with the secret, with the
+timestamp taken from the clock you gave the application. A dispatch delivery and a firing:
 
 ```java
-client
-    .post("/fc/dispatch")
-    .header("Content-Type", "application/json")
-    .header("X-Dispatch-Job-Id", "dj_1")
-    .header("X-Event-Type", TYPE)
-    .header("X-FlowCatalyst-Signature", sign(secret, TS, DISPATCH_BODY))
-    .header("X-FlowCatalyst-Timestamp", TS)
-    .body(DISPATCH_BODY)
-    .send();
+TestResponse r =
+    ReceiverTesting.dispatch(client, SECRET, now, "dj_1", TYPE, "clt_1:acme", envelope); // client header null: platform-scoped
+TestResponse fired = ReceiverTesting.scheduledJob(client, SECRET, now, firingJson);      // 202 when accepted
 ```
+
+`ReceiverTesting.signature(secret, timestamp, body)` and `timestamp(now)` are there when a test
+sends the request some other way (a real socket). Wrong secrets, missing signatures and the other
+refusals are the framework's own tests; yours only need the happy path and your handler's results.
 
 The application is built with the module's settings in its environment (`FLOWCATALYST_BASE_URL`
 pointing at `platform.baseUrl()`, and `FLOWCATALYST_RECEIVERS_SIGNING_SECRET`), an injected
