@@ -60,6 +60,7 @@
     <module>examples/locks-demo</module>
     <module>examples/orders-demo</module>
     <module>examples/orders-demo-jte</module>
+    <module>examples/tickets-trial</module>
   </modules>
 
   <properties>

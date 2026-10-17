@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.flowcatalyst.framework</groupId>
+    <artifactId>framework-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+  <artifactId>tickets-trial</artifactId>
+  <name>tickets-trial</name>
+  <description>M4f, the trial business service: support tickets (assignees, a status machine, comments, an SLA timer, notifications) built only on the framework's public contracts. See docs/m4f-trial-service.md.</description>
+
+  <properties>
+    <!-- An example: never published. -->
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-usecase</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-database</artifactId>
+    </dependency>
+    <!-- An application chooses its logging backend; libraries bring none. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-database</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <!--
+      The SPA (static-assets contract section 8): Maven never runs Node. CI builds ui/apps/tickets
+      first (it writes web/dist); Maven copies the output into the jar under fw-spa, which the
+      application mounts with Spa.classpath("fw-spa"). A missing web/dist is skipped. Listing
+      resources replaces Maven's default, so src/main/resources is listed too.
+    -->
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>web/dist</directory>
+        <targetPath>fw-spa</targetPath>
+      </resource>
+    </resources>
+    <plugins>
+      <!--
+        Checked SQL (orders-demo's setup): src/main/sql/**/*.sql is described against the migrated
+        schema and the typed Java in src/main/java-generated is committed; check (in verify) fails
+        when it is stale. The migration sets are the ones the application applies, in order.
+      -->
+      <plugin>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-sql-maven-plugin</artifactId>
+        <version>${project.version}</version>
+        <configuration>
+          <migrations>
+            <migration>
+              <moduleId>outbox</moduleId>
+              <location>db/migration/outbox</location>
+            </migration>
+            <migration>
+              <moduleId>tickets</moduleId>
+              <location>db/migration/tickets</location>
+            </migration>
+          </migrations>
+        </configuration>
+        <executions>
+          <execution>
+            <id>add-generated-source</id>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>check-sql</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- ./mvnw -Pgenerate-sql -DskipTests package -pl examples/tickets-trial -am -->
+    <profile>
+      <id>generate-sql</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>io.flowcatalyst.framework</groupId>
+            <artifactId>framework-sql-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>generate-sql</id>
+                <goals>
+                  <goal>generate</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
