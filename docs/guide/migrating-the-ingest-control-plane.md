@@ -629,9 +629,10 @@ Still open: 2, 4, 6 to 9. The text below is kept as written.
    (`ingestor:admin:ingestion:view`) is a small mapping and a second permission on two operations.
 6. **Confidential or public login client** (`AUTH_CLIENT_SECRET`): public needs no secret and is the
    default.
-7. **Who owns the e2e harness**: copied into the application (as above) or published by the
-   framework (gap 1; the second copy, the tickets trial, needed no change beyond names and ports, which
-   is the case for publishing it, [plan MA-11](../implementation-plan.md)).
+7. **Who owns the e2e harness.** **Decided 2026-10-17 (owner): the framework owns the kit, in this
+   repository, unpublished for now** (gap 1; the second copy, the tickets trial, needed no change beyond
+   names and ports, [plan MA-11](../implementation-plan.md)). Being built; the orders and tickets
+   examples are migrated onto it.
 8. **Where the framework checkout lives for CI**, until the packages are published.
 9. **Licence notices** for the shipped SPA (gap 6).
 

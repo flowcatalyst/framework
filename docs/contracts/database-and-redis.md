@@ -52,7 +52,7 @@ attempt (TCP connect, TLS, authentication), passed to the PostgreSQL JDBC driver
   driver cannot express less than 1 s, hence the different floor.
 - A start-up that fails on a timeout says so: `cannot connect to database instance '<name>': ...
   (limits: pool.connect-timeout ..., pool.login-timeout ...; the database is not answering, ...)`.
-- Java only so far; the Go and Rust database modules do not read the key yet.
+- Java only. The Go and Rust database modules do not read the key, and need not (owner ruling 2026-10-17: no parity; recorded only).
 
 ## 2. Migrations
 
