@@ -4,6 +4,16 @@ The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; cont
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
 rewritten at hand-off and can lag the code in between.
 
+- **M4f built 2026-10-17** (the trial business service). `examples/tickets-trial` (support tickets: two aggregates, six use
+  cases, nine typed operations, a definition sync, a dispatch receiver that notifies with the client's own key through a named
+  HTTP client, a scheduled-job SLA sweep across clients under the overlap lock, a lock-gated gauge loop, an admin section) and
+  its SPA `ui/apps/tickets` (list, drawer, SLA page, shared admin shell). 35 Java tests and 23 Playwright tests, all green;
+  `pnpm tickets:e2e` in `ui/`. **Read `docs/m4f-trial-service.md`**: the coverage comparison with orders-demo, the friction
+  log (25 rows, each with a severity and a suggested fix) and seven owner decisions. Top findings: the admin data pages are
+  in `ui/apps/orders`, not in the package (F18); a scheduled job cannot be client-scoped, so a sweep is a cross-client query
+  plus a re-scope (F15, F3); a per-client setting has to be hand-built until M5 (F6); `authorize` cannot see the loaded
+  record (F1); `DispatchDelivery.once` does not compose with use cases or HTTP calls (F13). Fixed on the way: `ReceiverTesting`
+  (`4075a39`). Not run against a real platform, a second replica or a browser other than Chromium. Nothing pushed or published.
 - Done: M1, M2a, M2b, M3, core hooks (`started`, `find`, `Command`/`launch`), M4a (client, sync
   command, `outbox` backlog health check), M4b (dispatch and scheduled-job receivers, per-receiver
   secrets, `DispatchDelivery.once` with retention, lock opt-out, `flowcatalyst.receivers.enabled`),
