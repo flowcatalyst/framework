@@ -247,6 +247,7 @@ class DatabaseModuleTest {
       assertThat(pool.getMaximumPoolSize()).isEqualTo(10);
       assertThat(pool.getMinimumIdle()).isEqualTo(1);
       assertThat(pool.getConnectionTimeout()).isEqualTo(5000);
+      assertThat(pool.getDataSourceProperties()).containsEntry("loginTimeout", "10");
       assertThat(db.migrates()).isTrue();
     }
   }

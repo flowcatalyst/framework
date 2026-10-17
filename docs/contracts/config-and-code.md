@@ -111,6 +111,7 @@ Code: nothing. The metrics driver is a singleton service setting, so it is confi
 | `pool.max` | `10` | 1 to 1000 |
 | `pool.min-idle` | `1` | 0 to `pool.max` |
 | `pool.connect-timeout` | `5s` | 250 ms to 5 min |
+| `pool.login-timeout` | `10s` | 1 s to 5 min, whole seconds (the driver's limit for one connection attempt; [database](database-and-redis.md), 1.1) |
 | `migrate` | `true` | a boolean; only the default instance's value is used (migrations run there) |
 
 Code: nothing. `driver` is removed (PostgreSQL is the only database). *Change from before

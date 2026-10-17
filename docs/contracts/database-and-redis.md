@@ -9,6 +9,7 @@ own contract.
 connections and stay configuration with every key below, except `driver`, which is removed (a
 leftover one fails start-up). The pool keys and Redis `timeout` are now range-checked at start-up
 (`pool.max` 1 to 1000, `pool.min-idle` 0 to `pool.max`, `pool.connect-timeout` 250 ms to 5 min,
+`pool.login-timeout` 1 s to 5 min in whole seconds (added 2026-10-17, section 1.1),
 Redis `timeout` more than 0 and at most 5 min); a connect timeout under 250 ms is no longer raised
 silently.*
 
@@ -22,7 +23,7 @@ database:
       url: jdbc:postgresql://localhost:5432/app
       username: app
       password: ""          # a secret: give it in secrets.local.yaml or DATABASE_INSTANCES_MAIN_PASSWORD
-      pool: { max: 10, min-idle: 1, connect-timeout: 5s }
+      pool: { max: 10, min-idle: 1, connect-timeout: 5s, login-timeout: 10s }
       migrate: true
 ```
 
@@ -32,6 +33,26 @@ database:
   `javax.sql.DataSource` and a `ping()` used as its health check (`database:<name>`).
 - Start-up opens one connection per instance and fails, naming the instance and the cause, if it
   cannot. Pools are closed at shutdown.
+
+### 1.1 Login timeout (added 2026-10-17)
+
+`pool.connect-timeout` is how long a *caller* waits for a connection from the pool. It cannot stop
+the attempt the pool already started: a server that accepts the TCP connection and never answers
+(a wedged container, a proxy with nothing behind it) leaves that attempt, and the pool's close
+after a failed start, waiting on the driver. `pool.login-timeout` is the driver's own limit for one
+attempt (TCP connect, TLS, authentication), passed to the PostgreSQL JDBC driver as `loginTimeout`.
+
+- Default `10s`, range 1 s to 5 min, **whole seconds** (the driver counts seconds); checked at
+  start-up like the other pool keys (`1500ms` is refused, not rounded). Environment variable
+  `DATABASE_INSTANCES_<NAME>_POOL_LOGIN_TIMEOUT`. A service/connection setting, so configuration
+  (config-and-code contract, section 3.2).
+- Why 10 s: twice the default `connect-timeout` (5 s), so on a normal failure the caller's timeout
+  speaks first and the login timeout only bounds what is left behind; it equals the PostgreSQL
+  driver's own default TCP connect limit. The 250 ms floor of `connect-timeout` is HikariCP's; the
+  driver cannot express less than 1 s, hence the different floor.
+- A start-up that fails on a timeout says so: `cannot connect to database instance '<name>': ...
+  (limits: pool.connect-timeout ..., pool.login-timeout ...; the database is not answering, ...)`.
+- Java only so far; the Go and Rust database modules do not read the key yet.
 
 ## 2. Migrations
 

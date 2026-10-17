@@ -124,7 +124,11 @@ the SQL files (your module class is the natural choice). The database module col
 a HikariCP pool over the PostgreSQL JDBC driver, with a `database:<name>` health check.
 Each instance, pool and `migrate` included, is configuration ([Config](config.md#named-instances));
 the pool keys are checked at start-up (`pool.max` 1 to 1000, `pool.min-idle` 0 to `pool.max`,
-`pool.connect-timeout` 250 ms to 5 min). `RedisModule` does the same for `redis.instances`
+`pool.connect-timeout` 250 ms to 5 min, `pool.login-timeout` 1 s to 5 min in whole seconds). A
+database that accepts the connection and never answers fails start-up within `login-timeout`
+(default 10s) with a message naming the instance and both timeouts; `connect-timeout` is how long a
+caller waits for the pool, `login-timeout` how long the driver may spend on one attempt.
+`RedisModule` does the same for `redis.instances`
 (`timeout` more than 0 and at most 5 min, `pool.max` 1 to 1000). `Database` has `dataSource()` and
 `name()`.
 

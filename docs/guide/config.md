@@ -133,7 +133,7 @@ database:
       url: jdbc:postgresql://localhost:5432/app
       username: app
       password: ""
-      pool: { max: 10, min-idle: 1, connect-timeout: 5s }
+      pool: { max: 10, min-idle: 1, connect-timeout: 5s, login-timeout: 10s }
       migrate: true
 
 redis:
@@ -151,7 +151,7 @@ as removed):
 
 | Section | Keys |
 |---|---|
-| `database.instances.<n>` | `url` (required), `username`, `password` (secret), `pool.max` (10; 1 to 1000), `pool.min-idle` (1; 0 to `pool.max`), `pool.connect-timeout` (5s; 250 ms to 5 min), `migrate` (true; counts on the default instance) ([lifecycle](modules-and-lifecycle.md#the-database-module-and-migrations)) |
+| `database.instances.<n>` | `url` (required), `username`, `password` (secret), `pool.max` (10; 1 to 1000), `pool.min-idle` (1; 0 to `pool.max`), `pool.connect-timeout` (5s; 250 ms to 5 min), `pool.login-timeout` (10s; 1s to 5 min, whole seconds; `DATABASE_INSTANCES_<NAME>_POOL_LOGIN_TIMEOUT`), `migrate` (true; counts on the default instance) ([lifecycle](modules-and-lifecycle.md#the-database-module-and-migrations)) |
 | `redis.instances.<n>` | `url` (required, `redis://` or `rediss://`, may carry user, password and database number), `password` (secret, wins over the URL's), `timeout` (2s; more than 0, at most 5 min), `pool.max` (16; 1 to 1000) |
 | `http-clients.instances.<n>` | `base-url` and the credentials of the client's `ClientAuth`; the client is named in code ([HTTP client](http-client.md#configured-clients)) |
 

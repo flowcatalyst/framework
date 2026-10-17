@@ -49,7 +49,7 @@ application that had already moved to them goes back to the keys and to `new Jet
 
 Nothing moves but `driver`: delete `driver: postgresql` and `driver: redis` from instance
 sections. The pool keys are now checked at start-up (`pool.max` 1 to 1000, `pool.min-idle` 0 to
-`pool.max`, `pool.connect-timeout` 250 ms to 5 min; Redis `timeout` more than 0 and at most 5 min,
+`pool.max`, `pool.connect-timeout` 250 ms to 5 min, and since 2026-10-17 `pool.login-timeout` 1 s to 5 min in whole seconds (default 10s, new, nothing to migrate); Redis `timeout` more than 0 and at most 5 min,
 `pool.max` 1 to 1000); a connect timeout under 250 ms used to be raised silently and is now refused.
 
 ## HTTP client (`http-client.*`, `http-clients.*`)

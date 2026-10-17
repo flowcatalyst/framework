@@ -27,13 +27,17 @@ import java.util.List;
  *       url: jdbc:postgresql://localhost:5432/app
  *       username: app
  *       password: ""
- *       pool: { max: 10, min-idle: 1, connect-timeout: 5s }
+ *       pool: { max: 10, min-idle: 1, connect-timeout: 5s, login-timeout: 10s }
  *       migrate: true
  * }</pre>
  *
  * <p>An instance is a connection, so all of it is configuration (config-and-code contract, section
  * 3.2). The pool keys are checked at start-up: {@code pool.max} 1 to 1000, {@code pool.min-idle} 0
- * to {@code pool.max}, {@code pool.connect-timeout} 250 ms to 5 minutes. {@code migrate} counts on
+ * to {@code pool.max}, {@code pool.connect-timeout} 250 ms to 5 minutes, {@code pool.login-timeout}
+ * 1 second to 5 minutes in whole seconds. {@code connect-timeout} is how long a caller waits for a
+ * connection from the pool; {@code login-timeout} (default 10s) is how long one attempt to open a
+ * connection may take inside the driver, TCP connect, TLS and authentication, so a server that
+ * accepts and never answers cannot hold a pool thread for ever. {@code migrate} counts on
  * the default instance, where migrations run. PostgreSQL is the only database; an instance names no
  * {@code driver}. Each instance's health check is {@code database:<name>}.
  */
@@ -50,6 +54,15 @@ public final class DatabaseModule implements Module {
 
   /** The longest {@code pool.connect-timeout} accepted. */
   static final Duration MAX_CONNECT_TIMEOUT = Duration.ofMinutes(5);
+
+  /** The shortest {@code pool.login-timeout} accepted (the JDBC driver counts whole seconds). */
+  static final Duration MIN_LOGIN_TIMEOUT = Duration.ofSeconds(1);
+
+  /** The longest {@code pool.login-timeout} accepted. */
+  static final Duration MAX_LOGIN_TIMEOUT = Duration.ofMinutes(5);
+
+  /** The default {@code pool.login-timeout}. */
+  static final Duration DEFAULT_LOGIN_TIMEOUT = Duration.ofSeconds(10);
 
   @Override
   public String id() {
@@ -105,6 +118,7 @@ public final class DatabaseModule implements Module {
     int max = pool.integer("max", 10);
     int minIdle = pool.integer("min-idle", 1);
     Duration connectTimeout = pool.duration("connect-timeout", Duration.ofSeconds(5));
+    Duration loginTimeout = pool.duration("login-timeout", DEFAULT_LOGIN_TIMEOUT);
     boolean migrate = config.bool("migrate", true);
 
     // Checked before any connection is opened; every problem of the instance at once.
@@ -121,6 +135,12 @@ public final class DatabaseModule implements Module {
         || connectTimeout.compareTo(MAX_CONNECT_TIMEOUT) > 0) {
       problems.add(outOfRange(pool, "connect-timeout", "must be 250ms to 5m, was " + connectTimeout));
     }
+    if (loginTimeout.compareTo(MIN_LOGIN_TIMEOUT) < 0
+        || loginTimeout.compareTo(MAX_LOGIN_TIMEOUT) > 0
+        || loginTimeout.toMillis() % 1000 != 0) {
+      problems.add(
+          outOfRange(pool, "login-timeout", "must be 1s to 5m in whole seconds, was " + loginTimeout));
+    }
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
@@ -133,6 +153,9 @@ public final class DatabaseModule implements Module {
     hikari.setMaximumPoolSize(max);
     hikari.setMinimumIdle(minIdle);
     hikari.setConnectionTimeout(connectTimeout.toMillis());
+    // The driver's own limit for one attempt (pgjdbc "loginTimeout", seconds): without it a server
+    // that accepts the connection and never answers holds the attempt for ever.
+    hikari.addDataSourceProperty("loginTimeout", String.valueOf(loginTimeout.toSeconds()));
     // Fail in the check below, with the instance's name, rather than inside the pool constructor.
     hikari.setInitializationFailTimeout(-1);
 
@@ -143,9 +166,30 @@ public final class DatabaseModule implements Module {
     } catch (SQLException | RuntimeException e) {
       pooled.close();
       throw new IllegalStateException(
-          "cannot connect to database instance '" + name + "': " + e.getMessage(), e);
+          "cannot connect to database instance '"
+              + name
+              + "': "
+              + e.getMessage()
+              + (timedOut(e)
+                  ? " (limits: pool.connect-timeout "
+                      + connectTimeout
+                      + ", pool.login-timeout "
+                      + loginTimeout
+                      + "; the database is not answering, check the url and that it is running)"
+                  : ""),
+          e);
     }
     return db;
+  }
+
+  private static boolean timedOut(Throwable t) {
+    for (Throwable c = t; c != null; c = c.getCause()) {
+      String m = c.getMessage();
+      if (m != null && m.toLowerCase(java.util.Locale.ROOT).contains("timed out")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static Problem outOfRange(InstanceConfig section, String key, String message) {
