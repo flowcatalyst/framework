@@ -6,7 +6,7 @@ rewritten at hand-off and can lag the code in between.
 
 - **Owner rulings 2026-10-17.** (1) Build MA-11, the reusable end-to-end kit, in this repository, unpublished for now: TypeScript
   `@flowcatalyst/ui/e2e` and Java `E2eLauncher` in the `framework-auth` test-jar; the orders and tickets examples migrate onto it
-  (status in the plan row). (2) `pool.login-timeout` stays Java only: no parity for the Go and Rust database modules (recorded in
+  (**built**: `docs/guide/e2e-kit.md`; orders 49+4 skipped, tickets 23, gallery 112+4 skipped). (2) `pool.login-timeout` stays Java only: no parity for the Go and Rust database modules (recorded in
   the database contract and U3 row k).
 - **M4f built 2026-10-17** (the trial business service). `examples/tickets-trial` (support tickets: two aggregates, six use
   cases, nine typed operations, a definition sync, a dispatch receiver that notifies with the client's own key through a named

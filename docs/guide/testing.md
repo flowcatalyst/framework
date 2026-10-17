@@ -217,3 +217,6 @@ constructors, so they cannot be built around a fake either; configure a test ins
 construct the object under test yourself (`OrdersDemoTest` builds `new OrderUseCases(...)` with a
 different repository and conflict policy, taking `Databases`, `Events` and `Ids` from the running
 app), start fewer modules, or use the real thing in a container.
+
+For tests in a browser against the real backend (Playwright, the strict Content Security Policy, a test
+sign-in provider, axe), use [the browser end-to-end kit](e2e-kit.md).

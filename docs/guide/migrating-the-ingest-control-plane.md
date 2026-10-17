@@ -575,15 +575,13 @@ days.
 
 "Not built" means the framework does not have it; each has a proposal.
 
-1. **A reusable end-to-end kit.** Not built. `ui/apps/orders/e2e` (the CSP monitor, `signInAs`,
-   axe helpers, `start-backend.ts`) and `OrdersE2e` (the control server) are examples, not a package;
-   an application outside this repository copies them. *Proposal:* publish the Playwright fixtures as
-   `@flowcatalyst/ui/e2e` and a small `E2eHarness` (provider, Testcontainers PostgreSQL, control
-   server) in the `framework-auth` test-jar, with the orders demo as its first user.
-   *Evidence (2026-10-17):* the second application in this repository (`ui/apps/tickets`,
-   `examples/tickets-trial`) took the same pattern with only names and the port pair changed (its
-   `start-backend.ts` is the orders one, 62 lines each), and it worked the first time; recorded as
-   plan item MA-11 (proposed), with the suggested package shape.
+1. **A reusable end-to-end kit.** **Built 2026-10-17** (plan item MA-11; owner ruling: framework-owned, in
+   this repository, unpublished for now). `@flowcatalyst/ui/e2e` (the CSP monitor, `defineE2eConfig`, the
+   control client, the axe helper, `openPage`, `fetchJson`) and `E2eLauncher` in the `framework-auth`
+   test-jar (the test provider, the standard control endpoints, `control(path, handler)` for the
+   application's own); the orders and tickets examples run on it and no longer carry their own copies.
+   How to add it: [the browser end-to-end kit](e2e-kit.md). An application outside this repository still
+   consumes it with `link:` (the TypeScript half) and needs the framework's test-jars on its test classpath.
 2. **A form for a discriminated union.** Not built. `@flowcatalyst/ui` has `FwFormDialog`,
    `FwFormSection`, `useDirtyForm` and the generated `oneOf` + `discriminator` unions, but no
    component that picks a variant and renders its fields, nor a way to place a nested server field
@@ -631,8 +629,8 @@ Still open: 2, 4, 6 to 9. The text below is kept as written.
    default.
 7. **Who owns the e2e harness.** **Decided 2026-10-17 (owner): the framework owns the kit, in this
    repository, unpublished for now** (gap 1; the second copy, the tickets trial, needed no change beyond
-   names and ports, [plan MA-11](../implementation-plan.md)). Being built; the orders and tickets
-   examples are migrated onto it.
+   names and ports, [plan MA-11](../implementation-plan.md)). Built: [the kit](e2e-kit.md); the orders and
+   tickets examples are migrated onto it.
 8. **Where the framework checkout lives for CI**, until the packages are published.
 9. **Licence notices** for the shipped SPA (gap 6).
 

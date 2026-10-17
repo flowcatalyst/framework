@@ -66,6 +66,7 @@
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }
+    - { title: Browser end-to-end kit, path: guide/e2e-kit.md }
     - { title: Status and known gaps, path: guide/STATUS.md }
     - { title: Contracts index, path: guide/reference/contracts.md }
 - group: Design documents
