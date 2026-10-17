@@ -1,19 +1,10 @@
-// Every test runs with a CSP monitor (as the gallery's): it records each `securitypolicyviolation`
-// event, each console message about the Content Security Policy, each request to another origin and
-// each uncaught page error, and the tests assert all four are empty. The demo serves the SPA with
-// the strict policy, so a violation here is real.
-//
-// The control server (OrdersE2e in the demo's tests) changes who signs in at the test OIDC provider,
-// empties the orders and ends every session; `signedInAs` uses it.
-import { test as base, expect, type Page } from "@playwright/test";
+// The orders application's end-to-end helpers on the shared kit (@flowcatalyst/ui/e2e, docs/guide/e2e-kit.md):
+// the kit provides the `test` with the CSP monitor, the control server's client, `openPage` and `fetchJson`;
+// this file adds the demo's roles and its orders helpers. The Java side is OrdersE2e in the demo's tests.
+import { control, expect, fetchJson, openPage, signInAs as signIn, test, type JsonAnswer } from "@flowcatalyst/ui/e2e";
+import type { Page } from "@playwright/test";
 
-const CONTROL = "http://127.0.0.1:4393";
-
-declare global {
-  interface Window {
-    __cspViolations?: string[];
-  }
-}
+export { control, expect, fetchJson, openPage, test, type JsonAnswer };
 
 /** The roles of the demo (OrdersWeb): who may read, and who may also change. */
 export const CLERK = "orders-demo:clerk";
@@ -21,92 +12,16 @@ export const VIEWER = "orders-demo:viewer";
 /** The administrator of the demo's admin area (M4d). */
 export const ADMIN = "orders-demo:admin";
 
-export async function control(path: string): Promise<void> {
-  const response = await fetch(`${CONTROL}${path}`, { method: "POST" });
-  if (!response.ok) {
-    throw new Error(`control ${path}: ${String(response.status)}`);
-  }
-}
-
 /** The next sign-in is a user holding these roles (none: a signed-in user with no permission). */
 export async function signInAs(...roles: string[]): Promise<void> {
-  await control(`/control/sign-in-as?roles=${encodeURIComponent(roles.join(","))}`);
+  await signIn({ roles });
 }
-
-export interface CspMonitor {
-  violations(): Promise<string[]>;
-  readonly foreignRequests: string[];
-  readonly consoleMessages: string[];
-  readonly pageErrors: string[];
-  expectClean(): Promise<void>;
-}
-
-export const test = base.extend<{ csp: CspMonitor }>({
-  csp: [
-    async ({ page, baseURL }, use) => {
-      await page.addInitScript(() => {
-        window.__cspViolations = [];
-        document.addEventListener(
-          "securitypolicyviolation",
-          (event) => {
-            window.__cspViolations?.push(`${event.effectiveDirective} blocked=${event.blockedURI} at ${event.sourceFile}:${String(event.lineNumber)} sample=${event.sample}`);
-          },
-          true,
-        );
-      });
-      const origin = baseURL ?? "";
-      const foreignRequests: string[] = [];
-      const consoleMessages: string[] = [];
-      const pageErrors: string[] = [];
-      page.on("request", (request) => {
-        const url = request.url();
-        // The test OIDC provider is the one other origin the sign-in round trip visits.
-        if (!url.startsWith(origin) && !url.startsWith("data:") && !url.startsWith("http://127.0.0.1:") ) {
-          foreignRequests.push(url);
-        }
-        if (!url.startsWith(origin) && url.startsWith("http://127.0.0.1:") && request.resourceType() !== "document") {
-          foreignRequests.push(url);
-        }
-      });
-      page.on("console", (message) => {
-        if (message.text().includes("Content Security Policy")) {
-          consoleMessages.push(message.text());
-        }
-      });
-      page.on("pageerror", (error) => {
-        pageErrors.push(error.message);
-      });
-      const violations = async (): Promise<string[]> => page.evaluate(() => window.__cspViolations ?? []);
-      await use({
-        violations,
-        foreignRequests,
-        consoleMessages,
-        pageErrors,
-        expectClean: async () => {
-          expect(await violations(), "CSP violations").toEqual([]);
-          expect(consoleMessages, "CSP console messages").toEqual([]);
-          expect(foreignRequests, "requests to other origins").toEqual([]);
-          expect(pageErrors, "uncaught page errors").toEqual([]);
-        },
-      });
-    },
-    { auto: true },
-  ],
-});
-
-export { expect };
 
 /** Empties the orders and makes the next sign-in a clerk. */
 export async function freshData(): Promise<void> {
   await control("/control/reset");
   await control("/control/platform-reads?value=");
   await signInAs(CLERK);
-}
-
-/** Opens a page and waits until Vue has rendered its heading (the sign-in round trip included). */
-export async function openPage(page: Page, path: string, heading: string): Promise<void> {
-  await page.goto(path);
-  await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
 }
 
 export interface OrderSummary {
@@ -147,25 +62,4 @@ export async function cancelBehindTheScenes(page: Page, id: string): Promise<voi
       throw new Error(`cancel: ${String(response.status)}`);
     }
   }, id);
-}
-
-export interface JsonAnswer {
-  readonly status: number;
-  readonly body: unknown;
-}
-
-/** A same-origin fetch from the page (its cookie, its Sec-Fetch headers); the answer parsed as JSON. */
-export async function fetchJson(page: Page, path: string, init?: { readonly method: string; readonly body?: unknown }): Promise<JsonAnswer> {
-  return page.evaluate(
-    async ({ path: url, init: request }) => {
-      const response = await fetch(url, {
-        method: request?.method ?? "GET",
-        ...(request?.body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(request.body) }),
-      });
-      const text = await response.text();
-      const body: unknown = text === "" ? null : JSON.parse(text);
-      return { status: response.status, body };
-    },
-    { path, init },
-  );
 }

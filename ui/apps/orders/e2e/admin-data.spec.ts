@@ -3,7 +3,7 @@
 // application's, which must never show). The invitation link is a credential: shown once, in one
 // dialog, never in the URL, a list, a storage or the document after the dialog closed.
 import type { Page } from "@playwright/test";
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { ADMIN, control, expect, fetchJson, freshData, openPage, signInAs, test } from "./fixtures.ts";
 
 const AUDITOR = "orders-demo:auditor";

@@ -2,7 +2,7 @@
 // NAVIGATION to /auth/login that is rate limited lands on the SPA's
 // sign-in-failed page with the code; the same refusal to a `fetch` stays the JSON envelope and status.
 // The launcher puts a real limiter (one request a minute) on the sign-in routes when asked.
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { control, expect, fetchJson, freshData, test } from "./fixtures.ts";
 
 test.beforeEach(async () => {

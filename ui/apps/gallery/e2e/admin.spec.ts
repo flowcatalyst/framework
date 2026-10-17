@@ -3,7 +3,7 @@
 // state. `?as=admin|users|none|down` chooses the viewer (src/fake-server.ts). Strict axe in both
 // themes at desktop and 390 px; the strict CSP stays clean.
 import type { Page } from "@playwright/test";
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { covers, expect, openPage, test } from "./fixtures.ts";
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Main" });

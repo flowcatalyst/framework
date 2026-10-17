@@ -3,7 +3,7 @@
 // refused at the router (not permitted) and at the server (403 FORBIDDEN); a failed navigation load
 // is an inline error with Try again. Strict axe in both themes, desktop and 390 px; strict CSP.
 import type { Page } from "@playwright/test";
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { ADMIN, CLERK, control, expect, fetchJson, freshData, openPage, placeOrder, signInAs, test } from "./fixtures.ts";
 
 async function signInFresh(page: Page, ...roles: string[]): Promise<void> {

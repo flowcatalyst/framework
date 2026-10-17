@@ -1,6 +1,6 @@
 // Zero axe violations at WCAG 2.2 AA on the application's pages, in both themes, with the overlays
 // open and at phone width; the strict CSP stays clean throughout. Strict: nothing is tolerated.
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { behindTheScenes, expect, freshData, openPage, openTicket, test } from "./fixtures.ts";
 
 test.beforeEach(async () => {

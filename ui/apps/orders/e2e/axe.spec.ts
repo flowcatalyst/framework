@@ -1,7 +1,7 @@
 // Zero axe violations at WCAG 2.2 AA (docs/go/ui.md section 12) on the application's pages, in both
 // themes, at desktop and phone width, and with the overlays open (they render outside the page's flow);
 // the strict CSP stays clean throughout. Strict: nothing is tolerated (axe-tools.ts).
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { cancelBehindTheScenes, expect, freshData, openPage, placeOrder, signInAs, test } from "./fixtures.ts";
 
 test.beforeEach(async () => {

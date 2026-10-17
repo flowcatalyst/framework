@@ -1,7 +1,7 @@
 // The behaviours of the FlowCatalyst parts (src/behaviours.ts; docs/go/ui.md section 12: keyboard
 // operation, focus trap and return, Escape, live announcements). Each test names the checklist rows it
 // exercises (`covers`); every test also asserts the strict CSP stayed clean.
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 
 declare global {
   interface Window {

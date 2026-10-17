@@ -1,7 +1,7 @@
 // The kit's pages outside the shell (U4; docs/ui/u3.md G10, G11, G13): the standalone layout, the
 // signed-out page, the sign-in-failed page (a sentence per contract code, the code as text), the
 // unavailable page. Axe strict in both themes, desktop and phone width.
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { covers, expect, openPage, test } from "./fixtures.ts";
 
 // The eight codes a failure handler receives (sessions contract section 4.2 and 4.1.1); each has its own sentence.

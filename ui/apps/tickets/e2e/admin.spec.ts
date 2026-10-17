@@ -2,7 +2,7 @@
 // configuration page, and the service's own Queue overview section. An agent has no way in and the
 // server refuses the same calls with FORBIDDEN.
 import type { Page } from "@playwright/test";
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { ADMIN, AGENT, control, expect, fetchJson, freshData, openPage, openTicket, switchTo, test } from "./fixtures.ts";
 
 const sidebar = (page: Page) => page.getByRole("navigation", { name: "Main" });

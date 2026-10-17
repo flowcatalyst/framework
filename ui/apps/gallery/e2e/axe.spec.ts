@@ -2,7 +2,7 @@
 // at desktop and phone width, and with the overlays open (they render outside the page's flow). Strict:
 // nothing is tolerated (axe-tools.ts).
 import { covers, expect, openPage, test } from "./fixtures.ts";
-import { axeViolations } from "./axe-tools.ts";
+import { axeViolations } from "@flowcatalyst/ui/e2e";
 import { pages } from "../src/pages.ts";
 
 for (const scheme of ["light", "dark"] as const) {
