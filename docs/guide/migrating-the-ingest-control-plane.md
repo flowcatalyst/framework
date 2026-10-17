@@ -580,6 +580,10 @@ days.
    an application outside this repository copies them. *Proposal:* publish the Playwright fixtures as
    `@flowcatalyst/ui/e2e` and a small `E2eHarness` (provider, Testcontainers PostgreSQL, control
    server) in the `framework-auth` test-jar, with the orders demo as its first user.
+   *Evidence (2026-10-17):* the second application in this repository (`ui/apps/tickets`,
+   `examples/tickets-trial`) took the same pattern with only names and the port pair changed (its
+   `start-backend.ts` is the orders one, 62 lines each), and it worked the first time; recorded as
+   plan item MA-11 (proposed), with the suggested package shape.
 2. **A form for a discriminated union.** Not built. `@flowcatalyst/ui` has `FwFormDialog`,
    `FwFormSection`, `useDirtyForm` and the generated `oneOf` + `discriminator` unions, but no
    component that picks a variant and renders its fields, nor a way to place a nested server field
@@ -626,7 +630,8 @@ Still open: 2, 4, 6 to 9. The text below is kept as written.
 6. **Confidential or public login client** (`AUTH_CLIENT_SECRET`): public needs no secret and is the
    default.
 7. **Who owns the e2e harness**: copied into the application (as above) or published by the
-   framework (gap 1).
+   framework (gap 1; the second copy, the tickets trial, needed no change beyond names and ports, which
+   is the case for publishing it, [plan MA-11](../implementation-plan.md)).
 8. **Where the framework checkout lives for CI**, until the packages are published.
 9. **Licence notices** for the shipped SPA (gap 6).
 
