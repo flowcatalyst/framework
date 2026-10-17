@@ -11,6 +11,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./csp": "./src/csp.ts",
+    "./e2e": "./src/e2e/index.ts",
     "./theme": "./src/theme/index.ts",
     "./theme.css": "./src/theme/theme.css",
     "./vite": "./src/vite.ts",
@@ -29,8 +30,10 @@
     "test": "vitest run"
   },
   "peerDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@fontsource-variable/ibm-plex-sans": "^5.3.0",
     "@nuxt/ui": "4.11.3",
+    "@playwright/test": "^1.63.0",
     "@vueuse/core": "^14.4.0",
     "reka-ui": "^2.10.5",
     "tailwindcss": "^4.3.3",
@@ -42,9 +45,11 @@
     "@flowcatalyst/api-runtime": "workspace:*"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@fontsource-variable/ibm-plex-sans": "catalog:",
     "@iconify-json/lucide": "catalog:",
     "@nuxt/ui": "catalog:",
+    "@playwright/test": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
@@ -60,5 +65,13 @@
     "vue-router": "catalog:",
     "vue-tsc": "catalog:",
     "zod": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "@axe-core/playwright": {
+      "optional": true
+    },
+    "@playwright/test": {
+      "optional": true
+    }
   }
 }

@@ -360,6 +360,9 @@ importers:
         specifier: workspace:*
         version: link:../api-runtime
     devDependencies:
+      '@axe-core/playwright':
+        specifier: 'catalog:'
+        version: 4.13.0(playwright-core@1.63.0)
       '@fontsource-variable/ibm-plex-sans':
         specifier: 'catalog:'
         version: 5.3.0
@@ -369,6 +372,9 @@ importers:
       '@nuxt/ui':
         specifier: 'catalog:'
         version: 4.11.3(5381d10818b58c56bd228d2558632d50)
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.63.0
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.1

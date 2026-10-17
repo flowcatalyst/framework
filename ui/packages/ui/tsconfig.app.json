@@ -20,7 +20,8 @@
     "src/**/*.vue"
   ],
   "exclude": [
-    "src/vite.ts"
+    "src/vite.ts",
+    "src/e2e"
   ],
   "references": [
     {
