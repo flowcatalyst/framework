@@ -1,0 +1,42 @@
+{
+  "name": "@flowcatalyst/tickets-web",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "The tickets trial service's single-page application (M4f): Nuxt UI on plain Vue 3 and Vite, served by examples/tickets-trial",
+  "scripts": {
+    "dev": "vite --port 5176 --strictPort",
+    "build": "vite build",
+    "typecheck": "tsc --build tsconfig.node.json && vue-tsc --build tsconfig.app.json",
+    "generate": "openapi-ts",
+    "drift": "openapi-ts && node ../../scripts/api-drift.ts src/api",
+    "e2e": "vite build && playwright test",
+    "screenshots": "vite build && SCREENSHOTS=1 playwright test e2e/screenshots.spec.ts"
+  },
+  "dependencies": {
+    "@flowcatalyst/api-runtime": "link:../../packages/api-runtime",
+    "@flowcatalyst/ui": "link:../../packages/ui",
+    "@fontsource-variable/ibm-plex-sans": "catalog:",
+    "@iconify-json/lucide": "catalog:",
+    "@internationalized/date": "catalog:",
+    "@nuxt/ui": "catalog:",
+    "@vueuse/core": "catalog:",
+    "reka-ui": "catalog:",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "catalog:",
+    "@hey-api/openapi-ts": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vue-tsc": "catalog:"
+  }
+}

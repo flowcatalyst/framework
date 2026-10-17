@@ -257,6 +257,73 @@ importers:
         specifier: 'catalog:'
         version: 3.3.12(@typescript/typescript6@6.0.2)
 
+  apps/tickets:
+    dependencies:
+      '@flowcatalyst/api-runtime':
+        specifier: link:../../packages/api-runtime
+        version: link:../../packages/api-runtime
+      '@flowcatalyst/ui':
+        specifier: link:../../packages/ui
+        version: link:../../packages/ui
+      '@fontsource-variable/ibm-plex-sans':
+        specifier: 'catalog:'
+        version: 5.3.0
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.140
+      '@internationalized/date':
+        specifier: 'catalog:'
+        version: 3.12.4
+      '@nuxt/ui':
+        specifier: 'catalog:'
+        version: 4.11.3(5381d10818b58c56bd228d2558632d50)
+      '@vueuse/core':
+        specifier: 'catalog:'
+        version: 14.4.0(vue@3.5.43(@typescript/typescript6@6.0.2))
+      reka-ui:
+        specifier: 'catalog:'
+        version: 2.10.5(vue@3.5.43(@typescript/typescript6@6.0.2))
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.3.3
+      vue:
+        specifier: 'catalog:'
+        version: 3.5.43(@typescript/typescript6@6.0.2)
+      vue-router:
+        specifier: 'catalog:'
+        version: 4.6.4(vue@3.5.43(@typescript/typescript6@6.0.2))
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@axe-core/playwright':
+        specifier: 'catalog:'
+        version: 4.13.0(playwright-core@1.63.0)
+      '@hey-api/openapi-ts':
+        specifier: 'catalog:'
+        version: 0.99.0(@typescript/typescript6@6.0.2)
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.63.0
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.1
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
+      '@vitejs/plugin-vue':
+        specifier: 'catalog:'
+        version: 6.0.9(vite@8.2.4(@types/node@24.19.1)(esbuild@0.27.7)(jiti@2.7.0))(vue@3.5.43(@typescript/typescript6@6.0.2))
+      typescript:
+        specifier: 'catalog:'
+        version: '@typescript/typescript6@6.0.2'
+      vite:
+        specifier: 'catalog:'
+        version: 8.2.4(@types/node@24.19.1)(esbuild@0.27.7)(jiti@2.7.0)
+      vue-tsc:
+        specifier: 'catalog:'
+        version: 3.3.12(@typescript/typescript6@6.0.2)
+
   packages/api-runtime:
     devDependencies:
       '@hey-api/openapi-ts':

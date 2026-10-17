@@ -26,6 +26,27 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-database</artifactId>
     </dependency>
+    <!-- The web application: the server, sessions and login, the typed API, the admin area. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-http-jetty</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-admin</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth-database</artifactId>
+    </dependency>
     <!-- An application chooses its logging backend; libraries bring none. -->
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -46,6 +67,13 @@
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- TestOidcProvider and AuthTesting's companions: sign-in against a test identity provider. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>

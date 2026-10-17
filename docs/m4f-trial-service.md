@@ -79,7 +79,7 @@ admin shell with its about, configuration and queue pages); two receivers.
 | # | Slice | State |
 |---|---|---|
 | 1 | This page, the domain, checked SQL, migration, use cases, tests (`TicketUseCasesTest`, 13 tests on PostgreSQL) | see the commit log |
-| 2 | Typed operations, `TicketsWeb`, committed OpenAPI document, generated TypeScript client | |
+| 2 | Typed operations, `TicketsWeb`, committed OpenAPI document (`examples/tickets-trial/web/openapi.json`), generated TypeScript client (`ui/apps/tickets/src/api/tickets`); `TicketsApiTest` (9 tests: roles, two clients, validation, paging, rate limit) | see the commit log |
 | 3 | Definitions sync, dispatch receiver, scheduled-job receiver, notifier, rate limit, metrics loop | |
 | 4 | SPA pages and the browser end-to-end suite | |
 | 5 | Guide page, STATUS row, handover | |
@@ -100,6 +100,10 @@ repository; everything else is for the owner.
 | F6 | A per-client setting (the SLA policy) | There is no per-client configuration capability (M5 is not built), so a table, a repository, SQL, an aggregate, a use case, an event, an operation and a page had to be written for four integers | medium (known) | M5; until then the guide should show the pattern, which this service now is | open (known gap) |
 | F7 | Asserting on the events a use case wrote | The outbox row's `payload` holds `data` as a JSON **string** inside the JSON payload, and the test has to parse twice in SQL (`(payload::jsonb ->> 'data')::jsonb ->> 'x'`). Every application test repeats this | medium | A test helper in a test-jar (`OutboxTesting.events(pg)` returning type, client, group and parsed data) | open |
 | F8 | Test timestamps through `PostgresFixture.query` | `timestamptz` comes back in the JVM or session zone (`+01`), so assertions on instants need `AT TIME ZONE 'UTC'` | low | `PostgresFixture` could set the session zone to UTC | open |
+
+| F9 | Roles: the definition sync wants `Definitions.role(name, permissions)`, the sign-in wants `PermissionMapper.byRole(Map<platformName, permissions>)` | The same role-to-permission table is written twice, with two naming forms (`agent` for the sync, `tickets-trial:agent` for the sign-in) and nothing ties them. The service wrote a `Roles` class that feeds both | medium | `PermissionMapper.fromRoles(application, roles)` over the same `Definition.Role` values the sync takes | open |
+| F10 | The OpenAPI document of an operation behind a rate limit | A middleware's `429 RATE_LIMITED` is not known to the document; the operation lists it by hand with `.error(429, ...)` and nothing checks it matches the middleware | low | `RouteOptions`/`RateLimit` could contribute the declared error (or the build could warn) | open |
+| F11 | A new application in the UI workspace (`ui/apps/tickets`) | Five config files (`tsconfig*.json`, `openapi-ts.config.ts`, `package.json`) are copied from `apps/orders` and edited by hand; the workspace has no template or generator, and the root `pnpm check` / Playwright ports (4392/4393, 5175) are per application by convention only | low | A `create-fw-app` script, or the app configs `extend` shared ones | open |
 
 (More rows are added with each slice.)
 
