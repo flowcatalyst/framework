@@ -68,6 +68,7 @@ export {
   type SortOrder,
 } from "./composables/useListState.ts";
 export { useLocalState } from "./composables/useLocalState.ts";
+export { optionalNumber, optionalText, type OptionalTextOptions } from "./composables/useOptionalFields.ts";
 export { useRequestFailureToasts } from "./composables/useRequestFailureToasts.ts";
 export { API_RUNTIME_KEY, useApiRuntime, usePermissions, useSession, type Permissions } from "./composables/useSession.ts";
 
