@@ -87,8 +87,9 @@ e2e.endSessions(() -> pg.execute("DELETE FROM fw_session"))
 ```
 
 - `start(args, clientId)` reads `<app-port> <control-port> [<public-origin>]`, starts the provider, registers
-  the client with the redirect `<origin>/auth/callback` and points the end-session redirect at the SPA's
-  `/signed-out`. A third argument is the origin the browser sees when something else fronts the backend
+  the client with the redirect `<origin>/auth/callback`. The provider's own end-session endpoint (on
+  its origin, as the contract requires) answers `302` to the `post_logout_redirect_uri` when it is on
+  the registered client's origin, so sign-out lands on the SPA's `/signed-out`. A third argument is the origin the browser sees when something else fronts the backend
   (the Vite dev server). `start(args, clientId, clock)` makes the provider follow a clock your suite moves
   (the tickets suite does, and passes the same clock to its `App`).
 - `environment()` returns a fresh map with `APP_ENV=test`, `HTTP_HOST`, `HTTP_PORT`, `AUTH_ISSUER`,

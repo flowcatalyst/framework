@@ -44,7 +44,7 @@ test("sign out ends the session and the platform sends the browser to the signed
   await page.getByTestId("fw-user-menu").click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Signed out" })).toBeVisible();
-  await expect(page).toHaveURL(/\/signed-out\?.*post_logout_redirect_uri=/);
+  await expect(page).toHaveURL(/\/signed-out$/);
   // Nothing of the shell shows; the session is gone on the server.
   await expect(page.getByTestId("fw-user-menu")).toHaveCount(0);
   expect((await fetchJson(page, "/auth/session")).body).toMatchObject({ authenticated: false, loginUrl: "/auth/login" });

@@ -24,8 +24,8 @@ import java.util.concurrent.CountDownLatch;
  * <ol>
  *   <li>{@link #start(String[], String) starts} the launcher from its arguments ({@code <app-port>
  *       <control-port> [<public-origin>]}): a {@link TestOidcProvider} standing in for the platform's
- *       sign-in, with the application's OIDC client registered and the end-session redirect pointed at
- *       the SPA's signed-out page;
+ *       sign-in, with the application's OIDC client registered and an end-session endpoint on its own
+ *       origin that sends the browser on to the application's post-logout redirect;
  *   <li>starts what else it needs (a PostgreSQL, a fake platform) and {@link #own owns} it, so it is
  *       closed on shutdown;
  *   <li>builds its {@code App} from {@link #environment()} plus its own entries and {@link #own owns}
@@ -129,9 +129,8 @@ public final class E2eLauncher implements AutoCloseable {
     String origin = args.length > 2 ? args[2] : "http://127.0.0.1:" + appPort;
     TestOidcProvider provider = TestOidcProvider.start(clock);
     provider.client(clientId, "", origin + "/auth/callback");
-    // The platform sends the browser back to the post-logout redirect; this one goes to the SPA's
-    // signed-out page the same way.
-    provider.discoveryChanges(Map.of("end_session_endpoint", origin + "/signed-out"));
+    // The provider's own end-session endpoint (on the issuer's origin, as discovery requires) sends the
+    // browser on to the post-logout redirect, which is on the application's origin.
     return new E2eLauncher(appPort, controlPort, origin, clientId, provider);
   }
 
