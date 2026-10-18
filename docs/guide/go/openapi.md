@@ -81,6 +81,11 @@ field path (`lines[1].sku`) to `"<code>: <message>"`. The same rules become `min
 wins, an explicit pattern replaces `notBlank`'s, and a pattern RE2 accepts but ECMA-262 does not
 (inline flags, `\pL`, `\A`, POSIX classes, named groups) is a problem: use `Custom`.
 
+A body field of an enum type (a string type with `EnumValues()`) accepts only the declared values without
+any rule: the decoder answers `400 VALIDATION` with `INVALID_JSON: wrong type or format` at the member's
+path for anything else, as Jackson does for an unknown enum constant in Java. `OneOf` is then only for
+narrowing the set (it also narrows the document's `enum`) or for a set that is not a type.
+
 ## The emitter and the type table
 
 The emitter walks the types the operations name once, with reflection at the JSON edge. `string`,

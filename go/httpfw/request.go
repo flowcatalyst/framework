@@ -9,10 +9,13 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"reflect" //nolint:forbidigo // the JSON edge, as in ops.go
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/flowcatalyst/framework/go/fw"
+	"github.com/flowcatalyst/framework/go/httpfw/openapi"
 )
 
 // reqState is what the dispatcher keeps about one request, reached through the request's context.
@@ -98,8 +101,56 @@ func QueryValues(r *http.Request, name string) ([]string, error) {
 }
 
 // jsonOptions decode a request body strictly: unknown members, duplicate names and wrong-case
-// names are refused (HTTP contract section 7).
-var jsonOptions = json.JoinOptions(json.RejectUnknownMembers(true))
+// names are refused (HTTP contract section 7), and so is a string outside the declared values of an
+// [openapi.EnumValuer] field, as Jackson refuses an unknown enum constant (friction G76-6).
+var jsonOptions = json.JoinOptions(
+	json.RejectUnknownMembers(true),
+	json.WithUnmarshalers(json.UnmarshalFromFunc(unmarshalEnum)),
+)
+
+var errNotInEnum = errors.New("not one of the declared values")
+
+// unmarshalEnum checks a JSON string against the values of the enum type it is decoded into, so a
+// body field of an EnumValuer type cannot hold a value its type does not declare, with or without a
+// validate.OneOf rule. A JSON null leaves the zero value (a validate rule decides if that is
+// acceptable, as for any field); any other kind than a string is a wrong type.
+func unmarshalEnum(dec *jsontext.Decoder, v openapi.EnumValuer) error {
+	if !isStringEnum(v) {
+		return errNotInEnum // an EnumValuer that is not a string type has no JSON form here
+	}
+	kind := dec.PeekKind()
+	if kind == jsontext.KindNull {
+		return dec.SkipValue()
+	}
+	if kind != jsontext.KindString {
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+		return errNotInEnum
+	}
+	var s string
+	if err := json.UnmarshalDecode(dec, &s); err != nil {
+		return err
+	}
+	if !slices.Contains(v.EnumValues(), s) {
+		return errNotInEnum
+	}
+	setEnum(v, s)
+	return nil
+}
+
+// isStringEnum reports whether v is a pointer to a string-kinded type.
+//
+//nolint:forbidigo // the JSON edge: an enum type is stored through its pointer
+func isStringEnum(v openapi.EnumValuer) bool {
+	rv := reflect.ValueOf(v)
+	return rv.Kind() == reflect.Pointer && rv.Elem().Kind() == reflect.String
+}
+
+// setEnum stores s in the string-kinded type v points to (checked by isStringEnum).
+//
+//nolint:forbidigo // the JSON edge
+func setEnum(v openapi.EnumValuer, s string) { reflect.ValueOf(v).Elem().SetString(s) }
 
 // readBody reads the request body up to the limit; one over it is a 413.
 func readBody(r *http.Request) ([]byte, error) {
