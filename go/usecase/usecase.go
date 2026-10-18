@@ -113,13 +113,36 @@ func WithConflictPolicy(p ConflictPolicy) DefineOption {
 // Defined is a use case registered with a runner; Run runs it.
 type Defined[C any, E event.Event] struct {
 	runner *Runner
-	uc     UseCase[C, E]
+	uc     phases[C, E]
 	name   string
 	policy ConflictPolicy
 }
 
+// phases is what the runner calls: the first two phases of every use case, and the rest (Execute,
+// or Load, AuthorizeLoaded and Execute) as one step that records which phase it is in, so a failure
+// carries that phase's code.
+type phases[C any, E event.Event] interface {
+	Name() Name
+	Validate(ctx context.Context, cx fw.Context, cmd C) error
+	Authorize(ctx context.Context, cx fw.Context, cmd Valid[C]) (Grant, error)
+	// run executes after Authorize; it sets *step before each phase it calls.
+	run(ctx context.Context, cx fw.Context, cmd Authorized[C], db *database.DB, step *string) (*Plan[E], error)
+}
+
+// plain adapts a [UseCase] to the runner's phases.
+type plain[C any, E event.Event] struct{ UseCase[C, E] }
+
+func (p plain[C, E]) run(ctx context.Context, cx fw.Context, cmd Authorized[C], db *database.DB, step *string) (*Plan[E], error) {
+	*step = stepExecute
+	return p.Execute(ctx, cx, cmd, db)
+}
+
 // Define registers a use case with the runner. It fails for a zero name or a zero policy.
 func Define[C any, E event.Event](r *Runner, uc UseCase[C, E], opts ...DefineOption) (*Defined[C, E], error) {
+	return define[C, E](r, plain[C, E]{uc}, opts)
+}
+
+func define[C any, E event.Event](r *Runner, uc phases[C, E], opts []DefineOption) (*Defined[C, E], error) {
 	if r == nil {
 		return nil, fmt.Errorf("usecase.Define: no runner")
 	}

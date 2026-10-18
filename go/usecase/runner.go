@@ -23,6 +23,7 @@ import (
 const (
 	stepValidate  = "VALIDATE"
 	stepAuthorize = "AUTHORIZE"
+	stepLoad      = "LOAD"
 	stepExecute   = "EXECUTE"
 	stepBegin     = "BEGIN"
 	stepPersist   = "PERSIST"
@@ -145,8 +146,7 @@ func attemptOnce[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx
 		log.Warn("Authorize returned the zero Grant without an error; refusing")
 		return zero, Authorization(MustErrorCode("NOT_AUTHORIZED"), "Not authorized.")
 	}
-	step = stepExecute
-	plan, err := d.uc.Execute(ctx, cx, Authorized[C]{cmd: cmd, ok: true}, d.runner.db)
+	plan, err := d.uc.run(ctx, cx, Authorized[C]{cmd: cmd, ok: true}, d.runner.db, &step)
 	if err != nil {
 		return zero, failure(log, step, err)
 	}
