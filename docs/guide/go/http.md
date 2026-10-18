@@ -1,4 +1,4 @@
-<!-- types: Routes, Dispatcher, Server, Declared, Error, Detail, ServiceError, HandlerFunc, ContextHandlerFunc, Middleware, ContextResolver, RouteOption, Option, SPA, Options, CSP, Handler -->
+<!-- types: CSRFGuard, Routes, Dispatcher, Server, Declared, Error, Detail, ServiceError, HandlerFunc, ContextHandlerFunc, Middleware, ContextResolver, RouteOption, Option, SPA, Options, CSP, Handler -->
 # Go: HTTP and the SPA
 
 Package `httpfw` is the Go counterpart of `framework-http` and `framework-http-jetty`: the
@@ -87,6 +87,31 @@ A route registered with `HandleContext` (or `RequiresContext()`) gets its `fw.Co
 cannot; the framework then replaces the Context's correlation id with the request's. The real
 resolver (sessions and bearer tokens) is the G5b milestone; the orders demo uses a fixed-token
 resolver of its own and says so.
+
+## CSRF and security headers
+
+`httpfw.SessionsGuard(publicBaseURL)` is the platform's F16 rule for an unsafe request (anything but
+`GET`, `HEAD`, `OPTIONS`) that a session cookie authenticates ([contract](../../contracts/sessions-and-login.md)
+section 7.2): `Sec-Fetch-Site` must be `same-origin` or `none`; without it `Origin` must equal the
+origin of the public base URL (scheme, host, port, defaults dropped); with neither header the
+request is refused. A refusal is `403 CROSS_ORIGIN_REQUEST`, logged at INFO with the method, path and
+the two header values (cut to 100 characters, control characters replaced). Then a body (a length
+above zero, or a `Transfer-Encoding`) must be `application/json` or `application/*+json`: `415
+UNSUPPORTED_MEDIA_TYPE`. There is no synchronizer token and no CORS, anywhere. `PublicFormGuard` is
+the variant for an application's own public `POST` routes (a sign-up form): a request with neither
+header passes, and the body must still be JSON. Both are `*CSRFGuard`; use `Check(r)` in a handler or
+`Middleware()` on a route:
+
+```go
+rt.Handle("POST /signup", signup, httpfw.With(httpfw.PublicFormGuard(base).Middleware()))
+```
+
+The session module applies `SessionsGuard` itself (see [sessions and login](../sessions-and-login.md)).
+`httpfw.SecurityHeaders()` is middleware that adds `Referrer-Policy: same-origin`, `X-Frame-Options:
+DENY` and the baseline `Content-Security-Policy` to responses that lack them (pass an `spa.CSP` to
+use another policy); `X-Content-Type-Options: nosniff` is already on every response, and the SPA's own
+answers carry these headers. HSTS is the TLS terminator's job. Not verified: the guard is tested
+with synthetic requests and, in the sessions module, over the real server; no browser was used.
 
 ## The server
 
