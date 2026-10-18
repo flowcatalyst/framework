@@ -15,7 +15,7 @@ this service adds everything it leaves out:
 | You want | Look at | Page |
 |---|---|---|
 | A status machine on an aggregate, with comments appended and never rewritten | `TicketStatus.after`, `Ticket`, `TicketRepository.update` | [write path](write-path.md) |
-| A second aggregate that is a client's own setting (one per client) | `SlaPolicy`, `SlaPolicyRepository.findByClient`, `TicketUseCases.defineSetSlaPolicy` | [write path](write-path.md) |
+| A client's own setting (the SLA), defined in code and stored by the framework | `TicketSettings.SLA`, `TicketUseCases.defineSetSlaPolicy`, `TicketsApiModule.slaView` | [per-client settings](client-settings.md) |
 | Permissions checked in the use case, so a receiver and an HTTP call are checked alike | `TicketUseCases.requires`, `SERVICE_ONLY`, `Permissions` | [write path](write-path.md), [context](context.md) |
 | Roles written once for the platform sync and for the sign-in | `Roles`, `TicketsDefinitionsModule`, `TicketsWeb` | [FlowCatalyst module](flowcatalyst-module.md), [sessions](sessions-and-login.md) |
 | Checked SQL with optional filters, a cursor, a query across every client | `TicketSql.sql` (`list`, `overdue`) | [checked SQL](checked-sql.md) |

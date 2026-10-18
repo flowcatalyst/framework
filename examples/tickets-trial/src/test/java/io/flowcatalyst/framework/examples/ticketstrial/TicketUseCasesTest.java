@@ -196,8 +196,8 @@ class TicketUseCasesTest {
     committed(useCases.run(tickets.setSlaPolicy(), lead(acme), new SetSlaPolicy(600, 300, 120, 15)));
     committed(useCases.run(tickets.setSlaPolicy(), lead(acme), new SetSlaPolicy(700, 400, 130, 20)));
 
-    assertThat(count("SELECT count(*) FROM sla_policies WHERE client_id = 'acme'")).isEqualTo(1);
-    assertThat(pg.query("SELECT version || ':' || urgent_minutes FROM sla_policies WHERE client_id = 'acme'")).isEqualTo("2:20");
+    assertThat(count("SELECT count(*) FROM fw_client_settings WHERE client_id = 'acme'")).isEqualTo(1);
+    assertThat(pg.query("SELECT version || ':' || (settings -> 'tickets.sla' ->> 'urgent') FROM fw_client_settings WHERE client_id = 'acme'")).isEqualTo("2:20");
     assertThat(failed(useCases.run(tickets.setSlaPolicy(), lead(acme), new SetSlaPolicy(10, 20, 30, 40))).code())
         .isEqualTo("POLICY_NOT_ORDERED");
     assertThat(failed(useCases.run(tickets.setSlaPolicy(), lead(acme), new SetSlaPolicy(0, 20, 30, 40))).code())
@@ -408,7 +408,7 @@ class TicketUseCasesTest {
 
   private TicketUseCases gated(GatedRepository repository, TicketUseCases.Policies policies) {
     return new TicketUseCases(
-        repository, new SlaPolicyRepository(), db, app.get(Events.class), app.get(Ids.class), now::get, policies);
+        repository, app.get(io.flowcatalyst.framework.settings.ClientSettingsRepository.class), db, app.get(Events.class), app.get(Ids.class), now::get, policies);
   }
 
   @Test

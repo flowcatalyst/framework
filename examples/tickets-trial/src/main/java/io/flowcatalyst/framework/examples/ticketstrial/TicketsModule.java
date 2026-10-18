@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.examples.ticketstrial;
 
 import io.flowcatalyst.framework.core.AppBuilder;
+import io.flowcatalyst.framework.settings.ClientSettingsRepository;
 import io.flowcatalyst.framework.core.Ids;
 import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.database.Databases;
@@ -27,7 +28,7 @@ public final class TicketsModule implements Module {
         lookup ->
             new TicketUseCases(
                 new TicketRepository(),
-                new SlaPolicyRepository(),
+                lookup.get(ClientSettingsRepository.class),
                 lookup.get(Databases.class).defaultInstance(),
                 lookup.get(Events.class),
                 lookup.get(Ids.class),

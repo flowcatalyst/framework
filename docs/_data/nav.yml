@@ -23,6 +23,7 @@
     - { title: Checked SQL, path: guide/checked-sql.md }
     - { title: Background and metrics, path: guide/background-and-metrics.md }
     - { title: Per-client secrets, path: guide/secrets.md }
+    - { title: Per-client settings, path: guide/client-settings.md }
 - group: Web
   items:
     - { title: HTTP, path: guide/http.md }
@@ -90,6 +91,7 @@
     - { title: Static assets and SPA contract, path: contracts/static-assets-and-spa.md }
     - { title: OpenAPI contract, path: contracts/openapi.md }
     - { title: Admin skeleton contract, path: contracts/admin.md }
+    - { title: Client settings contract, path: contracts/client-settings.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }

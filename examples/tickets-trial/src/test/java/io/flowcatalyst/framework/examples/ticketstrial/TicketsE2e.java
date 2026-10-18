@@ -105,7 +105,7 @@ public final class TicketsE2e {
         .control(
             "/control/reset",
             q -> {
-              pg.execute("TRUNCATE ticket_comments, tickets, sla_policies, outbox_messages CASCADE");
+              pg.execute("TRUNCATE ticket_comments, tickets, fw_client_settings, outbox_messages CASCADE");
               offset.set(Duration.ZERO);
               notifier.received().clear();
               notifier.answer(202);

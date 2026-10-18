@@ -44,6 +44,7 @@
     <module>framework-locks-database</module>
     <module>framework-locks-redis</module>
     <module>framework-usecase</module>
+    <module>framework-client-settings</module>
     <module>framework-http</module>
     <module>framework-http-jetty</module>
     <module>framework-ratelimit-redis</module>

@@ -3,6 +3,7 @@ package io.flowcatalyst.framework.examples.ticketstrial;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.database.DatabaseModule;
+import io.flowcatalyst.framework.settings.ClientSettingsModule;
 import io.flowcatalyst.framework.usecase.OutboxModule;
 import io.flowcatalyst.framework.usecase.UseCaseModule;
 
@@ -21,6 +22,7 @@ public final class TicketsCore {
         .module(new DatabaseModule())
         .module(new OutboxModule())
         .module(new UseCaseModule())
+        .module(new ClientSettingsModule())
         .module(new TicketsModule());
   }
 }

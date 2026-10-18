@@ -134,6 +134,11 @@
         <artifactId>framework-usecase</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.flowcatalyst.framework</groupId>
+        <artifactId>framework-client-settings</artifactId>
+        <version>${project.version}</version>
+      </dependency>
 
       <dependency>
         <groupId>io.flowcatalyst.framework</groupId>

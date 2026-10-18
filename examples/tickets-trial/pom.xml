@@ -24,6 +24,10 @@
     </dependency>
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-client-settings</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-database</artifactId>
     </dependency>
     <!-- The web application: the server, sessions and login, the typed API, the admin area. -->

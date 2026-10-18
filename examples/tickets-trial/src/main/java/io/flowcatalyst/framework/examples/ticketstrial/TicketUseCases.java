@@ -12,12 +12,15 @@ import io.flowcatalyst.framework.examples.ticketstrial.Commands.FlagSlaBreach;
 import io.flowcatalyst.framework.examples.ticketstrial.Commands.OpenTicket;
 import io.flowcatalyst.framework.examples.ticketstrial.Commands.SetSlaPolicy;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketEvents.SlaPolicyChanged;
+import io.flowcatalyst.framework.examples.ticketstrial.TicketSettings.SlaMinutes;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketEvents.TicketAssigned;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketEvents.TicketCommented;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketEvents.TicketOpened;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketEvents.TicketSlaBreached;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketEvents.TicketStatusChanged;
 import io.flowcatalyst.framework.usecase.Check;
+import io.flowcatalyst.framework.settings.ClientSettings;
+import io.flowcatalyst.framework.settings.ClientSettingsRepository;
 import io.flowcatalyst.framework.usecase.ConflictPolicy;
 import io.flowcatalyst.framework.usecase.Decision;
 import io.flowcatalyst.framework.usecase.DomainEvent;
@@ -47,7 +50,7 @@ public final class TicketUseCases {
   static final int TEXT_MAX = 4000;
 
   /** The longest SLA, in minutes: thirty days. */
-  static final int MINUTES_MAX = 43_200;
+  static final int MINUTES_MAX = TicketSettings.MINUTES_MAX;
 
   /**
    * The conflict policy of each use case that edits an existing record.
@@ -76,7 +79,7 @@ public final class TicketUseCases {
   }
 
   private final TicketRepository tickets;
-  private final SlaPolicyRepository policies;
+  private final ClientSettingsRepository settings;
   private final Database database;
   private final Events events;
   private final Ids ids;
@@ -92,7 +95,7 @@ public final class TicketUseCases {
    * Defines the use cases.
    *
    * @param tickets the ticket repository
-   * @param policies the SLA policy repository
+   * @param settings the per-client settings repository (the SLA is one of them)
    * @param database the database the use cases read from
    * @param events makes event metadata
    * @param ids generates ids
@@ -101,14 +104,14 @@ public final class TicketUseCases {
    */
   public TicketUseCases(
       TicketRepository tickets,
-      SlaPolicyRepository policies,
+      ClientSettingsRepository settings,
       Database database,
       Events events,
       Ids ids,
       InstantSource clock,
       Policies conflicts) {
     this.tickets = tickets;
-    this.policies = policies;
+    this.settings = settings;
     this.database = database;
     this.events = events;
     this.ids = ids;
@@ -218,11 +221,7 @@ public final class TicketUseCases {
             (context, command) -> {
               Instant now = clock.instant();
               // The client's own SLA if it set one, else the default: read once, here.
-              int minutes =
-                  policies
-                      .findByClient(database, context.client())
-                      .map(p -> p.minutesFor(command.priority()))
-                      .orElseGet(() -> SlaPolicy.defaultMinutes(command.priority()));
+              int minutes = settings.forClient(database, context.client()).get(TicketSettings.SLA).minutesFor(command.priority());
               String requester = requester(context);
               Ticket ticket =
                   Ticket.open(
@@ -394,49 +393,30 @@ public final class TicketUseCases {
   private UseCase<SetSlaPolicy, SlaPolicyChanged> defineSetSlaPolicy(ConflictPolicy policy) {
     return UseCase.named("set-sla-policy", SetSlaPolicy.class, SlaPolicyChanged.class)
         .validate(
-            (context, c) -> {
-              for (int minutes : new int[] {c.lowMinutes(), c.normalMinutes(), c.highMinutes(), c.urgentMinutes()}) {
-                if (minutes < 1 || minutes > MINUTES_MAX) {
-                  return Optional.of(
-                      UseCaseError.validation("MINUTES_INVALID", "Each time is 1 to " + MINUTES_MAX + " minutes."));
-                }
-              }
-              if (!(c.urgentMinutes() <= c.highMinutes()
-                  && c.highMinutes() <= c.normalMinutes()
-                  && c.normalMinutes() <= c.lowMinutes())) {
-                return Optional.of(
-                    UseCaseError.validation("POLICY_NOT_ORDERED", "A more urgent ticket cannot be given more time."));
-              }
-              return Optional.empty();
-            })
+            (context, c) ->
+                TicketSettings.problem(minutes(c)).map(p -> UseCaseError.validation(p.code(), p.message())))
         .authorize(requires(Permissions.SLA_MANAGE))
         .conflict(policy)
         .execute(
             (context, c) -> {
-              Optional<SlaPolicy> existing = policies.findByClient(database, context.client());
-              SlaPolicy saved =
-                  existing
-                      .map(p -> p.withMinutes(c.lowMinutes(), c.normalMinutes(), c.highMinutes(), c.urgentMinutes()))
-                      .orElseGet(
-                          () ->
-                              SlaPolicy.create(
-                                  new SlaPolicyId(ids.generate("sla")),
-                                  context.client(),
-                                  c.lowMinutes(),
-                                  c.normalMinutes(),
-                                  c.highMinutes(),
-                                  c.urgentMinutes()));
+              // The client's settings row (or an empty one for a client that never set anything), with
+              // the SLA replaced: the framework's aggregate, saved like any other.
+              ClientSettings saved = settings.forClient(database, context.client()).with(TicketSettings.SLA, minutes(c));
               return Plan.save(
                   saved,
-                  policies,
+                  settings,
                   new SlaPolicyChanged(
                       events.metadata(context, TicketEvents.POLICY_CHANGED, saved.id()),
                       saved.id().value(),
-                      saved.lowMinutes(),
-                      saved.normalMinutes(),
-                      saved.highMinutes(),
-                      saved.urgentMinutes()));
+                      c.lowMinutes(),
+                      c.normalMinutes(),
+                      c.highMinutes(),
+                      c.urgentMinutes()));
             });
+  }
+
+  private static SlaMinutes minutes(SetSlaPolicy c) {
+    return new SlaMinutes(c.lowMinutes(), c.normalMinutes(), c.highMinutes(), c.urgentMinutes());
   }
 
   // ---- helpers ----------------------------------------------------------------------------------

@@ -12,7 +12,10 @@ import io.flowcatalyst.framework.examples.ticketstrial.Commands.ChangeStatus;
 import io.flowcatalyst.framework.examples.ticketstrial.Commands.OpenTicket;
 import io.flowcatalyst.framework.examples.ticketstrial.Commands.SetSlaPolicy;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketsApi.Page;
+import io.flowcatalyst.framework.examples.ticketstrial.TicketSettings.SlaMinutes;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketsApi.SlaPolicyView;
+import io.flowcatalyst.framework.settings.ClientSettings;
+import io.flowcatalyst.framework.settings.ClientSettingsRepository;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketsApi.TicketSummaryView;
 import io.flowcatalyst.framework.examples.ticketstrial.TicketsApi.TicketView;
 import io.flowcatalyst.framework.http.Outcome;
@@ -90,7 +93,7 @@ public final class TicketsApiModule implements Module {
     InstantSource clock = app.get(InstantSource.class);
     Database db = app.get(Databases.class).defaultInstance();
     TicketRepository repository = new TicketRepository();
-    SlaPolicyRepository policies = new SlaPolicyRepository();
+    ClientSettingsRepository settings = app.get(ClientSettingsRepository.class);
     Routes routes = app.get(Routes.class).forModule(ID);
 
     routes.bind(
@@ -157,7 +160,7 @@ public final class TicketsApiModule implements Module {
         RouteOptions.none()
             .with(RateLimit.by(MemoryRateLimiter.create("ticket-comments", commentLimit), KeyResolvers.principal()).build()));
 
-    routes.bind(TicketsApi.GET_SLA, r -> Outcome.ok(slaView(policies, db, r.context())));
+    routes.bind(TicketsApi.GET_SLA, r -> Outcome.ok(slaView(settings, db, r.context())));
 
     routes.bind(
         TicketsApi.SET_SLA,
@@ -166,23 +169,14 @@ public final class TicketsApiModule implements Module {
           return then(
               useCases.run(
                   tickets.setSlaPolicy(), r.context(), new SetSlaPolicy(b.lowMinutes(), b.normalMinutes(), b.highMinutes(), b.urgentMinutes())),
-              done -> Outcome.ok(slaView(policies, db, r.context())));
+              done -> Outcome.ok(slaView(settings, db, r.context())));
         });
   }
 
-  private static SlaPolicyView slaView(SlaPolicyRepository policies, Database db, Context context) throws SQLException {
-    Optional<SlaPolicy> own = policies.findByClient(db, context.client());
-    return own
-        .map(p -> new SlaPolicyView(p.lowMinutes(), p.normalMinutes(), p.highMinutes(), p.urgentMinutes(), true, p.version()))
-        .orElseGet(
-            () ->
-                new SlaPolicyView(
-                    SlaPolicy.defaultMinutes(Priority.LOW),
-                    SlaPolicy.defaultMinutes(Priority.NORMAL),
-                    SlaPolicy.defaultMinutes(Priority.HIGH),
-                    SlaPolicy.defaultMinutes(Priority.URGENT),
-                    false,
-                    0));
+  private static SlaPolicyView slaView(ClientSettingsRepository settings, Database db, Context context) throws SQLException {
+    ClientSettings own = settings.forClient(db, context.client());
+    SlaMinutes sla = own.get(TicketSettings.SLA);
+    return new SlaPolicyView(sla.low(), sla.normal(), sla.high(), sla.urgent(), own.isSet(TicketSettings.SLA), own.version());
   }
 
   private static Outcome<TicketView> view(TicketRepository repository, Database db, InstantSource clock, Context context, String id)
