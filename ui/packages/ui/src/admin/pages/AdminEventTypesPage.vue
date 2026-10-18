@@ -3,26 +3,23 @@
 // generated listAdminEventTypes, the record drawer as a child route. The search and the status filter
 // go to the server (it pages by cursor); the platform's refusals are shown on the page in the server's
 // words, not as an empty list.
-import {
-  choiceFilter,
-  FwCodeChips,
-  FwCursorPager,
-  FwListPage,
-  FwStatusBadge,
-  stringFilter,
-  useCursorPagination,
-  useListState,
-  type FwListColumn,
-} from "@flowcatalyst/ui";
+import FwCodeChips from "../../components/FwCodeChips.vue";
+import FwCursorPager from "../../components/FwCursorPager.vue";
+import FwListPage from "../../partials/FwListPage.vue";
+import FwStatusBadge from "../../components/FwStatusBadge.vue";
+import { choiceFilter, stringFilter, useListState } from "../../composables/useListState.ts";
+import { useCursorPagination } from "../../composables/useCursorPagination.ts";
+import type { FwListColumn } from "../../types.ts";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import UFormField from "@nuxt/ui/components/FormField.vue";
 import USelect from "@nuxt/ui/components/Select.vue";
 import { computed, h, onMounted, shallowRef } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
-import { listAdminEventTypes } from "../../api/orders/sdk.gen.ts";
-import type { AdminEventType } from "../../api/orders/types.gen.ts";
-import { dataOrThrow, EVENT_TYPE_COLORS, failureText } from "./platform.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminEventTypeView as AdminEventType } from "../data.ts";
+import { dataOrThrow, EVENT_TYPE_COLORS, failureText } from "../shared.ts";
 
+const admin = useAdminData();
 const route = useRoute();
 const router = useRouter();
 const failure = shallowRef<string | undefined>(undefined);
@@ -36,9 +33,9 @@ const status = list.filter(choiceFilter("status", ["CURRENT", "ARCHIVED"] as con
 const pager = useCursorPagination<AdminEventType>({
   fetchPage: async (cursor) => {
     const page = dataOrThrow(
-      await listAdminEventTypes({
+      await requireCall(admin, "listAdminEventTypes")({
         query: {
-          limit: 8,
+          limit: admin.pageSize,
           ...(status.value === null ? {} : { status: status.value }),
           ...(search.value === "" ? {} : { q: search.value }),
           ...(cursor === undefined ? {} : { after: cursor }),

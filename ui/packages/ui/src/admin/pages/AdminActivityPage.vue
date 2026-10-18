@@ -3,31 +3,28 @@
 // list with two views (Events, Dispatch jobs) over the generated listAdminEvents / listAdminDispatchJobs,
 // each with its drawer as a child route. The server confines both to this application and pages them by
 // cursor; the platform's refusals show on the page in its words.
-import {
-  choiceFilter,
-  FwCodeChips,
-  FwCursorPager,
-  FwListPage,
-  FwLocalTime,
-  FwStatusBadge,
-  FwToggleGroup,
-  stringFilter,
-  useCursorPagination,
-  useListState,
-  type FwListColumn,
-} from "@flowcatalyst/ui";
+import FwCodeChips from "../../components/FwCodeChips.vue";
+import FwCursorPager from "../../components/FwCursorPager.vue";
+import FwListPage from "../../partials/FwListPage.vue";
+import FwLocalTime from "../../components/FwLocalTime.vue";
+import FwStatusBadge from "../../components/FwStatusBadge.vue";
+import FwToggleGroup from "../../components/FwToggleGroup.vue";
+import { choiceFilter, stringFilter, useListState } from "../../composables/useListState.ts";
+import { useCursorPagination } from "../../composables/useCursorPagination.ts";
+import type { FwListColumn } from "../../types.ts";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import UFormField from "@nuxt/ui/components/FormField.vue";
 import UInput from "@nuxt/ui/components/Input.vue";
 import USelect from "@nuxt/ui/components/Select.vue";
 import { computed, h, onMounted, shallowRef } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
-import { listAdminDispatchJobs, listAdminEvents } from "../../api/orders/sdk.gen.ts";
-import type { AdminDispatchJob, AdminEvent } from "../../api/orders/types.gen.ts";
-import { dataOrThrow, failureText, JOB_COLORS } from "./platform.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminDispatchJobView as AdminDispatchJob, AdminEventView as AdminEvent } from "../data.ts";
+import { dataOrThrow, failureText, JOB_COLORS } from "../shared.ts";
 
 type Row = (AdminEvent & { kind: "event" }) | (AdminDispatchJob & { kind: "job" });
 
+const admin = useAdminData();
 const JOB_STATUSES = ["PENDING", "QUEUED", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED"] as const;
 
 const route = useRoute();
@@ -56,11 +53,11 @@ function instant(local: string): string | undefined {
 const pager = useCursorPagination<Row>({
   fetchPage: async (cursor) => {
     const sinceAt = instant(since.value);
-    const common = { limit: 8, ...(cursor === undefined ? {} : { after: cursor }), ...(sinceAt === undefined ? {} : { since: sinceAt }) };
+    const common = { limit: admin.pageSize, ...(cursor === undefined ? {} : { after: cursor }), ...(sinceAt === undefined ? {} : { since: sinceAt }) };
     const next = (token: string | undefined): { nextCursor?: string } => (token === undefined ? {} : { nextCursor: token });
     if (jobs.value) {
       const page = dataOrThrow(
-        await listAdminDispatchJobs({
+        await requireCall(admin, "listAdminDispatchJobs")({
           query: { ...common, ...(status.value === null ? {} : { status: status.value }), ...(code.value === "" ? {} : { code: code.value }) },
         }),
       );
@@ -68,7 +65,7 @@ const pager = useCursorPagination<Row>({
       return { ...next(page.nextCursor), items: page.items.map((j): Row => ({ ...j, kind: "job" })) };
     }
     const page = dataOrThrow(
-      await listAdminEvents({
+      await requireCall(admin, "listAdminEvents")({
         query: { ...common, ...(type.value === "" ? {} : { type: type.value }), ...(correlation.value === "" ? {} : { correlationId: correlation.value }) },
       }),
     );
@@ -187,12 +184,12 @@ function open(row: Row): void {
             <USelect v-model="statusChoice" :items="statusItems" class="w-full" data-testid="filter-status" />
           </UFormField>
           <UFormField label="Job code (exact)">
-            <UInput v-model="code" class="w-full" placeholder="orders-demo:sales:order:placed" data-testid="filter-code" />
+            <UInput v-model="code" class="w-full" :placeholder="`${admin.application}:domain:aggregate:event`" data-testid="filter-code" />
           </UFormField>
         </template>
         <template v-else>
           <UFormField label="Event type (exact)">
-            <UInput v-model="type" class="w-full" placeholder="orders-demo:sales:order:placed" data-testid="filter-type" />
+            <UInput v-model="type" class="w-full" :placeholder="`${admin.application}:domain:aggregate:event`" data-testid="filter-type" />
           </UFormField>
           <UFormField label="Correlation id">
             <UInput v-model="correlation" class="w-full" data-testid="filter-correlation" />

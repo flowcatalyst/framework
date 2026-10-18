@@ -1,19 +1,21 @@
 <script setup lang="ts">
-// The framework's about page (FwAdminAbout) on the generated getAdminAbout.
+// The framework's about page (FwAdminAbout) on the application's generated getAdminAbout.
 import { ApiRequestError, toServiceError } from "@flowcatalyst/api-runtime";
-import { FwAdminAbout, type AdminAboutView } from "@flowcatalyst/ui";
+import FwAdminAbout from "../../partials/FwAdminAbout.vue";
+import type { AdminAboutView } from "../types.ts";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import UButton from "@nuxt/ui/components/Button.vue";
 import { onMounted, shallowRef } from "vue";
-import { getAdminAbout } from "../../api/tickets/sdk.gen.ts";
+import { requireCall, useAdminData } from "../data.ts";
 
+const admin = useAdminData();
 const about = shallowRef<AdminAboutView>();
 const failure = shallowRef<string>();
 
 async function load(): Promise<void> {
   failure.value = undefined;
   try {
-    const { data, error, response } = await getAdminAbout();
+    const { data, error, response } = await requireCall(admin, "getAdminAbout")(undefined);
     if (data === undefined) {
       throw new ApiRequestError(toServiceError(error, response));
     }

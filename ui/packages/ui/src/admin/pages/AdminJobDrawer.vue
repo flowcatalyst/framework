@@ -2,24 +2,23 @@
 // The record drawer of /admin/activity/jobs/:id: the dispatch job, where it is delivered to (the
 // subscriber's endpoint, which may belong to another application) and every delivery attempt with the
 // subscriber's answer. Read-only.
-import {
-  FwCodeBlock,
-  FwCodeChips,
-  FwDetailField,
-  FwDetailList,
-  FwFormSection,
-  FwLocalTime,
-  FwRecordDrawer,
-  FwStatusBadge,
-  useDrawerRoute,
-} from "@flowcatalyst/ui";
+import FwCodeBlock from "../../components/FwCodeBlock.vue";
+import FwCodeChips from "../../components/FwCodeChips.vue";
+import FwDetailField from "../../components/FwDetailField.vue";
+import FwDetailList from "../../components/FwDetailList.vue";
+import FwFormSection from "../../components/FwFormSection.vue";
+import FwLocalTime from "../../components/FwLocalTime.vue";
+import FwRecordDrawer from "../../partials/FwRecordDrawer.vue";
+import FwStatusBadge from "../../components/FwStatusBadge.vue";
+import { useDrawerRoute } from "../../composables/useDrawerRoute.ts";
 import UButton from "@nuxt/ui/components/Button.vue";
 import { computed, shallowRef, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
-import { getAdminDispatchJob } from "../../api/orders/sdk.gen.ts";
-import type { AdminDispatchJobDetail } from "../../api/orders/types.gen.ts";
-import { dataOrThrow, failureText, JOB_COLORS } from "./platform.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminDispatchJobDetailView as AdminDispatchJobDetail } from "../data.ts";
+import { dataOrThrow, failureText, JOB_COLORS } from "../shared.ts";
 
+const admin = useAdminData();
 const route = useRoute();
 const drawer = useDrawerRoute({ listPath: "/admin/activity" });
 const detail = shallowRef<AdminDispatchJobDetail | undefined>(undefined);
@@ -27,7 +26,7 @@ const loadError = shallowRef<string | undefined>(undefined);
 
 async function load(id: string): Promise<void> {
   try {
-    detail.value = dataOrThrow(await getAdminDispatchJob({ path: { id } }));
+    detail.value = dataOrThrow(await requireCall(admin, "getAdminDispatchJob")({ path: { id } }));
     loadError.value = undefined;
   } catch (cause) {
     detail.value = undefined;

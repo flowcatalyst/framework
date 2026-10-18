@@ -3,15 +3,19 @@
 // each value came from, summary counts and the application's health. A secret is shown as set or not,
 // never its value; the page says so. A plain list (the response is small and not paged): the search and
 // the state filter narrow the loaded rows through the server's q and state parameters.
-import { choiceFilter, FwListPage, FwStatusBadge, stringFilter, useListState, type FwListColumn, type StatusColor } from "@flowcatalyst/ui";
+import FwListPage from "../../partials/FwListPage.vue";
+import FwStatusBadge from "../../components/FwStatusBadge.vue";
+import { choiceFilter, stringFilter, useListState } from "../../composables/useListState.ts";
+import type { FwListColumn, StatusColor } from "../../types.ts";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import UFormField from "@nuxt/ui/components/FormField.vue";
 import USelect from "@nuxt/ui/components/Select.vue";
 import { computed, h, onMounted, shallowRef } from "vue";
-import { listAdminConfig } from "../../api/tickets/sdk.gen.ts";
-import type { AdminConfig, AdminConfigSetting } from "../../api/tickets/types.gen.ts";
-import { dataOrThrow, failureText } from "./api.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminConfigView as AdminConfig, AdminConfigSettingView as AdminConfigSetting } from "../data.ts";
+import { dataOrThrow, failureText } from "../shared.ts";
 
+const admin = useAdminData();
 const STATE_COLORS: Readonly<Record<string, StatusColor>> = { SET: "success", DEFAULT: "info", UNSET: "neutral" };
 const STATE_LABELS: Readonly<Record<string, string>> = { SET: "Set", DEFAULT: "Default", UNSET: "Not set" };
 const HEALTH_COLORS: Readonly<Record<string, StatusColor>> = { UP: "success", DOWN: "error", TIMED_OUT: "warning" };
@@ -30,7 +34,7 @@ async function load(): Promise<void> {
   loading.value = true;
   try {
     config.value = dataOrThrow(
-      await listAdminConfig({
+      await requireCall(admin, "listAdminConfig")({
         query: {
           ...(state.value === null ? {} : { state: state.value }),
           ...(search.value === "" ? {} : { q: search.value }),

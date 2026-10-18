@@ -4,32 +4,30 @@
 // asked for first (useConfirm). A failure is shown in the platform's words; the invitation link is
 // only ever in the dialog that shows it.
 import { toServiceError } from "@flowcatalyst/api-runtime";
-import {
-  FwDetailField,
-  FwDetailList,
-  FwFormSection,
-  FwLocalTime,
-  FwRecordDrawer,
-  FwStatusBadge,
-  useConfirm,
-  useDrawerRoute,
-  useFlash,
-  usePermissions,
-} from "@flowcatalyst/ui";
+import FwDetailField from "../../components/FwDetailField.vue";
+import FwDetailList from "../../components/FwDetailList.vue";
+import FwFormSection from "../../components/FwFormSection.vue";
+import FwLocalTime from "../../components/FwLocalTime.vue";
+import FwRecordDrawer from "../../partials/FwRecordDrawer.vue";
+import FwStatusBadge from "../../components/FwStatusBadge.vue";
+import { useConfirm } from "../../composables/useConfirm.ts";
+import { useDrawerRoute } from "../../composables/useDrawerRoute.ts";
+import { useFlash } from "../../composables/useFlash.ts";
+import { usePermissions } from "../../composables/useSession.ts";
 import UButton from "@nuxt/ui/components/Button.vue";
 import { computed, inject, shallowRef, watch } from "vue";
-import { getAdminUser, resendAdminInvitation, revokeAdminInvitation } from "../../api/orders/sdk.gen.ts";
-import type { AdminUser } from "../../api/orders/types.gen.ts";
-import { ADMIN_USERS_RESEND, ADMIN_USERS_REVOKE } from "../../admin/icons.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminUserView as AdminUser } from "../data.ts";
 import InviteLinkDialog from "./InviteLinkDialog.vue";
-import { dataOrThrow, failureText, INVITATION_COLORS, REFRESH_USERS } from "./platform.ts";
+import { dataOrThrow, failureText, INVITATION_COLORS, REFRESH_USERS } from "../shared.ts";
 
+const admin = useAdminData();
 const refreshList = inject(REFRESH_USERS, () => Promise.resolve());
 const flash = useFlash();
 const confirm = useConfirm();
 const permissions = usePermissions();
-const canResend = computed(() => permissions.can(ADMIN_USERS_RESEND));
-const canRevoke = computed(() => permissions.can(ADMIN_USERS_REVOKE));
+const canResend = computed(() => permissions.can(admin.permissions.usersResend));
+const canRevoke = computed(() => permissions.can(admin.permissions.usersRevoke));
 const drawer = useDrawerRoute({ listPath: "/admin/users" });
 
 const user = shallowRef<AdminUser | undefined>(undefined);
@@ -40,7 +38,7 @@ const shownLink = shallowRef<{ link: string; expiresAt: string | undefined } | u
 
 async function load(id: string): Promise<void> {
   try {
-    user.value = dataOrThrow(await getAdminUser({ path: { id } }));
+    user.value = dataOrThrow(await requireCall(admin, "getAdminUser")({ path: { id } }));
     loadError.value = undefined;
   } catch (cause) {
     user.value = undefined;
@@ -79,7 +77,7 @@ async function resend(asLink: boolean): Promise<void> {
   }
   busy.value = true;
   try {
-    const { data, error, response } = await resendAdminInvitation({ path: { id: current.id }, body: asLink ? { returnInviteLink: true } : {} });
+    const { data, error, response } = await requireCall(admin, "resendAdminInvitation")({ path: { id: current.id }, body: asLink ? { returnInviteLink: true } : {} });
     if (data === undefined) {
       flash.error(toServiceError(error, response).message);
       return;
@@ -115,7 +113,7 @@ async function revoke(): Promise<void> {
   }
   busy.value = true;
   try {
-    const { error, response } = await revokeAdminInvitation({ path: { id: current.id } });
+    const { error, response } = await requireCall(admin, "revokeAdminInvitation")({ path: { id: current.id } });
     if (error !== undefined) {
       flash.error(toServiceError(error, response).message);
       return;

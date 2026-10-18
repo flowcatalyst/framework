@@ -1,13 +1,12 @@
 <script setup lang="ts">
 // The service's own admin section: a plain page on the generated getAdminTicketsOverview.
-import { FwDetailField, FwDetailList, FwStatusBadge } from "@flowcatalyst/ui";
+import { adminDataOrThrow as dataOrThrow, adminFailureText as failureText, FwDetailField, FwDetailList, FwStatusBadge } from "@flowcatalyst/ui";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import UPageHeader from "@nuxt/ui/components/PageHeader.vue";
 import { onMounted, shallowRef } from "vue";
 import { getAdminTicketsOverview } from "../../api/tickets/sdk.gen.ts";
 import type { TicketsOverview } from "../../api/tickets/types.gen.ts";
 import { STATUS_COLORS } from "../tickets.ts";
-import { dataOrThrow, failureText } from "./api.ts";
 
 const overview = shallowRef<TicketsOverview>();
 const failure = shallowRef<string>();

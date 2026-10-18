@@ -3,7 +3,9 @@ import { createApiRuntime, installSessionGuard } from "@flowcatalyst/api-runtime
 import { flowcatalystUi } from "@flowcatalyst/ui";
 import ui from "@nuxt/ui/vue-plugin";
 import { createApp } from "vue";
+import { APPLICATION } from "./admin/icons.ts";
 import { client } from "./api/orders/client.gen.ts";
+import * as sdk from "./api/orders/sdk.gen.ts";
 import App from "./App.vue";
 import { router } from "./router.ts";
 import "./main.css";
@@ -17,4 +19,4 @@ installSessionGuard(router, api.session, {
   },
 });
 
-createApp(App).use(router).use(ui).use(flowcatalystUi, { api }).mount("#app");
+createApp(App).use(router).use(ui).use(flowcatalystUi, { api, admin: { application: APPLICATION, api: sdk, pageSize: 8 } }).mount("#app");

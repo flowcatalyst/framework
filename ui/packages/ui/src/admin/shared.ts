@@ -1,7 +1,8 @@
-// Shared by the pages that read the platform through the application (event types, roles).
+// What the shared admin data pages have in common: a generated call's result as data or an
+// ApiRequestError, the words for a failed read, and the colours of the states the pages show.
 import { ApiRequestError, toServiceError } from "@flowcatalyst/api-runtime";
-import type { StatusColor } from "@flowcatalyst/ui";
 import type { InjectionKey } from "vue";
+import type { StatusColor } from "../types.ts";
 
 export const EVENT_TYPE_COLORS: Readonly<Record<string, StatusColor>> = { CURRENT: "success", ARCHIVED: "neutral" };
 

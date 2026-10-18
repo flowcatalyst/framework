@@ -3,7 +3,7 @@
 // only in the `link` prop of the page that received it (never in the URL, in storage, in a log or in a
 // list), it is read-only text in this dialog with a Copy button, and closing the dialog drops it: the
 // page sets `link` back to undefined and the text leaves the document.
-import { useFlash } from "@flowcatalyst/ui";
+import { useFlash } from "../../composables/useFlash.ts";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UInput from "@nuxt/ui/components/Input.vue";
 import UModal from "@nuxt/ui/components/Modal.vue";

@@ -1,20 +1,25 @@
 <script setup lang="ts">
-// The record drawer of /admin/roles/:id (the route param is the role's full name, `orders-demo:clerk`):
+// The record drawer of /admin/roles/:id (the route param is the role's full name, `app:role`):
 // the role and the permissions it grants, read-only.
-import { FwDetailField, FwDetailList, FwFormSection, FwRecordDrawer, useDrawerRoute } from "@flowcatalyst/ui";
+import FwDetailField from "../../components/FwDetailField.vue";
+import FwDetailList from "../../components/FwDetailList.vue";
+import FwFormSection from "../../components/FwFormSection.vue";
+import FwRecordDrawer from "../../partials/FwRecordDrawer.vue";
+import { useDrawerRoute } from "../../composables/useDrawerRoute.ts";
 import UButton from "@nuxt/ui/components/Button.vue";
 import { computed, shallowRef, watch } from "vue";
-import { getAdminRole } from "../../api/orders/sdk.gen.ts";
-import type { AdminRoleDetail } from "../../api/orders/types.gen.ts";
-import { dataOrThrow, failureText } from "./platform.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminRoleDetailView as AdminRoleDetail } from "../data.ts";
+import { dataOrThrow, failureText } from "../shared.ts";
 
+const admin = useAdminData();
 const drawer = useDrawerRoute({ listPath: "/admin/roles" });
 const detail = shallowRef<AdminRoleDetail | undefined>(undefined);
 const loadError = shallowRef<string | undefined>(undefined);
 
 async function load(name: string): Promise<void> {
   try {
-    detail.value = dataOrThrow(await getAdminRole({ path: { name } }));
+    detail.value = dataOrThrow(await requireCall(admin, "getAdminRole")({ path: { name } }));
     loadError.value = undefined;
   } catch (cause) {
     detail.value = undefined;

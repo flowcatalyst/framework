@@ -45,6 +45,13 @@ export { ADMIN_BASE, adminBreadcrumbs, adminNavigation, adminRoutes, sectionsWit
 export type { AdminAboutView, AdminCheckView, AdminNavigationView, AdminPage, AdminSectionView } from "./admin/types.ts";
 export { useAdminNavigation, type AdminNavigation } from "./composables/useAdminNavigation.ts";
 
+// Shared admin data pages (docs/contracts/admin.md section 13): event types, roles, users and
+// invitations, activity, configuration and about, on the application's own generated client.
+export { standardAdminPages, replaceAdminPage, STANDARD_ADMIN_PAGE_IDS, type StandardAdminPageId } from "./admin/standard-pages.ts";
+export { adminPermissions, inviteBodySchema, useAdminData, type AdminDataApi, type AdminDataOptions, type AdminPermissions } from "./admin/data.ts";
+export { dataOrThrow as adminDataOrThrow, failureText as adminFailureText } from "./admin/shared.ts";
+export type * from "./admin/data.ts";
+
 // Composables.
 export { announce, announcements } from "./composables/useAnnouncer.ts";
 export { useColorMode, type ColorMode, type ColorModePreference } from "./composables/useColorMode.ts";

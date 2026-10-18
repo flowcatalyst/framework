@@ -436,3 +436,45 @@ Vector `conformance/admin/activity.json`.
 4. Event payloads and attempt bodies are shown (bounded). An option to hide them is a small addition.
 5. Admin writes are not audited by the framework: the platform records them against the service account, not
    against the signed-in user. (Platform gap: no way to name the acting user.)
+
+## 13. The shared data pages (owner ruling 2026-10-18, friction F18)
+
+Sections 10 to 12 define the wire. This section defines the **pages** in `@flowcatalyst/ui` that
+show them, so that an application mounts the admin area instead of copying 1,500 lines of Vue.
+
+**Pages.** The package ships six pages, each the page of the server section with the same id:
+`about` (`{app}:admin:console:view`), `event-types`, `roles`, `users`, `activity` and `config`
+(`{app}:admin:{id}:view`), with their drawers (event type, role, user, event, dispatch job) as child
+routes, the invite form and the invitation-link dialog. `standardAdminPages(application, ids?)`
+returns them as `AdminPage` values (section 6) in navigation order; `ids` picks a subset, because an
+application mounts only the sections its server has. Every drawer route carries the same
+`meta.permission` as its page, so the route guard (section 6) covers it.
+
+**The port.** The package holds no generated client. The application passes the operations of its own
+generated client once, as a plugin option:
+`app.use(flowcatalystUi, { api, admin: { application: "orders-demo", api: sdk, pageSize? } })` where `sdk`
+is `import * as sdk from "./api/orders/sdk.gen.ts"`. `AdminDataApi` names the calls by **operation id**
+(`listAdminEventTypes`, `getAdminEventType`, `listAdminRoles`, `getAdminRole`, `listAdminUsers`,
+`getAdminUser`, `inviteAdminUser`, `listAdminInvitations`, `resendAdminInvitation`,
+`revokeAdminInvitation`, `listAdminEvents`, `getAdminEvent`, `listAdminDispatchJobs`,
+`getAdminDispatchJob`, `listAdminConfig`, `getAdminAbout`); every member is optional, because the
+application mounts the sections it has. The wire views the pages read (`AdminEventTypeView` and so
+on) are structural copies of the server's schemas, and **TypeScript checks at the one place the
+application passes `sdk` that each generated function takes and answers what the pages expect**: a
+server change that breaks a page is a compile error in the application, not a run-time surprise.
+A page whose call was not passed shows an alert naming the missing operation. The permissions are
+derived from the application code (`adminPermissions`), so they equal the server's section names
+(section 3); the invite form's Zod rules are the server's `InviteBody` constants.
+
+**Replacing.** An application that wants its own version of a page gives it the same id:
+`replaceAdminPage(pages, ownPage)` puts it in place of the standard one (or appends it); the
+navigation, the routes and the breadcrumbs follow from the list as for any `AdminPage`. An application's
+own section (the demo's `orders`, the trial's `tickets`) is simply another entry.
+
+**What stays out.** Pages for sections the framework does not define stay in the application. The
+page size (`pageSize`, default 25, the server clamps to 1 to 200) is the application's.
+
+**Tests the build has:** the page list, its permissions and the shell's route rules (vitest); the
+drawer routes' permissions; subsets and replacement; the missing-call error; one page mounted on a
+fake client (page size, the rows); and the orders and tickets browser suites against the real Java
+servers (the orders suite exercises all six pages; the tickets suite mounts `about` and `config`).

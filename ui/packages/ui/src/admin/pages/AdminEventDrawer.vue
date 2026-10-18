@@ -1,24 +1,23 @@
 <script setup lang="ts">
 // The record drawer of /admin/activity/events/:id: the event, its payload (cut when long), its context
 // and the dispatch jobs that deliver it, each opening the job's drawer. Read-only.
-import {
-  FwCodeBlock,
-  FwCodeChips,
-  FwDetailField,
-  FwDetailList,
-  FwFormSection,
-  FwLocalTime,
-  FwRecordDrawer,
-  FwStatusBadge,
-  useDrawerRoute,
-} from "@flowcatalyst/ui";
+import FwCodeBlock from "../../components/FwCodeBlock.vue";
+import FwCodeChips from "../../components/FwCodeChips.vue";
+import FwDetailField from "../../components/FwDetailField.vue";
+import FwDetailList from "../../components/FwDetailList.vue";
+import FwFormSection from "../../components/FwFormSection.vue";
+import FwLocalTime from "../../components/FwLocalTime.vue";
+import FwRecordDrawer from "../../partials/FwRecordDrawer.vue";
+import FwStatusBadge from "../../components/FwStatusBadge.vue";
+import { useDrawerRoute } from "../../composables/useDrawerRoute.ts";
 import UButton from "@nuxt/ui/components/Button.vue";
 import { computed, shallowRef, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
-import { getAdminEvent } from "../../api/orders/sdk.gen.ts";
-import type { AdminEventDetail } from "../../api/orders/types.gen.ts";
-import { dataOrThrow, failureText, JOB_COLORS } from "./platform.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminEventDetailView as AdminEventDetail } from "../data.ts";
+import { dataOrThrow, failureText, JOB_COLORS } from "../shared.ts";
 
+const admin = useAdminData();
 const route = useRoute();
 const drawer = useDrawerRoute({ listPath: "/admin/activity" });
 const detail = shallowRef<AdminEventDetail | undefined>(undefined);
@@ -26,7 +25,7 @@ const loadError = shallowRef<string | undefined>(undefined);
 
 async function load(id: string): Promise<void> {
   try {
-    detail.value = dataOrThrow(await getAdminEvent({ path: { id } }));
+    detail.value = dataOrThrow(await requireCall(admin, "getAdminEvent")({ path: { id } }));
     loadError.value = undefined;
   } catch (cause) {
     detail.value = undefined;

@@ -26,7 +26,7 @@ needs.
 | `PlatformAdminModule`: the event types and roles sections (read the platform) | `framework-flowcatalyst` |
 | `PlatformUsersAdminModule`: users, invitations, invite / resend / revoke | `framework-flowcatalyst` |
 | `PlatformActivityAdminModule`: events and dispatch jobs with attempts | `framework-flowcatalyst` |
-| `FwAdminShell`, `FwAdminAbout`, `adminRoutes`, `adminNavigation`, `useAdminNavigation`, `AdminPage` | `@flowcatalyst/ui` |
+| `FwAdminShell`, `FwAdminAbout`, `adminRoutes`, `adminNavigation`, `useAdminNavigation`, `AdminPage`; the data pages: `standardAdminPages`, `replaceAdminPage`, `AdminDataApi`, `adminPermissions` | `@flowcatalyst/ui` |
 
 `framework-admin` depends on `framework-core` and `framework-http` only: no database, no write path
 and no auth module (the gate reads `Context.permissions`, which any `ContextResolver` fills).
@@ -197,15 +197,18 @@ them.
 
 ## The UI
 
-The package holds no generated client; the application passes its own.
+The package holds no generated client; the application passes its own. The skeleton pieces are
+`AdminPage`, `adminRoutes`, `adminNavigation` and `FwAdminShell`; the **data pages** are in the
+package too (below), so an application mounts them instead of copying them.
 
 ```ts
-// ui/apps/orders/src/admin/pages.ts: the page-kit contract M4e pages fill
+// ui/apps/orders/src/admin/pages.ts
 export const adminPages: readonly AdminPage[] = [
-  { id: "about", title: "About", icon: "i-lucide-info", permission: ADMIN_CONSOLE, path: "/admin/about",
-    component: () => import("../pages/admin/AdminAboutPage.vue").then((m) => m.default) },
+  ...standardAdminPages("orders-demo"),          // about, event types, roles, users, activity, config
   { id: "orders", title: "Orders overview", icon: "...", permission: ADMIN_ORDERS_VIEW, path: "/admin/orders", component: ... },
 ];
+// main.ts:     app.use(flowcatalystUi, { api, admin: { application: "orders-demo", api: sdk, pageSize: 8 } })
+//              with  import * as sdk from "./api/orders/sdk.gen.ts"   (the generated client's operations)
 // router.ts:   ...adminRoutes(adminPages)         every route carries meta.permission; the session guard enforces it
 // App.vue:     <FwAdminShell app-name="Orders admin" :pages="adminPages" :load="loadAdminNavigation" back-to="/orders">
 ```
@@ -218,18 +221,40 @@ export const adminPages: readonly AdminPage[] = [
 - `FwAdminShell` is `FwAppShell` with that navigation, a Back link, breadcrumbs (Admin, section,
   record; the current page is text with `aria-current`), and an inline "could not be loaded" error with
   Try again. The U4 standalone pages stay outside any shell.
-- `FwAdminAbout` is the about page, presentational: load `getAdminAbout` and pass the answer in.
-- Icons named in `.ts` data go in the Vite plugin's `icons` option (a `.vue` file cannot be imported by
-  the config: keep the list in a data-only file).
+- `FwAdminAbout` is the about page, presentational; the standard `about` page loads `getAdminAbout` and
+  passes the answer in.
 
-The M4e pages (`ui/apps/orders/src/pages/admin/`) are `FwListPage` + `FwRecordDrawer` as child routes
-over the generated operations: `AdminEventTypesPage` and its drawer (fields, specification versions with
-the schema in `FwCodeBlock`), `AdminRolesPage` and its drawer (the permissions), `AdminConfigPage`
-(summary, health, filters), `AdminUsersPage`/`AdminUserDrawer`, `AdminActivityPage` with `AdminEventDrawer` and
-`AdminJobDrawer` (the activity page has an Events / Dispatch jobs switch and two drawer routes). Their `AdminPage` entries are in `src/admin/pages.ts` and carry the child
-route with the same permission. A platform failure is a persistent alert on the page in the server's
-words; the shared `platform.ts` holds that and the status colours. The generated client is made from the
-committed `examples/orders-demo/web/openapi.json` (`pnpm --filter @flowcatalyst/orders-web generate`).
+### The standard data pages
+
+`standardAdminPages(application, ids?)` returns the pages of the sections the framework defines, in
+navigation order: **about**, **event-types**, **roles**, **users**, **activity**, **config**. Pass `ids` for
+a subset when your server mounts only some sections (the tickets example passes `["about", "config"]`).
+They are `FwListPage` + `FwRecordDrawer` as child routes over the application's generated operations:
+`AdminEventTypesPage` and its drawer (fields, specification versions with the schema in `FwCodeBlock`),
+`AdminRolesPage` and its drawer (the permissions), `AdminConfigPage` (summary, health, filters),
+`AdminUsersPage`/`AdminUserDrawer`/`InviteLinkDialog`, `AdminActivityPage` with `AdminEventDrawer` and
+`AdminJobDrawer` (an Events / Dispatch jobs switch and two drawer routes). A platform failure is a persistent
+alert on the page in the server's words.
+
+How they reach your server: the plugin option `admin` carries the application code and the generated
+client's operations (`import * as sdk`), checked by TypeScript where you pass them: each generated function
+must take and answer what the page expects, so a server change that breaks a page fails your `typecheck`.
+Every call is optional (`AdminDataApi`); a page whose operation you did not pass shows an alert naming it.
+The permissions are derived from the application code (`adminPermissions("orders-demo")`).
+
+**Replacing a page.** Build your own page and give it the standard page's id; `replaceAdminPage(pages, own)`
+puts it in place (the navigation, routes and breadcrumbs follow):
+
+```ts
+export const adminPages = replaceAdminPage(standardAdminPages("orders-demo"), myUsersPage); // id: "users"
+```
+
+The generated client is made from the committed `examples/orders-demo/web/openapi.json`
+(`pnpm --filter @flowcatalyst/orders-web generate`). The pages' tests are
+`ui/packages/ui/test/admin-pages.test.ts` (list, permissions, replacement, the missing-call error, one page
+on a fake client) and, against the real Java servers, `ui/apps/orders/e2e/admin*.spec.ts` (all six pages) and
+`ui/apps/tickets/e2e/admin.spec.ts` (about and config). Icons the pages use are in the package's own list
+(`fcIcons`), so an application lists only the icons of its own sections.
 
 ## Testing
 

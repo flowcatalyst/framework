@@ -2,14 +2,19 @@
 // Roles of this application, as the platform holds them (M4e slice 2): a read-only list over the
 // generated listAdminRoles with the record drawer as a child route. The server confines the list to
 // this application's roles and pages it by cursor.
-import { FwCursorPager, FwListPage, stringFilter, useCursorPagination, useListState, type FwListColumn } from "@flowcatalyst/ui";
+import FwCursorPager from "../../components/FwCursorPager.vue";
+import FwListPage from "../../partials/FwListPage.vue";
+import { stringFilter, useListState } from "../../composables/useListState.ts";
+import { useCursorPagination } from "../../composables/useCursorPagination.ts";
+import type { FwListColumn } from "../../types.ts";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import { computed, h, onMounted, shallowRef } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
-import { listAdminRoles } from "../../api/orders/sdk.gen.ts";
-import type { AdminRole } from "../../api/orders/types.gen.ts";
-import { dataOrThrow, failureText } from "./platform.ts";
+import { requireCall, useAdminData } from "../data.ts";
+import type { AdminRoleView as AdminRole } from "../data.ts";
+import { dataOrThrow, failureText } from "../shared.ts";
 
+const admin = useAdminData();
 const route = useRoute();
 const router = useRouter();
 const failure = shallowRef<string | undefined>(undefined);
@@ -22,9 +27,9 @@ const search = list.filter(stringFilter("q", { debounce: 250 }));
 const pager = useCursorPagination<AdminRole>({
   fetchPage: async (cursor) => {
     const page = dataOrThrow(
-      await listAdminRoles({
+      await requireCall(admin, "listAdminRoles")({
         query: {
-          limit: 8,
+          limit: admin.pageSize,
           ...(search.value === "" ? {} : { q: search.value }),
           ...(cursor === undefined ? {} : { after: cursor }),
         },

@@ -4,21 +4,16 @@
 // drawer as a child route and the invite form in FwFormDialog. The server pages by cursor and
 // confines everything to this application; the platform's refusals show on the page in its words.
 import { toServiceError, type ServiceError } from "@flowcatalyst/api-runtime";
-import {
-  choiceFilter,
-  FwCursorPager,
-  FwFormDialog,
-  FwListPage,
-  FwPickList,
-  FwStatusBadge,
-  stringFilter,
-  useCursorPagination,
-  useFlash,
-  useListState,
-  usePermissions,
-  type FwListColumn,
-  type PickItem,
-} from "@flowcatalyst/ui";
+import FwCursorPager from "../../components/FwCursorPager.vue";
+import FwFormDialog from "../../partials/FwFormDialog.vue";
+import FwListPage from "../../partials/FwListPage.vue";
+import FwPickList from "../../components/FwPickList.vue";
+import FwStatusBadge from "../../components/FwStatusBadge.vue";
+import { choiceFilter, stringFilter, useListState } from "../../composables/useListState.ts";
+import { useCursorPagination } from "../../composables/useCursorPagination.ts";
+import { useFlash } from "../../composables/useFlash.ts";
+import { usePermissions } from "../../composables/useSession.ts";
+import type { FwListColumn, PickItem } from "../../types.ts";
 import UAlert from "@nuxt/ui/components/Alert.vue";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UFormField from "@nuxt/ui/components/FormField.vue";
@@ -28,11 +23,9 @@ import USwitch from "@nuxt/ui/components/Switch.vue";
 import { computed, h, onMounted, provide, reactive, shallowRef } from "vue";
 import type { z } from "zod";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
-import { inviteAdminUser, listAdminInvitations, listAdminRoles, listAdminUsers } from "../../api/orders/sdk.gen.ts";
-import { zInviteBody } from "../../api/orders/zod.gen.ts";
-import { ADMIN_USERS_INVITE } from "../../admin/icons.ts";
+import { inviteBodySchema as zInviteBody, requireCall, useAdminData } from "../data.ts";
 import InviteLinkDialog from "./InviteLinkDialog.vue";
-import { dataOrThrow, failureText, INVITATION_COLORS, REFRESH_USERS } from "./platform.ts";
+import { dataOrThrow, failureText, INVITATION_COLORS, REFRESH_USERS } from "../shared.ts";
 
 type InviteInput = z.input<typeof zInviteBody>;
 type InviteData = z.output<typeof zInviteBody>;
@@ -48,11 +41,12 @@ interface Row {
   active?: boolean | undefined;
 }
 
+const admin = useAdminData();
 const route = useRoute();
 const router = useRouter();
 const flash = useFlash();
 const permissions = usePermissions();
-const canInvite = computed(() => permissions.can(ADMIN_USERS_INVITE));
+const canInvite = computed(() => permissions.can(admin.permissions.usersInvite));
 const failure = shallowRef<string | undefined>(undefined);
 
 const list = useListState({}, () => {
@@ -66,7 +60,7 @@ const pager = useCursorPagination<Row>({
     const after = cursor === undefined ? {} : { after: cursor };
     // Invitations still waiting: their own list (the platform filters by state); everyone else: the users.
     if (show.value === "PENDING" || show.value === "EXPIRED") {
-      const page = dataOrThrow(await listAdminInvitations({ query: { limit: 8, status: show.value, ...after } }));
+      const page = dataOrThrow(await requireCall(admin, "listAdminInvitations")({ query: { limit: admin.pageSize, status: show.value, ...after } }));
       failure.value = undefined;
       // The platform does not search invitations: the page that came back is filtered here.
       const needle = search.value.trim().toLowerCase();
@@ -78,8 +72,8 @@ const pager = useCursorPagination<Row>({
       };
     }
     const page = dataOrThrow(
-      await listAdminUsers({
-        query: { limit: 8, ...(show.value === "INACTIVE" ? { active: false } : {}), ...(search.value === "" ? {} : { q: search.value }), ...after },
+      await requireCall(admin, "listAdminUsers")({
+        query: { limit: admin.pageSize, ...(show.value === "INACTIVE" ? { active: false } : {}), ...(search.value === "" ? {} : { q: search.value }), ...after },
       }),
     );
     failure.value = undefined;
@@ -164,7 +158,7 @@ async function startInvite(): Promise<void> {
   rolesError.value = undefined;
   inviting.value = true;
   try {
-    const page = dataOrThrow(await listAdminRoles({ query: { limit: 200 } }));
+    const page = dataOrThrow(await requireCall(admin, "listAdminRoles")({ query: { limit: 200 } }));
     roleItems.value = page.items.map((role) => ({ value: role.name, label: role.displayName, code: role.name }));
   } catch (cause) {
     roleItems.value = [];
@@ -174,7 +168,7 @@ async function startInvite(): Promise<void> {
 
 async function invite(data: InviteData): Promise<ServiceError | undefined> {
   const wantsLink = data.returnInviteLink === true;
-  const { data: made, error, response } = await inviteAdminUser({ body: { ...data, returnInviteLink: wantsLink, sendInvitation: !wantsLink } });
+  const { data: made, error, response } = await requireCall(admin, "inviteAdminUser")({ body: { ...data, returnInviteLink: wantsLink, sendInvitation: !wantsLink } });
   if (made === undefined) {
     return toServiceError(error, response);
   }

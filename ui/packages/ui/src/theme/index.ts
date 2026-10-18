@@ -36,7 +36,9 @@ export const fcColorAliases = [
  * app config's `ui.icons`: loading, close, chevrons, ...) are bundled by its plugin.
  */
 export const fcIcons = [
+  "i-lucide-activity",
   "i-lucide-arrow-left",
+  "i-lucide-ban",
   "i-lucide-check",
   "i-lucide-chevron-left",
   "i-lucide-chevron-right",
@@ -50,18 +52,25 @@ export const fcIcons = [
   "i-lucide-ellipsis",
   "i-lucide-inbox",
   "i-lucide-info",
+  "i-lucide-key-round",
+  "i-lucide-link",
   "i-lucide-list-filter",
   "i-lucide-log-in",
   "i-lucide-log-out",
+  "i-lucide-mail",
   "i-lucide-monitor",
   "i-lucide-moon",
   "i-lucide-panel-left-close",
   "i-lucide-panel-left-open",
   "i-lucide-refresh-cw",
   "i-lucide-search",
+  "i-lucide-sliders-horizontal",
   "i-lucide-sun",
   "i-lucide-triangle-alert",
+  "i-lucide-user-plus",
+  "i-lucide-users",
   "i-lucide-x",
+  "i-lucide-zap",
 ] as const;
 
 /**

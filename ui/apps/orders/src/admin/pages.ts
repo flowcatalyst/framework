@@ -1,113 +1,15 @@
-// The orders application's admin pages (M4d/M4e, docs/contracts/admin.md section 6): data only, so the
-// Vite config (icons Nuxt UI cannot find in .ts data), the router, the shell and the Playwright suite
-// read the same list. Each page matches a server section by id: `about` is the framework's own,
-// `event-types`, `roles` and `config` are the framework's M4e sections (PlatformAdminModule,
-// AdminConfigModule), `orders` is the demo's (OrdersAdminModule). The permissions are the server's.
-import type { AdminPage } from "@flowcatalyst/ui";
+// The orders application's admin pages (docs/contracts/admin.md sections 6 and 13): the framework's
+// standard pages (about, event types, roles, users, activity, configuration; they live in
+// @flowcatalyst/ui and read the calls passed in main.ts) and the demo's own section. Each page matches
+// a server section by id; the permissions are the server's. Data only: the Vite config reads
+// `ADMIN_ICONS` from ./icons.ts, the router and the shell read the list.
+import { standardAdminPages, type AdminPage } from "@flowcatalyst/ui";
+import { ADMIN_CONSOLE, ADMIN_ORDERS_VIEW, APPLICATION, ICON_ORDERS } from "./icons.ts";
 
-import {
-  ADMIN_ACTIVITY_VIEW,
-  ADMIN_CONFIG_VIEW,
-  ADMIN_CONSOLE,
-  ADMIN_EVENT_TYPES_VIEW,
-  ADMIN_ORDERS_VIEW,
-  ADMIN_ROLES_VIEW,
-  ADMIN_USERS_VIEW,
-  ICON_ABOUT,
-  ICON_ACTIVITY,
-  ICON_CONFIG,
-  ICON_EVENT_TYPES,
-  ICON_ORDERS,
-  ICON_ROLES,
-  ICON_USERS,
-} from "./icons.ts";
-
-export { ADMIN_ACTIVITY_VIEW, ADMIN_CONFIG_VIEW, ADMIN_CONSOLE, ADMIN_EVENT_TYPES_VIEW, ADMIN_ORDERS_VIEW, ADMIN_ROLES_VIEW, ADMIN_USERS_VIEW };
+export { ADMIN_CONSOLE, ADMIN_ORDERS_VIEW };
 
 export const adminPages: readonly AdminPage[] = [
-  {
-    id: "about",
-    title: "About",
-    icon: ICON_ABOUT,
-    permission: ADMIN_CONSOLE,
-    path: "/admin/about",
-    component: () => import("../pages/admin/AdminAboutPage.vue").then((m) => m.default),
-  },
-  {
-    id: "event-types",
-    title: "Event types",
-    icon: ICON_EVENT_TYPES,
-    permission: ADMIN_EVENT_TYPES_VIEW,
-    path: "/admin/event-types",
-    component: () => import("../pages/admin/AdminEventTypesPage.vue").then((m) => m.default),
-    // The record drawer as a child route (useDrawerRoute): /admin/event-types/:id.
-    children: [
-      {
-        path: ":id",
-        component: () => import("../pages/admin/AdminEventTypeDrawer.vue"),
-        meta: { title: "Event types", permission: ADMIN_EVENT_TYPES_VIEW, admin: true },
-      },
-    ],
-  },
-  {
-    id: "roles",
-    title: "Roles",
-    icon: ICON_ROLES,
-    permission: ADMIN_ROLES_VIEW,
-    path: "/admin/roles",
-    component: () => import("../pages/admin/AdminRolesPage.vue").then((m) => m.default),
-    children: [
-      {
-        path: ":id",
-        component: () => import("../pages/admin/AdminRoleDrawer.vue"),
-        meta: { title: "Roles", permission: ADMIN_ROLES_VIEW, admin: true },
-      },
-    ],
-  },
-  {
-    id: "users",
-    title: "Users",
-    icon: ICON_USERS,
-    permission: ADMIN_USERS_VIEW,
-    path: "/admin/users",
-    component: () => import("../pages/admin/AdminUsersPage.vue").then((m) => m.default),
-    children: [
-      {
-        path: ":id",
-        component: () => import("../pages/admin/AdminUserDrawer.vue"),
-        meta: { title: "Users", permission: ADMIN_USERS_VIEW, admin: true },
-      },
-    ],
-  },
-  {
-    id: "activity",
-    title: "Activity",
-    icon: ICON_ACTIVITY,
-    permission: ADMIN_ACTIVITY_VIEW,
-    path: "/admin/activity",
-    component: () => import("../pages/admin/AdminActivityPage.vue").then((m) => m.default),
-    // Two drawers over one list: an event and a dispatch job (/admin/activity/events/:id, /jobs/:id).
-    children: [
-      {
-        path: "events/:id",
-        component: () => import("../pages/admin/AdminEventDrawer.vue"),
-        meta: { title: "Activity", permission: ADMIN_ACTIVITY_VIEW, admin: true },
-      },
-      {
-        path: "jobs/:id",
-        component: () => import("../pages/admin/AdminJobDrawer.vue"),
-        meta: { title: "Activity", permission: ADMIN_ACTIVITY_VIEW, admin: true },
-      },
-    ],
-  },
-  {
-    id: "config",
-    title: "Configuration",
-    icon: ICON_CONFIG,
-    permission: ADMIN_CONFIG_VIEW,
-    path: "/admin/config",
-    component: () => import("../pages/admin/AdminConfigPage.vue").then((m) => m.default),
-  },
+  ...standardAdminPages(APPLICATION),
   {
     id: "orders",
     title: "Orders overview",
