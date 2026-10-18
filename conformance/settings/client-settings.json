@@ -1,0 +1,1139 @@
+{
+  "description" : "Per-client settings (client-settings contract sections 2 to 5). Table fw_client_settings(client_id TEXT PRIMARY KEY, version BIGINT NOT NULL, settings JSONB NOT NULL DEFAULT '{}' CHECK object), created by the module's migration set 'client-settings' (migrations/client-settings.json). keys: ClientSetting keys, accepted or refused ([a-z][a-z0-9._-]{0,99}). catalog: the settings the scripts use, name -> key, type, default, and the rule of 'sla' (each of low, normal, high, urgent in 1..43200, and urgent <= high <= normal <= low; the messages are the rule results; the codes MINUTES_INVALID and POLICY_NOT_ORDERED belong to the application that owns the rule, the framework only carries the message). scripts: each runs on an empty table; ops in order: get (the store's read: value or error), set (load the client's aggregate or an empty one, apply 'with' then save through a use case: result committed or failed with the error code, or a thrown IllegalArgumentException with its message), unset (without + save), rawSet (insert or replace the row directly), load / with / without / save / saveAs (named aggregates, to interleave writers; saveAs saves it run as another client), find (repository find with the caller's client and an id), check (the setting's rule alone). expect per op: ok + value, or error {exception, message} ('messageJava' is Java's text and is not compared except that it names the key and the client where the contract says so); rows after each script: client_id, version, settings (parsed JSON), storedText (jsonb::text exactly as PostgreSQL prints it, which normalises key order, spacing and number spelling, so a writer in another language need only produce JSON that is equal as jsonb; the text Java sends is not recorded because its key order is unspecified, the aggregate holds an immutable map).",
+  "howToRun" : "Per script: empty the table, run the ops in order with the catalog, compare each op's expect and the rows. Regenerate from Java with -Dconformance.update=true (ClientSettingsConformanceTest).",
+  "keys" : [ {
+    "key" : "a",
+    "accepted" : true
+  }, {
+    "key" : "tickets.sla",
+    "accepted" : true
+  }, {
+    "key" : "a.b_c-d",
+    "accepted" : true
+  }, {
+    "key" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "accepted" : true
+  }, {
+    "key" : "",
+    "accepted" : false
+  }, {
+    "key" : "Tickets",
+    "accepted" : false
+  }, {
+    "key" : "1a",
+    "accepted" : false
+  }, {
+    "key" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "accepted" : false
+  }, {
+    "key" : "a:b",
+    "accepted" : false
+  }, {
+    "key" : "a b",
+    "accepted" : false
+  }, {
+    "key" : "a/b",
+    "accepted" : false
+  }, {
+    "key" : "_a",
+    "accepted" : false
+  }, {
+    "key" : "-a",
+    "accepted" : false
+  }, {
+    "key" : ".a",
+    "accepted" : false
+  }, {
+    "key" : "a@b",
+    "accepted" : false
+  }, {
+    "key" : "é",
+    "accepted" : false
+  }, {
+    "key" : "a\n",
+    "accepted" : false
+  } ],
+  "catalog" : {
+    "big" : {
+      "key" : "counter.big",
+      "type" : "Long",
+      "default" : 0
+    },
+    "flag" : {
+      "key" : "ui.beta",
+      "type" : "Boolean",
+      "default" : false
+    },
+    "limit" : {
+      "key" : "api.limit",
+      "type" : "Integer",
+      "default" : 100
+    },
+    "mode" : {
+      "key" : "billing.mode",
+      "type" : "Mode",
+      "default" : "MANUAL"
+    },
+    "prefix" : {
+      "key" : "invoice.prefix",
+      "type" : "String",
+      "default" : "INV-"
+    },
+    "ratio" : {
+      "key" : "tax.ratio",
+      "type" : "Double",
+      "default" : 0.2
+    },
+    "sla" : {
+      "key" : "tickets.sla",
+      "type" : "Sla",
+      "default" : {
+        "low" : 2880,
+        "normal" : 1440,
+        "high" : 480,
+        "urgent" : 60
+      }
+    },
+    "tags" : {
+      "key" : "ticket.tags",
+      "type" : "List",
+      "default" : [ ]
+    }
+  },
+  "scripts" : [ {
+    "name" : "no row gives the default",
+    "ops" : [ {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "sla"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    }, {
+      "op" : "load",
+      "as" : "a",
+      "client" : "acme"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "value" : {
+        "low" : 2880,
+        "normal" : 1440,
+        "high" : 480,
+        "urgent" : 60
+      }
+    }, {
+      "ok" : true,
+      "value" : "INV-"
+    }, {
+      "ok" : true,
+      "version" : 0,
+      "id" : "acme",
+      "values" : { }
+    } ],
+    "rows" : [ ]
+  }, {
+    "name" : "a written value is read back and another client is untouched",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "sla",
+      "value" : {
+        "low" : 100,
+        "normal" : 50,
+        "high" : 20,
+        "urgent" : 10
+      }
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "sla"
+    }, {
+      "op" : "get",
+      "client" : "globex",
+      "setting" : "sla"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "value" : {
+        "low" : 100,
+        "normal" : 50,
+        "high" : 20,
+        "urgent" : 10
+      }
+    }, {
+      "ok" : true,
+      "value" : {
+        "low" : 2880,
+        "normal" : 1440,
+        "high" : 480,
+        "urgent" : 60
+      }
+    }, {
+      "ok" : true,
+      "value" : "INV-"
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : {
+          "low" : 100,
+          "high" : 20,
+          "normal" : 50,
+          "urgent" : 10
+        }
+      },
+      "storedText" : "{\"tickets.sla\": {\"low\": 100, \"high\": 20, \"normal\": 50, \"urgent\": 10}}"
+    } ]
+  }, {
+    "name" : "version increments by one per write and several settings share the row",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "prefix",
+      "value" : "ACME-"
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "mode",
+      "value" : "AUTO"
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "limit",
+      "value" : 250
+    }, {
+      "op" : "set",
+      "client" : "globex",
+      "setting" : "prefix",
+      "value" : "G-"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "mode"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "limit"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "value" : "ACME-"
+    }, {
+      "ok" : true,
+      "value" : "AUTO"
+    }, {
+      "ok" : true,
+      "value" : 250
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 3,
+      "settings" : {
+        "api.limit" : 250,
+        "billing.mode" : "AUTO",
+        "invoice.prefix" : "ACME-"
+      },
+      "storedText" : "{\"api.limit\": 250, \"billing.mode\": \"AUTO\", \"invoice.prefix\": \"ACME-\"}"
+    }, {
+      "client_id" : "globex",
+      "version" : 1,
+      "settings" : {
+        "invoice.prefix" : "G-"
+      },
+      "storedText" : "{\"invoice.prefix\": \"G-\"}"
+    } ]
+  }, {
+    "name" : "without removes the key and restores the default",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "prefix",
+      "value" : "ACME-"
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "limit",
+      "value" : 5
+    }, {
+      "op" : "unset",
+      "client" : "acme",
+      "setting" : "prefix"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "limit"
+    }, {
+      "op" : "unset",
+      "client" : "acme",
+      "setting" : "prefix"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "value" : "INV-"
+    }, {
+      "ok" : true,
+      "value" : 5
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 4,
+      "settings" : {
+        "api.limit" : 5
+      },
+      "storedText" : "{\"api.limit\": 5}"
+    } ]
+  }, {
+    "name" : "reading: a row without the key gives the default",
+    "ops" : [ {
+      "op" : "rawSet",
+      "client" : "acme",
+      "version" : 3,
+      "settings" : {
+        "other.key" : 1
+      }
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    } ],
+    "expect" : [ {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "value" : "INV-"
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 3,
+      "settings" : {
+        "other.key" : 1
+      },
+      "storedText" : "{\"other.key\": 1}"
+    } ]
+  }, {
+    "name" : "reading: a value that does not decode is an error naming the key and the client",
+    "ops" : [ {
+      "op" : "rawSet",
+      "client" : "acme",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : "seven"
+      }
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "sla"
+    }, {
+      "op" : "rawSet",
+      "client" : "globex",
+      "version" : 1,
+      "settings" : {
+        "billing.mode" : "SOMETIMES"
+      }
+    }, {
+      "op" : "get",
+      "client" : "globex",
+      "setting" : "mode"
+    }, {
+      "op" : "rawSet",
+      "client" : "initech",
+      "version" : 1,
+      "settings" : {
+        "api.limit" : "12",
+        "counter.big" : true,
+        "ui.beta" : "yes"
+      }
+    }, {
+      "op" : "get",
+      "client" : "initech",
+      "setting" : "limit",
+      "note" : "Java (Jackson) coerces the string \"12\" to the integer 12; a stricter reader may refuse it, recorded as a Java leniency"
+    }, {
+      "op" : "get",
+      "client" : "initech",
+      "setting" : "big"
+    }, {
+      "op" : "get",
+      "client" : "initech",
+      "setting" : "flag"
+    } ],
+    "expect" : [ {
+      "ok" : true
+    }, {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalStateException",
+        "messageJava" : "the stored value of client setting tickets.sla for client acme does not decode as Sla",
+        "namesKey" : true,
+        "namesClient" : true
+      }
+    }, {
+      "ok" : true
+    }, {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalStateException",
+        "messageJava" : "the stored value of client setting billing.mode for client globex does not decode as Mode",
+        "namesKey" : true,
+        "namesClient" : true
+      }
+    }, {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "value" : 12
+    }, {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalStateException",
+        "messageJava" : "the stored value of client setting counter.big for client initech does not decode as Long",
+        "namesKey" : true,
+        "namesClient" : true
+      }
+    }, {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalStateException",
+        "messageJava" : "the stored value of client setting ui.beta for client initech does not decode as Boolean",
+        "namesKey" : true,
+        "namesClient" : true
+      }
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : "seven"
+      },
+      "storedText" : "{\"tickets.sla\": \"seven\"}"
+    }, {
+      "client_id" : "globex",
+      "version" : 1,
+      "settings" : {
+        "billing.mode" : "SOMETIMES"
+      },
+      "storedText" : "{\"billing.mode\": \"SOMETIMES\"}"
+    }, {
+      "client_id" : "initech",
+      "version" : 1,
+      "settings" : {
+        "ui.beta" : "yes",
+        "api.limit" : "12",
+        "counter.big" : true
+      },
+      "storedText" : "{\"ui.beta\": \"yes\", \"api.limit\": \"12\", \"counter.big\": true}"
+    } ]
+  }, {
+    "name" : "reading: a stored null and an array where an object is expected",
+    "ops" : [ {
+      "op" : "rawSet",
+      "client" : "acme",
+      "version" : 1,
+      "settings" : {
+        "invoice.prefix" : null,
+        "tickets.sla" : [ 1, 2 ]
+      }
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix",
+      "note" : "a stored JSON null for a key: the store answers the default (ClientSettings.get itself would return null; see the load op's note)"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "sla"
+    } ],
+    "expect" : [ {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "value" : "INV-"
+    }, {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalStateException",
+        "messageJava" : "the stored value of client setting tickets.sla for client acme does not decode as Sla",
+        "namesKey" : true,
+        "namesClient" : true
+      }
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : [ 1, 2 ],
+        "invoice.prefix" : null
+      },
+      "storedText" : "{\"tickets.sla\": [1, 2], \"invoice.prefix\": null}"
+    } ]
+  }, {
+    "name" : "reading: unknown fields in a stored record are ignored and missing ones are zero",
+    "ops" : [ {
+      "op" : "rawSet",
+      "client" : "acme",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : {
+          "low" : 5,
+          "normal" : 4,
+          "high" : 3,
+          "urgent" : 1,
+          "extra" : true
+        }
+      }
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "sla"
+    }, {
+      "op" : "rawSet",
+      "client" : "globex",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : {
+          "low" : 5
+        }
+      }
+    }, {
+      "op" : "get",
+      "client" : "globex",
+      "setting" : "sla"
+    } ],
+    "expect" : [ {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "value" : {
+        "low" : 5,
+        "normal" : 4,
+        "high" : 3,
+        "urgent" : 1
+      }
+    }, {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "value" : {
+        "low" : 5,
+        "normal" : 0,
+        "high" : 0,
+        "urgent" : 0
+      }
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : {
+          "low" : 5,
+          "high" : 3,
+          "extra" : true,
+          "normal" : 4,
+          "urgent" : 1
+        }
+      },
+      "storedText" : "{\"tickets.sla\": {\"low\": 5, \"high\": 3, \"extra\": true, \"normal\": 4, \"urgent\": 1}}"
+    }, {
+      "client_id" : "globex",
+      "version" : 1,
+      "settings" : {
+        "tickets.sla" : {
+          "low" : 5
+        }
+      },
+      "storedText" : "{\"tickets.sla\": {\"low\": 5}}"
+    } ]
+  }, {
+    "name" : "reading: a number stored as a float for an integer setting",
+    "ops" : [ {
+      "op" : "rawSet",
+      "client" : "acme",
+      "version" : 1,
+      "settings" : {
+        "api.limit" : 12.0,
+        "counter.big" : 12345678901234,
+        "tax.ratio" : 1
+      }
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "limit",
+      "note" : "a float with a zero fraction decodes as an integer; Jackson default"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "big"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "ratio",
+      "note" : "an integer decodes as a double"
+    } ],
+    "expect" : [ {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "value" : 12
+    }, {
+      "ok" : true,
+      "value" : 12345678901234
+    }, {
+      "ok" : true,
+      "value" : 1.0
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "api.limit" : 12.0,
+        "tax.ratio" : 1,
+        "counter.big" : 12345678901234
+      },
+      "storedText" : "{\"api.limit\": 12.0, \"tax.ratio\": 1, \"counter.big\": 12345678901234}"
+    } ]
+  }, {
+    "name" : "rules: a refused value throws with the rule message",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "sla",
+      "value" : {
+        "low" : 10,
+        "normal" : 20,
+        "high" : 30,
+        "urgent" : 40
+      }
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "sla",
+      "value" : {
+        "low" : 0,
+        "normal" : 20,
+        "high" : 30,
+        "urgent" : 40
+      }
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "sla",
+      "value" : {
+        "low" : 43201,
+        "normal" : 20,
+        "high" : 30,
+        "urgent" : 4
+      }
+    }, {
+      "op" : "check",
+      "setting" : "sla",
+      "value" : {
+        "low" : 10,
+        "normal" : 20,
+        "high" : 30,
+        "urgent" : 40
+      }
+    }, {
+      "op" : "check",
+      "setting" : "sla",
+      "value" : {
+        "low" : 100,
+        "normal" : 50,
+        "high" : 20,
+        "urgent" : 10
+      }
+    }, {
+      "op" : "check",
+      "setting" : "sla",
+      "value" : {
+        "low" : 43200,
+        "normal" : 43200,
+        "high" : 43200,
+        "urgent" : 1
+      }
+    } ],
+    "expect" : [ {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalArgumentException",
+        "messageJava" : "client setting tickets.sla: A more urgent ticket cannot be given more time.",
+        "namesKey" : true
+      }
+    }, {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalArgumentException",
+        "messageJava" : "client setting tickets.sla: Each time is 1 to 43200 minutes.",
+        "namesKey" : true
+      }
+    }, {
+      "ok" : false,
+      "error" : {
+        "exception" : "IllegalArgumentException",
+        "messageJava" : "client setting tickets.sla: Each time is 1 to 43200 minutes.",
+        "namesKey" : true
+      }
+    }, {
+      "ok" : true,
+      "problem" : "A more urgent ticket cannot be given more time."
+    }, {
+      "ok" : true,
+      "problem" : null
+    }, {
+      "ok" : true,
+      "problem" : null
+    } ],
+    "rows" : [ ]
+  }, {
+    "name" : "stored JSON for a record, an enum, a string, numbers, a list and a flag",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "sla",
+      "value" : {
+        "low" : 100,
+        "normal" : 50,
+        "high" : 20,
+        "urgent" : 10
+      }
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "mode",
+      "value" : "AUTO"
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "prefix",
+      "value" : "a<b>&c \"q\" \\ \n é   😀"
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "limit",
+      "value" : 2147483647
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "big",
+      "value" : 9007199254740993
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "ratio",
+      "value" : 0.1
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "tags",
+      "value" : [ "b", "a", "b" ]
+    }, {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "flag",
+      "value" : true
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "big"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "tags"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "value" : "a<b>&c \"q\" \\ \n é   😀"
+    }, {
+      "ok" : true,
+      "value" : 9007199254740993
+    }, {
+      "ok" : true,
+      "value" : [ "b", "a", "b" ]
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 8,
+      "settings" : {
+        "ui.beta" : true,
+        "api.limit" : 2147483647,
+        "tax.ratio" : 0.1,
+        "counter.big" : 9007199254740993,
+        "ticket.tags" : [ "b", "a", "b" ],
+        "tickets.sla" : {
+          "low" : 100,
+          "high" : 20,
+          "normal" : 50,
+          "urgent" : 10
+        },
+        "billing.mode" : "AUTO",
+        "invoice.prefix" : "a<b>&c \"q\" \\ \n é   😀"
+      },
+      "storedText" : "{\"ui.beta\": true, \"api.limit\": 2147483647, \"tax.ratio\": 0.1, \"counter.big\": 9007199254740993, \"ticket.tags\": [\"b\", \"a\", \"b\"], \"tickets.sla\": {\"low\": 100, \"high\": 20, \"normal\": 50, \"urgent\": 10}, \"billing.mode\": \"AUTO\", \"invoice.prefix\": \"a<b>&c \\\"q\\\" \\\\ \\n é   😀\"}"
+    } ]
+  }, {
+    "name" : "stored JSON for floating point numbers",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "ratio",
+      "value" : 1.0
+    }, {
+      "op" : "set",
+      "client" : "globex",
+      "setting" : "ratio",
+      "value" : 1.5E10
+    }, {
+      "op" : "set",
+      "client" : "initech",
+      "setting" : "ratio",
+      "value" : 1.0E-6
+    }, {
+      "op" : "set",
+      "client" : "umbrella",
+      "setting" : "ratio",
+      "value" : -0.0
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "tax.ratio" : 1.0
+      },
+      "storedText" : "{\"tax.ratio\": 1.0}"
+    }, {
+      "client_id" : "globex",
+      "version" : 1,
+      "settings" : {
+        "tax.ratio" : 15000000000
+      },
+      "storedText" : "{\"tax.ratio\": 15000000000}"
+    }, {
+      "client_id" : "initech",
+      "version" : 1,
+      "settings" : {
+        "tax.ratio" : 1.0E-6
+      },
+      "storedText" : "{\"tax.ratio\": 0.0000010}"
+    }, {
+      "client_id" : "umbrella",
+      "version" : 1,
+      "settings" : {
+        "tax.ratio" : 0.0
+      },
+      "storedText" : "{\"tax.ratio\": 0.0}"
+    } ]
+  }, {
+    "name" : "two writers on one row: the loser is a stale aggregate",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "prefix",
+      "value" : "A-"
+    }, {
+      "op" : "load",
+      "as" : "first",
+      "client" : "acme"
+    }, {
+      "op" : "load",
+      "as" : "second",
+      "client" : "acme"
+    }, {
+      "op" : "with",
+      "as" : "first",
+      "setting" : "prefix",
+      "value" : "ONE-"
+    }, {
+      "op" : "with",
+      "as" : "second",
+      "setting" : "prefix",
+      "value" : "TWO-"
+    }, {
+      "op" : "save",
+      "as" : "first"
+    }, {
+      "op" : "save",
+      "as" : "second"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "version" : 1,
+      "id" : "acme",
+      "values" : {
+        "invoice.prefix" : "A-"
+      }
+    }, {
+      "ok" : true,
+      "version" : 1,
+      "id" : "acme",
+      "values" : {
+        "invoice.prefix" : "A-"
+      }
+    }, {
+      "ok" : true
+    }, {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : false,
+      "result" : "failed",
+      "code" : "STALE_AGGREGATE",
+      "kind" : "CONFLICT"
+    }, {
+      "ok" : true,
+      "value" : "ONE-"
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 2,
+      "settings" : {
+        "invoice.prefix" : "ONE-"
+      },
+      "storedText" : "{\"invoice.prefix\": \"ONE-\"}"
+    } ]
+  }, {
+    "name" : "two first writes at once: the second is a unique violation",
+    "ops" : [ {
+      "op" : "load",
+      "as" : "a",
+      "client" : "acme"
+    }, {
+      "op" : "load",
+      "as" : "b",
+      "client" : "acme"
+    }, {
+      "op" : "with",
+      "as" : "a",
+      "setting" : "prefix",
+      "value" : "A-"
+    }, {
+      "op" : "with",
+      "as" : "b",
+      "setting" : "prefix",
+      "value" : "B-"
+    }, {
+      "op" : "save",
+      "as" : "a"
+    }, {
+      "op" : "save",
+      "as" : "b"
+    }, {
+      "op" : "get",
+      "client" : "acme",
+      "setting" : "prefix"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "version" : 0,
+      "id" : "acme",
+      "values" : { }
+    }, {
+      "ok" : true,
+      "version" : 0,
+      "id" : "acme",
+      "values" : { }
+    }, {
+      "ok" : true
+    }, {
+      "ok" : true
+    }, {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : false,
+      "result" : "failed",
+      "code" : "UNIQUE_VIOLATION",
+      "kind" : "CONFLICT"
+    }, {
+      "ok" : true,
+      "value" : "A-"
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "invoice.prefix" : "A-"
+      },
+      "storedText" : "{\"invoice.prefix\": \"A-\"}"
+    } ]
+  }, {
+    "name" : "the aggregate's id is the client code and the repository finds only the caller's client",
+    "ops" : [ {
+      "op" : "set",
+      "client" : "acme",
+      "setting" : "prefix",
+      "value" : "A-"
+    }, {
+      "op" : "find",
+      "client" : "acme",
+      "id" : "acme"
+    }, {
+      "op" : "find",
+      "client" : "globex",
+      "id" : "acme"
+    }, {
+      "op" : "find",
+      "client" : "acme",
+      "id" : "globex"
+    }, {
+      "op" : "load",
+      "as" : "a",
+      "client" : "acme"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "result" : "committed"
+    }, {
+      "ok" : true,
+      "found" : true
+    }, {
+      "ok" : true,
+      "found" : false
+    }, {
+      "ok" : true,
+      "found" : false
+    }, {
+      "ok" : true,
+      "version" : 1,
+      "id" : "acme",
+      "values" : {
+        "invoice.prefix" : "A-"
+      }
+    } ],
+    "rows" : [ {
+      "client_id" : "acme",
+      "version" : 1,
+      "settings" : {
+        "invoice.prefix" : "A-"
+      },
+      "storedText" : "{\"invoice.prefix\": \"A-\"}"
+    } ]
+  }, {
+    "name" : "a settings aggregate of another client is refused by the runner",
+    "ops" : [ {
+      "op" : "load",
+      "as" : "g",
+      "client" : "globex"
+    }, {
+      "op" : "with",
+      "as" : "g",
+      "setting" : "prefix",
+      "value" : "G-"
+    }, {
+      "op" : "saveAs",
+      "as" : "g",
+      "client" : "acme"
+    }, {
+      "op" : "get",
+      "client" : "globex",
+      "setting" : "prefix"
+    } ],
+    "expect" : [ {
+      "ok" : true,
+      "version" : 0,
+      "id" : "globex",
+      "values" : { }
+    }, {
+      "ok" : true
+    }, {
+      "ok" : false,
+      "result" : "failed",
+      "code" : "CROSS_CLIENT_WRITE",
+      "kind" : "INTERNAL"
+    }, {
+      "ok" : true,
+      "value" : "INV-"
+    } ],
+    "rows" : [ ]
+  } ]
+}

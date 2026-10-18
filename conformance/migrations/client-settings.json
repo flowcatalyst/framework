@@ -1,0 +1,9 @@
+{
+  "description" : "The fw_schema_history rows the Java migration runner writes for the set of module client-settings (applied_at left out). Same form as locks-database.json. The migration file is db/migration/client-settings/V0001__create_client_settings.sql.",
+  "module" : "client-settings",
+  "rows" : [ {
+    "version" : 1,
+    "description" : "create client settings",
+    "checksum" : "56db3dca15215f718c8833a96d8348f98009c6875dd528fb12ef111b40e547ca"
+  } ]
+}
