@@ -1,0 +1,592 @@
+{
+  "description" : "The receiver gate (flowcatalyst contract section 4, 'Signature check', and 4a slice 4). Setup per case: signing secret (null = none configured), optional bearer token, requireSignature, and the clock 'now'. The signature is lowercase hex HMAC-SHA256, keyed with the secret as UTF-8, over the raw X-FlowCatalyst-Timestamp header string followed by the raw body bytes; the timestamp is ISO-8601 (Instant) or ASCII-digit Unix seconds, at most 64 characters, compared in whole seconds: refused when older than now-300 or later than now+60. A signature that is not 64 characters is refused before hashing; upper-case hex is lower-cased first and accepted. Headers are an ordered list of [name, value] (names compare case-insensitively) so one can be sent twice. expect.accepted is the gate's answer; when refused, status is 401 and the envelope is {error: UNAUTHENTICATED, message: 'the delivery could not be authenticated', details: {reason}}; reason is one of the codes in expect. hmacVectors are the signature function alone.",
+  "howToRun" : "For each hmacVectors entry compute hex(HMAC-SHA256(secret, timestamp + body)) and compare. For each case build the gate from setup, present headers (in order) and body at the clock 'now', and compare accepted, status and details.reason with expect. Regenerate from Java with -Dconformance.update=true (SignatureConformanceTest).",
+  "now" : "2026-10-09T12:00:00Z",
+  "hmacVectors" : [ {
+    "name" : "known vector shared with the SDK verifiers",
+    "secret" : "secret",
+    "timestamp" : "2026-08-07T09:32:12.123Z",
+    "body" : "hello",
+    "hex" : "a7d62aade7a79e88792f84e035b72788a3c78a30f46ad265ec8d6fb12a4e9f91"
+  }, {
+    "name" : "router test vector computed with openssl",
+    "secret" : "test-secret-do-not-use-in-prod",
+    "timestamp" : "2026-05-24T08:30:00.123Z",
+    "body" : "{\"messageId\":\"msg_TEST123456\"}",
+    "hex" : "0278cfb47ccbf20a2356584cca6e076cbade089ccc961dbe553f0e768cbf9059"
+  }, {
+    "name" : "unicode body and unix seconds timestamp",
+    "secret" : "whsec-test-only",
+    "timestamp" : "1791547200",
+    "body" : "{\"name\":\"Zoë\"}",
+    "hex" : "39699823f124e48309f4154143942aa1f99368639e83ff735bb81414ebdb53ac"
+  } ],
+  "envelope401" : {
+    "status" : 401,
+    "error" : "UNAUTHENTICATED",
+    "message" : "the delivery could not be authenticated"
+  },
+  "cases" : [ {
+    "name" : "valid signature",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "valid signature, unix seconds timestamp",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "cf7dd535fccd8a435c13205360c6561a2f6253dff4e3f6585b064bc170b5b797" ], [ "X-FlowCatalyst-Timestamp", "1791547200" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "300 s old is accepted",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "cb90f5bc63aa0ffc2f62440afb73e84b26fc426632455f1035867b13afacbbf4" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T11:55:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "301 s old is refused",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "c4e93234408efd285cb6a7a07373a4ff6fe485362bf6038798e13c41c6ae9d48" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T11:54:59.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "TIMESTAMP_EXPIRED"
+    }
+  }, {
+    "name" : "60 s in the future is accepted",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "88bb0ccbdd661ad4625868e9fef65404a945d0adbfccaaea23b7e322bc8eba8e" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:01:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "61 s in the future is refused",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "9a1a11d24585ade34666f214b2fb87e2302912946d9be7bb627d89746ef780c3" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:01:01.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "TIMESTAMP_IN_FUTURE"
+    }
+  }, {
+    "name" : "300.999 s old is accepted (whole seconds)",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "44eb98830baf790a9defddeb6d7f58a6bc7d5a6643b7a6515eadedf0dceb3bfb" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T11:55:00.999Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "timestamp over 64 characters",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "34cac23a51e6591ee122df9e47ccc49dd87489361cebaffb55a66f02975a8237" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z                                                            " ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_TIMESTAMP"
+    }
+  }, {
+    "name" : "non-numeric timestamp",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "0ad98a0a9dc2ce0f8ac682bd3baacaf25a4dd7d902e77c4ea2ac7474ed9d859e" ], [ "X-FlowCatalyst-Timestamp", "not-a-time" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_TIMESTAMP"
+    }
+  }, {
+    "name" : "empty timestamp",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "c8304a02bc626fbaecf52255de789a48fc3fa5861fd4e0ff19a20247154204ff" ], [ "X-FlowCatalyst-Timestamp", "" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_TIMESTAMP"
+    }
+  }, {
+    "name" : "negative unix timestamp",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "accda3751514cf3b3bfbfd6894c5805f4c24018941c8a72d1a11d7cf8aa9ca13" ], [ "X-FlowCatalyst-Timestamp", "-1791547200" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_TIMESTAMP"
+    }
+  }, {
+    "name" : "non-ASCII digit timestamp",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "7441e5895e37a23031b93ed993ca16b41e59e5c3b88800ac6edb56bd8764e709" ], [ "X-FlowCatalyst-Timestamp", "١٧٩١٥٤٧٢٠٠" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_TIMESTAMP"
+    }
+  }, {
+    "name" : "signature 63 characters",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "signature 65 characters",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f0" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "upper-case hex signature is accepted",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2AA07194D8B7416783DD03E9FC9003FFE7FB7562F03F9B3A1E7FF43993D7391F" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "non-hex signature of length 64",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "signed with another secret",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "ab3bb70ce5ac887020aa05c6bd32e82f094b2e73fcf8cc555687acf92fe7700d" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "empty secret fails closed",
+    "setup" : {
+      "signingSecret" : null,
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "0000000000000000000000000000000000000000000000000000000000000000" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_SECRET"
+    }
+  }, {
+    "name" : "empty string secret fails closed",
+    "setup" : {
+      "signingSecret" : "",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "0000000000000000000000000000000000000000000000000000000000000000" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_SECRET"
+    }
+  }, {
+    "name" : "body altered by one byte",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":2}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "signature over body then timestamp",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "60c6b6a5c87fdcc5b7e2e82d303aa5a1e402ab52eaad3c1db2a931d405b9f09a" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "signature header sent twice",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "DUPLICATE_HEADER"
+    }
+  }, {
+    "name" : "timestamp header sent twice",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "DUPLICATE_HEADER"
+    }
+  }, {
+    "name" : "authorization header sent twice",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "Bearer tok-123" ], [ "Authorization", "Bearer tok-123" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "DUPLICATE_HEADER"
+    }
+  }, {
+    "name" : "header names are case-insensitive",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "x-flowcatalyst-signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FLOWCATALYST-TIMESTAMP", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "bearer matching with a valid signature",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "Bearer tok-123" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "bearer wrong",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "Bearer tok-124" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_BEARER"
+    }
+  }, {
+    "name" : "bearer longer than expected",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "Bearer tok-1234" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_BEARER"
+    }
+  }, {
+    "name" : "bearer missing",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_BEARER"
+    }
+  }, {
+    "name" : "bearer wrong scheme",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "Basic tok-123" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_BEARER"
+    }
+  }, {
+    "name" : "bearer scheme lower-case",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "bearer tok-123" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_BEARER"
+    }
+  }, {
+    "name" : "right bearer, wrong signature",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "ab3bb70ce5ac887020aa05c6bd32e82f094b2e73fcf8cc555687acf92fe7700d" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "Bearer tok-123" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "no bearer configured: an Authorization header is ignored",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ], [ "Authorization", "Bearer whatever" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "requireSignature false: unsigned accepted",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : false
+    },
+    "headers" : [ ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "requireSignature false: signed and right",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : false
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "requireSignature false: signed but wrong is refused",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : false
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "ab3bb70ce5ac887020aa05c6bd32e82f094b2e73fcf8cc555687acf92fe7700d" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "INVALID_SIGNATURE"
+    }
+  }, {
+    "name" : "requireSignature false: only a signature header is refused",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : false
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "2aa07194d8b7416783dd03e9fc9003ffe7fb7562f03f9b3a1e7ff43993d7391f" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_TIMESTAMP"
+    }
+  }, {
+    "name" : "requireSignature false, no secret: signed delivery accepted unverified",
+    "setup" : {
+      "signingSecret" : null,
+      "bearerToken" : null,
+      "requireSignature" : false
+    },
+    "headers" : [ [ "X-FlowCatalyst-Signature", "ab3bb70ce5ac887020aa05c6bd32e82f094b2e73fcf8cc555687acf92fe7700d" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "requireSignature false: unsigned still needs the bearer",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : false
+    },
+    "headers" : [ ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_BEARER"
+    }
+  }, {
+    "name" : "requireSignature false: unsigned with the bearer accepted",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : "tok-123",
+      "requireSignature" : false
+    },
+    "headers" : [ [ "Authorization", "Bearer tok-123" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : true
+    }
+  }, {
+    "name" : "requireSignature true: no headers at all",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_SIGNATURE"
+    }
+  }, {
+    "name" : "requireSignature true: timestamp only",
+    "setup" : {
+      "signingSecret" : "whsec-test-only",
+      "bearerToken" : null,
+      "requireSignature" : true
+    },
+    "headers" : [ [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"n\":1}",
+    "expect" : {
+      "accepted" : false,
+      "status" : 401,
+      "reason" : "MISSING_SIGNATURE"
+    }
+  } ]
+}
