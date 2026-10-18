@@ -13,7 +13,7 @@ The Java pages of this guide describe the Java framework only.
 [locks](locks.md)) and G2 (the [write path](write-path.md) and [checked SQL](checked-sql.md)) and G3
 ([HTTP and the SPA](http.md), [typed operations and OpenAPI](openapi.md)) and G4 (the platform:
 [rate limiting](rate-limiting.md), the [HTTP client](http-client.md), [secrets](secrets.md) and the
-[FlowCatalyst module](flowcatalyst.md)) are built, and so are the load phase and the transaction join of the write path and [per-client settings](client-settings.md) (G7.3 to G7.5); G5b ([sessions and login](sessions-and-login.md)) is in progress.
+[FlowCatalyst module](flowcatalyst.md)) are built, and so are the load phase and the transaction join of the write path and [per-client settings](client-settings.md) (G7.3 to G7.5); G5b ([sessions and login](sessions-and-login.md)) is built, and so is G7.6, the tickets trial in Go ([a whole service on the FlowCatalyst module](flowcatalyst.md#a-whole-service-on-it-the-tickets-trial)).
 Nothing is published; module and package names are the design's working names.
 
 ## The tree
@@ -34,7 +34,8 @@ go/
   internal/conformance/  the conformance runner: checks the shared vectors in ../conformance/
   cmd/fwvet/             the framework's analyzers, run by go vet
   flowcatalyst/          module .../go/flowcatalyst, the only fcsdk importer: client, definitions and
-                         sync, health checks, receivers, Once; examples/receivers-demo
+                         sync, health checks, receivers, Once; examples/receivers-demo, examples/orders-demo,
+                         examples/tickets-trial (the parity gate, G7.6)
   tools/                 module pinning golangci-lint, NilAway and gofumpt (go tool)
 ```
 

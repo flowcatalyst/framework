@@ -166,6 +166,27 @@ use case inside the same transaction is an open point shared with Java.
   carry its event type; optional integers are 0 for unset.
 - `Once` hands the work a `*database.Tx`, not a JDBC `Connection`.
 
+## A whole service on it: the tickets trial
+
+`go/flowcatalyst/examples/tickets-trial` is the Go build of the Java tickets trial service
+([`m4f-trial-service.md`](../../m4f-trial-service.md)): support tickets with a status machine and comments, the
+SLA as a client setting, six use cases (three with `AuthorizeLoaded`), nine typed operations, definitions
+declared in code, a dispatch receiver that notifies the assignee through a named HTTP client with the
+client's own key, a scheduled-job SLA sweep with `fw.EachClient` under the overlap lock, a lock-gated gauge
+loop and an admin section. It is the worked example of how the packages fit together:
+
+```go
+d := ticketsweb.Declare(app)                 // declaration: every module's Declare, in the Java module order
+app.Launch(ctx, args, ticketsweb.BuildWeb(d, ticketsweb.Deps{}))
+// BuildWeb: database + migrations, runner, use cases, locks, secrets, HTTP clients, flowcatalyst.Build,
+// RegisterReceivers (before Routes seals the registry), the gauge loop, auth, routes, SPA, server
+```
+
+Its OpenAPI document equals the Java service's `web/openapi.json` byte for byte, and `make -C go e2e-tickets`
+runs the Java service's 24 Playwright tests (`ui/apps/tickets/e2e`) against it on ports 4394 and 4395 (24
+passed). What it made hard, and every difference from Java, is in
+[`go/g76-tickets-friction.md`](../../go/g76-tickets-friction.md).
+
 ## Using it without the platform checkout
 
 fcsdk is released (tag `pkg/fcsdk/v0.0.2`), so `go/flowcatalyst/go.mod` requires
