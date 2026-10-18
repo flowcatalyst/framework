@@ -72,6 +72,7 @@ public final class TestOidcProvider implements AutoCloseable {
   private volatile KeyPair keys = newKeys();
   private volatile String keyId = "key-1";
   private volatile boolean down;
+  private volatile long keysDelayMillis;
   private volatile Map<String, Object> user = defaultUser();
   private volatile Map<String, Object> idTokenChanges = Map.of();
   private volatile Map<String, Object> idTokenHeaderChanges = Map.of();
@@ -89,7 +90,7 @@ public final class TestOidcProvider implements AutoCloseable {
     server.createContext("/.well-known/jwks.json", this::jwks);
     server.createContext("/oauth/authorize", this::authorize);
     server.createContext("/oauth/token", this::token);
-    server.createContext("/auth/oidc/session/end", e -> json(e, 200, Map.of("message", "Session ended")));
+    server.createContext("/auth/oidc/session/end", this::sessionEnd);
     server.start();
   }
 
@@ -292,8 +293,50 @@ public final class TestOidcProvider implements AutoCloseable {
     json(e, 200, doc);
   }
 
+  /**
+   * Makes the key endpoint slow, so a test can interrupt a caller mid-read.
+   *
+   * @param value how long each key read takes
+   */
+  public void keysDelay(java.time.Duration value) {
+    keysDelayMillis = value.toMillis();
+  }
+
+  /**
+   * Like the platform, sends the browser on to {@code post_logout_redirect_uri}, but only for a
+   * registered client and an address on the origin of that client's redirect URI; anything else
+   * gets the plain answer.
+   */
+  private void sessionEnd(HttpExchange e) throws IOException {
+    Map<String, String> q = form(e.getRequestURI().getRawQuery());
+    Client client = clients.get(q.getOrDefault("client_id", ""));
+    String back = q.getOrDefault("post_logout_redirect_uri", "");
+    if (client != null && !down && !back.isEmpty()) {
+      try {
+        URI target = URI.create(back);
+        URI registered = URI.create(client.redirectUri());
+        if (target.getScheme() != null
+            && target.getScheme().equals(registered.getScheme())
+            && java.util.Objects.equals(target.getRawAuthority(), registered.getRawAuthority())) {
+          redirect(e, back);
+          return;
+        }
+      } catch (IllegalArgumentException ignored) {
+        // not a URL: the plain answer
+      }
+    }
+    json(e, 200, Map.of("message", "Session ended"));
+  }
+
   private void jwks(HttpExchange e) throws IOException {
     keyFetches.incrementAndGet();
+    if (keysDelayMillis > 0) {
+      try {
+        Thread.sleep(keysDelayMillis);
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+      }
+    }
     RSAPublicKey key = (RSAPublicKey) keys.getPublic();
     json(
         e,

@@ -14,6 +14,7 @@ import io.flowcatalyst.framework.http.Request;
 import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.RouteOptions;
 import io.flowcatalyst.framework.http.Routes;
+import io.flowcatalyst.framework.http.ratelimit.KeyResolver;
 import io.flowcatalyst.framework.http.ratelimit.KeyResolvers;
 import io.flowcatalyst.framework.http.ratelimit.MemoryRateLimiter;
 import io.flowcatalyst.framework.http.ratelimit.RateLimit;
@@ -22,6 +23,7 @@ import io.flowcatalyst.framework.pipeline.Middleware;
 import java.net.URI;
 import java.time.Duration;
 import java.time.InstantSource;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +134,7 @@ public final class AuthModule implements Module {
       limit =
           RateLimit.by(
                   MemoryRateLimiter.create("auth", new RateLimitPolicy(20, Duration.ofMinutes(1), 20)),
-                  KeyResolvers.clientAddress())
+                  warnOnForwardedFor(KeyResolvers.clientAddress()))
               .build();
     }
     RouteOptions publicRoutes = limit == null ? RouteOptions.none() : RouteOptions.none().with(limit);
@@ -140,6 +142,23 @@ public final class AuthModule implements Module {
     routes.get("/auth/callback", s.routes()::callback, publicRoutes);
     routes.bind(AuthApi.SESSION, s.routes()::session);
     routes.bind(AuthApi.LOGOUT, s.routes()::logout);
+  }
+
+  /**
+   * The default limiter keys on the TCP peer, which behind a proxy is the proxy itself: every user
+   * then shares one bucket. One WARN, the first time a request carries {@code X-Forwarded-For}, makes
+   * the mistake visible (security review I3; contract section 8).
+   */
+  private static KeyResolver warnOnForwardedFor(KeyResolver peer) {
+    AtomicBoolean warned = new AtomicBoolean();
+    return request -> {
+      if (request.header("X-Forwarded-For") != null && warned.compareAndSet(false, true)) {
+        LOG.warn(
+            "a request carried X-Forwarded-For, but the sign-in rate limiter keys on the TCP peer: behind a proxy every"
+                + " user shares one bucket; pass rateLimit(RateLimit.by(limiter, KeyResolvers.forwardedFor(n)).build())");
+      }
+      return peer.key(request);
+    };
   }
 
   /** Everything the module builds, once. */
@@ -172,7 +191,7 @@ public final class AuthModule implements Module {
     SessionStore store = store(lookup, config, clock);
     String origin = CsrfGuard.origin(base);
 
-    Platform platform = new Platform(issuer, b.httpTimeout, clock);
+    Platform platform = new Platform(issuer, b.httpTimeout, clock, development);
     PlatformTokens tokens = new PlatformTokens(platform, clock);
     RelyingParty rp = new RelyingParty(platform, clientId, secret, origin + "/auth/callback", b.scope, b.loginTheme, clock);
     Cookies cookies = new Cookies(secure);

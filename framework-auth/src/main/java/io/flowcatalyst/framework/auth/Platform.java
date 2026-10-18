@@ -22,6 +22,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.locks.ReentrantLock;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -54,6 +57,7 @@ final class Platform {
   private final URI issuerUri;
   private final Duration timeout;
   private final InstantSource clock;
+  private final boolean development;
   private final HttpClient http;
   private final ReentrantLock fetching = new ReentrantLock();
 
@@ -62,7 +66,11 @@ final class Platform {
   private volatile @Nullable Instant keysFetchedAt;
   private volatile @Nullable Instant keysAttemptedAt;
 
-  Platform(URI issuer, Duration timeout, InstantSource clock) {
+  /**
+   * @param development whether plain {@code http} endpoints are allowed ({@code APP_ENV} local or test)
+   */
+  Platform(URI issuer, Duration timeout, InstantSource clock, boolean development) {
+    this.development = development;
     this.issuer = normalise(issuer);
     this.issuerUri = URI.create(this.issuer);
     this.timeout = timeout;
@@ -89,16 +97,39 @@ final class Platform {
     if (known != null) {
       return known;
     }
-    fetching.lock();
-    try {
-      known = discovery;
-      if (known == null) {
-        known = readDiscovery();
-        discovery = known;
+    return detached(() -> {
+      fetching.lock();
+      try {
+        return discoveryUnlocked();
+      } finally {
+        fetching.unlock();
       }
-      return known;
-    } finally {
-      fetching.unlock();
+    });
+  }
+
+  /**
+   * Runs a shared read on its own thread, so the request that triggered it cannot cancel it for
+   * everyone: when the caller is interrupted (a hung-up client) the read goes on and completes, and
+   * the caller gets {@link PlatformUnavailableException} with its interrupt flag kept (security
+   * review F1).
+   */
+  private static <T> T detached(Callable<T> read) throws PlatformUnavailableException {
+    FutureTask<T> task = new FutureTask<>(read);
+    Thread.ofVirtual().name("platform-read").start(task);
+    try {
+      return task.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new PlatformUnavailableException("interrupted while waiting for the platform", e);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof PlatformUnavailableException p) {
+        throw p;
+      }
+      if (cause instanceof RuntimeException r) {
+        throw r;
+      }
+      throw new IllegalStateException(cause);
     }
   }
 
@@ -109,6 +140,9 @@ final class Platform {
       throw refusedDiscovery("its issuer is '" + declared + "', not the configured '" + issuer + "'");
     }
     URI authorize = endpoint(doc, "authorization_endpoint");
+    if (!transportOk(authorize)) {
+      throw refusedDiscovery("authorization_endpoint must be https");
+    }
     URI token = endpoint(doc, "token_endpoint");
     URI jwks = endpoint(doc, "jwks_uri");
     if (!sameOrigin(token) || !sameOrigin(jwks)) {
@@ -124,16 +158,41 @@ final class Platform {
         throw refusedDiscovery("it does not support PKCE S256");
       }
     }
-    String endSession = doc.path("end_session_endpoint").asString("");
-    URI end = null;
-    if (!endSession.isEmpty()) {
-      try {
-        end = URI.create(endSession);
-      } catch (IllegalArgumentException e) {
-        end = null;
-      }
-    }
+    URI end = endSessionEndpoint(doc.path("end_session_endpoint").asString(""));
     return new Discovery(authorize, token, jwks, end);
+  }
+
+  /** https, or http in development; never any other scheme (the browser is sent to this URL). */
+  private boolean transportOk(URI uri) {
+    String scheme = uri.getScheme();
+    return "https".equalsIgnoreCase(scheme) || (development && "http".equalsIgnoreCase(scheme));
+  }
+
+  /** The end-session endpoint if it is usable (security review I1), else null with a WARN. */
+  private @Nullable URI endSessionEndpoint(String value) {
+    if (value.isEmpty()) {
+      return null;
+    }
+    String why;
+    URI end = null;
+    try {
+      end = URI.create(value);
+      if (end.getScheme() == null || end.getHost() == null) {
+        why = "it is not an absolute URL";
+      } else if (!transportOk(end)) {
+        why = "it must be https";
+      } else if (end.getRawUserInfo() != null) {
+        why = "it carries user-info";
+      } else if (!sameOrigin(end)) {
+        why = "it is not on the issuer's origin";
+      } else {
+        return end;
+      }
+    } catch (IllegalArgumentException e) {
+      why = "it is not a URL";
+    }
+    LOG.warn("the platform's end_session_endpoint is ignored, so sign-out will not end the platform session: {}", why);
+    return null;
   }
 
   private URI endpoint(JsonNode doc, String name) throws PlatformUnavailableException {
@@ -197,6 +256,13 @@ final class Platform {
   }
 
   private void refreshKeys(boolean firstTime) throws PlatformUnavailableException {
+    detached(() -> {
+      refreshKeysDetached(firstTime);
+      return Boolean.TRUE;
+    });
+  }
+
+  private void refreshKeysDetached(boolean firstTime) throws PlatformUnavailableException {
     fetching.lock();
     try {
       Instant now = clock.instant();

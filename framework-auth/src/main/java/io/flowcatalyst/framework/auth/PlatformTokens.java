@@ -22,6 +22,9 @@ import tools.jackson.databind.JsonNode;
  * }
  * }</pre>
  *
+ * <p>An {@code http://} issuer is refused ({@link IllegalArgumentException}) unless the verifier is
+ * built with {@link #createAllowingPlainHttp}, which is for {@code APP_ENV} local and test.
+ *
  * <p>Thread-safe; build one per platform and keep it, so the keys are cached. {@link AuthModule}
  * provides one.
  */
@@ -44,7 +47,35 @@ public final class PlatformTokens {
    * @return the verifier
    */
   public static PlatformTokens create(URI issuer, Duration timeout, InstantSource clock) {
-    return new PlatformTokens(new Platform(issuer, timeout, clock), clock);
+    return create(issuer, timeout, clock, false);
+  }
+
+  /**
+   * Creates a verifier for a platform reached over plain {@code http}. For {@code APP_ENV} local and
+   * test only: keys and tokens would cross the network unprotected.
+   *
+   * @param issuer the platform's base URL ({@code http} or {@code https})
+   * @param timeout how long to wait for the platform's discovery document and keys
+   * @param clock the clock that decides whether a token is still valid
+   * @return the verifier
+   */
+  public static PlatformTokens createAllowingPlainHttp(URI issuer, Duration timeout, InstantSource clock) {
+    return create(issuer, timeout, clock, true);
+  }
+
+  private static PlatformTokens create(URI issuer, Duration timeout, InstantSource clock, boolean allowPlainHttp) {
+    String scheme = issuer.getScheme();
+    boolean https = "https".equalsIgnoreCase(scheme);
+    boolean http = "http".equalsIgnoreCase(scheme);
+    if (issuer.getHost() == null || !(https || (http && allowPlainHttp))) {
+      throw new IllegalArgumentException(
+          "the issuer "
+              + issuer
+              + (http
+                  ? " is plain http, which is allowed only in local and test environments (use PlatformTokens.createAllowingPlainHttp there)"
+                  : " must be an absolute https URL"));
+    }
+    return new PlatformTokens(new Platform(issuer, timeout, clock, allowPlainHttp), clock);
   }
 
   /**

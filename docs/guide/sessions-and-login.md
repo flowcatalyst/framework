@@ -208,6 +208,11 @@ switch (tokens.verify(bearer)) {
 Keep one `PlatformTokens` per platform (it caches the keys). With `AuthModule` listed, use the
 provided one: `app.get(PlatformTokens.class)`.
 
+`create` refuses an `http://` issuer (`IllegalArgumentException`): keys and tokens would cross the
+network unprotected. In a local or test environment build the verifier with
+`PlatformTokens.createAllowingPlainHttp(issuer, timeout, clock)`; the call site is the opt-in.
+(`AuthModule` itself allows `http` only when `APP_ENV` is `local` or `test`.)
+
 ## CSRF
 
 A request with an unsafe method (`POST`, `PUT`, `PATCH`, `DELETE`) that is authenticated by the
@@ -222,7 +227,9 @@ Bearer-token requests skip the check. For a public `POST` of your own (a sign-up
 
 ## Signing out
 
-`POST /auth/logout` (subject to the CSRF rules) deletes the session, clears the cookie and answers:
+`POST /auth/logout` (subject to the CSRF rules) deletes the session, clears the cookie and answers
+(the clearing `Set-Cookie` is sent only to a request that carried a session cookie and passed the
+CSRF check, so a cross-site POST cannot make a browser drop its session):
 
 ```json
 {"loggedOut":true,"endSessionUrl":"https://platform.example.com/auth/oidc/session/end?client_id=orders-web&post_logout_redirect_uri=https%3A%2F%2Forders.example.com%2Fbye"}
@@ -230,7 +237,11 @@ Bearer-token requests skip the check. For a public `POST` of your own (a sign-up
 
 Navigate to `endSessionUrl` to end the platform session as well (single logout); otherwise only
 your application is signed out. When the platform's discovery document has no end-session endpoint,
-or cannot be read, the answer is `{"loggedOut":true}`: the field is left out, never `null`. `post_logout_redirect_uri` is there when you set
+or cannot be read, the answer is `{"loggedOut":true}`: the field is left out, never `null`. The
+same happens when the document names one that is not `https` (`http` only in `local` and `test`),
+is not on the issuer's origin, or carries user-info: it is ignored and logged at WARN, because the
+browser is sent there. The sign-in's `authorization_endpoint` must also be `https` outside those
+two environments. `post_logout_redirect_uri` is there when you set
 `.postLogoutRedirect("/bye")` and register that URL on the platform client.
 
 ## Sessions: stores and timeouts
@@ -269,6 +280,10 @@ AuthModule.builder().rateLimit(RateLimit.by(
 ```
 
 or remove it with `.noRateLimit()`. See [Rate limiting](rate-limiting.md).
+
+The default keys on the TCP peer, which behind a proxy is the proxy: every user then shares one
+bucket. The first time a request carries `X-Forwarded-For` under the default limiter, the module logs
+one WARN saying so; the fix is the `forwardedFor` limiter above.
 
 ## Your own resolver
 

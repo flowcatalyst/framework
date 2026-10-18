@@ -96,7 +96,14 @@ final class AuthRoutes {
           request, bindingName, 400, "LOGIN_NOT_STARTED_HERE",
           "This sign-in was not started in this browser. Start the sign-in again.", Map.of());
     }
-    Optional<SessionManager.LoginData> taken = manager.takeLogin(handle);
+    Optional<SessionManager.LoginData> taken;
+    try {
+      taken = manager.takeLogin(handle);
+    } catch (SessionStoreException e) {
+      LOG.error("sign-in could not complete: the session store failed (correlation id {})", request.correlationId(), e);
+      // the binding is spent either way (security review I8)
+      return fail(request, bindingName, 500, "INTERNAL", "the sign-in could not be completed; try again", Map.of());
+    }
     if (taken.isEmpty() || !SessionHandles.same(taken.get().state(), state)) {
       return fail(request, bindingName, 400, "INVALID_STATE", "this sign-in has expired or was already used; start again", Map.of());
     }
@@ -133,7 +140,13 @@ final class AuthRoutes {
     if (previous != null) {
       manager.deleteSession(previous);
     }
-    String session = manager.createSession(ok.principal(), ok.authTime());
+    String session;
+    try {
+      session = manager.createSession(ok.principal(), ok.authTime());
+    } catch (SessionStoreException e) {
+      LOG.error("sign-in could not complete: the session store failed (correlation id {})", request.correlationId(), e);
+      return fail(request, bindingName, 500, "INTERNAL", "the sign-in could not be completed; try again", Map.of());
+    }
     long maxAge = manager.absoluteTimeout().toSeconds();
     LOG.info("signed in principal {} (correlation id {})", ok.principal().id(), request.correlationId());
     return noStore(Response.redirect(login.returnTo()))
@@ -184,8 +197,10 @@ final class AuthRoutes {
       manager.deleteSession(handle);
     }
     // endSessionUrl is omitted when unknown (section 4.4, amended): typed operations omit nulls
-    return noStore(Outcome.ok(new AuthLogout(true, rp.endSessionUrl(postLogoutRedirectUri))))
-        .header("Set-Cookie", cookies.clear(cookies.sessionName()));
+    Outcome.Ok<AuthLogout> out = noStore(Outcome.ok(new AuthLogout(true, rp.endSessionUrl(postLogoutRedirectUri))));
+    // the clearing cookie goes only to a request that carried a session cookie and passed the CSRF
+    // check (security review F2): a cross-site POST cannot make the browser drop a session
+    return handle == null ? out : out.header("Set-Cookie", cookies.clear(cookies.sessionName()));
   }
 
   private static <R> Outcome.Ok<R> noStore(Outcome.Ok<R> outcome) {

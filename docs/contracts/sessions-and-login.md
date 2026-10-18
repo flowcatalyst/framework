@@ -320,8 +320,8 @@ omitted. Reading discovery and keys is never cancelled by the request that trigg
 detached from the triggering request's context (bounded by the HTTP timeout), and a failed read
 whose triggering request had already been cancelled does not start the refetch back-off. Otherwise a
 client that sends a token with an unknown `kid` and hangs up would keep new signing keys out for a
-minute (5 seconds before the first read). **Java hand-off:** check that a cancelled/aborted request
-cannot do the same there.
+minute (5 seconds before the first read). Java had the same defect (an interrupted caller aborted the
+read and left the back-off set); fixed 2026-10-18 by running the read detached (section 14).
 
 *Amended 2026-10-18 (security review I2):* the standalone verifier (`NewPlatformTokens`) refuses an
 `http://` issuer unless the caller passes `AllowPlainHTTP()` (local and test only); the module
@@ -751,19 +751,20 @@ Fixed in Go in the commits of that date: F1 (5.2), F2 (4.4), I1 (5.1), I2 (5.2),
 I8 (the callback clears the binding cookie even when a store error answers `500`), I7 (6.5,
 documentation).
 
-**Java fixes still needed** (Java is fixed separately, by the Java agent):
+**Java fixes** (all done 2026-10-18; `SecurityHardeningTest` holds a test for each, and the F1 one was
+red before the fix: an interrupted first key read started the 5 second back-off):
 
-1. **F2** `/auth/logout`: send the clearing `Set-Cookie` only when a session cookie was read and the
+1. **F2 (done)** `/auth/logout`: send the clearing `Set-Cookie` only when a session cookie was read and the
    CSRF check passed.
-2. **I1** discovery: require `https` for `authorization_endpoint` and `end_session_endpoint` (`http`
+2. **I1 (done)** discovery: require `https` for `authorization_endpoint` and `end_session_endpoint` (`http`
    only in `local`/`test`), `end_session_endpoint` on the issuer's origin without user-info, else
    ignore it.
-3. **I2** the standalone token verifier: refuse an `http://` issuer outside `local`/`test` unless
+3. **I2 (done: `PlatformTokens.create` refuses `http`; `createAllowingPlainHttp` is the opt-in)** the standalone token verifier: refuse an `http://` issuer outside `local`/`test` unless
    explicitly opted in.
-4. **I5**: Java already refuses an empty `Sec-Fetch-Site`; keep its test (the Go side matched it).
-5. **I8** callback: clear the binding cookie on the `500` path of a store error too.
-6. **F1** check only: a cancelled request must not cancel the shared key read or start its back-off.
-7. **I3**: the same one-time WARN, or the documentation, if Java's default limiter keys on the peer.
+4. **I5 (done, test added)**: Java already refuses an empty `Sec-Fetch-Site`; keep its test (the Go side matched it).
+5. **I8 (done)** callback: clear the binding cookie on the `500 INTERNAL` path of a store error too (taking the login record or creating the session).
+6. **F1 (done: fixed, not only checked)** a cancelled request must not cancel the shared key read or start its back-off; Java runs the read on its own virtual thread; an interrupted caller only stops waiting (its interrupt flag is kept).
+7. **I3 (done)**: the default limiter logs the same one-time WARN the first time a request carries `X-Forwarded-For`.
 
 **Known limits, not addressed** (security review items I4, I6, I9 and I10; owner decision to skip;
 the review report holds their text): recorded here so they are not mistaken for oversights.

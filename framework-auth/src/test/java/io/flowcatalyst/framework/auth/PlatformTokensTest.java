@@ -23,7 +23,7 @@ class PlatformTokensTest {
   void start() {
     clock = new MutableClock(Instant.parse("2026-10-13T08:00:00Z"));
     provider = TestOidcProvider.start(clock);
-    tokens = PlatformTokens.create(provider.issuer(), Duration.ofSeconds(5), clock);
+    tokens = PlatformTokens.createAllowingPlainHttp(provider.issuer(), Duration.ofSeconds(5), clock);
   }
 
   @AfterEach
