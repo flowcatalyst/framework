@@ -62,6 +62,7 @@ func TestCSRFSessionsGuardRules(t *testing.T) {
 		{"same-site is cross-origin", "POST", "", []string{"Sec-Fetch-Site", "same-site"}, 403, "CROSS_ORIGIN_REQUEST"},
 		{"cross-site", "POST", "", []string{"Sec-Fetch-Site", "cross-site"}, 403, "CROSS_ORIGIN_REQUEST"},
 		{"Sec-Fetch-Site wins over a matching Origin", "POST", "", []string{"Sec-Fetch-Site", "cross-site", "Origin", "https://app.example.com"}, 403, "CROSS_ORIGIN_REQUEST"},
+		{"an empty Sec-Fetch-Site is refused, not read as absent", "POST", "", []string{"Sec-Fetch-Site", "", "Origin", "https://app.example.com"}, 403, "CROSS_ORIGIN_REQUEST"},
 		{"Origin matches", "POST", "", []string{"Origin", "https://app.example.com"}, 200, ""},
 		{"Origin default port", "POST", "", []string{"Origin", "https://APP.example.com:443"}, 200, ""},
 		{"Origin differs", "POST", "", []string{"Origin", "https://evil.example.com"}, 403, "CROSS_ORIGIN_REQUEST"},

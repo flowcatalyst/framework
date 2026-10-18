@@ -19,7 +19,7 @@ State of the slices:
 
 ## Verifying platform tokens on their own
 
-`auth.NewPlatformTokens(issuer, timeout, clock, logger)` verifies a platform **access token**
+`auth.NewPlatformTokens(issuer, timeout, clock, logger, opts...)` verifies a platform **access token**
 (contract section 5.6) without any session machinery, for an application that accepts service
 tokens on some endpoints. It is safe for concurrent use; build one and keep it, because it caches the
 platform's discovery document and signing keys.
@@ -32,6 +32,10 @@ case auth.Invalid:      // 401; r.Reason is the contract's name (alg, signature,
 case auth.Unavailable:  // 503: the keys cannot be read right now; not a verdict on the token
 }
 ```
+
+An `http://` issuer is refused unless you pass `auth.AllowPlainHTTP()`; do that only when `APP_ENV`
+is `local` or `test`. The verifier reads keys detached from the request that triggers the read, so a
+client that hangs up cannot hold new signing keys back.
 
 The rules are the contract's, in its order: at most 16 384 characters and three base64url parts
 (`malformed`); `alg` exactly `RS256`, decided before any key is looked at, so `none`, `HS256` and
@@ -197,3 +201,15 @@ the real store: `cookie, _ := t.Cookie(ctx, auth.User("prn_1", "ingestor:operato
   the `conformance/openapi/auth.json` vector against this module's document beyond what G3 already
   checks, the security review the milestone asks for (owner's ruling: Opus for the slice), and
   `orders-demo`, which still uses its fixed-token resolver.
+
+## Operating notes (security review 2026-10-18)
+
+- **Rotate `auth.cookie-keys` routinely** (for example quarterly, and at once if a key may have
+  leaked): add the new key first, keep the old one for the absolute timeout, then remove it.
+- **Behind a proxy, replace the default rate limit.** The default keys on the TCP peer, which is the
+  proxy, so all users share one bucket. Pass `auth.RateLimit(...)` with a limiter keyed by
+  `ratelimit.ForwardedFor(n)`. The default logs one WARN the first time it sees `X-Forwarded-For`.
+- `/auth/logout` clears the cookie only for a request that carried the session cookie and passed
+  the CSRF check; an empty `Sec-Fetch-Site:` header is refused.
+- Discovery: `authorization_endpoint` must be https; `end_session_endpoint` must be https on the
+  issuer's origin or it is ignored.

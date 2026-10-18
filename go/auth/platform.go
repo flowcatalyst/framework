@@ -52,6 +52,7 @@ type platform struct {
 	clock     fw.Clock
 	http      *http.Client
 	log       *slog.Logger
+	allowHTTP bool // plain http endpoints are accepted (local and test only)
 
 	fetch sync.Mutex // serialises reads of the platform (network)
 
@@ -65,17 +66,20 @@ type platform struct {
 // normaliseIssuer removes trailing slashes.
 func normaliseIssuer(issuer string) string { return strings.TrimRight(issuer, "/") }
 
-func newPlatform(issuer string, timeout time.Duration, clock fw.Clock, log *slog.Logger) (*platform, error) {
+func newPlatform(issuer string, timeout time.Duration, clock fw.Clock, log *slog.Logger, allowHTTP bool) (*platform, error) {
 	issuer = normaliseIssuer(issuer)
 	u, err := url.Parse(issuer)
-	if err != nil || u.Scheme == "" || u.Hostname() == "" {
-		return nil, fmt.Errorf("the issuer must be an absolute URL: %q", issuer)
+	if err != nil || u.Hostname() == "" || (!strings.EqualFold(u.Scheme, "https") && !strings.EqualFold(u.Scheme, "http")) {
+		return nil, fmt.Errorf("the issuer must be an absolute http(s) URL: %q", issuer)
+	}
+	if strings.EqualFold(u.Scheme, "http") && !allowHTTP {
+		return nil, fmt.Errorf("the issuer %q is plain http, which is allowed only in local and test environments (pass AllowPlainHTTP there)", issuer)
 	}
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
 	return &platform{
-		issuer: issuer, issuerURL: u, timeout: timeout, clock: clock, log: log, keys: map[string]*rsa.PublicKey{},
+		issuer: issuer, issuerURL: u, allowHTTP: allowHTTP, timeout: timeout, clock: clock, log: log, keys: map[string]*rsa.PublicKey{},
 		http: &http.Client{
 			Timeout:       timeout,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
@@ -104,7 +108,9 @@ func (p *platform) readDiscovery(ctx context.Context) (*discovery, error) {
 	if d := p.cachedDiscovery(); d != nil {
 		return d, nil
 	}
-	doc, err := p.getJSON(ctx, p.issuer+"/.well-known/openid-configuration")
+	// the read is shared by every caller and cached: a caller that hangs up must not cancel it
+	// (each request is still bounded by the http client's timeout)
+	doc, err := p.getJSON(context.WithoutCancel(ctx), p.issuer+"/.well-known/openid-configuration")
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +136,9 @@ func (p *platform) readDiscovery(ctx context.Context) (*discovery, error) {
 		}
 		*e.to = v
 	}
+	if !p.safeScheme(d.authorizationEndpoint) {
+		return nil, p.refused("authorization_endpoint must be https")
+	}
 	if !p.sameOrigin(d.tokenEndpoint) || !p.sameOrigin(d.jwksURI) {
 		return nil, p.refused("token_endpoint and jwks_uri must be on the issuer's origin")
 	}
@@ -145,14 +154,26 @@ func (p *platform) readDiscovery(ctx context.Context) (*discovery, error) {
 		}
 	}
 	if end, _ := doc["end_session_endpoint"].(string); end != "" {
-		if u, err := url.Parse(end); err == nil && u.Scheme != "" {
+		// the browser is sent here after logout: https on the issuer's origin, nothing else
+		if u, err := url.Parse(end); err == nil && p.safeScheme(end) && p.sameOrigin(end) && u.User == nil {
 			d.endSessionEndpoint = end
+		} else {
+			p.log.Warn("the platform's end_session_endpoint is ignored: it must be https on the issuer's origin")
 		}
 	}
 	p.mu.Lock()
 	p.disc = &d
 	p.mu.Unlock()
 	return &d, nil
+}
+
+// safeScheme is true for https, and for http when plain http is allowed (local and test).
+func (p *platform) safeScheme(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(u.Scheme, "https") || (p.allowHTTP && strings.EqualFold(u.Scheme, "http"))
 }
 
 func (p *platform) sameOrigin(raw string) bool {
@@ -207,6 +228,10 @@ func (p *platform) key(ctx context.Context, kid string) (*rsa.PublicKey, error) 
 }
 
 func (p *platform) refresh(ctx context.Context, firstTime bool) error {
+	callerCtx := ctx
+	// the keys are shared by every caller: a caller that hangs up must not cancel the read nor
+	// start the back-off (each request is bounded by the http client's timeout)
+	ctx = context.WithoutCancel(ctx)
 	p.fetch.Lock()
 	defer p.fetch.Unlock()
 	now := p.clock.Now()
@@ -226,13 +251,22 @@ func (p *platform) refresh(ctx context.Context, firstTime bool) error {
 	p.mu.Lock()
 	p.attemptedAt = &now
 	p.mu.Unlock()
+	// a failure while the caller itself is gone says nothing about the platform: no back-off
+	forgive := func(err error) error {
+		if callerCtx.Err() != nil {
+			p.mu.Lock()
+			p.attemptedAt = attempted
+			p.mu.Unlock()
+		}
+		return err
+	}
 	d, err := p.readDiscovery(ctx)
 	if err != nil {
-		return err
+		return forgive(err)
 	}
 	set, err := p.getJSON(ctx, d.jwksURI)
 	if err != nil {
-		return err
+		return forgive(err)
 	}
 	read := map[string]*rsa.PublicKey{}
 	list, _ := set["keys"].([]any)

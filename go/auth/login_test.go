@@ -1,11 +1,16 @@
 package auth_test
 
 import (
+	"context"
 	"encoding/base64"
+	"errors"
 	"maps"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/flowcatalyst/framework/go/fw"
+	"github.com/flowcatalyst/framework/go/fwtest"
 
 	"github.com/flowcatalyst/framework/go/auth"
 	"github.com/flowcatalyst/framework/go/auth/authtest"
@@ -316,4 +321,36 @@ func TestLoginThemeAndRedirectFailureHandler(t *testing.T) {
 		t.Fatalf("%d %q", r.status, r.header.Get("Location"))
 	}
 	_ = url.QueryEscape
+}
+
+// flakyStore fails Take (the callback's first store call) while broken is set.
+type flakyStore struct {
+	*auth.MemoryStore
+	broken *bool
+}
+
+func (s flakyStore) Take(ctx context.Context, kind auth.Kind, handle string) ([]byte, bool, error) {
+	if *s.broken {
+		return nil, false, errors.New("store down")
+	}
+	return s.MemoryStore.Take(ctx, kind, handle)
+}
+
+func TestCallbackClearsTheBindingEvenWhenTheStoreFails(t *testing.T) {
+	broken := false
+	a := mustStart(t, config{store: func(context.Context, *fw.Boot) (auth.Store, error) {
+		return flakyStore{MemoryStore: auth.NewMemoryStore(fwtest.NewClock(begin)), broken: &broken}, nil
+	}})
+	b := a.browser()
+	callback := b.startSignIn("/")
+	broken = true
+	r := b.get(b.local(callback))
+	if r.status != 500 {
+		t.Fatalf("%d %s", r.status, r.body)
+	}
+	for name := range b.jar {
+		if strings.Contains(name, "login") {
+			t.Fatalf("the binding cookie %s survived a 500", name)
+		}
+	}
 }

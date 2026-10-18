@@ -33,7 +33,7 @@ func newRP(t *testing.T, secret string) *rpFixture {
 	provider := authtest.Start(clock)
 	t.Cleanup(provider.Close)
 	provider.Client(testClientID, secret, testRedirect)
-	p, err := newPlatform(provider.Issuer(), 5*time.Second, clock, nil)
+	p, err := newPlatform(provider.Issuer(), 5*time.Second, clock, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +312,7 @@ func TestDiscoveryIsRefusedWhenTampered(t *testing.T) {
 
 func TestDiscoveryAcceptsATrailingSlashIssuer(t *testing.T) {
 	f := newRP(t, "")
-	p, err := newPlatform(f.provider.Issuer()+"/", time.Second, f.clock, nil)
+	p, err := newPlatform(f.provider.Issuer()+"/", time.Second, f.clock, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}

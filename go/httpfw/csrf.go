@@ -47,7 +47,8 @@ func (g *CSRFGuard) Check(r *http.Request) error {
 	sent := r.Header.Get("Origin")
 	var allowed bool
 	switch {
-	case site != "":
+	case len(r.Header.Values("Sec-Fetch-Site")) > 0: // present, even empty: an empty value is not "none"
+
 		s := strings.ToLower(strings.TrimSpace(site))
 		allowed = s == "same-origin" || s == "none"
 	case sent != "":

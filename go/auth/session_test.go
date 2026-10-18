@@ -287,3 +287,24 @@ func TestConfigKeysUnderAuthAreChecked(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLogoutWithoutACookieClearsNothing(t *testing.T) {
+	a := mustStart(t, config{})
+	for _, headers := range [][]string{nil, {"Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"}} {
+		r := a.browser().send("POST", "/auth/logout", "", headers...)
+		if len(r.cookies()) != 0 {
+			t.Errorf("a logout without a session cookie set cookies: %q", r.cookies())
+		}
+	}
+}
+
+func TestLogoutWithAnEmptySecFetchSiteIsRefused(t *testing.T) {
+	a := mustStart(t, config{})
+	b := signedIn(t, a)
+	if r := logout(b, "Sec-Fetch-Site", "", "Origin", origin); r.status != 403 {
+		t.Fatalf("%d", r.status)
+	}
+	if b.get("/api/me").status != 200 {
+		t.Fatal("the session lives")
+	}
+}

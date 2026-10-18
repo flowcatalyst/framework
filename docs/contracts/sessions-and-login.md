@@ -199,6 +199,12 @@ browser session only.
 - A cookie-authenticated unsafe request: the CSRF rules of section 7.2 apply (a cross-site logout
   is refused). A body is optional; if there is one it must be JSON. Without a session cookie there
   is nothing to protect and no check runs.
+- **Amended 2026-10-18 (security review F2): the clearing `Set-Cookie` is sent only when the
+  request carried a session cookie and passed the CSRF check.** Before, every answer cleared the
+  cookie, so a cross-site `POST` (which carries no `SameSite=Lax` cookie, so is never refused) still
+  made the browser drop its session cookie: a forced logout. Without a session cookie the answer is
+  the same `200` and sets nothing. **Java hand-off:** the Java `/auth/logout` has the same
+  behaviour and is fixed separately; see the hand-off list in section 14.
 - Deletes the session from the store (revocation; for the `cookie` driver nothing is stored, see
   6.5), clears the session cookie, answers `200`:
 
@@ -291,6 +297,12 @@ logged at WARN) when: `issuer` differs from `auth.issuer`; `authorization_endpoi
 origin (scheme, host and port), so a tampered document cannot send the code or the key fetch
 elsewhere; `code_challenge_methods_supported` is present and lacks `S256`.
 
+*Amended 2026-10-18 (security review I1):* `authorization_endpoint` must be `https` (`http` only
+when `APP_ENV` is `local` or `test`), so a tampered document cannot send the browser to a
+`javascript:`, `data:` or plain-http target. `end_session_endpoint` must be `https` **on the
+issuer's origin** and carry no user-info; otherwise it is ignored (logged at WARN) and `endSessionUrl` is
+omitted. Reading discovery and keys is never cancelled by the request that triggered it (see 5.2).
+
 ### 5.2 Keys (JWKS)
 
 - Read from `jwks_uri`. Only keys with `kty` `RSA`, `use` absent or `sig`, `alg` absent or `RS256`,
@@ -303,6 +315,17 @@ elsewhere; `code_challenge_methods_supported` is present and lacks `S256`.
   (the token is "unavailable", not invalid). *Added by the build.*
 - The keys and the discovery document are read by the server only; nothing a token says (`jku`,
   `x5u`, `jwk` header parameters) is ever fetched or used.
+
+*Amended 2026-10-18 (security review F1):* the key read is shared by every request, so it runs
+detached from the triggering request's context (bounded by the HTTP timeout), and a failed read
+whose triggering request had already been cancelled does not start the refetch back-off. Otherwise a
+client that sends a token with an unknown `kid` and hangs up would keep new signing keys out for a
+minute (5 seconds before the first read). **Java hand-off:** check that a cancelled/aborted request
+cannot do the same there.
+
+*Amended 2026-10-18 (security review I2):* the standalone verifier (`NewPlatformTokens`) refuses an
+`http://` issuer unless the caller passes `AllowPlainHTTP()` (local and test only); the module
+already refuses it outside those environments.
 
 ### 5.3 Cookies
 
@@ -494,6 +517,11 @@ first, keep the old one for the absolute timeout, then remove it). A malformed l
 not 32 bytes, or a duplicate `kid` fails start-up; the error never contains key material. A sealed
 value over 3 800 characters fails the login (`500 INTERNAL`, logged: too many roles for a cookie).
 
+**Rotate routinely** (security review I7): the keys are the only secret between a cookie and a
+forged session, so rotate `auth.cookie-keys` on a schedule (for example quarterly, and at once on any
+suspected exposure) with the procedure above; rotation costs nobody a session when the old key stays
+for the absolute timeout.
+
 Limits stated plainly: logout clears the cookie but cannot revoke a copy taken before; `take` on a
 login record cannot be atomic, so the binding cookie is cleared and the platform's single-use code
 is what stops a replayed callback. Use `database` or `redis` where revocation matters.
@@ -523,6 +551,8 @@ session cookie:
 
 1. `Sec-Fetch-Site` present: must be `same-origin` or `none`.
 2. Else `Origin` present: must equal the origin of `auth.public-base-url` (scheme, host, port).
+   *Amended 2026-10-18 (security review I5):* the header counts as present even when its value is
+   empty (`Sec-Fetch-Site:`), and an empty value is refused; it is never read as absent.
 3. **Neither header: refused** (cookie-carrying scripts are not a supported client; they use bearer
    tokens).
 4. Refused by 1 to 3: `403 CROSS_ORIGIN_REQUEST`, logged at INFO with the method, path and the two
@@ -606,7 +636,11 @@ are rate limited per client address with the rate-limiting contract's middleware
 built in code (rate-limiting contract section 1, ruling 2026-10-13): the default is a memory
 limiter named `auth`, 20 a minute, burst 20; an application replaces it (for example with a
 `redis` limiter shared by replicas, or `KeyResolvers.forwardedFor` behind a proxy) or removes it in
-code. `/auth/session` and `/auth/logout` are not limited (they cost one store read). The `429` is the rate-limiting contract's
+code. **The default keys on the TCP peer** (`ratelimit.ClientAddress`), which behind a proxy is the
+proxy: every user then shares one bucket of 20 a minute. Behind a proxy pass `auth.RateLimit` with a
+limiter keyed by `ratelimit.ForwardedFor(n)`. *Amended 2026-10-18 (security review I3):* the Go
+default logs one WARN the first time a request carries `X-Forwarded-For`, so the mistake shows up in
+the logs (a cheaper and more reliable choice than guessing the deployment at start-up). `/auth/session` and `/auth/logout` are not limited (they cost one store read). The `429` is the rate-limiting contract's
 envelope; to a browser navigation it is answered by the login failure handler with `RATE_LIMITED` (4.1.1).
 
 ## 9. Test support
@@ -710,3 +744,26 @@ application selects the client in code); portal logins (`/portal/*`, `ptu_` prin
 URL for server-to-server calls different from the issuer (the platform must be reachable at
 `auth.issuer` from the application); fixed bearer tokens and basic logins (application code, as
 before); the `conformance/auth/` vectors.
+
+## 14. Security review 2026-10-18: hand-off and known limits
+
+Fixed in Go in the commits of that date: F1 (5.2), F2 (4.4), I1 (5.1), I2 (5.2), I3 (8), I5 (7.2),
+I8 (the callback clears the binding cookie even when a store error answers `500`), I7 (6.5,
+documentation).
+
+**Java fixes still needed** (Java is fixed separately, by the Java agent):
+
+1. **F2** `/auth/logout`: send the clearing `Set-Cookie` only when a session cookie was read and the
+   CSRF check passed.
+2. **I1** discovery: require `https` for `authorization_endpoint` and `end_session_endpoint` (`http`
+   only in `local`/`test`), `end_session_endpoint` on the issuer's origin without user-info, else
+   ignore it.
+3. **I2** the standalone token verifier: refuse an `http://` issuer outside `local`/`test` unless
+   explicitly opted in.
+4. **I5**: Java already refuses an empty `Sec-Fetch-Site`; keep its test (the Go side matched it).
+5. **I8** callback: clear the binding cookie on the `500` path of a store error too.
+6. **F1** check only: a cancelled request must not cancel the shared key read or start its back-off.
+7. **I3**: the same one-time WARN, or the documentation, if Java's default limiter keys on the peer.
+
+**Known limits, not addressed** (security review items I4, I6, I9 and I10; owner decision to skip;
+the review report holds their text): recorded here so they are not mistaken for oversights.

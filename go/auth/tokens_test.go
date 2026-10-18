@@ -24,7 +24,7 @@ func newTokens(t *testing.T) *tokenFixture {
 	clock := fwtest.NewClock(start)
 	provider := authtest.Start(clock)
 	t.Cleanup(provider.Close)
-	tokens, err := NewPlatformTokens(provider.Issuer(), 5*time.Second, clock, nil)
+	tokens, err := NewPlatformTokens(provider.Issuer(), 5*time.Second, clock, nil, AllowPlainHTTP())
 	if err != nil {
 		t.Fatal(err)
 	}

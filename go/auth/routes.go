@@ -87,6 +87,7 @@ func (rt *routes) callback(w http.ResponseWriter, r *http.Request) error {
 	}
 	login, ok, err := rt.manager.takeLogin(ctx, handle)
 	if err != nil {
+		w.Header().Add("Set-Cookie", rt.cookies.clear(binding)) // the binding is spent either way
 		return err
 	}
 	if !ok || !same(login.state, state) {
@@ -119,11 +120,13 @@ func (rt *routes) callback(w http.ResponseWriter, r *http.Request) error {
 	}
 	if previous := readCookie(r, rt.cookies.sessionName()); previous != "" { // rotation
 		if err := rt.manager.deleteSession(ctx, previous); err != nil {
+			w.Header().Add("Set-Cookie", rt.cookies.clear(binding))
 			return err
 		}
 	}
 	session, err := rt.manager.createSession(ctx, v.principal, v.authTime)
 	if err != nil {
+		w.Header().Add("Set-Cookie", rt.cookies.clear(binding))
 		return err
 	}
 	rt.log.Info("signed in", "principal", v.principal.ID, "cid", httpfw.CorrelationID(r).String())
@@ -136,6 +139,7 @@ func (rt *routes) callback(w http.ResponseWriter, r *http.Request) error {
 
 func (rt *routes) platformDown(w http.ResponseWriter, r *http.Request, binding string, err error) error {
 	if !errors.Is(err, ErrPlatformUnavailable) {
+		w.Header().Add("Set-Cookie", rt.cookies.clear(binding))
 		return err
 	}
 	rt.log.Warn("sign-in could not complete", "error", err.Error(), "cid", httpfw.CorrelationID(r).String())
@@ -197,9 +201,11 @@ func (rt *routes) logout(_ context.Context, _ fw.Context, in httpfw.In[httpfw.No
 		if err := rt.manager.deleteSession(in.Request.Context(), handle); err != nil {
 			return sessionapi.AuthLogout{}, err
 		}
+		// cleared only when this request carried the cookie and passed the CSRF check: a forged
+		// cross-site POST (which carries no cookie) must not log anyone out
+		in.Header.Add("Set-Cookie", rt.cookies.clear(rt.cookies.sessionName()))
 	}
 	in.Header.Set("Cache-Control", "no-store")
-	in.Header.Add("Set-Cookie", rt.cookies.clear(rt.cookies.sessionName()))
 	out := sessionapi.AuthLogout{LoggedOut: true}
 	if end := rt.rp.endSessionURL(in.Request.Context(), rt.postLogout); end != "" {
 		out.EndSessionURL = &end

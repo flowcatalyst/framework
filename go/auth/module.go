@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/flowcatalyst/framework/go/config"
@@ -298,7 +300,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 	clientID := d.clientID.Get(b)
 	origin := httpfw.OriginOf(base)
 
-	p, err := newPlatform(issuer, o.httpTimeout, b.Clock(), log)
+	p, err := newPlatform(issuer, o.httpTimeout, b.Clock(), log, development)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +357,22 @@ func defaultRateLimit(b *fw.Boot, log *slog.Logger) (httpfw.Middleware, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ratelimit.Middleware(l, ratelimit.ClientAddress(), ratelimit.WithMetrics(b.Metrics()), ratelimit.WithLogger(log), ratelimit.WithClock(b.Clock()))
+	return ratelimit.Middleware(l, peerKeyWarningOnForwarded(log), ratelimit.WithMetrics(b.Metrics()), ratelimit.WithLogger(log), ratelimit.WithClock(b.Clock()))
+}
+
+// peerKeyWarningOnForwarded keys by the TCP peer (ratelimit.ClientAddress) and warns once, the first
+// time a request carries X-Forwarded-For: behind a proxy every client then shares the proxy's
+// bucket (20 a minute for all of them), and the application should pass auth.RateLimit with
+// ratelimit.ForwardedFor(n).
+func peerKeyWarningOnForwarded(log *slog.Logger) ratelimit.KeyFunc {
+	peer := ratelimit.ClientAddress()
+	var warned atomic.Bool
+	return func(r *http.Request) string {
+		if r.Header.Get("X-Forwarded-For") != "" && warned.CompareAndSwap(false, true) {
+			log.Warn("the default sign-in rate limit keys on the TCP peer, but requests carry X-Forwarded-For: behind a proxy all users share one bucket; pass auth.RateLimit with ratelimit.ForwardedFor(<trusted proxies>)")
+		}
+		return peer(r)
+	}
 }
 
 // checkURL checks an absolute http(s) URL; plain http only in local and test.

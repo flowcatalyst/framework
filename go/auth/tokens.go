@@ -55,11 +55,27 @@ type PlatformTokens struct {
 	clock    fw.Clock
 }
 
+// TokensOption configures [NewPlatformTokens].
+type TokensOption func(*tokensOptions)
+
+type tokensOptions struct{ allowHTTP bool }
+
+// AllowPlainHTTP accepts an http:// issuer. For APP_ENV local and test only.
+func AllowPlainHTTP() TokensOption { return func(o *tokensOptions) { o.allowHTTP = true } }
+
 // NewPlatformTokens returns a verifier for the platform at issuer (its base URL, which is also its
 // tokens' issuer and audience). timeout bounds each call to the platform; clock decides whether a
 // token is still valid. log may be nil.
-func NewPlatformTokens(issuer string, timeout time.Duration, clock fw.Clock, log *slog.Logger) (*PlatformTokens, error) {
-	p, err := newPlatform(issuer, timeout, clock, log)
+//
+// An http:// issuer is refused unless [AllowPlainHTTP] is passed, which an application does only
+// when APP_ENV is local or test: keys and tokens read over plain http can be forged by anyone on
+// the path.
+func NewPlatformTokens(issuer string, timeout time.Duration, clock fw.Clock, log *slog.Logger, opts ...TokensOption) (*PlatformTokens, error) {
+	var o tokensOptions
+	for _, f := range opts {
+		f(&o)
+	}
+	p, err := newPlatform(issuer, timeout, clock, log, o.allowHTTP)
 	if err != nil {
 		return nil, err
 	}
