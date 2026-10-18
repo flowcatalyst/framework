@@ -30,7 +30,7 @@ require (
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )
 
 // The framework's core module is this repository's go/ directory. A consumer ignores this line (a

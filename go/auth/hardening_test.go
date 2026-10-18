@@ -84,7 +84,10 @@ func TestDiscoveryEndpointsMustBeHTTPSOnTheRightOrigin(t *testing.T) {
 	// authorization_endpoint: the browser is sent there
 	for _, auth := range []string{"ftp://127.0.0.1/a", "data://x/y", "javascript://x/%0aalert(1)"} {
 		f.provider.DiscoveryChanges(map[string]any{"authorization_endpoint": auth})
-		p, _ := newPlatform(base, time.Second, f.clock, nil, true)
+		p, perr := newPlatform(base, time.Second, f.clock, nil, true)
+		if perr != nil {
+			t.Fatal(perr)
+		}
 		if _, err := p.discoveryDoc(ctx); err == nil {
 			t.Errorf("authorization_endpoint %q was accepted", auth)
 		}

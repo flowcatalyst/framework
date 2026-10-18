@@ -351,7 +351,11 @@ func TestSPADefaultPolicyTakesTheBuildsHashes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plain, _ := spa.New(build(nil), spa.Options{}); s.Files() != plain.Files() {
+	plain, err := spa.New(build(nil), spa.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Files() != plain.Files() {
 		t.Errorf("the hashes file is indexed: %d files, want %d", s.Files(), plain.Files())
 	}
 }

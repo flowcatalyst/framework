@@ -375,11 +375,12 @@ func peerKeyWarningOnForwarded(log *slog.Logger) ratelimit.KeyFunc {
 	}
 }
 
-// checkURL checks an absolute http(s) URL; plain http only in local and test.
+// checkURL checks an absolute http(s) URL; plain http only in local and test. The URL is never nil;
+// when the message is not empty it may be empty or unusable.
 func checkURL(key, raw string, development bool) (*url.URL, string) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Hostname() == "" || (!strings.EqualFold(u.Scheme, "https") && !strings.EqualFold(u.Scheme, "http")) {
-		return nil, key + " must be an absolute http(s) URL: " + raw
+		return &url.URL{}, key + " must be an absolute http(s) URL: " + raw // never nil: callers read the URL beside the message
 	}
 	if strings.EqualFold(u.Scheme, "http") && !development {
 		return u, fmt.Sprintf("%s is plain http, which is allowed only when APP_ENV is local or test; session cookies would travel in clear text", key)
