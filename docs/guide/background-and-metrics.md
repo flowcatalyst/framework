@@ -72,6 +72,8 @@ it). If the lock is lost mid-run, the task's thread is interrupted and the run c
 writes so a write from a run that lost its lock can be refused ([Locks](locks.md)). A lock store
 that is down is a failed run. `LockGate.of(store, key, lease)` takes any store and key.
 
+A loop that works per client does the fan-out inside its tick with `PerClient.each(base, clients, task)` ([context](context.md#work-for-one-client-after-another)).
+
 A gate is just `LoopGate`: `enter(loop, work)` returns `Ran`, `Skipped(reason)` or `Lost`.
 
 ## Metrics

@@ -559,64 +559,112 @@ public final class TicketSql {
     return new ListRow(v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
   }
 
-  /** One row of {@link #overdue}. */
-  public record OverdueRow(
-      io.flowcatalyst.framework.examples.ticketstrial.TicketId id,
-      String clientId,
-      Instant dueAt) {}
+  /** One row of {@link #overdueClients}. */
+  public record OverdueClientsRow(
+      String clientId) {}
 
-  /** The text of {@link #overdue}, as executed. */
-  // src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:97
-  public static final String OVERDUE_SQL =
+  /** The text of {@link #overdueClients}, as executed. */
+  // src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:96
+  public static final String OVERDUE_CLIENTS_SQL =
       """
-      SELECT id, client_id, due_at
+      SELECT DISTINCT client_id
         FROM tickets
        WHERE breached_at IS NULL
          AND status IN ('OPEN', 'IN_PROGRESS')
          AND due_at < ?
-       ORDER BY due_at
-       LIMIT ?""";
+       ORDER BY client_id""";
 
   /**
-   * Every client's tickets that ran out of time and were not flagged yet: the one query in this
-   * application that is not scoped to a client, for the SLA sweep (which then acts for each
-   * ticket's own client). Oldest deadline first.
+   * The clients that have a ticket that ran out of time and was not flagged yet: the one query in this
+   * application that is not scoped to a client, and it returns client codes only. The SLA sweep then
+   * acts for each of them with that client's own context (PerClient.each).
    *
    * <p>From src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:92.
    *
    * @param connection the connection, for example a transaction's
    * @param now :now
-   * @param pageSize :page_size
    * @return the rows, in the order the database returned them
    * @throws SQLException on a database error
    */
-  public static List<OverdueRow> overdue(
+  public static List<OverdueClientsRow> overdueClients(
       Connection connection,
-      Instant now,
-      long pageSize)
+      Instant now)
       throws SQLException {
-    try (PreparedStatement ps = connection.prepareStatement(OVERDUE_SQL)) {
+    try (PreparedStatement ps = connection.prepareStatement(OVERDUE_CLIENTS_SQL)) {
       ps.setObject(1, OffsetDateTime.ofInstant(now, ZoneOffset.UTC));
-      ps.setLong(2, pageSize);
       try (ResultSet rs = ps.executeQuery()) {
-        List<OverdueRow> list = new ArrayList<>();
+        List<OverdueClientsRow> list = new ArrayList<>();
         while (rs.next()) {
-          list.add(readOverdueRow(rs));
+          list.add(readOverdueClientsRow(rs));
         }
         return list;
       }
     }
   }
 
-  private static OverdueRow readOverdueRow(ResultSet rs) throws SQLException {
+  private static OverdueClientsRow readOverdueClientsRow(ResultSet rs) throws SQLException {
+    String v0 = rs.getString(1);
+    return new OverdueClientsRow(v0);
+  }
+
+  /** One row of {@link #overdueFor}. */
+  public record OverdueForRow(
+      io.flowcatalyst.framework.examples.ticketstrial.TicketId id,
+      Instant dueAt) {}
+
+  /** The text of {@link #overdueFor}, as executed. */
+  // src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:107
+  public static final String OVERDUE_FOR_SQL =
+      """
+      SELECT id, due_at
+        FROM tickets
+       WHERE client_id = ?
+         AND breached_at IS NULL
+         AND status IN ('OPEN', 'IN_PROGRESS')
+         AND due_at < ?
+       ORDER BY due_at
+       LIMIT ?""";
+
+  /**
+   * One client's tickets that ran out of time and were not flagged yet, oldest deadline first.
+   *
+   * <p>From src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:103.
+   *
+   * @param connection the connection, for example a transaction's
+   * @param clientId :client_id
+   * @param now :now
+   * @param pageSize :page_size
+   * @return the rows, in the order the database returned them
+   * @throws SQLException on a database error
+   */
+  public static List<OverdueForRow> overdueFor(
+      Connection connection,
+      io.flowcatalyst.framework.context.ClientId clientId,
+      Instant now,
+      long pageSize)
+      throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(OVERDUE_FOR_SQL)) {
+      ps.setString(1, clientId.value());
+      ps.setObject(2, OffsetDateTime.ofInstant(now, ZoneOffset.UTC));
+      ps.setLong(3, pageSize);
+      try (ResultSet rs = ps.executeQuery()) {
+        List<OverdueForRow> list = new ArrayList<>();
+        while (rs.next()) {
+          list.add(readOverdueForRow(rs));
+        }
+        return list;
+      }
+    }
+  }
+
+  private static OverdueForRow readOverdueForRow(ResultSet rs) throws SQLException {
     String r0 = rs.getString(1);
     if (r0 == null) {
-      throw nullRead("overdue", "id");
+      throw nullRead("overdueFor", "id");
     }
     io.flowcatalyst.framework.examples.ticketstrial.TicketId v0 = new io.flowcatalyst.framework.examples.ticketstrial.TicketId(r0);
-    String v1 = rs.getString(2);
-    Instant v2 = rs.getObject(3, OffsetDateTime.class).toInstant();
-    return new OverdueRow(v0, v1, v2);
+    Instant v1 = rs.getObject(2, OffsetDateTime.class).toInstant();
+    return new OverdueForRow(v0, v1);
   }
 
   /** One row of {@link #counts}. */
@@ -626,7 +674,7 @@ public final class TicketSql {
       long overdue) {}
 
   /** The text of {@link #counts}, as executed. */
-  // src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:111
+  // src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:122
   public static final String COUNTS_SQL =
       """
       SELECT status, count(*) AS n,
@@ -639,7 +687,7 @@ public final class TicketSql {
   /**
    * Open work per status for one client (the admin overview).
    *
-   * <p>From src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:105.
+   * <p>From src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:116.
    *
    * @param connection the connection, for example a transaction's
    * @param clientId :client_id
@@ -687,7 +735,7 @@ public final class TicketSql {
       long overdue) {}
 
   /** The text of {@link #totals}, as executed. */
-  // src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:122
+  // src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:133
   public static final String TOTALS_SQL =
       """
       SELECT count(*) FILTER (WHERE status IN ('OPEN', 'IN_PROGRESS')) AS open,
@@ -697,7 +745,7 @@ public final class TicketSql {
   /**
    * Open and overdue tickets across every client (the metrics loop).
    *
-   * <p>From src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:118.
+   * <p>From src/main/sql/io/flowcatalyst/framework/examples/ticketstrial/TicketSql.sql:129.
    *
    * @param connection the connection, for example a transaction's
    * @return the row, or empty when there is none

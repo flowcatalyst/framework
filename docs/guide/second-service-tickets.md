@@ -59,15 +59,16 @@ needs the loaded record (a requester comments only on their own ticket) is not a
 thousand comments does not rewrite a thousand rows for the next one. The optimistic-lock test posts
 two comments at once and checks both land, at the next two positions.
 
-**A job that works across clients is a deliberate query and a re-scope.** The scheduled-job receiver
-runs as the application's service principal in the client `_platform`. The SLA sweep reads the one
-query that is not scoped to a client (`TicketSql.overdue`), then acts for each ticket's own client:
+**A job that works across clients asks for the clients, then works one client at a time.** The
+scheduled-job receiver runs as the application's service principal in the client `_platform`. The SLA
+sweep reads the one query that is not scoped to a client, which returns client codes only
+(`TicketQueries.overdueClients`), then `PerClient.each` runs the sweep for each client with that client's
+own context (`Context.forClient`), so the ticket query is scoped and the use case authorizes the service
+principal as it does anywhere ([context](context.md#work-for-one-client-after-another)):
 
 ```java
-static Context forClient(Context ctx, ClientId client) {
-  return new Context(
-      client, ctx.principal(), ctx.principalKind(), ctx.application(), ctx.correlationId(), ctx.causationId(), ctx.executionId(), ctx.permissions());
-}
+List<ClientId> clients = TicketQueries.overdueClients(database, clock.instant());
+PerClient.each(ctx, clients, this::sweepClient); // sweepClient(Context forClient) flags that client's tickets
 ```
 
 The events it writes carry that client, the service principal and the job instance as the cause. The

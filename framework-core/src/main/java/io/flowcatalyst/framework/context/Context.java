@@ -111,6 +111,21 @@ public record Context(
   }
 
   /**
+   * Copies for another client, keeping everything else: principal, kind, application, correlation,
+   * causation and execution ids, and permissions. For work that is not a request and has no client
+   * of its own (a scheduled job, a background loop, a receiver's context for the platform) and
+   * acts for one client after another: each step gets the context of its client, so a use case's
+   * client scoping and authorization apply as for any caller. The permissions are the same set;
+   * the check that a principal may act for the client is the use case's {@code authorize}, as ever.
+   *
+   * @param value the client the work is for
+   * @return the new context
+   */
+  public Context forClient(ClientId value) {
+    return new Context(value, principal, principalKind, application, correlationId, causationId, executionId, permissions);
+  }
+
+  /**
    * Copies with a principal whose kind is unknown; any kind held before is cleared, so it never
    * describes another principal.
    *

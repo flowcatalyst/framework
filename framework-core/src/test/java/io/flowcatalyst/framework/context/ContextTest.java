@@ -178,4 +178,65 @@ class ContextTest {
   void thereAreExactlyTwoKinds() {
     assertThat(PrincipalKind.values()).containsExactly(PrincipalKind.USER, PrincipalKind.SERVICE);
   }
+
+  @Test
+  void forClientChangesOnlyTheClient() {
+    Context base =
+        Context.of(new ClientId("_platform"))
+            .withPrincipal(new PrincipalId("prn_svc"), PrincipalKind.SERVICE)
+            .withApplication(new ApplicationCode("tickets"))
+            .withCorrelationId(new CorrelationId("corr-1"))
+            .withCausationId("job-9")
+            .withExecutionId("run-3")
+            .withPermissions(Set.of("tickets:ticket:flag"));
+
+    Context acme = base.forClient(new ClientId("acme"));
+
+    assertThat(acme.client()).isEqualTo(new ClientId("acme"));
+    assertThat(acme).usingRecursiveComparison().ignoringFields("client").isEqualTo(base);
+    assertThat(base.client()).isEqualTo(new ClientId("_platform")); // the original is unchanged
+  }
+
+  @Test
+  void perClientRunsEachClientWithItsOwnContextAndOneFailureDoesNotStopTheRest() {
+    Context base = Context.of(new ClientId("_platform")).withPrincipal(new PrincipalId("prn_svc"), PrincipalKind.SERVICE);
+    java.util.List<String> seen = new java.util.ArrayList<>();
+
+    var outcomes =
+        PerClient.<String>each(
+            base,
+            java.util.List.of(new ClientId("acme"), new ClientId("globex"), new ClientId("acme"), new ClientId("initech")),
+            ctx -> {
+              seen.add(ctx.client().value() + "/" + ctx.principal());
+              if (ctx.client().value().equals("globex")) {
+                throw new IllegalStateException("globex is down");
+              }
+              return "ok " + ctx.client();
+            });
+
+    assertThat(seen).containsExactly("acme/prn_svc", "globex/prn_svc", "initech/prn_svc"); // acme once
+    assertThat(outcomes.keySet()).extracting(ClientId::value).containsExactly("acme", "globex", "initech");
+    assertThat(outcomes.get(new ClientId("acme"))).isEqualTo(new PerClient.Outcome.Done<>("ok acme"));
+    assertThat(outcomes.get(new ClientId("globex"))).isInstanceOf(PerClient.Outcome.Failed.class);
+    assertThat(outcomes.get(new ClientId("initech"))).isEqualTo(new PerClient.Outcome.Done<>("ok initech"));
+  }
+
+  @Test
+  void perClientStopsStartingClientsOnceTheThreadIsInterrupted() {
+    Context base = Context.of(new ClientId("_platform"));
+    try {
+      var outcomes =
+          PerClient.<String>each(
+              base,
+              java.util.List.of(new ClientId("a"), new ClientId("b"), new ClientId("c")),
+              ctx -> {
+                Thread.currentThread().interrupt(); // shutdown arrives during the first client
+                return ctx.client().value();
+              });
+
+      assertThat(outcomes.keySet()).extracting(ClientId::value).containsExactly("a");
+    } finally {
+      Thread.interrupted(); // clear the flag for the next test
+    }
+  }
 }

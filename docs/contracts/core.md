@@ -199,6 +199,32 @@ and `SERVICE` (a service account), the platform's `type` claim. Rules:
   (for a receiver, the delivered dispatch job or scheduled-job instance), execution the job or run
   this work belongs to.
 
+### 3a. Work for one client after another (amendment 2026-10-18, friction F3 and F15)
+
+A scheduled-job firing and a background loop have no client of their own (the receiver's context is
+the platform's, `_platform`; a loop has none), but the work they do is per client and goes through use
+cases, which are scoped to one client. Two pieces make that the ordinary path rather than a
+workaround:
+
+- **`Context.forClient(ClientId)`** copies the context for another client and keeps everything
+  else: principal, principal kind, application, correlation, causation and execution ids and
+  permissions. It does not check that the principal may act for that client; that is the use case's
+  `authorize`, as for any caller (a service principal that is allowed to run the use case for one
+  client is allowed for each).
+- **`PerClient.each(base, clients, task)`** runs `task` with `base.forClient(client)` for each client,
+  in order, each client once. An exception in one client is logged and recorded as `Failed` for that
+  client and the others still run; the result is a map of `Done(value)` or `Failed(cause)` per client
+  started. It stops starting clients when the thread is interrupted (shutdown); clients not started are
+  absent. It does no locking, retrying or parallelism: the caller's lock gate or overlap lock
+  serialises runs, and a client's work is as long as it is.
+
+**Where the clients come from is the application's.** The usual source is one deliberate query that is
+not scoped to a client and returns client codes only (the tickets example: "clients that have an overdue
+ticket"), after which every read and write is scoped to the client in hand. The platform does not fire
+a job once per client (owner ruling 2026-10-18: the application does the fan-out; a job definition with
+a per-client firing is not planned). Build `ClientId` from the client's code, never the platform's id
+(guide: "What goes in a ClientId").
+
 ## 4. Config
 
 *Amended 2026-10-14 ([config and code](config-and-code.md)): configuration holds the settings of

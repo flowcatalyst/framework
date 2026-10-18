@@ -1,4 +1,4 @@
-<!-- types: Context, ClientId, PrincipalId, PrincipalKind, ApplicationCode, CorrelationId, ContextResolver -->
+<!-- types: PerClient, Context, ClientId, PrincipalId, PrincipalKind, ApplicationCode, CorrelationId, ContextResolver -->
 # Context
 
 `Context` is a value that says **who is acting, for which client, as part of which request**. You
@@ -133,6 +133,27 @@ app.provide(
 
 After the resolver returns, the framework replaces the context's correlation id with the
 request's `X-Correlation-Id` (or the one it generated), so logs, events and the audit row agree.
+
+## Work for one client after another
+
+A scheduled job's context is the platform's (`_platform`) and a background loop has none, but the work
+goes through use cases, which are scoped to one client. `context.forClient(clientId)` copies the context
+for another client and keeps the principal, its kind, the application, the correlation, causation and
+execution ids and the permissions. `PerClient.each(base, clients, task)` runs the task for each client with
+that client's context; one client's exception is recorded for that client and the others still run, and it
+stops starting clients when the thread is interrupted:
+
+```java
+// SlaSweep: the clients come from one deliberate, unscoped query that returns client codes only
+List<ClientId> clients = TicketQueries.overdueClients(database, clock.instant());
+Map<ClientId, PerClient.Outcome<int[]>> outcomes = PerClient.each(ctx, clients, this::sweepClient);
+// sweepClient(Context forClient): scoped queries, then useCases.run(flagSlaBreach, forClient, command)
+```
+
+`forClient` does not check that the principal may act for the client; the use case's `authorize` does,
+as for any caller. The platform does not fire a job once per client: the application does the fan-out,
+so where the clients come from is yours (never from the platform's client ids; build a `ClientId` from the
+code). A loop does the same inside its tick, under the loop's lock gate.
 
 ## What uses it
 

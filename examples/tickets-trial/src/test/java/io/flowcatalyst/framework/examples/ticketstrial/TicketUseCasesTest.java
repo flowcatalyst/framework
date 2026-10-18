@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.Context;
+import io.flowcatalyst.framework.context.PerClient;
 import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.framework.context.PrincipalKind;
 import io.flowcatalyst.framework.core.App;
@@ -339,17 +340,23 @@ class TicketUseCasesTest {
     committed(useCases.run(tickets.changeStatus(), agent(acme), new ChangeStatus(resolved, TicketAction.START, null)));
     committed(useCases.run(tickets.changeStatus(), agent(acme), new ChangeStatus(resolved, TicketAction.RESOLVE, "Done in time")));
 
-    assertThat(TicketQueries.overdue(db, now.get(), 100)).isEmpty();
+    assertThat(TicketQueries.overdueClients(db, now.get())).isEmpty();
     assertThat(failed(useCases.run(tickets.flagSlaBreach(), service(acme), new FlagSlaBreach(acmeUrgent))).code()).isEqualTo("NOT_OVERDUE");
 
     now.set(START.plus(Duration.ofMinutes(61)));
-    List<TicketQueries.Overdue> overdue = TicketQueries.overdue(db, now.get(), 100);
-    assertThat(overdue).extracting(o -> o.id().value()).containsExactlyInAnyOrder(acmeUrgent, globexUrgent); // both clients, not the resolved one
-    for (TicketQueries.Overdue o : overdue) {
-      // the sweep acts for each ticket's own client
-      committed(useCases.run(tickets.flagSlaBreach(), service(o.client()), new FlagSlaBreach(o.id().value())));
+    assertThat(TicketQueries.overdueClients(db, now.get())).containsExactly(acme, globex);
+    // Each client's query sees only that client's tickets, and the sweep acts with that client's own context.
+    assertThat(TicketQueries.overdueFor(db, acme, now.get(), 100)).extracting(o -> o.id().value()).containsExactly(acmeUrgent); // not the resolved one
+    assertThat(TicketQueries.overdueFor(db, globex, now.get(), 100)).extracting(o -> o.id().value()).containsExactly(globexUrgent);
+    for (var outcome : PerClient.each(service(acme), TicketQueries.overdueClients(db, now.get()), c -> {
+      for (TicketQueries.Overdue o : TicketQueries.overdueFor(db, c.client(), now.get(), 100)) {
+        committed(useCases.run(tickets.flagSlaBreach(), c, new FlagSlaBreach(o.id().value())));
+      }
+      return c.client();
+    }).entrySet()) {
+      assertThat(outcome.getValue()).isInstanceOf(PerClient.Outcome.Done.class);
     }
-    assertThat(TicketQueries.overdue(db, now.get(), 100)).isEmpty();
+    assertThat(TicketQueries.overdueClients(db, now.get())).isEmpty();
     assertThat(failed(useCases.run(tickets.flagSlaBreach(), service(acme), new FlagSlaBreach(acmeUrgent))).code()).isEqualTo("NOT_OVERDUE");
     assertThat(failed(useCases.run(tickets.flagSlaBreach(), service(globex), new FlagSlaBreach(acmeUrgent))).code()).isEqualTo("TICKET_NOT_FOUND");
     assertThat(count("SELECT count(*) FROM outbox_messages WHERE payload::jsonb ->> 'type' = 'tickets-trial:support:ticket:sla-breached'")).isEqualTo(2);

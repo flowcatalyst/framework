@@ -10,8 +10,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Reads for screens, lists and the background jobs: plain typed queries, not aggregates
- * (write-path contract, section 9). Every one but {@link #overdue} and {@link #totals} is scoped to
- * a client.
+ * (write-path contract, section 9). Every one but {@link #overdueClients} and {@link #totals} is scoped
+ * to a client.
  */
 public final class TicketQueries {
 
@@ -118,18 +118,34 @@ public final class TicketQueries {
   }
 
   /**
-   * Active tickets of any client whose deadline has passed and that were not flagged yet.
+   * The clients that have an active ticket whose deadline has passed and that was not flagged yet:
+   * the one query that is not scoped to a client, and it returns client codes only.
    *
    * @param db the database
+   * @param now the time to compare with
+   * @return the clients, by code
+   * @throws SQLException on a database error
+   */
+  public static List<ClientId> overdueClients(Database db, Instant now) throws SQLException {
+    try (Connection c = db.dataSource().getConnection()) {
+      return TicketSql.overdueClients(c, now).stream().map(r -> new ClientId(r.clientId())).toList();
+    }
+  }
+
+  /**
+   * A client's active tickets whose deadline has passed and that were not flagged yet.
+   *
+   * @param db the database
+   * @param client the client
    * @param now the time to compare with
    * @param limit the most to return
    * @return the tickets, oldest deadline first
    * @throws SQLException on a database error
    */
-  public static List<Overdue> overdue(Database db, Instant now, int limit) throws SQLException {
+  public static List<Overdue> overdueFor(Database db, ClientId client, Instant now, int limit) throws SQLException {
     try (Connection c = db.dataSource().getConnection()) {
-      return TicketSql.overdue(c, now, limit).stream()
-          .map(r -> new Overdue(r.id(), new ClientId(r.clientId()), r.dueAt()))
+      return TicketSql.overdueFor(c, client, now, limit).stream()
+          .map(r -> new Overdue(r.id(), client, r.dueAt()))
           .toList();
     }
   }

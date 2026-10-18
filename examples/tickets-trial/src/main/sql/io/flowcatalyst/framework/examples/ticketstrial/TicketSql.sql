@@ -89,14 +89,25 @@ SELECT id, subject, priority, status, requester_id, assignee_id, opened_at, due_
  ORDER BY id DESC
  LIMIT :page_size;
 
--- name: overdue :many
--- Every client's tickets that ran out of time and were not flagged yet: the one query in this
--- application that is not scoped to a client, for the SLA sweep (which then acts for each
--- ticket's own client). Oldest deadline first.
--- column: id ! io.flowcatalyst.framework.examples.ticketstrial.TicketId
-SELECT id, client_id, due_at
+-- name: overdueClients :many
+-- The clients that have a ticket that ran out of time and was not flagged yet: the one query in this
+-- application that is not scoped to a client, and it returns client codes only. The SLA sweep then
+-- acts for each of them with that client's own context (PerClient.each).
+SELECT DISTINCT client_id
   FROM tickets
  WHERE breached_at IS NULL
+   AND status IN ('OPEN', 'IN_PROGRESS')
+   AND due_at < :now
+ ORDER BY client_id;
+
+-- name: overdueFor :many
+-- One client's tickets that ran out of time and were not flagged yet, oldest deadline first.
+-- param: client_id io.flowcatalyst.framework.context.ClientId
+-- column: id ! io.flowcatalyst.framework.examples.ticketstrial.TicketId
+SELECT id, due_at
+  FROM tickets
+ WHERE client_id = :client_id
+   AND breached_at IS NULL
    AND status IN ('OPEN', 'IN_PROGRESS')
    AND due_at < :now
  ORDER BY due_at
