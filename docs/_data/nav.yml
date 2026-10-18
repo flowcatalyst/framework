@@ -62,6 +62,7 @@
     - { title: "Go: HTTP client", path: guide/go/http-client.md }
     - { title: "Go: secrets", path: guide/go/secrets.md }
     - { title: "Go: the FlowCatalyst module", path: guide/go/flowcatalyst.md }
+    - { title: "Go: sessions and login", path: guide/go/sessions-and-login.md }
     - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
 - group: Reference and status
   items:

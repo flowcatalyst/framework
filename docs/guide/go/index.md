@@ -13,7 +13,7 @@ The Java pages of this guide describe the Java framework only.
 [locks](locks.md)) and G2 (the [write path](write-path.md) and [checked SQL](checked-sql.md)) and G3
 ([HTTP and the SPA](http.md), [typed operations and OpenAPI](openapi.md)) and G4 (the platform:
 [rate limiting](rate-limiting.md), the [HTTP client](http-client.md), [secrets](secrets.md) and the
-[FlowCatalyst module](flowcatalyst.md)) are built.
+[FlowCatalyst module](flowcatalyst.md)) are built; G5b ([sessions and login](sessions-and-login.md)) is in progress.
 Nothing is published; module and package names are the design's working names.
 
 ## The tree
@@ -25,6 +25,7 @@ go/
   Makefile               go-check (fmt-check, lint, vet, nilaway, test), go-sync-shared
   fw/                    the core: Context and its ids, Clock, TSIDs (Ids)
   httpfw/                HTTP: routes, errors, server, health; spa/, openapi/, validate/, sessionapi/
+  auth/                  sessions and login (in progress): relying party, platform tokens; authtest/ the test provider
   ratelimit/             rate limiting: policy, memory limiter, middleware, keys; redisrl/ the Redis limiter
   httpclient/            the HTTP client library; module/ the framework adapter (named clients, metrics)
   secrets/               per-client secrets: Env and File stores, cache policy, resolver
