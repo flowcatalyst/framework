@@ -1,0 +1,33 @@
+# sqlc for the tickets service (the Java TicketSql.sql, docs/go/design.md section 5.1). Generation is
+# static (no database): `go run ./tools/fwsql generate`. The check (`go run ./tools/fwsql check`)
+# prepares every query against a PostgreSQL migrated by the framework's runner (FW_SQL_DATABASE_URL,
+# set by the tool) and fails when the generated code is stale.
+version: "2"
+sql:
+  - engine: postgresql
+    schema: [".fw/schema"] # written by `fwsql schema`: the framework's sets, then the application's
+    queries: sql
+    database:
+      uri: ${FW_SQL_DATABASE_URL}
+    analyzer:
+      database: false
+    rules: [sqlc/db-prepare]
+    gen:
+      go:
+        package: dbq
+        out: internal/dbq
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        emit_db_tags: true
+        overrides:
+          # typed ids: one entry per column (no wildcards), as the platform does
+          - column: tickets.id
+            go_type: { import: "github.com/flowcatalyst/framework/go/flowcatalyst/examples/tickets-trial/domain", type: TicketID }
+          - column: ticket_comments.ticket_id
+            go_type: { import: "github.com/flowcatalyst/framework/go/flowcatalyst/examples/tickets-trial/domain", type: TicketID }
+          # instants are time.Time, a nullable one *time.Time
+          - db_type: timestamptz
+            go_type: time.Time
+          - db_type: timestamptz
+            nullable: true
+            go_type: { import: "time", type: Time, pointer: true }

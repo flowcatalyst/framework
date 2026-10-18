@@ -1,0 +1,1763 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "tickets-trial",
+    "version": "1"
+  },
+  "paths": {
+    "/api/admin/about": {
+      "get": {
+        "operationId": "getAdminAbout",
+        "summary": "What the application is and whether it is healthy",
+        "tags": [
+          "admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAbout"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:admin:console:view"
+      }
+    },
+    "/api/admin/config": {
+      "get": {
+        "operationId": "listAdminConfig",
+        "summary": "The application's settings, where they came from, and secret status",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SET",
+                "DEFAULT",
+                "UNSET"
+              ]
+            }
+          },
+          {
+            "name": "secret",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:admin:config:view"
+      }
+    },
+    "/api/admin/config/{key}": {
+      "get": {
+        "operationId": "getAdminConfigSetting",
+        "summary": "One setting",
+        "tags": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConfigSetting"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "SETTING_NOT_FOUND: no such setting is declared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:admin:config:view"
+      }
+    },
+    "/api/admin/navigation": {
+      "get": {
+        "operationId": "getAdminNavigation",
+        "summary": "The admin sections the caller may use",
+        "tags": [
+          "admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNavigation"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:admin:console:view"
+      }
+    },
+    "/api/admin/tickets/overview": {
+      "get": {
+        "operationId": "getAdminTicketsOverview",
+        "summary": "Count the client's tickets by status",
+        "tags": [
+          "admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketsOverview"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:admin:tickets:view"
+      }
+    },
+    "/api/sla-policy": {
+      "get": {
+        "operationId": "getSlaPolicy",
+        "summary": "Read the client's SLA policy (the defaults until it sets one)",
+        "tags": [
+          "sla"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlaPolicyView"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:ticket:read"
+      },
+      "put": {
+        "operationId": "setSlaPolicy",
+        "summary": "Set the client's SLA policy; tickets opened afterwards use it",
+        "tags": [
+          "sla"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSlaPolicyBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlaPolicyView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "description": "STALE_AGGREGATE: the policy was changed by someone else; reload it and try again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:sla:manage"
+      }
+    },
+    "/api/tickets": {
+      "get": {
+        "operationId": "listTickets",
+        "summary": "List the client's tickets, newest first",
+        "tags": [
+          "tickets"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "IN_PROGRESS",
+                "RESOLVED",
+                "CLOSED"
+              ]
+            }
+          },
+          {
+            "name": "assignee",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requester",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageTicketSummaryView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:ticket:read"
+      },
+      "post": {
+        "operationId": "openTicket",
+        "summary": "Open a ticket",
+        "tags": [
+          "tickets"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenTicketBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:ticket:open"
+      }
+    },
+    "/api/tickets/{ticketId}": {
+      "get": {
+        "operationId": "getTicket",
+        "summary": "Read a ticket with its comments",
+        "tags": [
+          "tickets"
+        ],
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "TICKET_NOT_FOUND: there is no such ticket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:ticket:read"
+      }
+    },
+    "/api/tickets/{ticketId}/assign": {
+      "post": {
+        "operationId": "assignTicket",
+        "summary": "Give a ticket to someone",
+        "tags": [
+          "tickets"
+        ],
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "TICKET_NOT_FOUND: there is no such ticket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ALREADY_ASSIGNED: the ticket is already assigned to that person\nSTALE_AGGREGATE: the ticket was changed by someone else; reload it and try again\nTICKET_NOT_ASSIGNABLE: a resolved or closed ticket cannot be assigned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:ticket:work"
+      }
+    },
+    "/api/tickets/{ticketId}/comments": {
+      "post": {
+        "operationId": "commentOnTicket",
+        "summary": "Comment on a ticket",
+        "tags": [
+          "tickets"
+        ],
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "description": "NOT_YOUR_TICKET: a requester may comment only on tickets they opened",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "TICKET_NOT_FOUND: there is no such ticket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TICKET_CLOSED: a closed ticket cannot change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "description": "RATE_LIMITED: too many comments from one person; wait and try again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:ticket:comment"
+      }
+    },
+    "/api/tickets/{ticketId}/transition": {
+      "post": {
+        "operationId": "transitionTicket",
+        "summary": "Move a ticket along its status machine",
+        "tags": [
+          "tickets"
+        ],
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "TICKET_NOT_FOUND: there is no such ticket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ASSIGNEE_REQUIRED: a ticket must be assigned before work starts on it\nILLEGAL_TRANSITION: the action is not allowed from the ticket's status\nSTALE_AGGREGATE: the ticket was changed by someone else; reload it and try again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "x-fw-permission": "tickets-trial:support:ticket:work"
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Sign out of the application",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthLogout"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CROSS_ORIGIN_REQUEST: the request did not come from this application's pages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: a request body must be JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "operationId": "getAuthSession",
+        "summary": "Read the browser session",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminAbout": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "type": "string"
+          },
+          "framework": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCheck"
+            }
+          }
+        },
+        "required": [
+          "application",
+          "environment",
+          "startedAt",
+          "ready",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
+      "AdminCheck": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UP",
+              "DOWN",
+              "TIMED_OUT"
+            ]
+          },
+          "critical": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "critical"
+        ],
+        "additionalProperties": false
+      },
+      "AdminConfig": {
+        "type": "object",
+        "properties": {
+          "environment": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "set": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaulted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unset": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminConfigSetting"
+            }
+          },
+          "health": {
+            "$ref": "#/components/schemas/AdminHealth"
+          }
+        },
+        "required": [
+          "environment",
+          "total",
+          "set",
+          "defaulted",
+          "unset",
+          "settings",
+          "health"
+        ],
+        "additionalProperties": false
+      },
+      "AdminConfigSetting": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "boolean"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "SET",
+              "DEFAULT",
+              "UNSET"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "withheld": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "module",
+          "type",
+          "secret",
+          "required",
+          "state",
+          "source",
+          "withheld"
+        ],
+        "additionalProperties": false
+      },
+      "AdminHealth": {
+        "type": "object",
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCheck"
+            }
+          }
+        },
+        "required": [
+          "ready",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
+      "AdminNavigation": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminSectionView"
+            }
+          }
+        },
+        "required": [
+          "sections"
+        ],
+        "additionalProperties": false
+      },
+      "AdminSectionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "path",
+          "permission"
+        ],
+        "additionalProperties": false
+      },
+      "AssignBody": {
+        "type": "object",
+        "properties": {
+          "assigneeId": {
+            "type": "string",
+            "pattern": "\\S",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "assigneeId"
+        ],
+        "additionalProperties": false
+      },
+      "AuthCsrf": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "fetch-metadata"
+          },
+          "jsonBodies": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "mode",
+          "jsonBodies"
+        ],
+        "additionalProperties": false
+      },
+      "AuthLogout": {
+        "type": "object",
+        "properties": {
+          "loggedOut": {
+            "type": "boolean",
+            "const": true
+          },
+          "endSessionUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loggedOut"
+        ],
+        "additionalProperties": false
+      },
+      "AuthPrincipal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "SERVICE"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "AuthSession": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AuthSessionAuthenticated"
+          },
+          {
+            "$ref": "#/components/schemas/AuthSessionAnonymous"
+          }
+        ]
+      },
+      "AuthSessionAnonymous": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "const": false
+          },
+          "loginUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "authenticated",
+          "loginUrl"
+        ],
+        "additionalProperties": false
+      },
+      "AuthSessionAuthenticated": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "const": true
+          },
+          "principal": {
+            "$ref": "#/components/schemas/AuthPrincipal"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "ANCHOR",
+              "PARTNER",
+              "CLIENT"
+            ]
+          },
+          "client": {
+            "type": "string"
+          },
+          "clients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "applications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "authTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idleExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "csrf": {
+            "$ref": "#/components/schemas/AuthCsrf"
+          }
+        },
+        "required": [
+          "authenticated",
+          "principal",
+          "client",
+          "clients",
+          "applications",
+          "roles",
+          "permissions",
+          "authTime",
+          "expiresAt",
+          "idleExpiresAt",
+          "csrf"
+        ],
+        "additionalProperties": false
+      },
+      "CommentBody": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "pattern": "\\S",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "CommentView": {
+        "type": "object",
+        "properties": {
+          "commentId": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "postedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "commentId",
+          "authorId",
+          "body",
+          "postedAt"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "OpenTicketBody": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "pattern": "\\S",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "NORMAL",
+              "HIGH",
+              "URGENT"
+            ]
+          }
+        },
+        "required": [
+          "subject",
+          "description",
+          "priority"
+        ],
+        "additionalProperties": false
+      },
+      "PageTicketSummaryView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketSummaryView"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "SetSlaPolicyBody": {
+        "type": "object",
+        "properties": {
+          "lowMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 43200
+          },
+          "normalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 43200
+          },
+          "highMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 43200
+          },
+          "urgentMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 43200
+          }
+        },
+        "required": [
+          "lowMinutes",
+          "normalMinutes",
+          "highMinutes",
+          "urgentMinutes"
+        ],
+        "additionalProperties": false
+      },
+      "SlaPolicyView": {
+        "type": "object",
+        "properties": {
+          "lowMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "normalMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "highMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "urgentMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "customised": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "lowMinutes",
+          "normalMinutes",
+          "highMinutes",
+          "urgentMinutes",
+          "customised",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "StatusCountView": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "RESOLVED",
+              "CLOSED"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "flagged": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "status",
+          "count",
+          "flagged"
+        ],
+        "additionalProperties": false
+      },
+      "TicketSummaryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "NORMAL",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "RESOLVED",
+              "CLOSED"
+            ]
+          },
+          "requesterId": {
+            "type": "string"
+          },
+          "assigneeId": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "priority",
+          "status",
+          "requesterId",
+          "openedAt",
+          "dueAt",
+          "overdue",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "TicketView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "NORMAL",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "RESOLVED",
+              "CLOSED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requesterId": {
+            "type": "string"
+          },
+          "assigneeId": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "description",
+          "priority",
+          "status",
+          "version",
+          "requesterId",
+          "openedAt",
+          "dueAt",
+          "overdue",
+          "comments"
+        ],
+        "additionalProperties": false
+      },
+      "TicketsOverview": {
+        "type": "object",
+        "properties": {
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatusCountView"
+            }
+          },
+          "active": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "flagged": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "statuses",
+          "active",
+          "flagged"
+        ],
+        "additionalProperties": false
+      },
+      "TransitionBody": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "START",
+              "RESOLVE",
+              "REOPEN",
+              "CLOSE"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-fw_session"
+      },
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "admin"
+    },
+    {
+      "name": "auth"
+    },
+    {
+      "name": "sla"
+    },
+    {
+      "name": "tickets"
+    }
+  ]
+}
