@@ -96,6 +96,23 @@ func (k PrincipalKind) String() string {
 	return ""
 }
 
+// ForClient returns a copy for another client that keeps everything else: principal, kind,
+// application, correlation, causation and execution ids and permissions (core contract section
+// 3a). It does not check that the principal may act for that client; that is the use case's
+// Authorize, as for any caller. The receiver is unchanged. It panics on the zero ClientID or on
+// the zero Context.
+func (cx Context) ForClient(c ClientID) Context {
+	if c.IsZero() {
+		panic("fw: Context.ForClient with the zero ClientID")
+	}
+	if cx.IsZero() {
+		panic("fw: Context.ForClient on the zero Context")
+	}
+	cx.client = c
+	cx.permissions = slices.Clone(cx.permissions)
+	return cx
+}
+
 // WithPrincipal returns a copy with the principal set and its kind unknown (cleared, so a kind
 // never describes another principal than the one it came with). It panics on the zero
 // PrincipalID.

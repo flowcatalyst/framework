@@ -619,3 +619,40 @@ func TestDefineAndPolicyRules(t *testing.T) {
 		t.Error("the zero Context was accepted")
 	}
 }
+
+// A service principal fans out over clients (core contract 3a): each run is scoped to the client
+// in hand, Authorize decides per client (ForClient checks nothing itself), and an authorization
+// refusal for one client is that client's Failed result while the others commit.
+func TestEachClientRunsUseCasesPerClientAndAuthorizeDecidesPerClient(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t)
+	d := e.define(t, testCase{
+		authorize: func(cx fw.Context) (usecase.Grant, error) {
+			if cx.Client().String() == "globex" {
+				return usecase.Require(cx, fw.MustPermission("test:things:write")) // not held for globex
+			}
+			return usecase.Public(), nil
+		},
+		execute: e.insertPlan(thingRepo{}),
+	})
+	base := fw.ContextFor(fw.MustClientID("_platform")).WithPrincipalOfKind(fw.MustPrincipalID("prn_svc"), fw.PrincipalService)
+
+	res := fw.EachClient(t.Context(), nil, base, []fw.ClientID{fw.MustClientID("acme"), fw.MustClientID("globex"), fw.MustClientID("initech")},
+		func(ctx context.Context, cx fw.Context) (string, error) {
+			done, err := d.Run(ctx, cx, cmd{Name: "swept-" + cx.Client().String()})
+			return done.Event().Name, err
+		})
+
+	if len(res) != 3 || !res[0].Done() || !res[2].Done() || !res[1].Failed() {
+		t.Fatalf("results %+v", res)
+	}
+	wantError(t, res[1].Err, usecase.KindAuthorization, "PERMISSION_REQUIRED")
+	for _, c := range []string{"acme", "initech"} {
+		if n := e.count(t, "SELECT count(*) FROM things WHERE client_id = '"+c+"' AND name = 'swept-"+c+"'"); n != 1 {
+			t.Errorf("things for %s: %d", c, n)
+		}
+	}
+	if n := e.count(t, "SELECT count(*) FROM things WHERE client_id = 'globex' OR client_id = '_platform'"); n != 0 {
+		t.Errorf("things written for the refused client or the base: %d", n)
+	}
+}

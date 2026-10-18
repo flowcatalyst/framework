@@ -225,6 +225,13 @@ a job once per client (owner ruling 2026-10-18: the application does the fan-out
 a per-client firing is not planned). Build `ClientId` from the client's code, never the platform's id
 (guide: "What goes in a ClientId").
 
+*Go (2026-10-18):* `Context.ForClient(ClientID)` and `fw.EachClient(ctx, log, base, clients, task)`.
+`task` returns `(R, error)`; the result is a slice of `ClientResult[R]{Client, Value, Err}` in run order
+(Go maps are unordered); a task that panics is recorded as `Failed` with a `*PanicError` (Java catches
+`Exception` only); "interrupted" is `ctx` being done, checked before each client, and a task cut short by
+it is recorded `Failed` like Java's `InterruptedException`. A nil logger logs nothing. `ForClient` panics
+on the zero client or the zero Context, `EachClient` on the zero base Context.
+
 ## 4. Config
 
 *Amended 2026-10-14 ([config and code](config-and-code.md)): configuration holds the settings of

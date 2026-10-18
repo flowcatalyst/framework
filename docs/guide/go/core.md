@@ -1,4 +1,4 @@
-<!-- types: App, Declarer, Boot, BuildFunc, Serve, ServeFunc, Running, StartupError, InstancesHandle, MigrationSet, CommandFunc, Criticality, HealthCheck, HealthReport, HealthResult, Setting, Handle, Secret, Values, Instances, Instance, Section, Problem, Context, Options, Tick, Gate, Ran, Skipped, Lost, Loops, Registry, Counter, Gauge, Timer -->
+<!-- types: App, Declarer, Boot, BuildFunc, Serve, ServeFunc, Running, StartupError, InstancesHandle, MigrationSet, CommandFunc, Criticality, HealthCheck, HealthReport, HealthResult, Setting, Handle, Secret, Values, Instances, Instance, Section, Problem, Context, ClientResult, PanicError, Options, Tick, Gate, Ran, Skipped, Lost, Loops, Registry, Counter, Gauge, Timer -->
 # Go: the application and config
 
 Packages `fw`, `config`, `background` and `metrics` are the Go counterpart of `framework-core`: the
@@ -118,6 +118,32 @@ duplicate key, so the difference is recorded here and in STATUS, not in the vect
 and execution ids and the permissions (`HasPermission` uses the platform's wildcard rule). It is
 passed explicitly beside `context.Context`, never stored in one. `fw.Ids` generates TSIDs
 ([Go overview](index.md)).
+
+### Work for one client after another
+
+A scheduled job's context is the platform's (`_platform`) and a background loop has none, but the work
+goes through use cases, which are scoped to one client ([core contract](../../contracts/core.md) section 3a).
+`cx.ForClient(client)` copies the context for another client and keeps the principal, its kind, the
+application, the correlation, causation and execution ids and the permissions; it panics on the zero
+client or the zero `Context`. `fw.EachClient(ctx, log, base, clients, task)` is Java's `PerClient.each`:
+it runs `task(ctx, cx)` for each client in order with `base.ForClient(client)`, each client once, and
+returns a `[]fw.ClientResult[R]` (client, value, error) in the order the clients ran:
+
+```go
+res := fw.EachClient(ctx, log, base, clients, func(ctx context.Context, cx fw.Context) (string, error) {
+	done, err := d.Run(ctx, cx, cmd{Name: "swept-" + cx.Client().String()})
+	return done.Event().Name, err
+})
+```
+
+(from `usecase/runner_test.go`, `TestEachClientRunsUseCasesPerClientAndAuthorizeDecidesPerClient`). A task that
+returns an error, or panics (`*fw.PanicError`), is logged to `log` (nothing when `log` is nil) and recorded
+as failed for that client; the others still run. It stops starting clients once `ctx` is done; clients not
+started are absent. Where the clients come from is the application's: one deliberate, unscoped query that
+returns client codes, then every read and write is scoped to the client in hand. `ForClient` does not
+check that the principal may act for the client; the use case's `Authorize` does, as for any caller.
+Differences from Java: a slice instead of an ordered map; `ctx` done instead of thread interruption; a
+panic is recorded as failed (Java records only exceptions).
 
 ## Health
 

@@ -114,3 +114,59 @@ func TestPrincipalKindGoesWithItsPrincipal(t *testing.T) {
 	}()
 	cx.WithPrincipalOfKind(fw.MustPrincipalID("x"), fw.PrincipalKind(9))
 }
+
+func TestForClientChangesOnlyTheClient(t *testing.T) {
+	t.Parallel()
+	base := fw.ContextFor(fw.MustClientID("_platform")).
+		WithPrincipalOfKind(fw.MustPrincipalID("prn_svc"), fw.PrincipalService).
+		WithApplication(fw.MustApplicationCode("tickets")).
+		WithCorrelation(fw.MustCorrelationID("corr-1")).
+		WithCausation(fw.MustCausationID("job-9")).
+		WithExecution(fw.MustExecutionID("run-3")).
+		WithPermissions(fw.MustPermission("tickets:ticket:flag"))
+
+	acme := base.ForClient(fw.MustClientID("acme"))
+
+	if acme.Client() != fw.MustClientID("acme") {
+		t.Errorf("client = %v", acme.Client())
+	}
+	if p, _ := acme.Principal(); p != fw.MustPrincipalID("prn_svc") {
+		t.Errorf("principal = %v", p)
+	}
+	if k, ok := acme.PrincipalKind(); !ok || k != fw.PrincipalService {
+		t.Errorf("kind = %v, %v", k, ok)
+	}
+	if a, _ := acme.Application(); a != fw.MustApplicationCode("tickets") {
+		t.Errorf("application = %v", a)
+	}
+	if acme.Correlation() != fw.MustCorrelationID("corr-1") {
+		t.Errorf("correlation = %v", acme.Correlation())
+	}
+	if c, _ := acme.Causation(); c != fw.MustCausationID("job-9") {
+		t.Errorf("causation = %v", c)
+	}
+	if e, _ := acme.Execution(); e != fw.MustExecutionID("run-3") {
+		t.Errorf("execution = %v", e)
+	}
+	if !acme.HasPermission(fw.MustPermission("tickets:ticket:flag")) {
+		t.Error("permissions not kept")
+	}
+	if base.Client() != fw.MustClientID("_platform") {
+		t.Error("the original changed")
+	}
+}
+
+func TestForClientRefusesZeroValues(t *testing.T) {
+	t.Parallel()
+	mustPanic := func(name string, f func()) {
+		t.Helper()
+		defer func() {
+			if recover() == nil {
+				t.Errorf("%s did not panic", name)
+			}
+		}()
+		f()
+	}
+	mustPanic("zero client", func() { fw.ContextFor(fw.MustClientID("a")).ForClient(fw.ClientID{}) })
+	mustPanic("zero context", func() { fw.Context{}.ForClient(fw.MustClientID("a")) })
+}
