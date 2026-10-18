@@ -255,6 +255,6 @@ runs one script that takes the interval and burst as arguments, and there is no 
 2. IPv6 grouping by /64 by default (fixed, not configurable).
 3. The overflow bucket when the `memory` map is full, instead of refusing new keys or evicting
    existing ones.
-4. Per-request policies (section 3a): the cap at an empty bucket after a policy change (instead of
+4. **RULED by the owner 2026-10-18 (confirmed as written).** Per-request policies (section 3a): the cap at an empty bucket after a policy change (instead of
    keeping the old debt); null from the resolver means the limiter's default policy, uncounted; a resolver
    failure follows `onStoreFailure` (`ALLOW` = the limiter's default policy, not unlimited).

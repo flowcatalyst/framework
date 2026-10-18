@@ -145,6 +145,17 @@ tests in 144 suites, none failing or skipped** (counted from the surefire report
 clean, and the browser suites `tickets:e2e` 23 passed, `orders:e2e` 49 passed (4 screenshot cases skipped
 without `SCREENSHOTS=1`), `gallery:e2e` 112 passed (4 skipped). `docs/guide/verify.sh` prints OK.
 
+## Follow-up 2026-10-18 (owner rulings, seven slices)
+
+F1, F3, F6, F13, F15, F18, F20 and F21 are fixed (see the rows). Checks after the last Java change: `./mvnw -o -q verify`
+exit 0, **1938 tests in 143 suites, none failing or skipped** (one run of `RedisModuleTest.theRangesAreCheckedAtStartUp` failed
+once under heavy machine load and passed alone and in the repeat); in `ui/`: `lint`, `typecheck`, `test` (api-runtime 47, ui 118,
+sample 5), `licences`, `api:drift` clean; `gallery:e2e` 112 passed (4 skipped). `orders:e2e` (49 passed, 4 skipped) and
+`tickets:e2e` (24 passed) were green after the UI slices (1 and 2); **they were not re-run after the Java slices 3 to 6**: Docker
+stopped answering (and the machine was at load 50 to 100 from another agent's work, whose Go `orders-demo e2e` also holds ports
+4392/4393 while it runs), so the web servers did not start. Not verified: the tickets and orders browser suites against the
+`load`/`authorizeLoaded`, per-client sweep and client-settings changes.
+
 ## What could not be run
 
 - **A real platform.** Nothing talked to FlowCatalyst: `FakePlatform` plays the token endpoint, the sync

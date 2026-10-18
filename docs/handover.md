@@ -4,6 +4,21 @@ The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; cont
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
 rewritten at hand-off and can lag the code in between.
 
+- **Owner rulings 2026-10-18, all built** (each its own commit with contract, tests and guide; the friction rows in
+  `m4f-trial-service.md` say *fixed*): (1) F20/F21 UI fixes (`fbcdca5`): soft and subtle success/warning badges use the
+  800 shade in light; `FwFormDialog` `requireChange` reads the fields' drafts. (2) F18 (`b1511d0`): the admin data
+  pages (event types, roles, users and invitations, activity, config, about) moved into `@flowcatalyst/ui` as
+  `standardAdminPages(application, ids?)`, the `admin` plugin option (generated client's operations, type-checked
+  where passed) and `replaceAdminPage`; orders mounts all six, tickets about and config (admin contract section 13).
+  (3) F1 (`6fb6e4e`): `UseCase.Builder.load` + `authorizeLoaded` between authorize and execute (write-path 3a).
+  (4) F13 (`77a9d86`): `UseCases.run(.., Tx.of(connection))` joins the caller's transaction under a savepoint, so
+  `DispatchDelivery.once` composes with use cases; HTTP calls inside the work still do not (write-path 4a).
+  (5) F3/F15 (`22b06f3`): `Context.forClient` and `PerClient.each`; the application fans out per client, the
+  platform does not fire per client; the SLA sweep migrated (core 3a). (6) F6 / M5 first slice (`e83812b`):
+  `framework-client-settings` (definitions in code, `fw_client_settings`, one aggregate per client); the tickets SLA
+  moved onto it. Cache, storage, metering, messaging and the platform config driver are **not started**. (7) Rate
+  limiting section 5 item 4 confirmed as written. Rulings of the first slice that the owner may still change are listed in
+  `contracts/client-settings.md` section 7 (one row per client, no cache, an undecodable value is an error).
 - **Owner rulings 2026-10-17.** (1) Build MA-11, the reusable end-to-end kit, in this repository, unpublished for now: TypeScript
   `@flowcatalyst/ui/e2e` and Java `E2eLauncher` in the `framework-auth` test-jar; the orders and tickets examples migrate onto it
   (**built**: `docs/guide/e2e-kit.md`; orders 49+4 skipped, tickets 23, gallery 112+4 skipped). (2) `pool.login-timeout` stays Java only: no parity for the Go and Rust database modules (recorded in
@@ -50,8 +65,8 @@ rewritten at hand-off and can lag the code in between.
   `max-keys` is the third argument of `MemoryRateLimiter.create`; `prefix` the fourth of
   `RedisRateLimiter.create`. Names must match `[a-z][a-z0-9_-]*`. Numbers that should stay tunable
   become the application's own `Setting`s (guide: rate-limiting, "Numbers from your own settings").
-  Rulings pending owner: `contracts/rate-limiting.md` section 5, item 4 (cap at an empty bucket
-  after a policy change; null = default policy; a resolver failure follows `onStoreFailure`).
+  Ruling on `contracts/rate-limiting.md` section 5, item 4 (cap at an empty bucket after a policy change; null =
+  default policy; a resolver failure follows `onStoreFailure`): **confirmed as written by the owner 2026-10-18**.
 - **CC built 2026-10-14, over-reach reversed the same day.** Owner rule (clarified): *"The
   configs for services and things like that are all fine. It is just don't use a config to define
   pollers or things that can have many instances."* Service and connection settings are
