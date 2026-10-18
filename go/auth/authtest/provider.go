@@ -54,7 +54,7 @@ type grant struct{ clientID, redirectURI, challenge, nonce, scope string }
 
 // Provider is a real OIDC provider for tests: discovery, JWKS, /oauth/authorize (signs the
 // configured user in at once), /oauth/token (single-use codes, exact redirect_uri, PKCE S256,
-// public and confidential clients) and /auth/oidc/session/end.
+// public and confidential clients) and /auth/oidc/session/end (which redirects to a post_logout_redirect_uri on the origin of the client's registered redirect URI).
 type Provider struct {
 	server *httptest.Server
 	clock  fw.Clock
@@ -92,9 +92,7 @@ func Start(clock fw.Clock) *Provider {
 	mux.HandleFunc("/.well-known/jwks.json", p.jwks)
 	mux.HandleFunc("/oauth/authorize", p.authorize)
 	mux.HandleFunc("/oauth/token", p.token)
-	mux.HandleFunc("/auth/oidc/session/end", func(w http.ResponseWriter, _ *http.Request) {
-		p.writeJSON(w, http.StatusOK, map[string]any{"message": "Session ended"})
-	})
+	mux.HandleFunc("/auth/oidc/session/end", p.sessionEnd)
 	p.server = httptest.NewServer(mux)
 	return p
 }
@@ -226,6 +224,24 @@ func (p *Provider) discovery(w http.ResponseWriter, _ *http.Request) {
 	apply(doc, p.discoveryChanges)
 	p.mu.Unlock()
 	p.writeJSON(w, http.StatusOK, doc)
+}
+
+// sessionEnd ends the platform session. Like the platform it sends the browser on to
+// post_logout_redirect_uri, but only for a registered client and an address on the origin of that
+// client's redirect URI (the test double's stand-in for the registered post-logout URIs); anything
+// else gets the plain answer.
+func (p *Provider) sessionEnd(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	p.mu.Lock()
+	c, known := p.clients[q.Get("client_id")]
+	p.mu.Unlock()
+	if back, err := url.Parse(q.Get("post_logout_redirect_uri")); known && !p.isDown() && err == nil && back.IsAbs() {
+		if registered, err := url.Parse(c.redirectURI); err == nil && back.Scheme == registered.Scheme && back.Host == registered.Host {
+			redirectTo(w, back.String())
+			return
+		}
+	}
+	p.writeJSON(w, http.StatusOK, map[string]any{"message": "Session ended"})
 }
 
 func (p *Provider) jwks(w http.ResponseWriter, _ *http.Request) {

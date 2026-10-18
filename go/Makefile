@@ -14,6 +14,9 @@
 #                    (needs sqlc v1.31.1 on PATH: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1)
 #   go-sync-shared   copy the shared statements, scripts and migrations from ../conformance and the
 #                    Java modules into the packages that embed them
+#   e2e-orders       the orders SPA's browser suite (ui/apps/orders/e2e) against the Go orders-demo: builds the
+#                    SPA, the launcher binary into bin/, and runs Playwright through the kit (Chromium; needs
+#                    the ui workspace installed). Ports 4392 and 4393, so not while the Java suite runs.
 #   tools            build golangci-lint and NilAway (pinned in tools/go.mod) into bin/
 #   fc-modfile       with FCSDK=<path> set, write flowcatalyst/go.local.work and go.local.mod (not committed):
 #                    a replace of the fcsdk module by that checkout, to develop against unreleased fcsdk
@@ -36,7 +39,7 @@ FC = cd flowcatalyst && if [ -f go.local.work ]; then export GOWORK=$(CURDIR)/fl
 LINT := $(CURDIR)/bin/golangci-lint
 NILAWAY := $(CURDIR)/bin/nilaway
 
-.PHONY: go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools
+.PHONY: e2e-orders go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools
 
 go-check: fc-modfile fmt-check lint vet nilaway test sql-check
 
@@ -85,3 +88,8 @@ sql-check:
 
 go-sync-shared:
 	@sh internal/conformance/sync-shared.sh
+
+e2e-orders:
+	cd ../ui/apps/orders && npx --no-install vite build
+	$(GO) build -o bin/orders-demo ./examples/orders-demo
+	cd ../ui/apps/orders && ORDERS_E2E_BINARY=$(CURDIR)/bin/orders-demo node node_modules/@flowcatalyst/ui/src/e2e/cli.ts playwright test --config ../../../go/examples/orders-demo/e2e/playwright.config.ts

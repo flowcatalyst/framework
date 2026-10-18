@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -127,6 +128,30 @@ func TestTheE2eLauncherDrivesSignInThroughTheControlEndpoints(t *testing.T) {
 	}
 	if status, _ := do("POST", app+"/api/orders", "Content-Type", "application/json", "Sec-Fetch-Site", "same-origin"); status != 403 {
 		t.Fatalf("a viewer may not place orders: %d", status)
+	}
+	// sign out: the answer names the platform's end-session URL on the provider's origin, which sends the
+	// browser on to the application's signed-out page.
+	status, body := do("POST", app+"/auth/logout", "Sec-Fetch-Site", "same-origin")
+	if status != 200 {
+		t.Fatalf("logout: %d %s", status, body)
+	}
+	var ended struct {
+		EndSessionURL string `json:"endSessionUrl"`
+	}
+	if err := json.Unmarshal([]byte(body), &ended); err != nil || ended.EndSessionURL == "" {
+		t.Fatalf("logout names no end-session URL: %s (%v)", body, err)
+	}
+	endReq, err := http.NewRequestWithContext(t.Context(), "GET", ended.EndSessionURL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	endRes, err := (&http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}).Do(endReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = endRes.Body.Close()
+	if endRes.StatusCode != 302 || endRes.Header.Get("Location") != app+"/signed-out" {
+		t.Fatalf("end-session: %d -> %q", endRes.StatusCode, endRes.Header.Get("Location"))
 	}
 	// authorize-error sends the browser to the application's page for it.
 	do("POST", ctl+"/control/end-sessions")

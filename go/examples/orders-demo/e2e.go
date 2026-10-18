@@ -99,7 +99,6 @@ func runE2e(ctx context.Context, args []string, out io.Writer) error {
 	provider := authtest.Start(fw.SystemClock())
 	defer provider.Close()
 	provider.Client(e2eClientID, "", origin+"/auth/callback")
-	provider.DiscoveryChanges(map[string]any{"end_session_endpoint": origin + "/signed-out"})
 	provider.SignInAs(e2ePerson("orders-demo:clerk", "Ada Lovelace", "", ""))
 
 	pgURL, stopPG, err := pgembed.Start(ctx)
