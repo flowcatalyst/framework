@@ -1,0 +1,1730 @@
+{
+  "description" : "POST {prefix}/dispatch (flowcatalyst contract section 4 and 4a slice 4). Setup common to every case: application 'orders', signing secret 'whsec-test-only', require-signature true, clock 2026-10-09T12:00:00Z, dispatch timeout 200 ms, the service principal available. handlers: the registrations in order (pattern; kind = ack | defer (arg = delay in ms) | deferDefault (Defer with no delay) | reject (arg = reason) | throw (arg = message) | throwChecked | hang (blocks until interrupted) | null (returns null)). ready false = the receivers are answering before start-up finished. headers is an ordered list of [name, value]. expect: status; outcome = the FlowCatalyst-Outcome header or null; body = the response body as parsed JSON (messageJava on a 400 is Java's wording and is not compared: status and error are); handler = the pattern of the registration that ran, or null; delivery = what that handler was handed (null when none ran): jobId, eventType, attemptNumber (null when data-only), dataOnly, source, subject, messageGroup, data (parsed JSON or null), client {id, code} or null, rawBody; contextClient = the client code in the handler's Context ('_platform' when the job is platform scoped). Only a 400 body's error and the status are compared for malformed input; 401 bodies are in signature.json.",
+  "howToRun" : "Per case: start the receiver with the setup above, register the handlers (each kind behaves as described), POST the headers and body, and compare status, outcome, body, handler, delivery and contextClient. Regenerate from Java with -Dconformance.update=true (DispatchVectorConformanceTest).",
+  "dispatchTimeoutMs" : 200,
+  "cases" : [ {
+    "name" : "ack",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "defer 1500 ms rounds up to 2 s",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "defer",
+      "arg" : "1500"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : false,
+        "delaySeconds" : 2
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "defer 30 s",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "defer",
+      "arg" : "30000"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : false,
+        "delaySeconds" : 30
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "defer with the default delay",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "deferDefault"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : false,
+        "delaySeconds" : 30
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "defer zero",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "defer",
+      "arg" : "0"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : false,
+        "delaySeconds" : 0
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "reject",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "reject",
+      "arg" : "invoice 42 was deleted"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "invoice 42 was deleted"
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "reject reason is cleaned and cut",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "reject",
+      "arg" : "bad\r\nInjected: yes xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "bad  Injected: yes xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "handler throws",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "throw",
+      "arg" : "db password=hunter2 at Orders.java:42"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 503,
+      "outcome" : null,
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "the handler failed"
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "handler throws a checked exception",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "throwChecked",
+      "arg" : "disk"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 503,
+      "outcome" : null,
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "the handler failed"
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "handler exceeds the dispatch timeout",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "hang"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 503,
+      "outcome" : null,
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "the handler did not finish in time"
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "handler returns null",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "null"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 503,
+      "outcome" : null,
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "the handler failed"
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "no handler for the type",
+    "handlers" : [ {
+      "pattern" : "orders:shipping:*",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "no handler for orders:billing:invoice:created"
+      },
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "no handlers at all: 404 before any signature work",
+    "handlers" : [ ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 404,
+      "outcome" : null,
+      "body" : {
+        "error" : "NOT_FOUND",
+        "message" : "no route for this path"
+      },
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "not ready: 503",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : false,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 503,
+      "outcome" : null,
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "the receivers are not ready"
+      },
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "most specific pattern for orders:billing:invoice:created",
+    "handlers" : [ {
+      "pattern" : "*",
+      "kind" : "reject",
+      "arg" : "star"
+    }, {
+      "pattern" : "orders:*",
+      "kind" : "reject",
+      "arg" : "orders"
+    }, {
+      "pattern" : "orders:billing:*",
+      "kind" : "reject",
+      "arg" : "billing"
+    }, {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "reject",
+      "arg" : "exact"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "057004ef85c28fbea154a141e889bff0ce6065a664e792e75ff6863c288e353b" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "exact"
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 1,
+        "dataOnly" : false,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "most specific pattern for orders:billing:invoice:paid",
+    "handlers" : [ {
+      "pattern" : "*",
+      "kind" : "reject",
+      "arg" : "star"
+    }, {
+      "pattern" : "orders:*",
+      "kind" : "reject",
+      "arg" : "orders"
+    }, {
+      "pattern" : "orders:billing:*",
+      "kind" : "reject",
+      "arg" : "billing"
+    }, {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "reject",
+      "arg" : "exact"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:paid" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "cc2ae382b9ce3c1aad1071e87a7a6cf3ece833a01f6c8916a60ee7b1eefd1810" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:paid\",\"attemptNumber\":1}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "billing"
+      },
+      "handler" : "orders:billing:*",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:paid",
+        "attemptNumber" : 1,
+        "dataOnly" : false,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:paid\",\"attemptNumber\":1}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "most specific pattern for orders:shipping:parcel:sent",
+    "handlers" : [ {
+      "pattern" : "*",
+      "kind" : "reject",
+      "arg" : "star"
+    }, {
+      "pattern" : "orders:*",
+      "kind" : "reject",
+      "arg" : "orders"
+    }, {
+      "pattern" : "orders:billing:*",
+      "kind" : "reject",
+      "arg" : "billing"
+    }, {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "reject",
+      "arg" : "exact"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:shipping:parcel:sent" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "06ed4eb9b993bf6ceda9fed2de661067e0ca7834590a8c959e282879c54e6ad8" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:shipping:parcel:sent\",\"attemptNumber\":1}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "orders"
+      },
+      "handler" : "orders:*",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:shipping:parcel:sent",
+        "attemptNumber" : 1,
+        "dataOnly" : false,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:shipping:parcel:sent\",\"attemptNumber\":1}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "most specific pattern for ordersx:billing:invoice:paid",
+    "handlers" : [ {
+      "pattern" : "*",
+      "kind" : "reject",
+      "arg" : "star"
+    }, {
+      "pattern" : "orders:*",
+      "kind" : "reject",
+      "arg" : "orders"
+    }, {
+      "pattern" : "orders:billing:*",
+      "kind" : "reject",
+      "arg" : "billing"
+    }, {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "reject",
+      "arg" : "exact"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "ordersx:billing:invoice:paid" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "b1feb61cdd053fb4b2c1f7bc86e76cc8b7255d254e68113b0634e667fe96ac0f" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"ordersx:billing:invoice:paid\",\"attemptNumber\":1}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "star"
+      },
+      "handler" : "*",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "ordersx:billing:invoice:paid",
+        "attemptNumber" : 1,
+        "dataOnly" : false,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"ordersx:billing:invoice:paid\",\"attemptNumber\":1}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "most specific pattern for orders",
+    "handlers" : [ {
+      "pattern" : "*",
+      "kind" : "reject",
+      "arg" : "star"
+    }, {
+      "pattern" : "orders:*",
+      "kind" : "reject",
+      "arg" : "orders"
+    }, {
+      "pattern" : "orders:billing:*",
+      "kind" : "reject",
+      "arg" : "billing"
+    }, {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "reject",
+      "arg" : "exact"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "f901a25aeaa82905b788fbca6c8f1af436317f57f9ea4b190ec486cb74b7174e" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders\",\"attemptNumber\":1}",
+    "expect" : {
+      "status" : 422,
+      "outcome" : "reject",
+      "body" : {
+        "error" : "REJECTED",
+        "message" : "star"
+      },
+      "handler" : "*",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders",
+        "attemptNumber" : 1,
+        "dataOnly" : false,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders\",\"attemptNumber\":1}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "envelope with every optional field",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "minimal envelope",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "057004ef85c28fbea154a141e889bff0ce6065a664e792e75ff6863c288e353b" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 1,
+        "dataOnly" : false,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "envelope with explicit nulls for the optional strings",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "a4cf67b1c97d9c92543c38377706bfd84c2ba15e49266f757d16251c2398f658" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"source\":null,\"subject\":null,\"data\":null}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 1,
+        "dataOnly" : false,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"source\":null,\"subject\":null,\"data\":null}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "data-only body is the raw payload",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "61fff1b1a64414bde0d738679edd3aab5200fcc34e71253afa8317c70d6ce40b" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"invoiceId\":\"42\"}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : null,
+        "dataOnly" : true,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : {
+          "invoiceId" : "42"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"invoiceId\":\"42\"}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "data-only body that is not JSON",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "2bd941c32e1be7193d6162abc7fca8c3f2a411830f86b7bf947a7efcf45641be" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "plain text, not json",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : null,
+        "dataOnly" : true,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "plain text, not json"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "data-only empty body",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "be79a28c8c385462115d243721a3471229ce2fd2f55eee88c90c8ffb83dea7be" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : null,
+        "dataOnly" : true,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : null,
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : ""
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "data-only: an envelope-shaped body whose id differs from the header",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "55e552289d2b9378d0d6ea22447d9836f0a0794a98fca6049dc54ed71fde31e7" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_OTHER\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : null,
+        "dataOnly" : true,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : {
+          "id" : "dj_OTHER",
+          "type" : "orders:billing:invoice:created",
+          "attemptNumber" : 2,
+          "source" : "orders:billing",
+          "subject" : "billing.invoice.42",
+          "correlationId" : "corr-1",
+          "messageGroup" : "billing:invoice:42",
+          "clientId" : "clt_1",
+          "clientCode" : "acme",
+          "data" : {
+            "invoiceId" : "42",
+            "amount" : "10.00"
+          }
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_OTHER\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "data-only: a JSON array",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "c121f972063713f08b5bc7c7513efdb0c413312cb466ef35a2684fe10716a308" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "[1,2,3]",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : null,
+        "dataOnly" : true,
+        "source" : null,
+        "subject" : null,
+        "messageGroup" : null,
+        "data" : [ 1, 2, 3 ],
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "[1,2,3]"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "correlation id with a space is replaced",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "a70e2d27629be7bc34f28b98ad03f97adcb30a7f8f576ba9093a2c527a7427ac" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr 1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr 1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "malformed envelope: }",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "f9dfb67c0251bccc950c617011bab5f8462a4e053d61a478253bf34bd9e43a9c" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\"}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: attemptNumber must be a positive integer",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":\"2\"}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "801719789ce5cea8913579e93342063172580581a465ed7ed8c05aa9b4153274" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":\"2\"}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: attemptNumber must be a positive integer",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":0}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "9860799aaaa085891aed9f1d3b1b6b9f9e549a2b906c5b1b3c624d3c805c5e47" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":0}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: attemptNumber must be a positive integer",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":-1}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "85f135b970537f4005110355c832514da9a0b85443a42e6eedd577163ee9e748" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":-1}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: attemptNumber must be a positive integer",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":1.5}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "1f547c0a1201c5f24a300bfb44fbb743c35bd8ca6509429b962f0618cdd454c3" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1.5}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: attemptNumber must be a positive integer",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":1,\"subject\":7}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "9b9bd886a6f1ece2a2ab96a8f6c61dd375467ffbcb6df433d8d8bcd9f2f37c3b" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"subject\":7}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: subject must be a string",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":1,\"source\":true}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "75f0c34cf5f5a77f1dac79a59a18b6c5e9c4f38c5aece8d5339eb69bc2a8abb9" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"source\":true}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: source must be a string",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":1,\"messageGroup\":[]}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "ff8a9d7d6559ca8e304f0372b2a4314547c29aa2271fe643d8c11d7a7318532d" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"messageGroup\":[]}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: messageGroup must be a string",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":1,\"correlationId\":{}}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "3f7a142169b6daf52c47052ffe5c38602c8c22c09672a3a42cfdc39959edb83d" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"correlationId\":{}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: correlationId must be a string",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":1,\"clientId\":1}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "e13d43381806f3d8188e1799e1ea479e15bd3118260eed93c4dc540de93e0ec9" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"clientId\":1}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: clientId must be a string",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "malformed envelope: ,\"attemptNumber\":1,\"attemptNumber\":2}",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "022d67958cbedec8fdf1469828ad8e685cfceafc010136d05a4438f750139ce1" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":1,\"attemptNumber\":2}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the dispatch envelope is malformed: it has duplicate keys",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header: clt_1:acme",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "client header: clt_1",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header: acme:",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "acme:" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header: :acme",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", ":acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header: a:b:c",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "a:b:c" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header: clt 1:acme",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt 1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header: 201 characters",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "code" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }, {
+    "name" : "client header: 103 characters",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:b" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header absent: a platform-scoped job",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : null,
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "_platform"
+    }
+  }, {
+    "name" : "client header sent twice",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Client", "clt_2:other" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "job id header missing",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-Dispatch-Job-Id and X-Event-Type headers are required and must be well formed",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "event type header missing",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-Dispatch-Job-Id and X-Event-Type headers are required and must be well formed",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "job id with a line break",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "X-Dispatch-Job-Id", "dj_1\r\n[main] ERROR forged line" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-Dispatch-Job-Id and X-Event-Type headers are required and must be well formed",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "job id over 128 characters",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "X-Dispatch-Job-Id", "jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-Dispatch-Job-Id and X-Event-Type headers are required and must be well formed",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "event type over 255 characters",
+    "handlers" : [ {
+      "pattern" : "*",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-Dispatch-Job-Id and X-Event-Type headers are required and must be well formed",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "job id header sent twice",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the X-Dispatch-Job-Id and X-Event-Type headers are required and must be well formed",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "content type text/plain is still accepted",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "text/plain" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : {
+          "id" : "clt_1",
+          "code" : "acme"
+        },
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "acme"
+    }
+  }, {
+    "name" : "no content type is still accepted",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 200,
+      "outcome" : null,
+      "body" : {
+        "ack" : true
+      },
+      "handler" : "orders:billing:invoice:created",
+      "delivery" : {
+        "jobId" : "dj_0HZXEQ5Y8JY5Z",
+        "eventType" : "orders:billing:invoice:created",
+        "attemptNumber" : 2,
+        "dataOnly" : false,
+        "source" : "orders:billing",
+        "subject" : "billing.invoice.42",
+        "messageGroup" : "billing:invoice:42",
+        "data" : {
+          "invoiceId" : "42",
+          "amount" : "10.00"
+        },
+        "client" : null,
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+      },
+      "contextClient" : "_platform"
+    }
+  }, {
+    "name" : "bad signature: 401 and the handler never runs",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ], [ "X-FlowCatalyst-Signature", "734f44ec8773be8c9dccac8d1823708c53f4e6aa80c161691b1914499dc0fe37" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 401,
+      "outcome" : null,
+      "body" : {
+        "error" : "UNAUTHENTICATED",
+        "message" : "the delivery could not be authenticated",
+        "details" : {
+          "reason" : "INVALID_SIGNATURE"
+        }
+      },
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "unsigned: 401",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:acme" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 401,
+      "outcome" : null,
+      "body" : {
+        "error" : "UNAUTHENTICATED",
+        "message" : "the delivery could not be authenticated",
+        "details" : {
+          "reason" : "MISSING_SIGNATURE"
+        }
+      },
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  } ]
+}
