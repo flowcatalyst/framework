@@ -60,6 +60,7 @@
     - { title: "Go: HTTP and the SPA", path: guide/go/http.md }
     - { title: "Go: typed operations and OpenAPI", path: guide/go/openapi.md }
     - { title: "Go: rate limiting", path: guide/go/rate-limiting.md }
+    - { title: "Go: per-client settings", path: guide/go/client-settings.md }
     - { title: "Go: HTTP client", path: guide/go/http-client.md }
     - { title: "Go: secrets", path: guide/go/secrets.md }
     - { title: "Go: the FlowCatalyst module", path: guide/go/flowcatalyst.md }

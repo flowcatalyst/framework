@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/flowcatalyst/framework/go/clientsettings"
 	"github.com/flowcatalyst/framework/go/database"
 	"github.com/flowcatalyst/framework/go/examples/orders-demo/orders"
 	"github.com/flowcatalyst/framework/go/fw"
@@ -30,9 +31,10 @@ type historyRow struct {
 // migrationSets maps each migration vector to the Go set it describes.
 func migrationSets() map[string]fw.MigrationSet {
 	return map[string]fw.MigrationSet{
-		"migrations/locks-database.json": {Module: dblock.ModuleID, Files: dblock.Migrations()},
-		"migrations/outbox.json":         {Module: usecase.OutboxModuleID, Files: usecase.OutboxMigrations()},
-		"migrations/orders.json":         {Module: orders.ModuleID, Files: orders.Migrations()},
+		"migrations/locks-database.json":  {Module: dblock.ModuleID, Files: dblock.Migrations()},
+		"migrations/outbox.json":          {Module: usecase.OutboxModuleID, Files: usecase.OutboxMigrations()},
+		"migrations/orders.json":          {Module: orders.ModuleID, Files: orders.Migrations()},
+		"migrations/client-settings.json": {Module: clientsettings.ModuleID, Files: clientsettings.Migrations()},
 	}
 }
 
