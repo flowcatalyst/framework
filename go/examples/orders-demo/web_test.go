@@ -2,61 +2,96 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json/v2"
 	"fmt"
 	"io"
 	"maps"
+	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/flowcatalyst/framework/go/auth"
+	"github.com/flowcatalyst/framework/go/auth/authtest"
+	"github.com/flowcatalyst/framework/go/database"
 	"github.com/flowcatalyst/framework/go/examples/orders-demo/web"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/fwtest"
-	"github.com/flowcatalyst/framework/go/httpfw"
 )
 
-const demoToken = "demo-token-for-tests"
-
 type site struct {
-	base string
-	run  *fw.Running
+	base     string
+	run      *fw.Running
+	mod      *auth.Module
+	provider *authtest.Provider
 }
 
+// startWeb starts `orders-demo serve` on the embedded build with the database session store and a
+// test identity provider; extra overrides the environment. The public base URL is a port reserved
+// beforehand so the real sign-in round trip can be driven.
 func startWeb(t *testing.T, extra map[string]string) *site {
 	t.Helper()
+	port := reservePort(t)
+	origin := fmt.Sprintf("http://127.0.0.1:%d", port)
+	provider := authtest.Start(fw.SystemClock())
+	t.Cleanup(provider.Close)
+	provider.Client("orders-web", "", origin+"/auth/callback")
 	env := map[string]string{
 		"APP_ENV":                          "test",
 		"DATABASE_INSTANCES_MAIN_URL":      fwtest.NewDatabase(t).URL,
 		"DATABASE_INSTANCES_MAIN_USERNAME": "postgres",
 		"DATABASE_INSTANCES_MAIN_PASSWORD": "postgres",
 		"HTTP_HOST":                        "127.0.0.1",
-		"HTTP_PORT":                        "0",
-		"ORDERS_DEMO_TOKEN":                demoToken,
+		"HTTP_PORT":                        fmt.Sprint(port),
+		"AUTH_ISSUER":                      provider.Issuer(),
+		"AUTH_CLIENT_ID":                   "orders-web",
+		"AUTH_PUBLIC_BASE_URL":             origin,
 	}
 	maps.Copy(env, extra)
 	app := newApp(fw.WithEnvironment(env), fw.WithConfigDir("config"), fw.WithOutput(io.Discard, io.Discard))
 	d := declare(app)
-	var srv *httpfw.Server
-	inner := buildWeb(d, deps{})
-	run, err := app.Start(t.Context(), func(ctx context.Context, b *fw.Boot) (fw.Serve, error) {
-		s, err := inner(ctx, b)
-		if hs, ok := s.(*httpfw.Server); ok {
-			srv = hs
-		}
-		return s, err
-	})
+	s := &site{base: origin, provider: provider}
+	run, err := app.Start(t.Context(), buildWeb(d, deps{served: func(m *auth.Module, _ *database.DB) { s.mod = m }}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if srv == nil {
+	if s.mod == nil {
 		t.Fatal("no server was built")
 	}
+	s.run = run
 	t.Cleanup(func() { _ = run.Shutdown() })
-	return &site{base: fmt.Sprintf("http://127.0.0.1:%d", srv.Port()), run: run}
+	return s
+}
+
+func reservePort(t *testing.T) int {
+	t.Helper()
+	l, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = l.Close() }()
+	addr, ok := l.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatal("not a TCP address")
+	}
+	return addr.Port
+}
+
+// cookie signs a user of the demo's client in through the real store.
+func (s *site) cookie(t *testing.T, roles ...string) string {
+	t.Helper()
+	testing, err := s.mod.Testing()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := testing.Cookie(t.Context(), auth.ClientUser("prn_ada", "clt_demo", "demo", roles...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
 }
 
 type answer struct {
@@ -87,9 +122,15 @@ func (s *site) call(t *testing.T, method, path, body string, headers ...string) 
 	return answer{res.StatusCode, res.Header, string(b)}
 }
 
+// api calls as a signed-in clerk, the way the page does (cookie, same-origin).
 func (s *site) api(t *testing.T, method, path, body string) answer {
 	t.Helper()
-	h := []string{"Authorization", "Bearer " + demoToken}
+	return s.apiAs(t, s.cookie(t, "orders-demo:clerk"), method, path, body)
+}
+
+func (s *site) apiAs(t *testing.T, cookie, method, path, body string) answer {
+	t.Helper()
+	h := []string{"Cookie", cookie, "Sec-Fetch-Site", "same-origin"}
 	if body != "" {
 		h = append(h, "Content-Type", "application/json")
 	}
@@ -122,8 +163,8 @@ func TestTheOrdersAPIEndToEnd(t *testing.T) {
 	t.Parallel()
 	s := startWeb(t, nil)
 
-	if a := s.call(t, "GET", "/api/orders", ""); a.status != 401 || a.body != `{"error":"UNAUTHENTICATED","message":"a bearer token is required"}` {
-		t.Errorf("without a token: %d %s", a.status, a.body)
+	if a := s.call(t, "GET", "/api/orders", ""); a.status != 401 || !strings.Contains(a.body, `"UNAUTHENTICATED"`) {
+		t.Errorf("without a session: %d %s", a.status, a.body)
 	}
 	if a := s.call(t, "GET", "/api/orders", "", "Authorization", "Bearer nope"); a.status != 401 {
 		t.Errorf("a wrong token: %d", a.status)
@@ -212,17 +253,6 @@ func TestTheOrdersAPIEndToEnd(t *testing.T) {
 	}
 }
 
-func TestSessionEndpointsAnswer501UntilTheyAreBuilt(t *testing.T) {
-	t.Parallel()
-	s := startWeb(t, nil)
-	for _, c := range []struct{ method, path string }{{"GET", "/auth/session"}, {"POST", "/auth/logout"}} {
-		a := s.call(t, c.method, c.path, "")
-		if a.status != 501 || !strings.Contains(a.body, `"NOT_IMPLEMENTED"`) {
-			t.Errorf("%s %s: %d %s", c.method, c.path, a.status, a.body)
-		}
-	}
-}
-
 func TestTheSPAIsTheFallbackAndAPIPathsStayJSON(t *testing.T) {
 	t.Parallel()
 	s := startWeb(t, nil)
@@ -279,7 +309,7 @@ func TestTheCommittedOpenAPIDocumentIsCurrent(t *testing.T) {
 	}
 }
 
-func TestServingNeedsTheDemoToken(t *testing.T) {
+func TestServingNeedsTheAuthSettings(t *testing.T) {
 	t.Parallel()
 	env := map[string]string{
 		"APP_ENV": "test", "DATABASE_INSTANCES_MAIN_URL": fwtest.NewDatabase(t).URL,
@@ -288,9 +318,97 @@ func TestServingNeedsTheDemoToken(t *testing.T) {
 	}
 	app := newApp(fw.WithEnvironment(env), fw.WithConfigDir("config"), fw.WithOutput(io.Discard, io.Discard))
 	_, err := app.Start(t.Context(), buildWeb(declare(app), deps{}))
-	if err == nil || !strings.Contains(err.Error(), "orders.demo-token is required") {
+	if err == nil || !strings.Contains(err.Error(), "auth.issuer") {
 		t.Fatalf("got %v", err)
 	}
 }
 
 func fs_ReadFile(name string) ([]byte, error) { return os.ReadFile(filepath.Join("web", name)) }
+
+func TestTheRolesDecideWhatAnOrdersCallMayDo(t *testing.T) {
+	t.Parallel()
+	s := startWeb(t, nil)
+	viewer := s.cookie(t, "orders-demo:viewer")
+	if a := s.apiAs(t, viewer, "GET", "/api/orders", ""); a.status != 200 {
+		t.Errorf("a viewer reads: %d %s", a.status, a.body)
+	}
+	if a := s.apiAs(t, viewer, "POST", "/api/orders", `{"customer":"X"}`); a.status != 403 || !strings.Contains(a.body, `"FORBIDDEN"`) {
+		t.Errorf("a viewer writes: %d %s", a.status, a.body)
+	}
+	none := s.cookie(t)
+	if a := s.apiAs(t, none, "GET", "/api/orders", ""); a.status != 403 {
+		t.Errorf("no role: %d %s", a.status, a.body)
+	}
+}
+
+func TestACookieWriteNeedsASameOriginRequest(t *testing.T) {
+	t.Parallel()
+	s := startWeb(t, nil)
+	cookie := s.cookie(t, "orders-demo:clerk")
+	if a := s.call(t, "POST", "/api/orders", `{"customer":"X"}`, "Cookie", cookie, "Content-Type", "application/json"); a.status != 403 {
+		t.Errorf("no Sec-Fetch-Site or Origin on an unsafe method: %d %s", a.status, a.body)
+	}
+	if a := s.call(t, "POST", "/api/orders", `{"customer":"X"}`, "Cookie", cookie, "Content-Type", "application/json", "Sec-Fetch-Site", "cross-site"); a.status != 403 {
+		t.Errorf("cross-site: %d %s", a.status, a.body)
+	}
+}
+
+// The real round trip: /auth/login -> the test provider -> /auth/callback -> a session cookie that the
+// orders API accepts -> sign out. The tests above sign in through auth.Testing; this drives the endpoints.
+func TestSigningInAndOutThroughTheProvider(t *testing.T) {
+	t.Parallel()
+	s := startWeb(t, nil)
+	s.provider.SignInAs(map[string]any{
+		"sub": "prn_ada", "type": "USER", "tier": "CLIENT", "clients": []string{"clt_demo:demo"},
+		"name": "Ada Lovelace", "email": "ada@example.test", "roles": []string{"orders-demo:clerk"},
+	})
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Jar: jar}
+	get := func(path string) answer {
+		t.Helper()
+		req, err := http.NewRequestWithContext(t.Context(), "GET", s.base+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		return answer{res.StatusCode, res.Header, string(b)}
+	}
+	// An anonymous navigation to a protected API path is sent to sign-in and, after it, comes back.
+	if a := get("/auth/session"); a.status != 200 || !strings.Contains(a.body, `"authenticated":false`) {
+		t.Fatalf("anonymous session: %d %s", a.status, a.body)
+	}
+	a := get("/auth/login?returnTo=%2Forders")
+	if a.status != 200 {
+		t.Fatalf("login round trip ended at %d %s", a.status, a.body)
+	}
+	if a := get("/auth/session"); !strings.Contains(a.body, `"authenticated":true`) || !strings.Contains(a.body, "Ada Lovelace") {
+		t.Fatalf("signed in session: %d %s", a.status, a.body)
+	}
+	if a := get("/api/orders"); a.status != 200 {
+		t.Fatalf("the orders API after sign-in: %d %s", a.status, a.body)
+	}
+	req, err := http.NewRequestWithContext(t.Context(), "POST", s.base+"/auth/logout", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = res.Body.Close()
+	if res.StatusCode != 200 {
+		t.Fatalf("logout: %d", res.StatusCode)
+	}
+	if a := get("/api/orders"); a.status != 401 {
+		t.Errorf("after logout: %d %s", a.status, a.body)
+	}
+}

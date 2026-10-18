@@ -3,9 +3,10 @@
 //
 //	orders-demo            places an order, adds two lines, cancels it, tries to add a line after
 //	                       the cancel, and prints the summaries (the Java OrdersDemo)
-//	orders-demo serve      serves the orders API, its OpenAPI-described session endpoints and the
-//	                       embedded single-page application (the Java OrdersWeb); needs
-//	                       ORDERS_DEMO_TOKEN
+//	orders-demo serve      serves the orders API behind sessions and login (the database session
+//	                       store; needs AUTH_ISSUER, AUTH_CLIENT_ID and AUTH_PUBLIC_BASE_URL) and the
+//	                       embedded single-page application (the Java OrdersWeb)
+//	orders-demo e2e        the browser end-to-end launcher (e2e.go): <app-port> <control-port> [--dist dir]
 //	orders-demo openapi    writes the OpenAPI document (--out web/openapi.json), with no
 //	                       configuration or database
 //
@@ -15,13 +16,24 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
 	app := newApp()
-	d := declare(app)
-	if len(os.Args) > 1 && os.Args[1] == "serve" {
-		os.Exit(app.Launch(context.Background(), nil, buildWeb(d, deps{})))
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "serve":
+			os.Exit(app.Launch(context.Background(), nil, buildWeb(declare(app), deps{})))
+		case "openapi":
+			os.Exit(app.Launch(context.Background(), os.Args[1:], buildWeb(declare(app), deps{})))
+		case "e2e":
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			code := e2eMain(ctx, os.Args[2:])
+			stop()
+			os.Exit(code)
+		}
 	}
-	os.Exit(app.Launch(context.Background(), os.Args[1:], build(d, deps{out: os.Stdout})))
+	os.Exit(app.Launch(context.Background(), os.Args[1:], build(declareScenario(app), deps{out: os.Stdout})))
 }

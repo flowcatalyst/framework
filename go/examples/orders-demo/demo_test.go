@@ -42,7 +42,7 @@ func start(t *testing.T, url string, client fw.ClientID) *started {
 		"DATABASE_INSTANCES_MAIN_PASSWORD": "postgres",
 	}
 	app := newApp(fw.WithEnvironment(env), fw.WithConfigDir("config"), fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
-	d := declare(app)
+	d := declareScenario(app)
 	r, err := app.Start(t.Context(), build(d, deps{out: s.out, client: client, built: func(b *fw.Boot, r *usecase.Runner, db *database.DB) {
 		s.boot, s.runner, s.db = b, r, db
 	}}))
