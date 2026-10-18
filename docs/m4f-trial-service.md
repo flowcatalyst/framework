@@ -92,7 +92,7 @@ repository; everything else is for the owner.
 
 | # | What I tried | What the framework made hard | Sev | Suggested fix | State |
 |---|---|---|---|---|---|
-| F1 | A rule that depends on the loaded record in `authorize` ("a requester may comment only on a ticket they opened"). The guide calls `authorize` the "resource-level access check" | `Check<C>` sees the `Context` and the command only; the record is loaded in `execute`. The rule has to live in `execute` as a `Decision.reject(authorization(...))`, away from the other access checks. The guide's wording suggests otherwise | medium | Guide: say that `authorize` is permission-level and that record-level rules go in `execute`; or add a second, post-load check phase | open |
+| F1 | A rule that depends on the loaded record in `authorize` ("a requester may comment only on a ticket they opened"). The guide calls `authorize` the "resource-level access check" | `Check<C>` sees the `Context` and the command only; the record is loaded in `execute`. The rule has to live in `execute` as a `Decision.reject(authorization(...))`, away from the other access checks. The guide's wording suggests otherwise | medium | Guide: say that `authorize` is permission-level and that record-level rules go in `execute`; or add a second, post-load check phase | **fixed** 2026-10-18 (`load` + `authorizeLoaded`, write-path contract 3a; tickets `add-comment` uses it) |
 | F2 | `execute` needs the acting principal as a non-null string | `authorize` guarantees a signed-in principal, but NullAway cannot know; every use case re-checks `context.principal() == null` and throws | low | A `Context.requirePrincipal()` that throws `IllegalStateException`, or an `Authorize.signedIn()` that returns a typed `Context` | open |
 | F3 | A client-scoped use case being run by the SLA sweep, which receives a `_platform` context for a job | `Context` has no `withClient(...)`; `SlaSweep.forClient` calls the eight-argument canonical constructor to act for a ticket's client. Easy to get wrong (a mutation that passed the job's own context made the sweep test fail, as it should) | low | `Context.forClient(ClientId)` that keeps principal, kind, correlation, causation and execution ids | open |
 | F4 | `-- param: now java.time.Instant` in checked SQL to type a timestamp parameter | A type given with `param:` is treated as a typed-value record: the generated code calls `now.value()`, so the project does not compile and the message is a `javac` error in generated code, not a message from the generator | low | The generator should refuse a typed-value type it can tell is not a record with a `value` component, or document "do not name JDK types here" | open |
@@ -171,7 +171,7 @@ without `SCREENSHOTS=1`), `gallery:e2e` 112 passed (4 skipped). `docs/guide/veri
    document? It decides whether `Context.forClient` (F3) is a framework method.
 3. **Per-client settings (F6).** M5 is not built; `SlaPolicy` is now the worked pattern (about 350 lines for four
    integers). Prioritise M5, or accept the pattern and document it?
-4. **A post-load authorization step (F1).** Resource-level rules live in `execute` today. Add a phase, or
+4. **A post-load authorization step (F1).** (Ruled 2026-10-18 and built.) Resource-level rules live in `execute` today. Add a phase, or
    change the guide's wording only?
 5. **`once` and use cases (F13).** A `UseCases.run` overload that takes the caller's transaction, or the
    idempotency-key recipe as the documented answer?

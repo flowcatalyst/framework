@@ -47,6 +47,7 @@ A use case is defined once, with:
 | validate | no | checks the command's shape without loading data; returns `Optional<UseCaseError>` |
 | authorize | **yes** | resource-level access check; returns `Optional<UseCaseError>`. `Authorize.PUBLIC` declares an operation deliberately open. A use case built without one fails when it is defined (the builder's `execute(...)` is the last call and throws `IllegalStateException`). |
 | execute | yes | loads what it needs (once), applies the rules, returns a `Decision`: `Plan` or `Rejected(UseCaseError)` |
+| load, authorizeLoaded | no (amendment 2026-10-18, friction F1) | for a use case that works on one stored record: `load(Load<C, L>, whenMissing)` finds it once per attempt, `authorizeLoaded(LoadedCheck<C, L>)` is the record-level access check, and `execute` then receives the record: `LoadedExecute<C, L, E>`. See "The load phase" below. |
 | conflict policy | no | `ConflictPolicy.fail()` (default) or `ConflictPolicy.retry(maxAttempts, backoff)` |
 
 Each phase receives the `Context` and the command. **Load once:** execute finds each aggregate
@@ -57,13 +58,47 @@ once. If it needs fresh state, the attempt has failed and runs again from the st
 `.andDelete(...)`, `.andEmit(...)` to add further aggregates and events. Every plan carries at
 least one event; the first is the use case's result. Events are written in step order.
 
+### 3a. The load phase and the record-level check (amendment 2026-10-18)
+
+`authorize` sees the command and the context only; a rule that depends on the stored record ("a
+requester may comment only on a ticket they opened") used to live inside `execute` as a rejection,
+away from the other access checks. A use case that works on one record can say so:
+
+```java
+UseCase.named("add-comment", AddComment.class, TicketCommented.class)
+    .validate(...)
+    .authorize(requires(Permissions.COMMENT))          // permission-level, no record yet
+    .load((ctx, cmd) -> tickets.find(db, ctx.client(), new TicketId(cmd.ticketId())), TICKET_NOT_FOUND)
+    .authorizeLoaded((ctx, cmd, ticket) -> ...)        // record-level, optional
+    .execute((ctx, cmd, ticket) -> ...);               // gets the record that was checked
+```
+
+Order inside one attempt: validate, authorize, **load**, **authorizeLoaded**, execute. Rules:
+
+1. `load` runs once per attempt, after `authorize`, so a caller who is refused at the permission
+   level never causes a read. A conflict re-runs the attempt from step 1, so the record is loaded
+   and checked again (the retry reads the other writer's change).
+2. `load` returns `Optional<L>`. Empty ends the run with the `whenMissing` error given to `load`
+   (conventionally `NOT_FOUND`); `authorizeLoaded` and `execute` do not run. The repository's `find`
+   already filters by client, so another client's record is missing.
+3. `authorizeLoaded` returns an error or empty, like `authorize`; its error is the result (kind
+   `AUTHORIZATION` by convention) and `execute` does not run. It is optional. The check chooses its
+   error: a rule that must not reveal that the record exists answers with `whenMissing`'s error
+   instead of an authorization error.
+4. A throwing `load` is `INTERNAL` with code `LOAD`, a throwing `authorizeLoaded` is `INTERNAL` with
+   code `AUTHORIZE`, as for the other phases: the cause is logged, never put in the message.
+5. A use case with a load phase still needs `authorize` (or `Authorize.PUBLIC`); the load phase is
+   additional, never a replacement. Defining one without fails as in section 3.
+6. The loaded value is a plain value of the application's type; the runner does not look at it. The
+   plan still has to hold aggregates of the context's client (section 4, step 3).
+
 ## 4. Running a use case
 
 `UseCases.run(useCase, context, command)` returns `UseCaseResult<E>`: `Committed(E event)` or
 `Failed(UseCaseError)`. It never throws for an expected outcome. One attempt:
 
 1. validate, then authorize; the first error is the result.
-2. execute; `Rejected` is the result.
+2. execute (with a load phase: load, then the record-level check, then execute; section 3a); `Rejected` is the result.
 3. Check every aggregate in the plan belongs to `context.client()`. A mismatch fails as
    `INTERNAL` with code `CROSS_CLIENT_WRITE` and is logged as a bug.
 4. Begin a transaction (READ COMMITTED) on the default database instance.
@@ -77,7 +112,7 @@ Outcome of a failed write:
 | stale aggregate (row count 0) | conflict: apply the policy |
 | SQLSTATE `40001` or `40P01` (serialization failure, deadlock) | conflict: apply the policy |
 | `23505` | `CONFLICT` / `UNIQUE_VIOLATION`, not retried |
-| any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`VALIDATE`, `AUTHORIZE`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
+| any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`VALIDATE`, `AUTHORIZE`, `LOAD`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
 | a plan with another client's aggregate | `INTERNAL` / `CROSS_CLIENT_WRITE` (step 3), not retried |
 | the thread is interrupted while waiting between attempts | `INTERNAL` / `INTERRUPTED`, the interrupt flag is restored |
 

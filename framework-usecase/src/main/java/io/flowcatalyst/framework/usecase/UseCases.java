@@ -203,6 +203,8 @@ public final class UseCases {
         }
         case Plan<E> decided -> plan = decided;
       }
+    } catch (PhaseException e) {
+      return failure(useCase, e.step(), e.failure());
     } catch (Exception e) {
       return failure(useCase, step, e);
     }

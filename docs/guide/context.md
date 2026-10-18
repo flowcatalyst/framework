@@ -115,7 +115,7 @@ c.hasPermission("billing:invoice:line:view"); // false: a wildcard is one segmen
 ```
 
 A wildcard in the *required* permission grants nothing, and a blank one never matches. Use it in a
-use case's `authorize` step, which sees only the `Context`.
+use case's `authorize` step, which sees only the `Context` and the command (a rule on the stored record is `authorizeLoaded`, see the write path).
 
 In a **test or a command**, build the context as above. In an **HTTP request** the context comes
 from a `ContextResolver`, a service your application provides:

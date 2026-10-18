@@ -137,6 +137,20 @@ public final class UseCase<C, E extends DomainEvent> {
     }
 
     /**
+     * Adds a load phase: the runner finds the record once per attempt, after validate and
+     * authorize, then runs the record-level check and execute with it. A missing record ends the
+     * run with {@code whenMissing} and nothing after it runs.
+     *
+     * @param <L> what is loaded
+     * @param load finds the record
+     * @param whenMissing the error when there is no such record (usually {@code NOT_FOUND})
+     * @return the builder for the phases that see the record
+     */
+    public <L> LoadedBuilder<C, L, E> load(Load<? super C, L> load, UseCaseError whenMissing) {
+      return new LoadedBuilder<>(this, load, whenMissing);
+    }
+
+    /**
      * Sets the execute phase and finishes the definition.
      *
      * @param execute the phase
@@ -152,6 +166,75 @@ public final class UseCase<C, E extends DomainEvent> {
                 + "' has no authorize step; declare one, or Authorize.PUBLIC if it is open");
       }
       return new UseCase<>(name, validate, auth, execute, conflict);
+    }
+  }
+
+  /**
+   * The phases after a load: an optional record-level check, then execute with the record.
+   *
+   * @param <C> the command type
+   * @param <L> what is loaded
+   * @param <E> the result event type
+   */
+  public static final class LoadedBuilder<C, L, E extends DomainEvent> {
+    private final Builder<C, E> parent;
+    private final Load<? super C, L> load;
+    private final UseCaseError whenMissing;
+    private @Nullable LoadedCheck<? super C, ? super L> check;
+
+    private LoadedBuilder(Builder<C, E> parent, Load<? super C, L> load, UseCaseError whenMissing) {
+      this.parent = parent;
+      this.load = load;
+      this.whenMissing = whenMissing;
+    }
+
+    /**
+     * The record-level access check, run after the load and before execute. Optional.
+     *
+     * @param check the check
+     * @return this builder
+     */
+    public LoadedBuilder<C, L, E> authorizeLoaded(LoadedCheck<? super C, ? super L> check) {
+      this.check = check;
+      return this;
+    }
+
+    /**
+     * Sets the execute phase and finishes the definition.
+     *
+     * @param execute the phase, given the loaded record
+     * @return the use case
+     * @throws IllegalStateException when no authorization was declared
+     */
+    public UseCase<C, E> execute(LoadedExecute<C, L, E> execute) {
+      Load<? super C, L> loader = load;
+      UseCaseError missing = whenMissing;
+      LoadedCheck<? super C, ? super L> recordCheck = check;
+      return parent.execute(
+          (context, command) -> {
+            Optional<L> found;
+            try {
+              found = loader.load(context, command);
+            } catch (Exception e) {
+              throw new PhaseException("LOAD", e);
+            }
+            if (found.isEmpty()) {
+              return Decision.reject(missing);
+            }
+            L loaded = found.get();
+            if (recordCheck != null) {
+              Optional<UseCaseError> denied;
+              try {
+                denied = recordCheck.check(context, command, loaded);
+              } catch (Exception e) {
+                throw new PhaseException("AUTHORIZE", e);
+              }
+              if (denied.isPresent()) {
+                return Decision.reject(denied.get());
+              }
+            }
+            return execute.execute(context, command, loaded);
+          });
     }
   }
 }

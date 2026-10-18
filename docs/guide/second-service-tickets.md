@@ -50,8 +50,9 @@ writes the document without a database; `TicketsOpenApiTest` fails when the comm
 the scheduled job all call `useCases.run(...)`; none writes SQL. So the permission is checked inside the
 use case (`requires(Permissions.WORK)` in `authorize`), and the use case the sweep runs admits only
 the application's service principal (`context.principalKind() == PrincipalKind.SERVICE`). A rule that
-needs the loaded record (a requester comments only on their own ticket) cannot be in `authorize`,
-which sees the command only: it is a `Decision.reject(...)` in `execute`.
+needs the loaded record (a requester comments only on their own ticket) is not an `authorize` rule
+(that sees the command only): it is `authorizeLoaded`, after `load` and before `execute`
+([write path](write-path.md#a-rule-that-needs-the-record-load-and-authorizeloaded)).
 
 **Comments are appended, not rewritten.** The ticket's version covers its comments, but
 `TicketRepository.update` writes only the positions that are not stored yet, so a ticket with a

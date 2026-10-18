@@ -444,6 +444,167 @@ class RunnerTest {
     }
   }
 
+  // ---- the load phase and the record-level check -------------------------------------------
+
+  /** Loads the thing; the check refuses a thing named "locked"; execute renames it. */
+  UseCase<Edit, ThingEvent> loadedEdit(
+      ConflictPolicy policy, List<String> trace, Gate afterLoad, boolean throwInLoad, boolean throwInCheck) {
+    return UseCase.named("edit-loaded-thing", Edit.class, ThingEvent.class)
+        .validate(
+            (c, cmd) -> {
+              trace.add("validate");
+              return Optional.empty();
+            })
+        .authorize(
+            (c, cmd) -> {
+              trace.add("authorize");
+              return Optional.empty();
+            })
+        .conflict(policy)
+        .load(
+            (c, cmd) -> {
+              trace.add("load");
+              if (throwInLoad) {
+                throw new SQLException("password=hunter2", "XX000");
+              }
+              return repo.find(db, c.client(), new ThingId(cmd.id()));
+            },
+            UseCaseError.notFound("THING_NOT_FOUND", "no such thing"))
+        .authorizeLoaded(
+            (c, cmd, thing) -> {
+              trace.add("authorize-loaded");
+              if (throwInCheck) {
+                throw new IllegalStateException("password=hunter2");
+              }
+              return thing.name().equals("locked")
+                  ? Optional.of(UseCaseError.authorization("LOCKED", "that thing is locked"))
+                  : Optional.empty();
+            })
+        .execute(
+            (c, cmd, thing) -> {
+              trace.add("execute");
+              runs.incrementAndGet();
+              afterLoad.reached();
+              Thing renamed = thing.withName(cmd.name());
+              return Plan.save(renamed, repo, eventFor(c, THING_CHANGED, renamed));
+            });
+  }
+
+  @Test
+  void theRecordLevelCheckRunsAfterTheLoadAndBeforeExecuteAndExecuteGetsTheLoadedRecord() {
+    seed("t1", "bolt", "B-1");
+    List<String> trace = new ArrayList<>();
+
+    committed(
+        useCases.run(
+            loadedEdit(ConflictPolicy.fail(), trace, Gate.NONE, false, false),
+            ctx(acme),
+            new Edit("t1", "washer", null)));
+
+    assertThat(trace).containsExactly("validate", "authorize", "load", "authorize-loaded", "execute");
+    assertThat(row("t1")).isEqualTo("2:washer:B-1");
+  }
+
+  @Test
+  void aRecordLevelDenialIsTheResultAndExecuteNeverRunsAndNothingIsWritten() {
+    seed("t1", "locked", "B-1");
+    List<String> trace = new ArrayList<>();
+
+    UseCaseError error =
+        error(
+            useCases.run(
+                loadedEdit(ConflictPolicy.fail(), trace, Gate.NONE, false, false),
+                ctx(acme),
+                new Edit("t1", "washer", null)));
+
+    assertThat(error.kind()).isEqualTo(ErrorKind.AUTHORIZATION);
+    assertThat(error.code()).isEqualTo("LOCKED");
+    assertThat(trace).containsExactly("validate", "authorize", "load", "authorize-loaded");
+    assertThat(runs).hasValue(0);
+    assertThat(row("t1")).isEqualTo("1:locked:B-1");
+    assertThat(sink.events).isEmpty();
+    assertThat(sink.audits).isEmpty();
+  }
+
+  @Test
+  void aMissingRecordIsTheDeclaredErrorAndNeitherTheCheckNorExecuteRun() {
+    List<String> trace = new ArrayList<>();
+
+    UseCaseError error =
+        error(
+            useCases.run(
+                loadedEdit(ConflictPolicy.fail(), trace, Gate.NONE, false, false),
+                ctx(acme),
+                new Edit("missing", "washer", null)));
+
+    assertThat(error.kind()).isEqualTo(ErrorKind.NOT_FOUND);
+    assertThat(error.code()).isEqualTo("THING_NOT_FOUND");
+    assertThat(trace).containsExactly("validate", "authorize", "load");
+  }
+
+  @Test
+  void theLoadIsScopedToTheClientSoAnotherClientsRecordIsMissing() {
+    seed("t1", "bolt", "B-1");
+    List<String> trace = new ArrayList<>();
+
+    UseCaseError error =
+        error(
+            useCases.run(
+                loadedEdit(ConflictPolicy.fail(), trace, Gate.NONE, false, false),
+                ctx(other),
+                new Edit("t1", "washer", null)));
+
+    assertThat(error.code()).isEqualTo("THING_NOT_FOUND");
+    assertThat(row("t1")).isEqualTo("1:bolt:B-1");
+  }
+
+  @Test
+  void aThrowingLoadIsInternalLoadAndAThrowingRecordCheckIsInternalAuthorizeAndNeitherLeaksTheCause() {
+    seed("t1", "bolt", "B-1");
+
+    UseCaseError load =
+        error(
+            useCases.run(
+                loadedEdit(ConflictPolicy.fail(), new ArrayList<>(), Gate.NONE, true, false),
+                ctx(acme),
+                new Edit("t1", "washer", null)));
+    UseCaseError check =
+        error(
+            useCases.run(
+                loadedEdit(ConflictPolicy.fail(), new ArrayList<>(), Gate.NONE, false, true),
+                ctx(acme),
+                new Edit("t1", "washer", null)));
+
+    assertThat(load.kind()).isEqualTo(ErrorKind.INTERNAL);
+    assertThat(load.code()).isEqualTo("LOAD");
+    assertThat(check.kind()).isEqualTo(ErrorKind.INTERNAL);
+    assertThat(check.code()).isEqualTo("AUTHORIZE");
+    assertThat(load.message()).doesNotContain("hunter2");
+    assertThat(check.message()).doesNotContain("hunter2");
+    assertThat(runs).hasValue(0);
+  }
+
+  @Test
+  void aConflictRunsTheWholeAttemptAgainSoTheRecordIsLoadedAndCheckedAgain() throws Exception {
+    seed("t1", "bolt", "B-1");
+    Interleave gate = new Interleave();
+    List<String> trace = Collections.synchronizedList(new ArrayList<>());
+    ConflictPolicy retry = ConflictPolicy.retry(3, Duration.ofMillis(10));
+
+    Future<UseCaseResult<ThingEvent>> a =
+        threads.submit(
+            () -> useCases.run(loadedEdit(retry, trace, gate, false, false), ctx(acme), new Edit("t1", "washer", null)));
+    gate.awaitLoaded();
+    committed(
+        useCases.run(edit(ConflictPolicy.fail(), Gate.NONE), ctx(acme), new Edit("t1", null, "B-2")));
+    gate.release();
+
+    committed(a.get(20, TimeUnit.SECONDS));
+    assertThat(trace.stream().filter("load"::equals).count()).isEqualTo(2);
+    assertThat(trace.stream().filter("authorize-loaded"::equals).count()).isEqualTo(2);
+    assertThat(row("t1")).isEqualTo("3:washer:B-2");
+  }
+
   // ---- client scoping ----------------------------------------------------------------------
 
   @Test

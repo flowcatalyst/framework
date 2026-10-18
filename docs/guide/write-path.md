@@ -1,4 +1,4 @@
-<!-- types: DispatchJob, Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet -->
+<!-- types: Load, LoadedCheck, LoadedExecute, DispatchJob, Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet -->
 # The write path
 
 All behaviour that changes data goes through a **use case**. A use case validates, authorizes,
@@ -143,6 +143,7 @@ UseCase.named("add-line", AddLine.class, OrderLineAdded.class)
 | `validate(Check)` | no | checks the command's shape without loading data; returns `Optional<UseCaseError>` |
 | `authorize(Check)` | **yes** | resource-level access check, same shape. `Authorize.PUBLIC` declares an operation deliberately open. Calling `execute(...)` without one throws `IllegalStateException` when the use case is *defined* |
 | `conflict(ConflictPolicy)` | no | `ConflictPolicy.fail()` (the default) or `ConflictPolicy.retry(maxAttempts, backoff)` |
+| `load(Load, whenMissing)`, `authorizeLoaded(LoadedCheck)` | no | a use case on one stored record: the runner loads it once per attempt, the record-level check sees it, and `execute(LoadedExecute)` receives it (below) |
 | `execute(Execute)` | yes | loads what it needs (once), applies the rules, returns a `Decision` |
 
 A `Check<C>` is `Optional<UseCaseError> check(Context context, C command) throws Exception`. Each
@@ -161,6 +162,33 @@ private static final Check<Object> PRINCIPAL_REQUIRED =
 
 There is **no built-in permission model** (roles and permissions arrive with login and sessions;
 see [STATUS](STATUS.md)). Authorize is your own check of the `Context`.
+
+### A rule that needs the record: `load` and `authorizeLoaded`
+
+`authorize` is permission-level: it sees the command and the context, not the stored record. A rule that
+depends on the record belongs after the load. Declare the load in the builder and the record-level check
+next to the other access checks (`TicketUseCases.defineAddComment`):
+
+```java
+UseCase.named("add-comment", AddComment.class, TicketCommented.class)
+    .validate(...)
+    .authorize(requires(Permissions.COMMENT))
+    .conflict(policy)
+    .load((context, command) -> load(context, command.ticketId()), TICKET_NOT_FOUND)
+    .authorizeLoaded(
+        (context, command, ticket) ->
+            context.hasPermission(Permissions.WORK) || requester(context).equals(ticket.requesterId())
+                ? Optional.empty()
+                : Optional.of(UseCaseError.authorization("NOT_YOUR_TICKET", "You may comment only on tickets you opened.")))
+    .execute((context, command, ticket) -> ...);
+```
+
+The order is validate, authorize, load, authorizeLoaded, execute. A missing record is the error you gave
+`load` and nothing after it runs; a refusal from `authorizeLoaded` is the result and `execute` does not
+run; a retry after a conflict loads and checks again. `authorizeLoaded` is optional (a load with no
+record-level rule is fine), and `authorize` is still required. Answer with the not-found error from
+`authorizeLoaded` when the rule must not reveal that the record exists. A throwing `load` is `INTERNAL`
+`LOAD`; a throwing check is `INTERNAL` `AUTHORIZE`.
 
 ### Plans
 
@@ -197,7 +225,7 @@ return switch (result) {
 One attempt:
 
 1. `validate`, then `authorize`; the first error is the result.
-2. `execute`; a rejection is the result.
+2. `execute` (with a load phase: `load`, then `authorizeLoaded`, then `execute`); a rejection is the result.
 3. Every aggregate in the plan must belong to `context.client()`. A mismatch fails as `INTERNAL` /
    `CROSS_CLIENT_WRITE`, is logged as a bug, and writes nothing.
 4. Begin a transaction (READ COMMITTED) on the default database.
@@ -209,7 +237,7 @@ One attempt:
 | stale aggregate (row count 0) | conflict: the use case's policy applies |
 | SQLSTATE `40001` or `40P01` (serialization failure, deadlock) | conflict: the policy applies |
 | SQLSTATE `23505` (unique violation) | `CONFLICT` / `UNIQUE_VIOLATION`, constraint name in the details, not retried |
-| any other exception from a phase, repository or the database | `INTERNAL`, code names the step (`VALIDATE`, `AUTHORIZE`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the message |
+| any other exception from a phase, repository or the database | `INTERNAL`, code names the step (`VALIDATE`, `AUTHORIZE`, `LOAD`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the message |
 | interrupted while waiting between attempts | `INTERNAL` / `INTERRUPTED`; the interrupt flag is restored |
 
 Every failed attempt rolls back fully: a failing line insert rolls back the order header and the

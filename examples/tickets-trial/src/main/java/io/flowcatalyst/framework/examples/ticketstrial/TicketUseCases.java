@@ -256,13 +256,9 @@ public final class TicketUseCases {
                     : Optional.empty())
         .authorize(requires(Permissions.WORK))
         .conflict(policy)
+        .load((context, command) -> load(context, command.ticketId()), TICKET_NOT_FOUND)
         .execute(
-            (context, command) -> {
-              Optional<Ticket> found = load(context, command.ticketId());
-              if (found.isEmpty()) {
-                return ticketNotFound();
-              }
-              Ticket ticket = found.get();
+            (context, command, ticket) -> {
               if (!ticket.status().isActive()) {
                 return Decision.reject(
                     UseCaseError.businessRule("TICKET_NOT_ASSIGNABLE", "A resolved or closed ticket cannot be assigned."));
@@ -304,13 +300,9 @@ public final class TicketUseCases {
             })
         .authorize(requires(Permissions.WORK))
         .conflict(policy)
+        .load((context, command) -> load(context, command.ticketId()), TICKET_NOT_FOUND)
         .execute(
-            (context, command) -> {
-              Optional<Ticket> found = load(context, command.ticketId());
-              if (found.isEmpty()) {
-                return ticketNotFound();
-              }
-              Ticket ticket = found.get();
+            (context, command, ticket) -> {
               Optional<TicketStatus> next = ticket.status().after(command.action());
               if (next.isEmpty()) {
                 return Decision.reject(
@@ -346,20 +338,17 @@ public final class TicketUseCases {
                     : Optional.empty())
         .authorize(requires(Permissions.COMMENT))
         .conflict(policy)
+        .load((context, command) -> load(context, command.ticketId()), TICKET_NOT_FOUND)
+        // The record-level rule: a requester may comment only on the tickets they opened; whoever
+        // works tickets, on any. It needs the ticket, so it runs after the load, before execute.
+        .authorizeLoaded(
+            (context, command, ticket) ->
+                context.hasPermission(Permissions.WORK) || requester(context).equals(ticket.requesterId())
+                    ? Optional.empty()
+                    : Optional.of(UseCaseError.authorization("NOT_YOUR_TICKET", "You may comment only on tickets you opened.")))
         .execute(
-            (context, command) -> {
-              Optional<Ticket> found = load(context, command.ticketId());
-              if (found.isEmpty()) {
-                return ticketNotFound();
-              }
-              Ticket ticket = found.get();
-              // The resource-level rule needs the ticket, which authorize does not have: a requester
-              // may comment only on the tickets they opened; whoever works tickets, on any.
+            (context, command, ticket) -> {
               String author = requester(context);
-              if (!context.hasPermission(Permissions.WORK) && !author.equals(ticket.requesterId())) {
-                return Decision.reject(
-                    UseCaseError.authorization("NOT_YOUR_TICKET", "You may comment only on tickets you opened."));
-              }
               if (ticket.status() == TicketStatus.CLOSED) {
                 return Decision.reject(UseCaseError.businessRule("TICKET_CLOSED", "A closed ticket cannot change."));
               }
@@ -380,13 +369,9 @@ public final class TicketUseCases {
     return UseCase.named("flag-sla-breach", FlagSlaBreach.class, TicketSlaBreached.class)
         .authorize(SERVICE_ONLY)
         .conflict(policy)
+        .load((context, command) -> load(context, command.ticketId()), TICKET_NOT_FOUND)
         .execute(
-            (context, command) -> {
-              Optional<Ticket> found = load(context, command.ticketId());
-              if (found.isEmpty()) {
-                return ticketNotFound();
-              }
-              Ticket ticket = found.get();
+            (context, command, ticket) -> {
               Instant now = clock.instant();
               // Idempotent: the sweep may see a ticket twice, and a ticket may have been resolved
               // since the sweep looked.
@@ -469,7 +454,5 @@ public final class TicketUseCases {
     return principal.value();
   }
 
-  private static <E extends DomainEvent> Decision<E> ticketNotFound() {
-    return Decision.reject(UseCaseError.notFound("TICKET_NOT_FOUND", "There is no such ticket."));
-  }
+  private static final UseCaseError TICKET_NOT_FOUND = UseCaseError.notFound("TICKET_NOT_FOUND", "There is no such ticket.");
 }

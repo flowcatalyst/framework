@@ -108,4 +108,26 @@ class UseCaseDefinitionTest {
     assertThatIllegalArgumentException().isThrownBy(() -> new EventType("Orders", "s", "o", "c"));
     assertThatIllegalArgumentException().isThrownBy(() -> new EventType("o", "s:x", "o", "c"));
   }
+
+  @Test
+  void aLoadPhaseDoesNotReplaceAuthorize() {
+    assertThatIllegalStateException()
+        .isThrownBy(
+            () ->
+                builder()
+                    .load((ctx, cmd) -> Optional.of("x"), UseCaseError.notFound("GONE", "gone"))
+                    .authorizeLoaded((ctx, cmd, loaded) -> Optional.empty())
+                    .execute((ctx, cmd, loaded) -> Decision.reject(UseCaseError.internal("X"))))
+        .withMessageContaining("authorize");
+  }
+
+  @Test
+  void aRecordCheckIsOptionalAfterALoad() {
+    UseCase<Cmd, ThingEvent> useCase =
+        builder()
+            .authorize(Authorize.PUBLIC)
+            .load((ctx, cmd) -> Optional.of("x"), UseCaseError.notFound("GONE", "gone"))
+            .execute((ctx, cmd, loaded) -> Decision.reject(UseCaseError.internal("X")));
+    assertThat(useCase.name()).isEqualTo("do-thing");
+  }
 }
