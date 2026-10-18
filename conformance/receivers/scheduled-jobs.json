@@ -1,0 +1,2517 @@
+{
+  "description" : "POST {prefix}/scheduled-jobs (flowcatalyst contract section 4 and 4a slice 5, follow-ups 3 and 4). Setup common to every case: application 'orders', signing secret 'whsec-test-only', clock 2026-10-09T12:00:00Z, one job handler registered under code 'nightly-export', a lock instance (unless lock says otherwise), the service principal available, the platform answering completion calls 204, the completion retry delay 10 ms. handler kinds: success; result (arg = JSON the handler returns); failure (arg = message); throw (arg = message); throwBlank (throws with no message); null (returns null); hang (blocks until interrupted); longString (arg = N: returns a string of N 'x'); unserialisable (a result whose JSON cannot be written). options: exclusive (the default) or alwaysConcurrent. lock: free | held (another owner holds scheduled-job:nightly-export with a long lease) | down (the lock store is unreachable) | none (no lock instance) | lost (the lease expires, on the monotonic clock, while the handler runs). env overrides the receivers settings (job-timeout, job-lock-lease). completionFailures: the first N completion calls are answered 500. completionCalls: how many completion calls the platform receives in total. The request body is the JSON of 'envelope' (or rawBody when present), signed unless sign is false. expect: status and body (parsed JSON; messageJava on a 400 is Java's wording and is not compared); handlerRuns; firing (what the handler was handed, null when it did not run: fencingTokenPresent, timeoutSeconds, contextClient, executionId, causationId, correlationId ('<generated>' = any non-blank value other than the envelope's)); completions = the calls the platform received in order, each {path, body}. A 400 or 404 or 401 runs nothing. The call is answered 202 before the handler finishes; completions are read after they arrive.",
+  "howToRun" : "Per case: start the receiver with the setup above, put the lock in the state named, POST the signed body, wait for completionCalls completion requests (and, when 0, 300 ms of quiet), compare status, body, handlerRuns, firing and completions. Regenerate from Java with -Dconformance.update=true (ScheduledJobsVectorConformanceTest).",
+  "cases" : [ {
+    "name" : "every optional field present",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false,
+      "payload" : {
+        "region" : "eu"
+      },
+      "timeoutSeconds" : 120
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : {
+          "region" : "eu"
+        },
+        "tracksCompletion" : true,
+        "timeoutSeconds" : 120,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "every optional field absent",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "firedAt" : "2026-10-09T12:00:00+02:00",
+      "triggerKind" : "MANUAL",
+      "tracksCompletion" : true
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : null,
+        "firedAt" : "2026-10-09T10:00:00Z",
+        "triggerKind" : "MANUAL",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "<generated>"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "concurrent true: no lock, no fencing token",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : true
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : true,
+        "fencingTokenPresent" : false,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "concurrent absent means exclusive",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "payload null counts as absent",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false,
+      "payload" : null
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "correlation id with a space is replaced",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr 1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "<generated>"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "untracked job runs and reports nothing",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : false,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : false,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "result is reported",
+    "handler" : "result",
+    "arg" : "{\"rows\":42}",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "rows" : 42
+          },
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "success without a result sends none",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "failure result",
+    "handler" : "failure",
+    "arg" : "nothing to export",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "nothing to export"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "throw reports the message",
+    "handler" : "throw",
+    "arg" : "export bucket missing",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "export bucket missing"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "throw with no message reports the class name",
+    "handler" : "throwBlank",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "IllegalStateException"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "null result is a failure",
+    "handler" : "null",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "the handler returned no result"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "untracked throw reports nothing",
+    "handler" : "throw",
+    "arg" : "x",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : false,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : false,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "result of 20000 characters is truncated",
+    "handler" : "longString",
+    "arg" : "20000",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "truncated" : true,
+            "preview" : "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "result of exactly 10000 JSON characters is sent as is",
+    "handler" : "longString",
+    "arg" : "9998",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "result of 10001 JSON characters is truncated",
+    "handler" : "longString",
+    "arg" : "9999",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "truncated" : true,
+            "preview" : "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "unserialisable result",
+    "handler" : "unserialisable",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "unserialisable" : true
+          },
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "completion failing three times is retried: four calls",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 3,
+    "completionCalls" : 4,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      }, {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      }, {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      }, {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "completion failing for ever: four calls then give up",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 100,
+    "completionCalls" : 4,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      }, {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      }, {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      }, {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "envelope timeout",
+    "handler" : "hang",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false,
+      "timeoutSeconds" : 1
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : 1,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "timed out after 1s"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "job-timeout setting applies without an envelope timeout",
+    "handler" : "hang",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : {
+      "FLOWCATALYST_RECEIVERS_JOB_TIMEOUT" : "300ms"
+    },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "timed out after 300ms"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "lock held: skipped, lock-held",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "held",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "skipped" : true,
+            "reason" : "lock-held"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "lock held, untracked: skipped silently",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "held",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : false,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "lock store down: the job does not run",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "down",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "the overlap lock could not be taken; the job did not run"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "lock lost while running",
+    "handler" : "hang",
+    "options" : "exclusive",
+    "lock" : "lost",
+    "env" : {
+      "FLOWCATALYST_RECEIVERS_JOB_LOCK_LEASE" : "1s"
+    },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "error" : "the overlap lock was lost while the job ran"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "concurrent job with the lock held runs",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "held",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : true
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : true,
+        "fencingTokenPresent" : false,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "always-concurrent, exclusive firing is refused",
+    "handler" : "success",
+    "options" : "alwaysConcurrent",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "result" : {
+            "skipped" : true,
+            "reason" : "not-registered-for-exclusive-run"
+          },
+          "status" : "FAILURE"
+        }
+      } ]
+    }
+  }, {
+    "name" : "always-concurrent, exclusive firing, untracked: refused without a report",
+    "handler" : "success",
+    "options" : "alwaysConcurrent",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : false,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "always-concurrent, concurrent firing runs",
+    "handler" : "success",
+    "options" : "alwaysConcurrent",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : true
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : true,
+        "fencingTokenPresent" : false,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "always-concurrent without any lock instance",
+    "handler" : "success",
+    "options" : "alwaysConcurrent",
+    "lock" : "none",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : true
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T12:00:00.250Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : true,
+        "fencingTokenPresent" : false,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  }, {
+    "name" : "unknown job code: 404",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "other-job",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 404,
+      "body" : {
+        "error" : "NOT_FOUND",
+        "message" : "no handler for scheduled job other-job"
+      },
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "bad signature: 401",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : false,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 401,
+      "body" : {
+        "error" : "UNAUTHENTICATED",
+        "message" : "the delivery could not be authenticated",
+        "details" : {
+          "reason" : "MISSING_SIGNATURE"
+        }
+      },
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: jobId missing",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: jobId must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: jobId is a number",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : 7,
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: jobId must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: jobCode missing",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: jobCode must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: jobCode is a number",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : 7,
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: jobCode must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: instanceId missing",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: instanceId must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: instanceId is a number",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : 7,
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: instanceId must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: firedAt missing",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: firedAt must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: firedAt is a number",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : 7,
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: firedAt must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: triggerKind missing",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: triggerKind must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: triggerKind is a number",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : 7,
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: triggerKind must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: tracksCompletion missing",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: tracksCompletion must be a boolean",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: tracksCompletion is a number",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : 7,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: tracksCompletion must be a boolean",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: triggerKind HOURLY",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "HOURLY",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: triggerKind must be CRON or MANUAL",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: triggerKind lower case",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "cron",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: triggerKind must be CRON or MANUAL",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: tracksCompletion is a string",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : "true",
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: tracksCompletion must be a boolean",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: concurrent is a string",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : "no"
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: concurrent must be a boolean",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: timeoutSeconds 0",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false,
+      "timeoutSeconds" : 0
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: timeoutSeconds must be a positive integer",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: timeoutSeconds 1.5",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false,
+      "timeoutSeconds" : 1.5
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: timeoutSeconds must be a positive integer",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: timeoutSeconds is a string",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false,
+      "timeoutSeconds" : "60"
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: timeoutSeconds must be a positive integer",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: firedAt yesterday",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "yesterday",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: firedAt must be an RFC 3339 time",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: scheduledFor soon",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "soon",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: scheduledFor must be an RFC 3339 time",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: correlationId is a number",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : 5,
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: correlationId must be a string",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: instanceId is a path",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "../../api/admin",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: instanceId is not well formed",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: instanceId has a line break",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1\r\nforged",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: instanceId is not well formed",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: instanceId over 128 characters",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: instanceId is not well formed",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: jobCode has a space",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "has space",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00.25Z",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: jobCode is not well formed",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: duplicate key",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "rawBody" : "{\"jobCode\":\"other\",\"jobId\":\"sj_1\",\"jobCode\":\"nightly-export\",\"instanceId\":\"i1\",\"scheduledFor\":\"2026-10-09T12:00:00Z\",\"firedAt\":\"2026-10-09T12:00:00.25Z\",\"triggerKind\":\"CRON\",\"correlationId\":\"corr-i1\",\"tracksCompletion\":true,\"concurrent\":false}",
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: the body must be one JSON object with unique keys",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: a JSON array",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "rawBody" : "[]",
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: the body must be one JSON object with unique keys",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: empty body",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "rawBody" : "",
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: the body must be one JSON object with unique keys",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "invalid: not JSON",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 0,
+    "sign" : true,
+    "rawBody" : "not json",
+    "expect" : {
+      "status" : 400,
+      "body" : {
+        "error" : "VALIDATION"
+      },
+      "messageJava" : "the scheduled-job envelope is malformed: the body must be one JSON object with unique keys",
+      "handlerRuns" : 0,
+      "firing" : null,
+      "completions" : [ ]
+    }
+  }, {
+    "name" : "valid: firedAt with an offset",
+    "handler" : "success",
+    "options" : "exclusive",
+    "lock" : "free",
+    "env" : { },
+    "completionFailures" : 0,
+    "completionCalls" : 1,
+    "sign" : true,
+    "envelope" : {
+      "jobId" : "sj_1",
+      "jobCode" : "nightly-export",
+      "instanceId" : "i1",
+      "scheduledFor" : "2026-10-09T12:00:00Z",
+      "firedAt" : "2026-10-09T12:00:00+02:00",
+      "triggerKind" : "CRON",
+      "correlationId" : "corr-i1",
+      "tracksCompletion" : true,
+      "concurrent" : false
+    },
+    "expect" : {
+      "status" : 202,
+      "body" : {
+        "ok" : true
+      },
+      "handlerRuns" : 1,
+      "firing" : {
+        "jobId" : "sj_1",
+        "jobCode" : "nightly-export",
+        "instanceId" : "i1",
+        "scheduledFor" : "2026-10-09T12:00:00Z",
+        "firedAt" : "2026-10-09T10:00:00Z",
+        "triggerKind" : "CRON",
+        "payload" : null,
+        "tracksCompletion" : true,
+        "timeoutSeconds" : null,
+        "concurrent" : false,
+        "fencingTokenPresent" : true,
+        "contextClient" : "_platform",
+        "executionId" : "i1",
+        "causationId" : "i1",
+        "correlationId" : "corr-i1"
+      },
+      "completions" : [ {
+        "path" : "/api/scheduled-jobs/instances/i1/complete",
+        "body" : {
+          "status" : "SUCCESS"
+        }
+      } ]
+    }
+  } ]
+}
