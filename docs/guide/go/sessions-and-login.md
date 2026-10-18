@@ -1,4 +1,4 @@
-<!-- types: PlatformTokens, AccessToken, TokenResult, Valid, Invalid, Unavailable, Principal, Provider, Signing, Store, Kind, StoreFactory, MemoryStore, CookieStore, CookieKeys -->
+<!-- types: Module, Declared, ContextResolver, Sessions, Authenticated, PermissionMapper, ClientSelector, LoginFailure, LoginFailureHandler, ReturnToPolicy, Testing, PlatformTokens, AccessToken, TokenResult, Valid, Invalid, Unavailable, Principal, Provider, Signing, Store, Kind, StoreFactory, MemoryStore, CookieStore, CookieKeys -->
 # Go: sessions and login
 
 Package `auth` is the Go implementation of the [sessions and login contract](../../contracts/sessions-and-login.md)
@@ -15,7 +15,7 @@ State of the slices:
 | 1 | `httpfw.SessionsGuard` / `PublicFormGuard` (the F16 CSRF rules) and `httpfw.SecurityHeaders` ([HTTP page](http.md#csrf-and-security-headers)) | built |
 | 2 | the relying party (discovery, JWKS cache, PKCE S256 authorize URL, code exchange, id_token checks), `PlatformTokens`, `authtest.Provider` | built |
 | 3 | session stores (`memory`, `cookie`, `database`, `redis`), session and login records, idle and absolute lifetimes | built |
-| 4 | the four endpoints, the context resolver, 401 versus 302, `Context.permissions`, test helpers, the login-failure vector | not yet |
+| 4 | the four endpoints, the context resolver, 401 versus 302, client selection and permission mapping, `Context.permissions`, `auth.Testing`, the login-failure vector | built |
 
 ## Verifying platform tokens on their own
 
@@ -114,3 +114,86 @@ JSON byte for byte and a document with Java-style fractional seconds; lifetimes 
 Mutation checks: dropping the kind from the memory key, or the kind from the sealing context, fails
 tests. Not checked: a store shared by a live Java and a live Go process (the table and JSON are
 the same, but only Go wrote and read it), a real Redis cluster.
+
+## Wiring the module
+
+```go
+web := httpfw.Declare(app)
+authd := auth.Declare(app, web)            // settings, and getAuthSession / logout in the OpenAPI document
+authdb.Declare(app)                        // the fw_session migration (module auth-database)
+...
+// in the build function
+mod, err := authd.Build(ctx, b,
+	auth.SessionStore(authdb.Factory(dbs)),                  // or authredis.Factory, auth.MemoryStoreFactory(), auth.CookieSessions()
+	auth.Application(fw.MustApplicationCode("ingestor")),
+	auth.Permissions(auth.ScopesMapper().And(auth.ByRole(map[string][]string{
+		"ingestor:operator": {"ingestor:ingestion:manage"},
+	}))))
+srv, err := httpfw.NewServer(b, web, []*httpfw.Routes{mod.Routes(), mine}, httpfw.WithResolver(mod.Resolver()))
+```
+
+Configuration holds only `auth.issuer`, `auth.client-id`, `auth.client-secret` (set for a CONFIDENTIAL
+client), `auth.public-base-url` and `auth.cookie-keys` (cookie store only); the component `auth` is
+claimed, so `auth.isuer` or `auth.idle-timeout` fails start-up. Everything else is a build option,
+with the contract's defaults: `IdleTimeout` (30 min), `AbsoluteTimeout` (8 h), `Permissions`
+(`ScopesMapper`: a bearer token's `scope`, nothing for a session), `Clients` (`HomeClient`),
+`Application`, `DefaultLanding` (`/`), `ReturnTo` (same-origin path), `PostLogoutRedirect`,
+`FailureHandler` (`JSONFailures`; `RedirectFailuresTo(path)` gives `302 path?error=CODE`), `Scope`,
+`LoginTheme`, `RateLimit` / `NoRateLimit` (default: memory limiter `auth`, 20 a minute per client
+address, burst 20), `HTTPTimeout` (10 s). `auth.NoBearerTokens()` at `Declare` declares sessions only.
+Start-up fails, with every problem listed, for: no session store named, plain http outside `local`
+and `test` (for `auth.public-base-url` and `auth.issuer`; inside them it is logged at WARN and the
+cookies lose `Secure` and the `__Host-` prefix), a public base URL with a path, `offline_access` in
+the scope, an idle timeout longer than the absolute one, a bad cookie key list.
+
+**The endpoints** (contract section 4, all `Cache-Control: no-store`): `GET /auth/login` (PKCE `S256`,
+`state`, `nonce`, a 10-minute login record, the binding cookie `__Host-fw_login_<16 hex of
+SHA-256(state)>`, then `302` to the authorize endpoint with the parameters in the contract's order),
+`GET /auth/callback` (the eight ordered checks of 4.2: `INVALID_CALLBACK`, `LOGIN_NOT_STARTED_HERE`,
+`INVALID_STATE`, `LOGIN_REFUSED`, `LOGIN_FAILED`, `INVALID_ID_TOKEN` with `details.reason`,
+`PLATFORM_UNAVAILABLE`; every answer clears the binding cookie; the login record is taken once; a
+session cookie present at the callback is deleted first, which is the rotation), `GET /auth/session`
+(always `200`; a stale cookie is cleared) and `POST /auth/logout` (CSRF-checked when a session cookie
+is present, revokes, clears the cookie, names the platform's `endSessionUrl` when it has one). The
+last two are the typed operations of `httpfw/sessionapi`; their OpenAPI components are the
+`conformance/openapi/auth.json` ones.
+
+**Authenticating requests** (7.1): a bearer token wins and never falls back to the cookie (a bad one
+is `401`, unreadable keys `503 UNAVAILABLE`); any other `Authorization` scheme is `401`; otherwise
+the session cookie, after the CSRF rules on an unsafe method, with the timeouts checked and
+`lastSeenAt` written back when due; otherwise `401 UNAUTHENTICATED`. The `fw.Context` carries the
+principal and its kind, the client (the identifier, never the platform id; unless it is `_platform`
+the principal must be allowed to act for it, else `403 CLIENT_NOT_PERMITTED`), the application code
+and `Permissions` from the mapper. `auth.Current(r)` returns the `Authenticated` (source, expiries),
+`auth.Require("perm")` is route middleware answering `403 FORBIDDEN`, and `Sessions.Current(r)` reads
+the session on a route that does not require a context. A `401` (returned or from a handler) for an
+HTML navigation (`GET`/`HEAD`, no `Authorization`, `Sec-Fetch-Mode: navigate` or, without that
+header, `Accept` containing `text/html`) becomes `302 /auth/login?returnTo=<path and query>`.
+A rate-limited or platform-unreachable `/auth/login` is answered, for such a navigation, by the
+failure handler with `RATE_LIMITED` / `PLATFORM_UNAVAILABLE` (4.1.1); everyone else keeps the JSON.
+
+**Test support**: `mod.Testing()` (refused unless `APP_ENV` is `test`) signs a principal in through
+the real store: `cookie, _ := t.Cookie(ctx, auth.User("prn_1", "ingestor:operator"))`
+(`auth.ClientUser` for a one-client user), then send `Cookie` and, for an unsafe method,
+`Sec-Fetch-Site: same-origin`. `authtest.Provider` and `storetest.Run` are above.
+
+### Differences from Java, and what was not verified
+
+- No implicit default store: Go has no service lookup, so the store is named (`auth.SessionStore`);
+  `authdb` is the documented default. `Module.Routes()` is a table to pass to `httpfw.NewServer`; the
+  Java module installs its routes itself.
+- A permission string `fw.Context` cannot hold (blank, or an empty segment) is left out of the
+  Context and logged at WARN, where Java's `Context` accepts any string.
+- A `401` is turned into a `302` when it comes back as an error; a handler that writes a `401`
+  itself is not redirected. A refused callback `state` percent-escape in the query is
+  `INVALID_CALLBACK`; a malformed `returnTo` escape is ignored (the default landing).
+- `Set-Cookie` attribute order is Java's (`Path`, `Max-Age`, `HttpOnly`, `SameSite`, `Secure`).
+- Checked: `conformance/auth/login-failure.json`, all 20 cases, through the real dispatcher with the
+  rate limiter and a down provider; the login and callback refusals of 4.2 each; CSRF, bearer order,
+  client selection, 401 versus 302, timeouts, cookie shapes for https and the http fallback, the
+  cookie store end to end, start-up refusals; mutation checks on the CSRF check and the state
+  comparison. Not checked: a browser (the tests send requests in-process and follow redirects by
+  hand), a real FlowCatalyst platform, a Java and a Go replica sharing one session table at once,
+  the `conformance/openapi/auth.json` vector against this module's document beyond what G3 already
+  checks, the security review the milestone asks for (owner's ruling: Opus for the slice), and
+  `orders-demo`, which still uses its fixed-token resolver.

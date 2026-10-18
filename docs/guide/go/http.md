@@ -85,8 +85,8 @@ member's path (`lines[1].sku`); the message never echoes the value.
 A route registered with `HandleContext` (or `RequiresContext()`) gets its `fw.Context` from the
 `ContextResolver` given to `NewServer`, which returns a `401` `Unauthenticated` error when it
 cannot; the framework then replaces the Context's correlation id with the request's. The real
-resolver (sessions and bearer tokens) is the G5b milestone; the orders demo uses a fixed-token
-resolver of its own and says so.
+resolver (sessions and bearer tokens) is package `auth` ([sessions and login](sessions-and-login.md));
+the orders demo still uses a fixed-token resolver of its own and says so.
 
 ## CSRF and security headers
 

@@ -667,8 +667,7 @@ refused outside test mode. Security-relevant assertions are mutation-checked (a 
 broken check must fail a test).
 
 Conformance vectors: `conformance/auth/login-failure.json` (4.1.1: per request headers and
-condition, the redirect or the envelope; written by `LoginFailureNavigationTest`; Go compares when
-its sessions are built, G5b, **pending**). The others (id_token cases, sealed cookies, the session
+condition, the redirect or the envelope; written by `LoginFailureNavigationTest`; Go passes all 20 cases since G5b, 2026-10-18). The others (id_token cases, sealed cookies, the session
 JSON) are not written; they are listed for when Go implements this contract.
 
 ## 12. Rulings

@@ -81,7 +81,6 @@ func (m *manager) session(ctx context.Context, handle string) (live, bool, error
 	return live{data: d, handle: handle, idleExpiresAt: m.idleExpiry(d)}, true, nil
 }
 
-//nolint:unused // used by the logout and callback routes (slice 4)
 func (m *manager) deleteSession(ctx context.Context, handle string) error {
 	return m.store.Delete(ctx, KindSession, handle)
 }
