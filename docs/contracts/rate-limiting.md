@@ -120,8 +120,8 @@ Without a resolver every request uses the limiter's default policy, exactly as b
 let a request through unlimited: the middleware calls the handler without computing a decision, reads
 and writes no state, and sends no `RateLimit-*` headers. It is recognised by identity only
 (`isUnlimited()`), so a policy with equal numbers, a null, or a throwing resolver can never mean "no
-limit" (section 5). Not for `RateLimiter.acquire` called directly. Go and Rust have no equivalent
-yet (section 6: the shared vectors now cover per-request policies and `UNLIMITED`).
+limit" (section 5). Not for `RateLimiter.acquire` called directly. Go has `ratelimit.Unlimited` (2026-10-18, recognised by an unexported flag, so `NewPolicy` with the same numbers is an ordinary policy); Rust has no equivalent
+yet (section 6: the shared vectors cover per-request policies and `UNLIMITED`).
 
 **State and the key namespace.** GCRA stores one TAT per key, an absolute time; the policy is an
 input to each decision and is never stored, and it is not part of the key. So a change to a key's

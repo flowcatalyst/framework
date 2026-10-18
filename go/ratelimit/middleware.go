@@ -186,6 +186,8 @@ func (m *mw) wrap(next httpfw.HandlerFunc) httpfw.HandlerFunc {
 				if m.cfg.onFailure == Deny {
 					return httpfw.NewError(http.StatusServiceUnavailable, "UNAVAILABLE", "rate limiting is unavailable")
 				}
+			case resolved.IsUnlimited():
+				return next(w, r)
 			case !resolved.IsZero():
 				policy = resolved
 			}

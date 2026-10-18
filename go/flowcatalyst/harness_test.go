@@ -56,6 +56,7 @@ type rigOptions struct {
 	buildOpts func(b *fw.Boot) []flowcatalyst.BuildOption
 	noRoutes  bool // do not hand the routes to a dispatcher (no HTTP module)
 	locks     bool // a memory lock store as the default
+	noLocks   bool // jobRig adds no lock store even for an exclusive job
 	dbURL     string
 	platform  *fakePlatform
 	migrate   bool

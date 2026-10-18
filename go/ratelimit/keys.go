@@ -35,9 +35,7 @@ func ForwardedFor(trustedProxies int) (KeyFunc, error) {
 	return func(r *http.Request) string {
 		var entries []string
 		for _, line := range r.Header.Values("X-Forwarded-For") {
-			for part := range strings.SplitSeq(line, ",") {
-				entries = append(entries, strings.TrimSpace(part))
-			}
+			entries = append(entries, javaSplit(line)...)
 		}
 		if len(entries) >= trustedProxies {
 			if chosen := normalise(entries[len(entries)-trustedProxies]); chosen != "" {
@@ -121,4 +119,21 @@ func normalise(text string) string {
 func sha256Hex(s string) string {
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:])
+}
+
+// javaSplit splits one X-Forwarded-For line at commas, trims each entry, and drops trailing empty
+// entries as Java's String.split does ("1.2.3.4," is one entry; "" is one empty entry), so the entry
+// n from the right is the same one in both frameworks.
+func javaSplit(line string) []string {
+	if line == "" {
+		return []string{""}
+	}
+	parts := strings.Split(line, ",")
+	for len(parts) > 0 && parts[len(parts)-1] == "" {
+		parts = parts[:len(parts)-1]
+	}
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
 }

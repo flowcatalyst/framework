@@ -44,7 +44,7 @@ func firingJSON(overrides map[string]string) string {
 // jobRig starts a rig whose only scheduled-job handler is h, with a memory lock store.
 func jobRig(t *testing.T, h jobFn, opts flowcatalyst.JobOptions, o rigOptions) *rig {
 	t.Helper()
-	if !opts.AlwaysConcurrent && o.lockFactory == nil {
+	if !opts.AlwaysConcurrent && o.lockFactory == nil && !o.noLocks {
 		o.locks = true
 	}
 	o.register = func(fc *flowcatalyst.Platform) error { return fc.Receivers().OnScheduledJob(jobCode, opts, h) }

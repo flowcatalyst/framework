@@ -73,7 +73,11 @@ never unlimited; `Deny` is `503`). The function must be an in-memory lookup. A c
 from the key's next request, on every replica, with a cap at an empty bucket when a smaller window
 makes the old debt impossible (contract section 3a).
 
+`ratelimit.Unlimited` returned by the policy function lets the request through with no decision, no state and no `RateLimit-*` headers; only that value means it (`Policy.IsUnlimited`), never `ok=false`, an error or a policy with the same numbers.
+
 ## Differences from Java
+
+- Conformance (`conformance/ratelimit/http.json`): the peer address is parsed from `RemoteAddr`, which always carries a port, so `203.0.113.5:80` is the address `203.0.113.5` (Java is given the bare host and answers the shared bucket). `netip` refuses what `InetAddress.ofLiteral` reads: leading zeros (`010.001.001.001`), short forms (`1.2.3`) and a bare integer (`2130706433`); Go answers the shared bucket, the stricter result. Any IPv6 zone is dropped (Java refuses a named one such as `%eth0`). `ForwardedFor` splits each header line as Java does (trailing empty entries dropped).
 
 - Errors are values: `Middleware` returns an error where Java throws `IllegalArgumentException`
   (a cost above the burst, a policy function on a limiter that cannot take one).

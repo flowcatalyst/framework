@@ -23,10 +23,22 @@ const (
 // Policy is limit requests per period, with up to burst at once (rate-limiting contract section
 // 1). The zero Policy is invalid: build one with [NewPolicy] or [PolicyOf].
 type Policy struct {
-	limit  int
-	period time.Duration
-	burst  int
+	limit     int
+	period    time.Duration
+	burst     int
+	unlimited bool
 }
+
+// Unlimited is "no limit", for a [PolicyFunc] to return for a caller that has none (rate-limiting
+// contract section 3a): the middleware lets the request through without computing a decision,
+// reading or writing state, or sending RateLimit-* headers. Only this value means that
+// ([Policy.IsUnlimited]): a policy built with [NewPolicy] from the same numbers is an ordinary
+// policy, and ok=false or an error from the function is still the limiter's default policy, never
+// unlimited. Limiters called directly do not know it.
+var Unlimited = Policy{limit: MaxLimit, period: time.Second, burst: MaxLimit, unlimited: true}
+
+// IsUnlimited reports whether p is [Unlimited].
+func (p Policy) IsUnlimited() bool { return p.unlimited }
 
 // NewPolicy checks the ranges: limit and burst 1 to 1 000 000, period 1ms to 1 day, period/limit
 // at least 1 microsecond, and the window burst*period/limit at most about 73 years.
