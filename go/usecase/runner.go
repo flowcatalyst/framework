@@ -30,6 +30,7 @@ const (
 	stepOutbox    = "OUTBOX"
 	stepAudit     = "AUDIT"
 	stepCommit    = "COMMIT"
+	stepSavepoint = "SAVEPOINT" // the release of a joined run's savepoint
 )
 
 // Runner applies use cases' plans atomically on the default database instance: the only place
@@ -95,7 +96,7 @@ func sleep(ctx context.Context, d time.Duration) error {
 // errConflict marks an attempt that met a conflict (stale aggregate, 40001, 40P01).
 var errConflict = errors.New("conflict")
 
-func run[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Context, cmd C) (E, *Error) {
+func run[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Context, cmd C, joined *database.Tx) (E, *Error) {
 	var zero E
 	r := d.runner
 	if cx.IsZero() {
@@ -104,7 +105,7 @@ func run[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Cont
 	}
 	log := r.log.With(slog.String("usecase", d.name)).With(attrsAny(cx.LogAttrs())...)
 	for attempt := 1; ; attempt++ {
-		ev, err := attemptOnce(ctx, d, cx, cmd, log)
+		ev, err := attemptOnce(ctx, d, cx, cmd, log, joined)
 		if !errors.Is(err, errConflict) {
 			var ue *Error
 			if err != nil {
@@ -125,7 +126,7 @@ func run[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Cont
 }
 
 // attemptOnce runs one attempt. It returns the event, a *Error, or errConflict.
-func attemptOnce[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Context, cmd C, log *slog.Logger) (ev E, err error) {
+func attemptOnce[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Context, cmd C, log *slog.Logger, joined *database.Tx) (ev E, err error) {
 	var zero E
 	step := stepValidate
 	defer func() {
@@ -169,6 +170,9 @@ func attemptOnce[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx
 			return zero, internal("CROSS_CLIENT_WRITE", nil)
 		}
 	}
+	if joined != nil {
+		return persistJoined(ctx, d, cx, cmd, plan, log, &step, joined)
+	}
 	return persist(ctx, d, cx, cmd, plan, log, &step)
 }
 
@@ -187,29 +191,10 @@ func persist[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.
 		}
 	}()
 	wrapped := dbtx.New(tx)
-
-	*step = stepPersist
-	for _, s := range plan.steps {
-		ok, err := s.apply(ctx, wrapped)
-		if err != nil {
-			return zero, failure(log, *step, err)
-		}
-		if !ok {
-			return zero, errConflict
-		}
-	}
-	*step = stepOutbox
-	if err := r.outbox.WriteEvents(ctx, wrapped, cx, plan.events); err != nil {
-		return zero, failure(log, *step, err)
-	}
-	if len(plan.jobs) > 0 {
-		if err := r.outbox.WriteDispatchJobs(ctx, wrapped, cx, plan.jobs); err != nil {
-			return zero, failure(log, *step, err)
-		}
-	}
-	*step = stepAudit
-	if err := r.outbox.WriteAudit(ctx, wrapped, auditEntry(d.name, cx, cmd, plan, r.clock.Now())); err != nil {
-		return zero, failure(log, *step, err)
+	if ok, err := write(ctx, d, cx, cmd, plan, wrapped, log, step); err != nil {
+		return zero, err
+	} else if !ok {
+		return zero, errConflict
 	}
 	*step = stepCommit
 	if err := tx.Commit(ctx); err != nil {
@@ -286,4 +271,69 @@ func attrsAny(attrs []slog.Attr) []any {
 		out[i] = a
 	}
 	return out
+}
+
+// write applies the plan's steps in order, then the events, the dispatch jobs and the audit row on
+// tx, setting *step before each. false means an aggregate was stale (a conflict). The caller owns the
+// transaction: begin, commit or release, and rollback.
+func write[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Context, cmd C, plan *Plan[E], tx *database.Tx, log *slog.Logger, step *string) (bool, error) {
+	r := d.runner
+	*step = stepPersist
+	for _, s := range plan.steps {
+		ok, err := s.apply(ctx, tx)
+		if err != nil {
+			return false, failure(log, *step, err)
+		}
+		if !ok {
+			return false, nil
+		}
+	}
+	*step = stepOutbox
+	if err := r.outbox.WriteEvents(ctx, tx, cx, plan.events); err != nil {
+		return false, failure(log, *step, err)
+	}
+	if len(plan.jobs) > 0 {
+		if err := r.outbox.WriteDispatchJobs(ctx, tx, cx, plan.jobs); err != nil {
+			return false, failure(log, *step, err)
+		}
+	}
+	*step = stepAudit
+	if err := r.outbox.WriteAudit(ctx, tx, auditEntry(d.name, cx, cmd, plan, r.clock.Now())); err != nil {
+		return false, failure(log, *step, err)
+	}
+	return true, nil
+}
+
+// persistJoined writes the plan inside the caller's transaction under a savepoint (write-path
+// contract 4a): a failed or conflicting attempt is rolled back to the savepoint, so the caller's
+// earlier work is kept and its transaction stays usable. It never commits or rolls back the
+// caller's transaction.
+func persistJoined[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Context, cmd C, plan *Plan[E], log *slog.Logger, step *string, joined *database.Tx) (E, error) {
+	var zero E
+	*step = stepBegin
+	sp, err := joined.Conn().Begin(ctx) // a savepoint: pgx nests a Begin on a transaction
+	if err != nil {
+		return zero, failure(log, *step, err)
+	}
+	released := false
+	defer func() {
+		if !released {
+			if err := sp.Rollback(context.WithoutCancel(ctx)); err != nil {
+				log.Warn("rollback to savepoint failed", slog.String("error", err.Error()))
+			}
+		}
+	}()
+	ok, err := write(ctx, d, cx, cmd, plan, dbtx.New(sp), log, step)
+	if err != nil {
+		return zero, err
+	}
+	if !ok {
+		return zero, errConflict
+	}
+	*step = stepSavepoint
+	if err := sp.Commit(ctx); err != nil { // RELEASE SAVEPOINT
+		return zero, failure(log, *step, err)
+	}
+	released = true
+	return plan.first, nil
 }

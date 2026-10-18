@@ -20,6 +20,7 @@ import (
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/internal/conformance"
 	"github.com/flowcatalyst/framework/go/usecase"
+	"github.com/flowcatalyst/framework/go/usecase/usecasetest"
 )
 
 // The scenarios of conformance/usecase/scenarios.json (Java: UseCaseScenariosConformanceTest): a use
@@ -562,9 +563,11 @@ func compareScenario(t *testing.T, c *scnCase, st *scnState, runErr error, side 
 		checkOutbox(t, ctx, q, c)
 	} else {
 		var n int
-		row := side.Pool().QueryRow(ctx, "SELECT count(*) FROM outbox_messages")
+		var row pgx.Row
 		if inTx != nil {
 			row = inTx.QueryRow(ctx, "SELECT count(*) FROM outbox_messages")
+		} else {
+			row = side.Pool().QueryRow(ctx, "SELECT count(*) FROM outbox_messages")
 		}
 		if err := row.Scan(&n); err != nil {
 			t.Fatal(err)
@@ -635,8 +638,79 @@ func checkOutbox(t *testing.T, ctx context.Context, q interface {
 	}
 }
 
-func runJoined(t *testing.T, _ *scnCase, _ *scnState, _ *usecase.Defined[scnCommand, scnEvent], _ fw.Context, _ scnCommand, _ *database.DB) {
-	t.Skip("joined runs: G7.4")
+// runJoined plays the caller who owns the transaction: it inserts its own row first, runs the use
+// case on that transaction (and a follow-up after it), lets another connection look, then commits or
+// rolls back.
+func runJoined(t *testing.T, c *scnCase, st *scnState, d *usecase.Defined[scnCommand, scnEvent], cx fw.Context, cmd scnCommand, side *database.DB) {
+	t.Helper()
+	ctx := t.Context()
+	if c.Join.AutoCommit {
+		// Java: a connection in auto-commit is an IllegalArgumentException. Go cannot be handed one:
+		// RunJoined takes the *database.Tx of a framework helper, which is always in a transaction.
+		t.Skip("not applicable in Go: a joined handle is always in a transaction (documented difference)")
+	}
+	tx, err := usecasetest.Begin(ctx, side)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ended := false
+	t.Cleanup(func() {
+		if !ended {
+			_ = tx.Conn().Rollback(context.WithoutCancel(ctx))
+		}
+	})
+	if c.Join.CallerInsert {
+		if _, err := tx.Conn().Exec(ctx, "INSERT INTO thing (id, client_id, version, name, code) VALUES ('mine', 'acme', 1, 'callers', 'C-1')"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, runErr := d.RunJoined(ctx, cx, cmd, tx)
+	compareScenario(t, c, st, runErr, side, tx.Conn())
+	if c.Expect.FollowUp != nil {
+		before := countEvents(t, tx.Conn())
+		follow := *c.Join.FollowUp
+		follow.st = st
+		_, ferr := d.RunJoined(ctx, cx, follow, tx)
+		if (ferr == nil) != (c.Expect.FollowUp.Result == "committed") {
+			t.Errorf("follow-up: error %v, want %s (the caller's transaction must stay usable)", ferr, c.Expect.FollowUp.Result)
+		}
+		if got := countEvents(t, tx.Conn()) - before; got != c.Expect.FollowUp.Events {
+			t.Errorf("follow-up wrote %d events, want %d", got, c.Expect.FollowUp.Events)
+		}
+	}
+	seen, err := queryer(ctx, side.Pool())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(seen, c.Expect.SeenByOthersBeforeEnd) {
+		t.Errorf("another connection sees %v before the caller ends, want %v", seen, c.Expect.SeenByOthersBeforeEnd)
+	}
+	switch c.Join.End {
+	case "commit":
+		err = tx.Conn().Commit(ctx)
+	default:
+		err = tx.Conn().Rollback(ctx)
+	}
+	ended = true
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := queryer(ctx, side.Pool())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(got, c.Expect.Things) {
+		t.Errorf("things after the caller ends %v, want %v", got, c.Expect.Things)
+	}
+}
+
+func countEvents(t *testing.T, q pgx.Tx) int {
+	t.Helper()
+	var n int
+	if err := q.QueryRow(context.Background(), "SELECT count(*) FROM outbox_messages WHERE type = 'EVENT'").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
 }
 
 func TestUseCaseScenarioVectors(t *testing.T) {

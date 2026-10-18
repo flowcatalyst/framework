@@ -6,6 +6,7 @@
 package usecasetest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -122,4 +123,16 @@ func Repository[A any, I comparable](t *testing.T, h Harness[A, I]) {
 			t.Fatalf("delete %d rows, still found %v", n, ok)
 		}
 	})
+}
+
+// Begin starts a READ COMMITTED transaction on db and returns it as the handle
+// [usecase.Defined.RunJoined] takes, for a test that plays the caller owning the transaction
+// (production code gets the handle from flowcatalyst.Once). The test ends it with
+// tx.Conn().Commit or Rollback.
+func Begin(ctx context.Context, db *database.DB) (*database.Tx, error) {
+	tx, err := db.Pool().BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return nil, err
+	}
+	return dbtx.New(tx), nil
 }

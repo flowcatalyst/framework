@@ -47,8 +47,9 @@ var ErrInvalidHandlerName = errors.New("a once handler name must match [A-Za-z0-
 // default database instance. Handler names are [A-Za-z0-9._:-]{1,200}. Old rows are purged by
 // [Build] (flowcatalyst.receivers.once-retention).
 //
-// A use case run inside this transaction (the runner owns its own) is an open question of the
-// framework's design, shared with the Java module (docs/go/orders-showcase.md section 10).
+// A use case joins this transaction with [usecase.Defined.RunJoined], handing it work's tx
+// (write-path contract 4a): its writes, events and audit row go in the same transaction as the
+// record, under a savepoint, and are committed or rolled back with it.
 func Once[R any](ctx context.Context, meta DeliveryMeta, db *database.DB, handler string,
 	work func(ctx context.Context, tx *database.Tx) (R, error),
 ) (OnceResult[R], error) {

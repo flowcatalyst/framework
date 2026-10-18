@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -168,8 +169,36 @@ func (d *Defined[C, E]) Name() string { return d.name }
 // step's code. It never panics for an expected outcome; a panic inside a phase is recovered as
 // INTERNAL.
 func (d *Defined[C, E]) Run(ctx context.Context, cx fw.Context, cmd C) (Committed[E], error) {
+	return d.run(ctx, cx, cmd, nil)
+}
+
+// RunJoined runs the use case inside the caller's transaction instead of its own (write-path
+// contract 4a, owner decision 3): the plan's writes, the events and the audit row go on joined's
+// connection under a savepoint, and are committed or rolled back when the caller commits or rolls
+// back. Committed then means "applied in your transaction". A stale aggregate, a serialization
+// failure, a deadlock, a unique violation or any failed step rolls the attempt back to the savepoint,
+// so the caller's earlier work survives and its transaction stays usable; the result and the
+// conflict policy are those of [Defined.Run], and a retry runs the whole attempt again on the same
+// transaction. The runner never begins, commits or rolls back the caller's transaction. The
+// isolation level is the caller's: retrying a conflict assumes READ COMMITTED (what
+// flowcatalyst.Once uses). Reads through a repository's Find use the database's own connections and
+// do not see the caller's uncommitted writes.
+//
+// joined is the *database.Tx a framework helper hands its work (flowcatalyst.Once); only the
+// framework makes one, so an arbitrary connection cannot be passed and, unlike Java's autocommit
+// argument error, there is no such misuse to report. A nil joined is a programming error, returned
+// as a plain error (not a *Error). (Go has no generic methods, so this is on the defined use case
+// rather than on Runner.)
+func (d *Defined[C, E]) RunJoined(ctx context.Context, cx fw.Context, cmd C, joined *database.Tx) (Committed[E], error) {
+	if joined == nil {
+		return Committed[E]{}, errors.New("usecase: RunJoined needs the transaction of a framework helper such as flowcatalyst.Once")
+	}
+	return d.run(ctx, cx, cmd, joined)
+}
+
+func (d *Defined[C, E]) run(ctx context.Context, cx fw.Context, cmd C, joined *database.Tx) (Committed[E], error) {
 	start := d.runner.clock.Now()
-	ev, err := run(ctx, d, cx, cmd)
+	ev, err := run(ctx, d, cx, cmd, joined)
 	outcome := "committed"
 	if err != nil {
 		outcome = lower(err.Kind().String())

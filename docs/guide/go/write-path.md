@@ -71,6 +71,24 @@ conflict re-runs all of it, so the retry loads and checks again. A load that ret
 never in the message. Go differs from Java only in shape: the check is a method rather than a
 builder call.
 
+## Running inside the caller's transaction
+
+`Defined.RunJoined(ctx, cx, cmd, tx)` (write-path contract 4a) runs the same attempts on a
+transaction the caller owns, so a use case composes with `flowcatalyst.Once`, whose work gets the open
+`*database.Tx`: the delivery's idempotency record, the use case's writes, its events and its audit row
+are one transaction. Each attempt runs under a savepoint (pgx nests a `Begin` on a transaction); a
+stale aggregate, a serialization failure, a deadlock, a unique violation or any failed step rolls back
+**to the savepoint**, so the caller's earlier work survives and the transaction stays usable; a retry
+runs the attempt again on the same transaction. The runner never commits or rolls back the caller's
+transaction: `Committed` means "applied in your transaction". Reads through a repository's `Find`
+use the pool, so they do not see the caller's uncommitted writes; an HTTP call or a message send is
+not made atomic by this (make it idempotent: the dispatch job id is the key).
+
+Differences from Java: it is a method of the defined use case, not of the runner (Go has no generic
+methods); the handle is the `*database.Tx` only the framework (`Once`, the runner) makes, so
+Java's "connection in auto-commit" argument error cannot occur; the savepoint-release step code is
+`SAVEPOINT`, as in Java. `usecasetest.Begin` plays the caller in tests.
+
 ## Fresh, Loaded and the repository
 
 The aggregate knows nothing of storage. `usecase.NewFresh(cx, a)` is a new aggregate for the
