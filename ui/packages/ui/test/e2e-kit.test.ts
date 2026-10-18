@@ -114,7 +114,6 @@ describe("the backend launcher's commands", () => {
       "test-compile",
       "dependency:build-classpath",
       "-Dmdep.outputFile=/tmp/cp.txt",
-      "-Dmdep.includeScope=test",
     ]);
   });
 

@@ -37,7 +37,7 @@ export function findRepositoryRoot(start: string): string {
 
 /** The Maven arguments: compile the module's tests and what it needs, and write the test classpath. */
 export function mavenArguments(module: string, classpathFile: string): string[] {
-  return ["-q", "-pl", module, "-am", "test-compile", "dependency:build-classpath", `-Dmdep.outputFile=${classpathFile}`, "-Dmdep.includeScope=test"];
+  return ["-q", "-pl", module, "-am", "test-compile", "dependency:build-classpath", `-Dmdep.outputFile=${classpathFile}`];
 }
 
 /** The JVM arguments that run the launcher. */
