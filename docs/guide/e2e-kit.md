@@ -46,7 +46,8 @@ is the pitfall.
 
 **2. The configuration** (`playwright.config.ts`). The two ports are yours and must be free of 8080, 15432
 and the other applications' (taken: 4391 gallery, 4392 and 4393 orders, 4394 and 4395 tickets, 4396 and 4397 the Camel
-application, Vite 5173 to 5176):
+application, Vite 5173 to 5176). The Go orders suite (`make e2e-orders`) uses the same 4392 and 4393 as the Java
+one, so the two cannot run at the same time; run one, then the other:
 
 ```ts
 import { defineE2eConfig } from "@flowcatalyst/ui/e2e";

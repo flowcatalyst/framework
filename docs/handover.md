@@ -1,9 +1,33 @@
-# Handover (2026-10-14)
+# Handover (2026-10-18)
 
 The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; contracts in
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
 rewritten at hand-off and can lag the code in between.
 
+- **State at 072bd58 (2026-10-18), Java side.**
+  - **Pushed / published.** `origin/main` (checked with `git ls-remote`) is at `072bd58`, the same as the local
+    `HEAD`: nothing is waiting to be pushed from this checkout. (An earlier hand-off said about 85 commits were unpushed
+    after a permission denial; that is no longer true.) **Nothing is published**: no tag, no package on GitHub Packages.
+  - **Done today (Java).** Camel-application feedback: the `link:` tsconfig pitfall documented and tested (`8fdbab8`,
+    `ui/README.md`); the kit's `playwright` subcommand, which runs the kit's own `@playwright/test` (`2240901`; guide
+    `e2e-kit.md`); the no-op `mdep.includeScope` flag dropped and ports 4396 and 4397 listed as taken (`70d9589`); a failed
+    launch closes the started services and exits non-zero for any `Throwable`, in `AppBuilder` (`e4dcf4b`; the Vert.x
+    thread no longer keeps the JVM alive; core contract and lifecycle guide). Security review of sessions (Java hand-off
+    **done**, `b234015`: F1, F2, I1, I2, I3, I5, I8; `SecurityHardeningTest`). **Public API change:**
+    `PlatformTokens.create(..)` now refuses an `http://` issuer outside `local`/`test`; `createAllowingPlainHttp(..)` is the
+    opt-in (guide `sessions-and-login.md`; `migrating-from-flowcatalyst-token.md` uses `create`, https only). The e2e test
+    provider ends the session on its own origin and redirects back, and the sign-out spec expects the plain signed-out URL
+    (`072bd58`, for I1).
+  - **Port collision.** The Java and the Go e2e suites for orders both use 4392 (app) and 4393 (control): they cannot run at
+    once. Run one suite, then the other (noted in `e2e-kit.md`).
+  - **Open.** (1) The tickets example mounts only `about` and `config`; the admin pages for event types, roles, users and
+    activity are not mounted there (orders mounts all six). (2) The first-slice rulings in `contracts/client-settings.md`
+    section 7 (one row per client, no cache, an undecodable value is an error) await the owner's confirmation. (3) Security
+    review items I4, I6, I9 and I10 are recorded as known limits in `contracts/sessions-and-login.md` section 14 ("owner decision
+    to skip"), but that section says the review report holds their text and the text is **not in this repository**: it has
+    still to be pasted there from the review. (4) Not verified: a real platform, a second replica, Firefox or WebKit. (5) M5 beyond
+    per-client settings (cache, storage, platform config driver, metering, messaging) is not started. (6) Owner decisions listed
+    below ("Owner decisions waiting"), including publishing the SDK and the group id before the first tag.
 - **Owner rulings 2026-10-18, all built** (each its own commit with contract, tests and guide; the friction rows in
   `m4f-trial-service.md` say *fixed*): (1) F20/F21 UI fixes (`fbcdca5`): soft and subtle success/warning badges use the
   800 shade in light; `FwFormDialog` `requireChange` reads the fields' drafts. (2) F18 (`b1511d0`): the admin data
