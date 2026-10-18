@@ -321,3 +321,9 @@ claimed with the `AppBuilder.command(DeclarationCommand)` overload. `Declaration
 (two modules with one id, a register hook that threw) still fails with `StartupException` before the
 command runs; a command that throws exits 1. For tools and tests, `AppBuilder.declarations()` runs
 the register phase only and returns the same view (the builder is used up).
+
+*Amended 2026-10-18 (first-application feedback):* a command, declaration-phase or not, that throws any
+`Throwable`, `Error` included, exits 1 (`Launch.Ran(1)`) with the application closed. An `Error` out of a
+provider (step 3) or a `boot`/`started` hook closes every service already built and propagates; before this,
+only `Exception`s were handled, and a leftover non-daemon thread (an HTTP client's Vert.x event loop) kept the
+JVM alive after `main` died.

@@ -259,6 +259,14 @@ switch (App.builder().module(/* ... */).launch(args)) {
 Because a command skips `boot`, it has no routes registered, no health checks, and (with the Jetty
 module) no server. `start()` is unchanged for callers that do not use commands.
 
+### When a command or start-up fails
+
+Anything thrown out of a command, an `Error` such as `NoClassDefFoundError` included, is logged and
+`launch` returns `Launch.Ran(1)`; the application is closed first, so the services' threads (the HTTP
+client's Vert.x event loops are non-daemon) end and `System.exit(1)` in the switch above runs. An `Error`
+out of a provider or a `boot` or `started` hook closes the services already built and then propagates, so
+`main` dies with the stack trace and the JVM exits instead of hanging on a leftover event loop.
+
 ### Declaration-phase commands
 
 Some commands need only what modules declared, not configuration or services: writing the OpenAPI

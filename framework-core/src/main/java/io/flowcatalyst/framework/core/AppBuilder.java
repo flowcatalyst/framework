@@ -342,7 +342,7 @@ public final class AppBuilder {
         int code = declared.run(snapshot(), List.of(args).subList(1, args.length), out);
         out.flush();
         return new Launch.Ran(code);
-      } catch (Exception e) {
+      } catch (Throwable e) {
         LOG.error("command '{}' failed: {}", declared.name(), describe(e), e);
         return new Launch.Ran(1);
       }
@@ -357,7 +357,7 @@ public final class AppBuilder {
       int code = command.run(app, List.of(args).subList(1, args.length), out);
       out.flush();
       return new Launch.Ran(code);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOG.error("command '{}' failed: {}", command.name(), describe(e), e);
       return new Launch.Ran(1);
     } finally {
@@ -476,7 +476,14 @@ public final class AppBuilder {
     seeded.put(EnvironmentVariables.class, EnvironmentVariables.of(environment));
     applyOverrides(seeded);
     ServiceGraph graph = new ServiceGraph(providers, seeded, contributions);
-    graph.buildAll();
+    try {
+      graph.buildAll();
+    } catch (Error e) {
+      // An Error (NoClassDefFoundError, say) is not collected as a problem, but what was built holds
+      // threads (an HTTP client's event loops); close it so the JVM can exit.
+      Shutdown.closeInReverse(graph.builtInOrder(), drain);
+      throw e;
+    }
     if (!graph.problems().isEmpty()) {
       Shutdown.closeInReverse(graph.builtInOrder(), drain);
       throw new StartupException(graph.problems());
@@ -486,6 +493,16 @@ public final class AppBuilder {
 
   /** Steps 4 and 5: boot, then started. */
   private App bootAndStart(App app) {
+    try {
+      return bootAndStartModules(app);
+    } catch (Error e) {
+      // As in step 3: an Error out of a hook must not leave the services (and their threads) running.
+      app.close();
+      throw e;
+    }
+  }
+
+  private App bootAndStartModules(App app) {
     List<Module> registered = registeredModules;
     // 4. Boot, in the order listed.
     List<Problem> bootProblems = new ArrayList<>();
