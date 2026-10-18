@@ -11,3 +11,4 @@ framework-usecase/src/main/resources/db/migration/outbox/V0001__create_outbox_me
 framework-usecase/src/main/resources/db/migration/outbox/V0002__widen_outbox_client_id.sql usecase/migrations/V0002__widen_outbox_client_id.sql
 examples/orders-demo/src/main/resources/db/migration/orders/V0001__create_orders.sql examples/orders-demo/orders/migrations/V0001__create_orders.sql
 framework-flowcatalyst/src/main/resources/db/migration/flowcatalyst/V0001__create_dispatch_once.sql flowcatalyst/migrations/V0001__create_dispatch_once.sql
+framework-auth-database/src/main/resources/db/migration/auth/V0001__create_session_table.sql auth/authdb/migrations/V0001__create_session_table.sql

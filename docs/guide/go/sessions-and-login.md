@@ -1,4 +1,4 @@
-<!-- types: PlatformTokens, AccessToken, TokenResult, Valid, Invalid, Unavailable, Principal, Provider, Signing -->
+<!-- types: PlatformTokens, AccessToken, TokenResult, Valid, Invalid, Unavailable, Principal, Provider, Signing, Store, Kind, StoreFactory, MemoryStore, CookieStore, CookieKeys -->
 # Go: sessions and login
 
 Package `auth` is the Go implementation of the [sessions and login contract](../../contracts/sessions-and-login.md)
@@ -14,7 +14,7 @@ State of the slices:
 |---|---|---|
 | 1 | `httpfw.SessionsGuard` / `PublicFormGuard` (the F16 CSRF rules) and `httpfw.SecurityHeaders` ([HTTP page](http.md#csrf-and-security-headers)) | built |
 | 2 | the relying party (discovery, JWKS cache, PKCE S256 authorize URL, code exchange, id_token checks), `PlatformTokens`, `authtest.Provider` | built |
-| 3 | session stores (`memory`, `cookie`, `database`, `redis`), lifetimes, rotation, revocation | not yet |
+| 3 | session stores (`memory`, `cookie`, `database`, `redis`), session and login records, idle and absolute lifetimes | built |
 | 4 | the four endpoints, the context resolver, 401 versus 302, `Context.permissions`, test helpers, the login-failure vector | not yet |
 
 ## Verifying platform tokens on their own
@@ -69,3 +69,48 @@ order; the RFC 7636 challenge vector; public and confidential code exchange; the
 allowance exactly; key rotation, the once-a-minute read limit (also under 32 concurrent callers),
 the hourly read, and the five-second back-off. Not checked: an id_token or discovery document from a
 real FlowCatalyst platform.
+
+## Session stores
+
+A session lives in a `auth.Store` (contract section 6.3): `Create(kind, json, expiresAt)` returns the
+handle that is the cookie value, `Read`, `Take` (read and delete in one atomic step, so a login can
+complete once), `Update` and `Delete`, over records of kind `KindSession` or `KindLogin`. The
+store's expiry is the application's clock (`fw.Clock`), never the store's. A store that cannot
+answer returns an error wrapping `auth.ErrStore` (the request gets `500`), never "no session". A
+store is built when the application starts, from an `auth.StoreFactory` (Go has no implicit
+default: the database store is the documented one, and you name it):
+
+| Driver | Factory | Storage |
+|---|---|---|
+| `database` | `authdb.Factory(dbs)`; `authdb.Declare(app)` contributes the migration | table `fw_session` (the Java module's migration file, module id `auth-database`, byte for byte), only `base64url(SHA-256(handle))` stored; the loop `auth-session-purge` deletes expired rows every 10 minutes, 1000 at a time |
+| `redis` | `authredis.Factory(clients)` | key `fw:sess:<kind>:<hash>`, value `<expiry in epoch milliseconds>` newline `<json>`, `PX` the time to expiry; `Take` is `GETDEL` (Redis 6.2 or later); `Update` is `SET ... XX` |
+| `memory` | `auth.MemoryStoreFactory()` | one process only, for tests and single-process development |
+| `cookie` | `auth.NewCookieStore(keys, clock)` | nothing on the server: the handle is the sealed record |
+
+Server stores answer "none" without a store call for a handle that is not 43 characters of
+`[A-Za-z0-9_-]` (`auth.IsWellFormedHandle`); `auth.NewHandle` makes 32 random bytes from the system
+CSPRNG.
+
+The cookie store seals with AES-256-GCM, `v1.<kid>.<base64url(iv || ciphertext || tag)>`, the record
+kind bound in as additional data (so a login record cannot be replayed as a session), the expiry
+inside the plaintext. `auth.ParseCookieKeys` reads `auth.cookie-keys`
+(`<kid>:<base64url of 32 bytes>[,...]`): the first key seals, every key opens, a malformed list, a
+key that is not 32 bytes or a repeated kid is an error that never contains key material.
+`auth.GenerateCookieKey("k1")` makes a key. A sealed value over 3 800 characters is an error. Its
+limits, stated plainly: logout cannot revoke a copy taken before, and `Take` cannot be atomic.
+
+The records are the contract's JSON (6.1, 6.2): the same bytes Java writes and reads, times as
+`Instant.toString` text, optional values omitted, never `null`; permissions and tokens are not
+stored. Lifetimes (6.4): absolute (default 8 hours, never extended) and idle (default 30 minutes);
+`lastSeenAt` is written back only when older than the smaller of one minute and half the idle timeout;
+the store expiry is the earlier of the two; an expired session is deleted when read.
+
+What was checked: one contract suite (`auth/storetest`) runs against the memory, database (embedded
+PostgreSQL) and Redis (a real `redis-server`) stores: malformed handles, kind separation, expiry to
+the millisecond, take once and 16 concurrent takers (exactly one wins), update without resurrection,
+revocation, unique handles; the cookie store's tamper cases (every changed byte, wrong key, wrong
+kind, expiry, key rotation, oversize, key-list errors without key material); the session and login
+JSON byte for byte and a document with Java-style fractional seconds; lifetimes with a fake clock.
+Mutation checks: dropping the kind from the memory key, or the kind from the sealing context, fails
+tests. Not checked: a store shared by a live Java and a live Go process (the table and JSON are
+the same, but only Go wrote and read it), a real Redis cluster.
