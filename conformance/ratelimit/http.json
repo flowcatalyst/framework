@@ -1,0 +1,2031 @@
+{
+  "description" : "The rate limit middleware and key resolvers (rate-limiting contract sections 3 and 4). A route whose handler answers 200 {\"ok\":true} sits behind RateLimit.by(limiter, resolver); the limiter is the memory driver with the policy (limit, periodNanos, burst) and the clock set to each request's 'at'. resolver: literal (the key is the X-Test-Key header, null when absent), clientAddress, forwardedFor (trusted = n), header (name). cost, headers (RateLimit-* on), onStoreFailure (ALLOW | DENY), storeDown (the limiter throws RateLimitStoreException) and policyResolver (a resolver reads X-Test-Policy: 'null' -> no policy, 'throw' -> the resolver throws, 'unlimited' -> RateLimitPolicy.UNLIMITED, 'limit/periodMillis/burst' -> that policy) are the middleware's settings. A request is (at nanoseconds, remote address or null, headers as an ordered [name, value] list). expect per request: status; key = the key the limiter was asked about (null when it was not asked); headers = Retry-After and RateLimit-Limit / RateLimit-Remaining / RateLimit-Reset when present; body = the response body as parsed JSON. A 429 is {error: RATE_LIMITED, message: 'too many requests'} with Retry-After in whole seconds rounded up and at least 1; RateLimit-Limit is the burst of the policy used, RateLimit-Reset the seconds until the bucket is full, rounded up. buildError: the resolver cannot be built (IllegalArgumentException). Keys are IP literals normalised as 'ip:<address>' for IPv4 (IPv4-mapped IPv6 included) and 'ip6:<first 8 bytes in hex>::/64' for IPv6, 'h:<sha256 hex>' for header(name); a key over 200 characters is 'sha256:<hex>'; a null or empty key is '-'. What counts as an IP literal is java.net.InetAddress.ofLiteral, which differs from other runtimes' parsers (zone ids, leading zeros, mapped addresses): each such case records Java's answer in 'javaLiteralCase' for the cases where a stricter parser may refuse; Go's netip is stricter and a recorded difference is expected there.",
+  "howToRun" : "Per case: build the limiter and middleware as described, send each request at its time with its remote address and headers, compare status, key, headers and body. Regenerate from Java with -Dconformance.update=true (RateLimitConformanceTest).",
+  "cases" : [ {
+    "name" : "429 envelope, Retry-After rounded up and the RateLimit headers",
+    "policy" : {
+      "limit" : 2,
+      "periodNanos" : 10000000000,
+      "burst" : 2
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1004900000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1005000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1005000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "1",
+        "RateLimit-Reset" : "5"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "5",
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "1",
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "6"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    }, {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "5",
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "Retry-After is at least one second",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "1",
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "Retry-After one nanosecond over a second rounds up to two",
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 1000000001,
+      "burst" : 1
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "2"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "2",
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "2"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "RateLimit-Reset rounds up",
+    "policy" : {
+      "limit" : 3,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1001500000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "2",
+        "RateLimit-Reset" : "4"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "1",
+        "RateLimit-Reset" : "6"
+      },
+      "body" : {
+        "ok" : true
+      }
+    } ]
+  }, {
+    "name" : "headers off: no RateLimit headers, 429 keeps Retry-After",
+    "policy" : {
+      "limit" : 2,
+      "periodNanos" : 10000000000,
+      "burst" : 2
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : false,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : { },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "a",
+      "headers" : { },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "5"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "cost 2 uses two units",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 5
+    },
+    "resolver" : "literal",
+    "cost" : 2,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "5",
+        "RateLimit-Remaining" : "3",
+        "RateLimit-Reset" : "2"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "5",
+        "RateLimit-Remaining" : "1",
+        "RateLimit-Reset" : "4"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "1",
+        "RateLimit-Limit" : "5",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "4"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "store failure with ALLOW lets the request through",
+    "policy" : {
+      "limit" : 2,
+      "periodNanos" : 10000000000,
+      "burst" : 2
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : true,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : { },
+      "body" : {
+        "ok" : true
+      }
+    } ]
+  }, {
+    "name" : "store failure with DENY answers 503",
+    "policy" : {
+      "limit" : 2,
+      "periodNanos" : 10000000000,
+      "burst" : 2
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "DENY",
+    "storeDown" : true,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 503,
+      "key" : "a",
+      "headers" : { },
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "rate limiting is unavailable"
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: the header names the policy",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : true,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ], [ "X-Test-Policy", "1/1000/2" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ], [ "X-Test-Policy", "1/1000/2" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ], [ "X-Test-Policy", "1/1000/2" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "a" ], [ "X-Test-Policy", "null" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "b" ], [ "X-Test-Policy", "unlimited" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "b" ], [ "X-Test-Policy", "unlimited" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "1",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "2"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "a",
+      "headers" : {
+        "Retry-After" : "1",
+        "RateLimit-Limit" : "2",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "2"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    }, {
+      "status" : 200,
+      "key" : "a",
+      "headers" : {
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "3"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : null,
+      "headers" : { },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : null,
+      "headers" : { },
+      "body" : {
+        "ok" : true
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: a resolver that throws follows ALLOW (the default policy limits)",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : true,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "c",
+      "headers" : {
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "2",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "c",
+      "headers" : {
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "1",
+        "RateLimit-Reset" : "2"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "c",
+      "headers" : {
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "3"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "c",
+      "headers" : {
+        "Retry-After" : "1",
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "3"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: a resolver that throws follows DENY",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "DENY",
+    "storeDown" : false,
+    "policyResolver" : true,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "c" ], [ "X-Test-Policy", "throw" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 503,
+      "key" : null,
+      "headers" : { },
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "rate limiting is unavailable"
+      }
+    }, {
+      "status" : 503,
+      "key" : null,
+      "headers" : { },
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "rate limiting is unavailable"
+      }
+    }, {
+      "status" : 503,
+      "key" : null,
+      "headers" : { },
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "rate limiting is unavailable"
+      }
+    }, {
+      "status" : 503,
+      "key" : null,
+      "headers" : { },
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "rate limiting is unavailable"
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: a burst below the cost is a policy failure",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "resolver" : "literal",
+    "cost" : 2,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : true,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "d" ], [ "X-Test-Policy", "10/1000/1" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "d",
+      "headers" : {
+        "RateLimit-Limit" : "3",
+        "RateLimit-Remaining" : "1",
+        "RateLimit-Reset" : "2"
+      },
+      "body" : {
+        "ok" : true
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: a burst below the cost with DENY",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "resolver" : "literal",
+    "cost" : 2,
+    "headers" : true,
+    "onStoreFailure" : "DENY",
+    "storeDown" : false,
+    "policyResolver" : true,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "d" ], [ "X-Test-Policy", "10/1000/1" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 503,
+      "key" : null,
+      "headers" : { },
+      "body" : {
+        "error" : "UNAVAILABLE",
+        "message" : "rate limiting is unavailable"
+      }
+    } ]
+  }, {
+    "name" : "a missing key falls into the shared bucket",
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 10000000000,
+      "burst" : 1
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.2",
+      "headers" : [ ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "-",
+      "headers" : {
+        "Retry-After" : "10",
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "an empty key falls into the shared bucket",
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 10000000000,
+      "burst" : 1
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.2",
+      "headers" : [ [ "X-Test-Key", "" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 429,
+      "key" : "-",
+      "headers" : {
+        "Retry-After" : "10",
+        "RateLimit-Limit" : "1",
+        "RateLimit-Remaining" : "0",
+        "RateLimit-Reset" : "10"
+      },
+      "body" : {
+        "error" : "RATE_LIMITED",
+        "message" : "too many requests"
+      }
+    } ]
+  }, {
+    "name" : "a key of 200 characters is used as is and 201 is hashed",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "literal",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Test-Key", "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "sha256:ebf0ead0a3b837bc388d6a36c93833fff64a0a8bc8198fc0f1b7b5031dddd254",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    } ]
+  }, {
+    "name" : "clientAddress: IPv4",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "clientAddress",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "203.0.113.5",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "9.9.9.9" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "clientAddress: IPv6 is grouped by /64",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "clientAddress",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "2001:db8:1:2:aaaa:bbbb:cccc:dddd",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "2001:db8:1:2::1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "2001:db8:1:3::1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "[2001:db8:1:2::1]",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "2001:DB8:1:2::1",
+      "headers" : [ ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip6:20010db800010002::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:20010db800010002::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:20010db800010003::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:20010db800010002::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "997",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:20010db800010002::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "996",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "clientAddress: no address, an unparseable address",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "clientAddress",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : null,
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "not-an-address",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "example.com",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "203.0.113.5:80",
+      "headers" : [ ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "997",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "996",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "995",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "clientAddress: IPv4-mapped IPv6 and loopback",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "clientAddress",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "::ffff:203.0.113.5",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "::1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "::",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "0.0.0.0",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "127.0.0.1",
+      "headers" : [ ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:0000000000000000::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:0000000000000000::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:0.0.0.0",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:127.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "clientAddress: odd IPv4 spellings",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "clientAddress",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "010.001.001.001",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "0x7f.0.0.1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "1.2.3",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "256.1.1.1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "1.2.3.4.5",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : " 1.2.3.4",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "2130706433",
+      "headers" : [ ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:10.1.1.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:1.2.0.3",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "997",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "996",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:127.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "clientAddress: zone ids and long values",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "clientAddress",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "fe80::1%eth0",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "fe80::1%1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "11111111111111111111111111111111111111111111111111111111111111111",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "2001:db8:1:2:3:4:5:6",
+      "headers" : [ ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:fe80000000000000::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:20010db800010002::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor(1): the entry the proxy wrote, a spoofed left side is ignored",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 1,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "203.0.113.5" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1, 203.0.113.5" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1, 2.2.2.2, 203.0.113.5" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "997",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor(2): the second from the right",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 2,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1, 203.0.113.5, 10.0.0.9" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "203.0.113.5, 10.0.0.9" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "10.0.0.9" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor(3): fewer entries than proxies falls back to the connection",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 3,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "203.0.113.5, 10.0.0.9" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1, 203.0.113.5, 10.0.0.9" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:1.1.1.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor(1): the chosen entry is not an IP literal",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 1,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1, unknown" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1, example.com" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "203.0.113.5:8080" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.2.3.4," ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", ", 1.2.3.4" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "997",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "996",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:1.2.3.4",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:1.2.3.4",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor(1): IPv6 entries, brackets, mapped IPv4, zone",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 1,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "2001:db8:1:2::9" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "[2001:db8:1:2::9]" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "::ffff:203.0.113.5" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "fe80::1%eth0" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip6:20010db800010002::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip6:20010db800010002::/64",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor(2): several header lines are one list in order",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 2,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1" ], [ "X-Forwarded-For", "203.0.113.5, 10.0.0.9" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1, 203.0.113.5" ], [ "X-Forwarded-For", "10.0.0.9" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor(1): spacing and case of the header name",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 1,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "x-forwarded-for", "  203.0.113.5  " ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-FORWARDED-FOR", "1.1.1.1 ,\t203.0.113.6" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:203.0.113.5",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    }, {
+      "status" : 200,
+      "key" : "ip:203.0.113.6",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor: trusted proxies out of range",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 0,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ ],
+    "expect" : [ ],
+    "buildError" : "IllegalArgumentException"
+  }, {
+    "name" : "forwardedFor: 10 trusted proxies is the most",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 10,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Forwarded-For", "1.1.1.1" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "ip:10.0.0.1",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      },
+      "javaLiteralCase" : true
+    } ]
+  }, {
+    "name" : "forwardedFor: 11 trusted proxies is refused",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "forwardedFor",
+    "trusted" : 11,
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ ],
+    "expect" : [ ],
+    "buildError" : "IllegalArgumentException"
+  }, {
+    "name" : "header(name): hashed, absent and empty are the shared bucket",
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000
+    },
+    "resolver" : "header",
+    "headerName" : "X-Api-Key",
+    "cost" : 1,
+    "headers" : true,
+    "onStoreFailure" : "ALLOW",
+    "storeDown" : false,
+    "policyResolver" : false,
+    "requests" : [ {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Api-Key", "secret-key-1" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Api-Key", "secret-key-1" ], [ "X-Other", "x" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "X-Api-Key", "" ] ]
+    }, {
+      "at" : 1000000000000,
+      "remote" : "10.0.0.1",
+      "headers" : [ [ "x-api-key", "secret-key-2" ] ]
+    } ],
+    "expect" : [ {
+      "status" : 200,
+      "key" : "h:a6c1eaef9d5f23f4e13d9b574cbbe07ae877227d92be87d077005dc6776bcdcc",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "h:a6c1eaef9d5f23f4e13d9b574cbbe07ae877227d92be87d077005dc6776bcdcc",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "-",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "998",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    }, {
+      "status" : 200,
+      "key" : "h:94d34471aab4552c315d1b13f9259af333b99494c47c15999230f576b8478aba",
+      "headers" : {
+        "RateLimit-Limit" : "1000",
+        "RateLimit-Remaining" : "999",
+        "RateLimit-Reset" : "1"
+      },
+      "body" : {
+        "ok" : true
+      }
+    } ]
+  } ]
+}

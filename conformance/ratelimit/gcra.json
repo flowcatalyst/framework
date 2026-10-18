@@ -1,0 +1,1252 @@
+{
+  "description" : "GCRA rate limiting (rate-limiting contract sections 1, 2, 3a), decided by the memory driver with a pinned clock. policy = {limit, periodNanos, burst}; T = periodNanos / limit (integer division) and the window is burst * T. scenarios: a fresh limiter with the default policy and maxKeys; each step is (at, key, cost[, policy]) in nanoseconds on one monotonic clock (only differences matter). For cost c: tat = min(max(stored, at), at + window); next = tat + c * T; allowed when at >= next - window, then next is stored; else limited with retryAfter = next - window - at and tat stored only when the stored value was beyond the cap. expect: result allowed | limited | error (IllegalArgumentException: cost outside 1..burst of the policy used), remaining ( allowed only: (at - (next - window)) / T), resetAfterNanos (allowed: next - at; limited: tat - at) and retryAfterNanos (limited only). A key is stored per name; when the table holds maxKeys keys and the key is new, buckets with stored <= at are purged (at most once per second of clock) and a key still not fitting shares one overflow bucket. policyChecks: whether a policy can be built (limit and burst 1..1000000, period 1ms..1 day, period/limit >= 1000 ns, burst * T <= 2^63-1 over 4). names: whether a limiter name is accepted ([a-z][a-z0-9_-]{0,62}). The redis driver works in microseconds, truncating T to whole microseconds; the vector's numbers are whole microseconds so both agree.",
+  "howToRun" : "Per scenario: build a limiter with the policy, maxKeys and a clock you set to each step's 'at'; call acquire(key, cost[, policy]); compare the decision. Regenerate from Java with -Dconformance.update=true (RateLimitConformanceTest).",
+  "scenarios" : [ {
+    "name" : "a fresh key, burst exhaustion and refill after exactly T",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 1,
+        "resetAfterNanos" : 2000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1000999999999,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1,
+        "resetAfterNanos" : 2000000001
+      }
+    }, {
+      "at" : 1001000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1001000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1011000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1011000000000,
+      "key" : "other",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 1000000000
+      }
+    } ]
+  }, {
+    "name" : "a full bucket again after a long idle",
+    "policy" : {
+      "limit" : 5,
+      "periodNanos" : 1000000000,
+      "burst" : 5
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 4,
+        "resetAfterNanos" : 200000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 3,
+        "resetAfterNanos" : 400000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 600000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 1,
+        "resetAfterNanos" : 800000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 200000000,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1100000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 4,
+        "resetAfterNanos" : 200000000
+      }
+    } ]
+  }, {
+    "name" : "costs greater than one",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 5
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 3,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 3,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 2,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1003000000000,
+      "key" : "k",
+      "cost" : 3,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1003000000000,
+      "key" : "k",
+      "cost" : 5,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 5000000000,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1020000000000,
+      "key" : "k",
+      "cost" : 5,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1020000000000,
+      "key" : "k",
+      "cost" : 6,
+      "expect" : {
+        "result" : "error",
+        "exception" : "IllegalArgumentException"
+      }
+    }, {
+      "at" : 1020000000000,
+      "key" : "k",
+      "cost" : 0,
+      "expect" : {
+        "result" : "error",
+        "exception" : "IllegalArgumentException"
+      }
+    }, {
+      "at" : 1020000000000,
+      "key" : "k",
+      "cost" : -1,
+      "expect" : {
+        "result" : "error",
+        "exception" : "IllegalArgumentException"
+      }
+    } ]
+  }, {
+    "name" : "a limited request stores nothing",
+    "policy" : {
+      "limit" : 2,
+      "periodNanos" : 1000000000,
+      "burst" : 2
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 1,
+        "resetAfterNanos" : 500000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 500000000,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 500000000,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000500000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000500000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 500000000,
+        "resetAfterNanos" : 1000000000
+      }
+    } ]
+  }, {
+    "name" : "burst below the limit",
+    "policy" : {
+      "limit" : 100,
+      "periodNanos" : 60000000000,
+      "burst" : 1
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 600000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 600000000,
+        "resetAfterNanos" : 600000000
+      }
+    }, {
+      "at" : 1000599000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000,
+        "resetAfterNanos" : 1000000
+      }
+    }, {
+      "at" : 1000600000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 600000000
+      }
+    } ]
+  }, {
+    "name" : "burst above the limit",
+    "policy" : {
+      "limit" : 2,
+      "periodNanos" : 1000000000,
+      "burst" : 10
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 9,
+        "resetAfterNanos" : 500000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 8,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 7,
+        "resetAfterNanos" : 1500000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 6,
+        "resetAfterNanos" : 2000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 5,
+        "resetAfterNanos" : 2500000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 4,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 3,
+        "resetAfterNanos" : 3500000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 4000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 1,
+        "resetAfterNanos" : 4500000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 500000000,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1000500000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 5000000000
+      }
+    } ]
+  }, {
+    "name" : "the smallest interval, one microsecond",
+    "policy" : {
+      "limit" : 1000000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000000
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 999999,
+        "resetAfterNanos" : 1000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1000000,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000,
+        "resetAfterNanos" : 1000
+      }
+    }, {
+      "at" : 1000000001000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 999999,
+        "resetAfterNanos" : 1000
+      }
+    }, {
+      "at" : 1000000001000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 999998,
+        "resetAfterNanos" : 2000
+      }
+    } ]
+  }, {
+    "name" : "a long period",
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 86400000000000,
+      "burst" : 1
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 86400000000000
+      }
+    }, {
+      "at" : 87399000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 87400000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 86400000000000
+      }
+    } ]
+  }, {
+    "name" : "per-request policy raised: the debt is kept and measured against the new policy",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 1,
+        "resetAfterNanos" : 2000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 10,
+        "periodNanos" : 1000000000,
+        "burst" : 30
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 100000000,
+        "resetAfterNanos" : 3000000000
+      }
+    }, {
+      "at" : 1000099000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 10,
+        "periodNanos" : 1000000000,
+        "burst" : 30
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000,
+        "resetAfterNanos" : 2901000000
+      }
+    }, {
+      "at" : 1000100000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 10,
+        "periodNanos" : 1000000000,
+        "burst" : 30
+      },
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 3000000000
+      }
+    } ]
+  }, {
+    "name" : "per-request policy lowered beyond the window: capped to empty, retry after one interval",
+    "policy" : {
+      "limit" : 100,
+      "periodNanos" : 10000000000,
+      "burst" : 100
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 50,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 50,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 2000000000
+      }
+    }, {
+      "at" : 1000999999999,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1,
+        "resetAfterNanos" : 1000000001
+      }
+    }, {
+      "at" : 1001000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 2000000000
+      }
+    } ]
+  }, {
+    "name" : "per-request policy lowered within the window: the debt is kept in proportion",
+    "policy" : {
+      "limit" : 100,
+      "periodNanos" : 10000000000,
+      "burst" : 100
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 50,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 50,
+        "resetAfterNanos" : 5000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 10
+      },
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 4,
+        "resetAfterNanos" : 6000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 4,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 10
+      },
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 10
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 10000000000
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: a limited request writes the cap back",
+    "policy" : {
+      "limit" : 100,
+      "periodNanos" : 10000000000,
+      "burst" : 100
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 100,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 2,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 2000000000,
+        "resetAfterNanos" : 2000000000
+      }
+    }, {
+      "at" : 1001000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 2000000000
+      }
+    }, {
+      "at" : 1001000000000,
+      "key" : "k",
+      "cost" : 2,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 2000000000,
+        "resetAfterNanos" : 2000000000
+      }
+    }, {
+      "at" : 1002000000000,
+      "key" : "k",
+      "cost" : 2,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 1000000000
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: a cost above the policy's burst is refused",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 3,
+      "policy" : {
+        "limit" : 10,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "error",
+        "exception" : "IllegalArgumentException"
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 2,
+      "policy" : {
+        "limit" : 10,
+        "periodNanos" : 1000000000,
+        "burst" : 2
+      },
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 200000000
+      }
+    } ]
+  }, {
+    "name" : "per-request policy: alternating policies share one TAT",
+    "policy" : {
+      "limit" : 10,
+      "periodNanos" : 10000000000,
+      "burst" : 3
+    },
+    "maxKeys" : 100000,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 2,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 1
+      },
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 1000000000,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1001000000000,
+      "key" : "k",
+      "cost" : 1,
+      "policy" : {
+        "limit" : 1,
+        "periodNanos" : 1000000000,
+        "burst" : 1
+      },
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 1000000000
+      }
+    }, {
+      "at" : 1001000000000,
+      "key" : "k",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 1,
+        "resetAfterNanos" : 2000000000
+      }
+    } ]
+  }, {
+    "name" : "a full table shares one overflow bucket",
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 10000000000,
+      "burst" : 1
+    },
+    "maxKeys" : 2,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k1",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k2",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k3",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k4",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 10000000000,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k1",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 10000000000,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k5",
+      "cost" : 1,
+      "expect" : {
+        "result" : "limited",
+        "retryAfterNanos" : 10000000000,
+        "resetAfterNanos" : 10000000000
+      }
+    } ]
+  }, {
+    "name" : "a full table purges buckets that are full again before overflowing",
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 10000000000,
+      "burst" : 1
+    },
+    "maxKeys" : 2,
+    "steps" : [ {
+      "at" : 1000000000000,
+      "key" : "k1",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1000000000000,
+      "key" : "k2",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1020000000000,
+      "key" : "k3",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1020000000000,
+      "key" : "k4",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    }, {
+      "at" : 1020000000000,
+      "key" : "k5",
+      "cost" : 1,
+      "expect" : {
+        "result" : "allowed",
+        "remaining" : 0,
+        "resetAfterNanos" : 10000000000
+      }
+    } ]
+  } ],
+  "policyChecks" : [ {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 1000000000,
+      "burst" : 1
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 0,
+      "periodNanos" : 1000000000,
+      "burst" : 1
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : -1,
+      "periodNanos" : 1000000000,
+      "burst" : 1
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 1000000000,
+      "burst" : 0
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1000000,
+      "periodNanos" : 1000000000,
+      "burst" : 1
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 1000001,
+      "periodNanos" : 1000000000,
+      "burst" : 1
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 1000000000,
+      "burst" : 1000000
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 1000000000,
+      "burst" : 1000001
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1000000,
+      "periodNanos" : 1000000000,
+      "burst" : 1000000
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 0,
+      "burst" : 1
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 999999,
+      "burst" : 1
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 1000000,
+      "burst" : 1
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 86400000000000,
+      "burst" : 1
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 86400000000001,
+      "burst" : 1
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000000,
+      "burst" : 1
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 1001,
+      "periodNanos" : 1000000,
+      "burst" : 1
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1000,
+      "periodNanos" : 1000999,
+      "burst" : 1
+    },
+    "accepted" : true
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 86400000000000,
+      "burst" : 26688
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 86400000000000,
+      "burst" : 26689
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 86400000000000,
+      "burst" : 1000000
+    },
+    "accepted" : false
+  }, {
+    "policy" : {
+      "limit" : 1,
+      "periodNanos" : 3599999999999,
+      "burst" : 1
+    },
+    "accepted" : true
+  } ],
+  "names" : [ {
+    "name" : "a",
+    "accepted" : true
+  }, {
+    "name" : "api",
+    "accepted" : true
+  }, {
+    "name" : "login-v2",
+    "accepted" : true
+  }, {
+    "name" : "a_b",
+    "accepted" : true
+  }, {
+    "name" : "a-b_c9",
+    "accepted" : true
+  }, {
+    "name" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "accepted" : true
+  }, {
+    "name" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "accepted" : false
+  }, {
+    "name" : "",
+    "accepted" : false
+  }, {
+    "name" : "A",
+    "accepted" : false
+  }, {
+    "name" : "Api",
+    "accepted" : false
+  }, {
+    "name" : "1a",
+    "accepted" : false
+  }, {
+    "name" : "a.b",
+    "accepted" : false
+  }, {
+    "name" : "a b",
+    "accepted" : false
+  }, {
+    "name" : "-a",
+    "accepted" : false
+  }, {
+    "name" : "_a",
+    "accepted" : false
+  }, {
+    "name" : "a:b",
+    "accepted" : false
+  }, {
+    "name" : "é",
+    "accepted" : false
+  } ],
+  "defaults" : {
+    "burstOfWithoutBurst" : 7
+  }
+}
