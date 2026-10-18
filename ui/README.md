@@ -241,7 +241,23 @@ relative path to this checkout (a relative path breaks when either repository mo
 inside the package. A project reference is a path (TypeScript has no package-name form), so the
 runtime's generated-client project is reached through your own `node_modules`, which is the same
 location for every checkout layout. `packages/ui/test/tsconfig-presets.test.ts` builds such a consumer
-(with symlinks, as `link:` makes them). The canonical settings file is
+(with symlinks, as `link:` makes them).
+
+**Pitfall: that reference does not cover an import of the runtime.** TypeScript resolves an import of a
+linked package to its real path (`<checkout>/ui/packages/api-runtime/src/...`), not to the
+`node_modules/...` path, and a project reference covers only the files its own `include` matches at the
+path it was given. A consumer that imports `@flowcatalyst/api-runtime` therefore compiles the runtime's
+generated client under the application's settings, and `exactOptionalPropertyTypes` reports 12 errors in
+the hey-api `client/` and `core/` folders. Reference the project by its real path as well (or instead,
+when the application imports the runtime), for example from a small script that writes or checks the path
+with `fs.realpathSync("node_modules/@flowcatalyst/api-runtime")`:
+
+```jsonc
+"references": [{ "path": "../../flowcatalyst-framework/ui/packages/api-runtime/tsconfig.generated.json" }]
+```
+
+The same test covers both cases: a consumer importing `createApiRuntime` fails through the
+`node_modules` reference and builds cleanly through the real path. The canonical settings file is
 `packages/api-runtime/tsconfig.base.json`; `ui/tsconfig.base.json` and `@flowcatalyst/ui/tsconfig.base.json`
 both extend it.
 

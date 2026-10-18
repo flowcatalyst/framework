@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,6 +72,38 @@ describe("tsconfig presets, extended by package name", () => {
       }),
     );
     expect(() => execFileSync(tsc, ["--build", app], { encoding: "utf8", stdio: "pipe" })).not.toThrow();
+  });
+
+  describe("a consumer that imports @flowcatalyst/api-runtime through the link", () => {
+    // tsc resolves a symlinked import to its real path, so a reference through node_modules does not
+    // cover the files the import pulls in: they are compiled under the application's settings
+    function build(referencePath: string): string {
+      writeFileSync(join(app, "src/b.ts"), 'import { createApiRuntime } from "@flowcatalyst/api-runtime";\nexport const b = createApiRuntime;\n');
+      writeFileSync(
+        join(app, "tsconfig.json"),
+        JSON.stringify({
+          extends: "@flowcatalyst/ui/tsconfig.base.json",
+          compilerOptions: { tsBuildInfoFile: "./node_modules/.tmp/app2.tsbuildinfo", types: [] },
+          include: ["src/b.ts"],
+          references: [{ path: referencePath }],
+        }),
+      );
+      rmSync(join(app, "node_modules/.tmp"), { recursive: true, force: true });
+      try {
+        execFileSync(tsc, ["--build", app], { encoding: "utf8", stdio: "pipe" });
+        return "";
+      } catch (error) {
+        return String((error as { stdout?: unknown }).stdout);
+      }
+    }
+
+    it("is not covered by a reference through node_modules (the pitfall)", () => {
+      expect(build("./node_modules/@flowcatalyst/api-runtime/tsconfig.generated.json")).toContain("error TS");
+    });
+
+    it("is covered by a reference to the project's real path", () => {
+      expect(build(join(realpathSync(join(app, "node_modules/@flowcatalyst/api-runtime")), "tsconfig.generated.json"))).toBe("");
+    });
   });
 
   it("the workspace's own ui/tsconfig.base.json is the same settings", () => {
