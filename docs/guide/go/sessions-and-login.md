@@ -16,6 +16,7 @@ State of the slices:
 | 2 | the relying party (discovery, JWKS cache, PKCE S256 authorize URL, code exchange, id_token checks), `PlatformTokens`, `authtest.Provider` | built |
 | 3 | session stores (`memory`, `cookie`, `database`, `redis`), session and login records, idle and absolute lifetimes | built |
 | 4 | the four endpoints, the context resolver, 401 versus 302, client selection and permission mapping, `Context.permissions`, `auth.Testing`, the login-failure vector | built |
+| G5c | `examples/orders-demo` on the module and the browser end-to-end launcher ([below](#the-orders-demo-on-sessions-and-the-browser-suite)) | built |
 
 ## Verifying platform tokens on their own
 
@@ -60,7 +61,7 @@ alphabet is checked before decoding because Go's decoder would skip a newline.
 `authtest.Provider` (package `auth/authtest`, the counterpart of the Java `TestOidcProvider`) is a
 real HTTP server on a free port serving discovery, JWKS, `/oauth/authorize` (signs the configured
 user in at once), `/oauth/token` (PKCE and `redirect_uri` checked, single-use codes, public and
-confidential clients) and `/auth/oidc/session/end`. It mints access tokens (`AccessToken`) and can
+confidential clients) and `/auth/oidc/session/end` (which, like the platform, sends the browser on to `post_logout_redirect_uri` when the client is registered and the address is on the origin of the client's redirect URI; any other call gets `{"message":"Session ended"}`). It mints access tokens (`AccessToken`) and can
 be told to misbehave: `IDTokenSigning` (`SigningNone`, `SigningHS256WithPublicKey`,
 `SigningOtherKey`, `SigningTamperedSignature`, `SigningTamperedPayload`), `IDTokenChanges`,
 `IDTokenHeaderChanges`, `DiscoveryChanges`, `AuthorizeError`, `TokenStatus`, `RotateKey`, `Down`.
@@ -181,6 +182,40 @@ the real store: `cookie, _ := t.Cookie(ctx, auth.User("prn_1", "ingestor:operato
 (`auth.ClientUser` for a one-client user), then send `Cookie` and, for an unsafe method,
 `Sec-Fetch-Site: same-origin`. `authtest.Provider` and `storetest.Run` are above.
 
+## The orders demo on sessions, and the browser suite
+
+`orders-demo serve` (`examples/orders-demo/app.go`) no longer has a fixed-token resolver or `501`
+session endpoints. `declare` calls `authdb.Declare(app)` and `auth.Declare(app, web)`; `buildWeb`
+builds the module with `auth.SessionStore(authdb.Factory(dbs))`, `auth.Application("orders-demo")`,
+`auth.PostLogoutRedirect("/signed-out")`, `auth.RedirectFailuresTo("/sign-in-failed")` and the Java
+`OrdersWeb`'s role table (`orders-demo:clerk` reads and manages orders, `viewer` reads, `admin` and
+`auditor` hold the admin permissions that only the admin area, G6, will use), and passes
+`mod.Routes()` and `mod.Resolver()` to `httpfw.NewServer`. It needs `AUTH_ISSUER`, `AUTH_CLIENT_ID` and
+`AUTH_PUBLIC_BASE_URL`; the scenario command (`orders-demo` with no argument) declares none of this.
+
+`orders-demo e2e <app-port> <control-port> [--dist <dir>] [<public-origin>]` (`e2e.go`) is the Go
+counterpart of the Java `OrdersE2e` on the [e2e kit](../e2e-kit.md): the real application on an
+embedded PostgreSQL 18 (never 15432), `authtest.Provider` as the platform, the kit's control endpoints
+(`ready`, `sign-in-as`, `provider-down`, `authorize-error`, `end-sessions`) and the orders' own
+(`reset`, `login-rate-limit`), the `READY` line, and an orderly stop on SIGTERM or SIGINT.
+`--dist` serves the SPA from a directory (`vite build` writes `examples/orders-demo/web/dist`), so a
+rebuilt SPA needs no recompile. `/control/platform-reads` answers `ok` and does nothing: the Go demo has
+no platform client or admin area yet.
+
+`make -C go e2e-orders` builds the SPA and the launcher and runs the shared suite
+`ui/apps/orders/e2e` through the kit's runner with `examples/orders-demo/e2e/playwright.config.ts` (the
+kit's configuration with the Go launcher as the web server), plus the Go-only specs in
+`examples/orders-demo/e2e/session.spec.ts` (cookie attributes, the CSRF refusal, a copied cookie dead
+after sign-out, the next sign-in's person). Result on 2026-10-18, Chromium, strict CSP monitor and
+axe: 53 shared tests, 28 passed, 4 skipped (the screenshots, as on Java), 21 failed; with the Go-only
+specs, 32 passed. The 20 failures of `admin.spec.ts` and `admin-data.spec.ts` are the admin area, which
+Go does not have until G6; the 21st is `auth.spec.ts` "sign out ends the session", which asserts that the
+final URL carries `post_logout_redirect_uri=`. The Java launcher points the platform's
+`end_session_endpoint` at the SPA's own `/signed-out` (another origin than the issuer's), which the
+Go module ignores as the security review's I1 requires; the Go provider's end-session endpoint is on
+the issuer and redirects to `/signed-out`, so the page is reached (and the heading is asserted)
+but with no query string. Java's `Platform` does not yet apply I1 (see "Differences").
+
 ### Differences from Java, and what was not verified
 
 - No implicit default store: Go has no service lookup, so the store is named (`auth.SessionStore`);
@@ -199,8 +234,12 @@ the real store: `cookie, _ := t.Cookie(ctx, auth.User("prn_1", "ingestor:operato
   comparison. Not checked: a browser (the tests send requests in-process and follow redirects by
   hand), a real FlowCatalyst platform, a Java and a Go replica sharing one session table at once,
   the `conformance/openapi/auth.json` vector against this module's document beyond what G3 already
-  checks, the security review the milestone asks for (owner's ruling: Opus for the slice), and
-  `orders-demo`, which still uses its fixed-token resolver.
+  checks, and the security review the milestone asks for (owner's ruling: Opus for the slice). A
+  browser has now driven the module through `orders-demo` (G5c, above): Chromium only, against
+  `authtest.Provider`, never a real platform.
+- The security review's I1 (contract 5.1: `end_session_endpoint` must be https on the issuer's origin,
+  else ignored) is in Go but not yet in the Java `Platform`; the Java `E2eLauncher` relies on the
+  opposite (it points that endpoint at the SPA's origin).
 
 ## Operating notes (security review 2026-10-18)
 

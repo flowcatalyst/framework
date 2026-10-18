@@ -157,6 +157,15 @@ request to another origin is a failure, except the top-level navigation to the l
 which the round trip needs. `createTest()` builds the strict variant for an application with no backend
 (the gallery: no request may leave its origin at all). The pure part, `isForeignRequest`, is unit-tested.
 
+## On the Go framework
+
+The TypeScript half is the same; the backend half is a subcommand of the application. The Go orders
+demo runs `orders-demo e2e <app-port> <control-port> [--dist <dir>]` (embedded PostgreSQL, the Go test
+identity provider, the standard control endpoints and the orders' own), and its Playwright configuration
+(`go/examples/orders-demo/e2e/playwright.config.ts`) is `defineE2eConfig` with the web server replaced by
+that command. `make -C go e2e-orders` runs the shared orders suite against it. Details and the result:
+[Go sessions and login](go/sessions-and-login.md#the-orders-demo-on-sessions-and-the-browser-suite).
+
 ## What is tested, and what is not
 
 The kit's own tests are unit tests: `E2eLauncherTest` (the endpoints over a real socket, the claims, closing
