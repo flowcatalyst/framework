@@ -134,6 +134,10 @@ func (d *Declared) Name(t reflect.Type, name string) {
 	d.names[t] = name
 }
 
+// NameType registers the component name of the type T (see [Declared.Name]) without the caller
+// importing reflect.
+func NameType[T any](d *Declared, name string) { d.Name(reflect.TypeFor[T](), name) }
+
 // Property replaces one property's schema of a record type (whether it is required still follows
 // the field), for a property with a fixed value.
 func (d *Declared) Property(t reflect.Type, property string, s openapi.Schema) {
@@ -147,6 +151,22 @@ func (d *Declared) Property(t reflect.Type, property string, s openapi.Schema) {
 		return
 	}
 	d.properties[t][property] = s
+}
+
+// Problem records a declaration problem found by a module that registers operations on the
+// application's behalf (the admin registry): the openapi command and the server report it with the
+// operations' own.
+func (d *Declared) Problem(message string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.problems = append(d.problems, message)
+}
+
+// Problems returns the problems recorded with [Declared.Problem].
+func (d *Declared) Problems() []string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return slices.Clone(d.problems)
 }
 
 // Security contributes a security scheme: the module that resolves the Context says how callers

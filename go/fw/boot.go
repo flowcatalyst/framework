@@ -83,6 +83,10 @@ func (b *Boot) Environment() string { return b.values.Environment() }
 // handle.Get(b).
 func (b *Boot) ConfigValue(key string) (any, bool) { return b.values.ConfigValue(key) }
 
+// SettingStatuses returns what the loaded configuration says about every declared setting, in
+// declaration order: its source and, where safe to show, its value (the admin config page).
+func (b *Boot) SettingStatuses() []config.SettingStatus { return b.values.Statuses() }
+
 // Instances returns the checked instances of a declared instance section.
 func (b *Boot) Instances(h InstancesHandle) config.Instances { return b.values.Instances(h.path) }
 

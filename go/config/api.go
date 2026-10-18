@@ -135,6 +135,8 @@ type Decl interface {
 	checkValue(v any) string
 	isRequired() bool
 	describe() string
+	// text is the description for tooling.
+	text() string
 }
 
 func (s Setting[T]) isSecret() bool  { return s.typ.secret }
@@ -174,6 +176,7 @@ func (s Setting[T]) defaultValue() (any, bool) {
 }
 func (s Setting[T]) isRequired() bool { return s.required }
 func (s Setting[T]) describe() string { return s.typ.describe }
+func (s Setting[T]) text() string     { return s.description }
 
 // settingType is the parse rule of a setting's type.
 type settingType[T any] struct {
@@ -323,6 +326,7 @@ type Values struct {
 	environment string
 	values      map[string]any
 	instances   map[string]Instances
+	statuses    []SettingStatus
 }
 
 // Environment returns APP_ENV, "local" when it is absent or blank.

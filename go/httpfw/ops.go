@@ -175,7 +175,23 @@ type opDesc struct {
 }
 
 // Described is a typed operation of any body and response type, as Declared takes it.
-type Described interface{ descriptor() *opDesc }
+type Described interface {
+	descriptor() *opDesc
+	// Info describes the operation for code that checks a set of them (the admin registry).
+	Info() OperationInfo
+}
+
+// OperationInfo is what an operation declares about itself: the facts a registry checks.
+type OperationInfo struct {
+	// Method is the HTTP method.
+	Method string
+	// Pattern is the route pattern, "/api/admin/users/{id}".
+	Pattern string
+	// ID is the operation id, "" when none was given.
+	ID string
+	// Permission is the required permission; the zero Permission when the operation requires none.
+	Permission fw.Permission
+}
 
 // label names the operation in problems.
 func (d *opDesc) label() string {
@@ -196,6 +212,11 @@ type Operation[B, R any] struct {
 }
 
 func (o Operation[B, R]) descriptor() *opDesc { return o.d }
+
+// Info implements [Described].
+func (o Operation[B, R]) Info() OperationInfo {
+	return OperationInfo{Method: o.d.method, Pattern: o.d.pattern, ID: o.d.id, Permission: o.d.permission}
+}
 
 // ID returns the operation id.
 func (o Operation[B, R]) ID() string { return o.d.id }

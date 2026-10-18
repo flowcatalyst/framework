@@ -12,6 +12,7 @@ type loader struct {
 	rules    KeyRules
 	leaves   *leafSet
 	problems []Problem
+	statuses []SettingStatus
 }
 
 func load(src Sources, settings []Declared, sections []Section, rules KeyRules) (*Values, []Problem) {
@@ -66,7 +67,7 @@ func load(src Sources, settings []Declared, sections []Section, rules KeyRules) 
 	if len(l.problems) > 0 {
 		return nil, l.problems
 	}
-	return &Values{environment: environment, values: values, instances: instances}, nil
+	return &Values{environment: environment, values: values, instances: instances, statuses: l.statuses}, nil
 }
 
 // find returns the raw value of a full key: the environment variable derived from the key, else
@@ -138,6 +139,11 @@ func (l *loader) resolveSetting(module string, d Decl, values map[string]any) {
 		l.problems = append(l.problems, Problem{Module: module, Key: key, Source: source, Message: failure})
 	case ok:
 		values[key] = v
+		origin := source
+		if origin == "" {
+			origin = "default"
+		}
+		l.statuses = append(l.statuses, newStatus(module, d, v, true, origin))
 	case d.isRequired():
 		hint := "config/application.yaml"
 		if d.isSecret() {
@@ -147,6 +153,8 @@ func (l *loader) resolveSetting(module string, d Decl, values map[string]any) {
 			Module: module, Key: key,
 			Message: "missing required setting; set it in " + hint + " or as environment variable " + EnvName(key),
 		})
+	default:
+		l.statuses = append(l.statuses, newStatus(module, d, nil, false, ""))
 	}
 }
 
