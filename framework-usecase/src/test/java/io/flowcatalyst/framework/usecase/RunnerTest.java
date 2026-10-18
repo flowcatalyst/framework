@@ -444,6 +444,114 @@ class RunnerTest {
     }
   }
 
+  // ---- running inside the caller's transaction ---------------------------------------------
+
+  /** A connection in a transaction, as a caller that owns the transaction would hold it. */
+  java.sql.Connection callerTransaction() throws SQLException {
+    java.sql.Connection c = db.dataSource().getConnection();
+    c.setAutoCommit(false);
+    return c;
+  }
+
+  @Test
+  void aJoinedRunWritesInTheCallersTransactionAndIsCommittedByTheCaller() throws Exception {
+    try (java.sql.Connection c = callerTransaction()) {
+      UseCaseResult<ThingEvent> result =
+          useCases.run(create(ConflictPolicy.fail()), ctx(acme), new CreateThing("t1", "bolt", "B-1"), Tx.of(c));
+
+      committed(result);
+      assertThat(thingCount()).as("not visible to others before the caller commits").isZero();
+      c.commit();
+    }
+    assertThat(row("t1")).isEqualTo("1:bolt:B-1");
+    assertThat(sink.events).hasSize(1);
+    assertThat(sink.audits).hasSize(1);
+  }
+
+  @Test
+  void whenTheCallerRollsBackTheJoinedRunsWritesGoToo() throws Exception {
+    try (java.sql.Connection c = callerTransaction()) {
+      committed(
+          useCases.run(create(ConflictPolicy.fail()), ctx(acme), new CreateThing("t1", "bolt", "B-1"), Tx.of(c)));
+      c.rollback();
+    }
+    assertThat(thingCount()).isZero();
+  }
+
+  @Test
+  void aFailedJoinedRunLeavesTheCallersEarlierWorkAndTheTransactionUsable() throws Exception {
+    seed("t0", "first", "DUP");
+    try (java.sql.Connection c = callerTransaction()) {
+      try (var st = c.createStatement()) {
+        st.executeUpdate("INSERT INTO thing (id, client_id, version, name, code) VALUES ('mine', 'acme', 1, 'callers', 'C-1')");
+      }
+      // A unique violation on the use case's insert: a failure, rolled back to the savepoint.
+      UseCaseError error =
+          error(useCases.run(create(ConflictPolicy.fail()), ctx(acme), new CreateThing("t1", "bolt", "DUP"), Tx.of(c)));
+      assertThat(error.code()).isEqualTo("UNIQUE_VIOLATION");
+      // The same transaction goes on: a second, good run and the caller's own row commit together.
+      committed(
+          useCases.run(create(ConflictPolicy.fail()), ctx(acme), new CreateThing("t2", "washer", "W-1"), Tx.of(c)));
+      c.commit();
+    }
+    assertThat(row("mine")).isEqualTo("1:callers:C-1");
+    assertThat(row("t2")).isEqualTo("1:washer:W-1");
+    assertThat(pg.query("SELECT count(*) FROM thing WHERE id = 't1'")).isEqualTo("0");
+  }
+
+  @Test
+  void aRejectedJoinedRunWritesNothingAndKeepsTheTransaction() throws Exception {
+    try (java.sql.Connection c = callerTransaction()) {
+      UseCaseError error =
+          error(useCases.run(edit(ConflictPolicy.fail(), Gate.NONE), ctx(acme), new Edit("missing", "x", null), Tx.of(c)));
+      assertThat(error.kind()).isEqualTo(ErrorKind.NOT_FOUND);
+      assertThat(c.isClosed()).isFalse();
+      c.commit();
+    }
+    assertThat(sink.events).isEmpty();
+  }
+
+  @Test
+  void aConflictInAJoinedRunIsRetriedUnderThePolicyOnTheSameTransaction() throws Exception {
+    seed("t1", "bolt", "B-1");
+    // After the first attempt loaded the thing, someone else changes it: the first attempt is stale.
+    Gate other =
+        new Gate() {
+          boolean first = true;
+
+          @Override
+          public void reached() {
+            if (first) {
+              first = false;
+              pg.execute("UPDATE thing SET version = version + 1, code = 'B-2' WHERE id = 't1'");
+            }
+          }
+        };
+    try (java.sql.Connection c = callerTransaction()) {
+      committed(
+          useCases.run(
+              edit(ConflictPolicy.retry(2, Duration.ofMillis(5)), other),
+              ctx(acme),
+              new Edit("t1", "washer", null),
+              Tx.of(c)));
+      c.commit();
+    }
+    assertThat(runs).hasValue(2);
+    assertThat(row("t1")).isEqualTo("3:washer:B-2");
+  }
+
+  @Test
+  void aJoinedRunNeedsAConnectionInATransaction() throws Exception {
+    try (java.sql.Connection c = db.dataSource().getConnection()) {
+      org.assertj.core.api.Assertions.assertThatIllegalArgumentException()
+          .isThrownBy(
+              () ->
+                  useCases.run(create(ConflictPolicy.fail()), ctx(acme), new CreateThing("t1", "bolt", "B-1"), Tx.of(c)))
+          .withMessageContaining("auto-commit");
+    }
+    assertThat(thingCount()).isZero();
+  }
+
   // ---- the load phase and the record-level check -------------------------------------------
 
   /** Loads the thing; the check refuses a thing named "locked"; execute renames it. */

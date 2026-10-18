@@ -15,6 +15,18 @@ public final class Tx {
   }
 
   /**
+   * Wraps a connection that is already in a transaction, to run a use case inside it
+   * ({@link UseCases#run(UseCase, io.flowcatalyst.framework.context.Context, Object, Tx)}). The
+   * caller keeps the transaction: the runner never commits or rolls it back.
+   *
+   * @param connection a connection with auto-commit off
+   * @return the transaction handle
+   */
+  public static Tx of(Connection connection) {
+    return new Tx(connection);
+  }
+
+  /**
    * The connection the attempt's transaction runs on. Do not close it or change its
    * transaction settings.
    *

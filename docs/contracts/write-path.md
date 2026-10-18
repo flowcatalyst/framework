@@ -124,6 +124,29 @@ is `CONFLICT` / `STALE_AGGREGATE`. `n` is 2 to 10.
 Application code never begins, commits or rolls back a transaction, and never writes outside a
 plan in a use case.
 
+## 4a. Running inside the caller's transaction (amendment 2026-10-18, friction F13)
+
+`UseCases.run(useCase, context, command, Tx joined)` runs the same attempts on the caller's
+connection instead of opening its own, so a use case composes with work that owns the transaction
+(`DispatchDelivery.once`, which hands its work an open connection).
+
+1. `joined` is `Tx.of(connection)` for a connection in a transaction (auto-commit off); anything
+   else is an `IllegalArgumentException` (a programming error, not an outcome).
+2. Steps 1 to 3 of section 4 are unchanged. Steps 4 to 6 become: take a savepoint, apply the plan's
+   writes, the events and the audit row on the caller's connection, release the savepoint. **The
+   runner never begins, commits or rolls back the caller's transaction**; `Committed` means "applied
+   in your transaction", visible to others when the caller commits and gone if the caller rolls back.
+3. A stale aggregate, a serialization failure, a deadlock, a unique violation or any other failed
+   step rolls the attempt back **to the savepoint**: the caller's earlier work in the transaction
+   survives and the transaction stays usable. The result and the conflict policy are those of
+   section 4. A retry runs the whole attempt again on the same transaction.
+4. The isolation level is the caller's. Retrying a conflict assumes READ COMMITTED (what `once`
+   uses): under a stronger level the retry would read the same snapshot and conflict again.
+5. What does **not** join: reads a use case makes through its repository's `find(db, ...)` use the
+   database's own connections, so they do not see the caller's uncommitted writes; and anything that
+   is not the database. An HTTP call, an email or a message send is outside every transaction and is
+   not made atomic by this: make such a call idempotent (the dispatch job id is the key).
+
 ## 5. Errors
 
 `UseCaseError`: kind, code (`UPPER_SNAKE`), message (safe to show a caller), details (string

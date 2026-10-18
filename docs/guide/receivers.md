@@ -230,6 +230,13 @@ handler name is `[A-Za-z0-9._:-]{1,200}`; one job can be handled once per name. 
 table `fw_dispatch_once`, created by the module's migration set `flowcatalyst` on the default
 database whenever the database module is listed.
 
+**With a use case.** The work can run a use case in the same transaction:
+`useCases.run(useCase, context, command, Tx.of(connection))` ([write path](write-path.md#inside-another-transaction)),
+so the record, the use case's writes and its outbox rows commit or roll back together. What does not
+compose: an HTTP call, an email or a message send inside the work is in no transaction (a rollback does not
+unsend it), and a repository `find` through the `Database` does not see the work's uncommitted writes. Send
+the job id as the idempotency key on such calls.
+
 **Retention.** Rows older than `once-retention` (30 days by default, measured with the application's
 clock against `processed_at`) are deleted by a background task the module owns: one virtual thread
 that purges at start-up and then every `once-purge-interval`, in batches of 5 000 rows and at most

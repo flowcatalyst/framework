@@ -269,6 +269,29 @@ retries; a cancellation made on a stale view is for the caller to decide again, 
 `UseCaseError` implements core's `ServiceError`, so `HttpErrors.of(error)` turns one into the error
 response ([HTTP](http.md#errors)) without `framework-http` depending on the write path.
 
+### Inside another transaction
+
+Work that owns the transaction (the dispatch receiver's `delivery.once`) can run a use case in it:
+
+```java
+OnceResult<UseCaseResult<InvoiceSent>> once =
+    d.once(db, "send-invoice", connection ->
+        useCases.run(sendInvoice, context, new SendInvoice("42"), Tx.of(connection)));
+```
+
+`run(useCase, context, command, Tx)` writes the plan, the events and the audit row on that connection
+under a savepoint and never commits: the record `once` keeps, the use case's writes and its outbox rows
+commit together when `once` returns, or all roll back when the work throws (the platform redelivers and
+the use case runs once). A failed or conflicting attempt rolls back to the savepoint only, so the caller's
+earlier work survives; the conflict policy retries on the same transaction (assuming READ COMMITTED, which
+`once` uses). The connection must be in a transaction, else `IllegalArgumentException`
+(`DispatchOnceUseCaseTest`, `RunnerTest`).
+
+What still does not compose: reads through a repository's `find(db, ...)` use their own connections and do
+not see the caller's uncommitted writes; and an HTTP call, an email or a message is in no transaction at all
+(a rolled-back transaction does not unsend it). Make those calls idempotent with the dispatch job id as the
+key, as the tickets example's `NotifyAssignee` does.
+
 ## 5. Events
 
 A domain event is a record implementing `DomainEvent`, with `EventMetadata metadata()` first and

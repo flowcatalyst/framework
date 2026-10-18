@@ -293,7 +293,7 @@ As built in slice 4 (signature check and the dispatch receiver, 2026-10-09):
   a concurrent repeat waits for the first and then skips (or runs, if the first rolled back).
   Table `fw_dispatch_once (handler, job_id, processed_at)`, migration set `flowcatalyst`
   (`V0001__create_dispatch_once.sql`), applied to the default database whenever the database
-  module is listed. Handler names `[A-Za-z0-9._:-]{1,200}`. Old rows are purged (follow-up 2).
+  module is listed. Handler names `[A-Za-z0-9._:-]{1,200}`. Old rows are purged (follow-up 2). The work may run a use case in this transaction (write-path contract section 4a, `UseCases.run(.., Tx.of(connection))`); an HTTP call in the work is in no transaction.
 
 As built in slice 5 (the scheduled-job receiver, 2026-10-09):
 

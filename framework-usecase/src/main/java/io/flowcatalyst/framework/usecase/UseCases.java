@@ -8,6 +8,7 @@ import io.flowcatalyst.framework.metrics.Metrics;
 import io.flowcatalyst.framework.metrics.Timer;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.time.Duration;
 import java.time.InstantSource;
 import java.util.ArrayList;
@@ -132,8 +133,47 @@ public final class UseCases {
    */
   public <C, E extends DomainEvent> UseCaseResult<E> run(
       UseCase<C, E> useCase, Context context, C command) {
+    return runCounted(useCase, context, command, null);
+  }
+
+  /**
+   * Runs a use case <em>inside the caller's transaction</em> instead of its own: the plan's writes,
+   * the events and the audit row go on {@code joined}'s connection and are committed (or rolled back)
+   * when the caller commits (or rolls back). {@link UseCaseResult.Committed} then means "applied in
+   * your transaction". This is how a use case composes with work that owns the transaction, such as
+   * {@code DispatchDelivery.once} (write-path contract, section 4a).
+   *
+   * <p>Each attempt runs under a savepoint: a failed or conflicting attempt is rolled back to it, so
+   * the caller's earlier work is kept and the transaction stays usable, and the conflict policy
+   * applies as usual. The connection must be in a transaction (auto-commit off). The runner never
+   * commits or rolls back the caller's transaction.
+   *
+   * @param <C> the command type
+   * @param <E> the result event type
+   * @param useCase the use case
+   * @param context who is acting, for which client
+   * @param command the command
+   * @param joined the caller's transaction ({@link Tx#of})
+   * @return {@link UseCaseResult.Committed} with the result event, or {@link UseCaseResult.Failed}
+   * @throws IllegalArgumentException when the connection is in auto-commit mode
+   */
+  public <C, E extends DomainEvent> UseCaseResult<E> run(
+      UseCase<C, E> useCase, Context context, C command, Tx joined) {
+    try {
+      if (joined.connection().getAutoCommit()) {
+        throw new IllegalArgumentException(
+            "a joined run needs a connection in a transaction (auto-commit off)");
+      }
+    } catch (SQLException e) {
+      throw new IllegalArgumentException("the joined connection is not usable", e);
+    }
+    return runCounted(useCase, context, command, joined);
+  }
+
+  private <C, E extends DomainEvent> UseCaseResult<E> runCounted(
+      UseCase<C, E> useCase, Context context, C command, @Nullable Tx joined) {
     long start = monotonic.nanos();
-    UseCaseResult<E> result = runAttempts(useCase, context, command);
+    UseCaseResult<E> result = runAttempts(useCase, context, command, joined);
     String outcome =
         switch (result) {
           case UseCaseResult.Committed<E> c -> "committed";
@@ -145,10 +185,10 @@ public final class UseCases {
   }
 
   private <C, E extends DomainEvent> UseCaseResult<E> runAttempts(
-      UseCase<C, E> useCase, Context context, C command) {
+      UseCase<C, E> useCase, Context context, C command, @Nullable Tx joined) {
     ConflictPolicy policy = useCase.conflict();
     for (int attempt = 1; ; attempt++) {
-      Attempt<E> outcome = attempt(useCase, context, command);
+      Attempt<E> outcome = attempt(useCase, context, command, joined);
       if (outcome instanceof Done<E> done) {
         return done.result();
       }
@@ -180,7 +220,7 @@ public final class UseCases {
   private record Conflict<E extends DomainEvent>() implements Attempt<E> {}
 
   private <C, E extends DomainEvent> Attempt<E> attempt(
-      UseCase<C, E> useCase, Context context, C command) {
+      UseCase<C, E> useCase, Context context, C command, @Nullable Tx joined) {
     String step = "VALIDATE";
     Plan<E> plan;
     try {
@@ -216,40 +256,23 @@ public final class UseCases {
           context.client());
       return done(failed(UseCaseError.internal("CROSS_CLIENT_WRITE")));
     }
-    return persist(useCase, context, command, plan);
+    return joined == null
+        ? persist(useCase, context, command, plan)
+        : persistJoined(useCase, context, command, plan, joined);
   }
 
   private <C, E extends DomainEvent> Attempt<E> persist(
       UseCase<C, E> useCase, Context context, C command, Plan<E> plan) {
-    String step = "BEGIN";
+    String[] step = {"BEGIN"};
     try (Connection connection = database.dataSource().getConnection()) {
       boolean committed = false;
       try {
         connection.setAutoCommit(false);
         connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
-        Tx tx = new Tx(connection);
-
-        step = "PERSIST";
-        for (Plan.Step planned : plan.steps()) {
-          if (!apply(planned, tx)) {
-            return new Conflict<>();
-          }
+        if (!write(useCase, context, command, plan, new Tx(connection), step)) {
+          return new Conflict<>();
         }
-
-        step = "OUTBOX";
-        List<DomainEvent> events = new ArrayList<>(plan.steps().size());
-        for (Plan.Step planned : plan.steps()) {
-          events.add(planned.event());
-        }
-        sink.writeEvents(tx, context, events);
-        if (!plan.dispatchJobs().isEmpty()) {
-          sink.writeDispatchJobs(tx, context, plan.dispatchJobs());
-        }
-
-        step = "AUDIT";
-        sink.writeAudit(tx, auditEntry(useCase.name(), context, command, plan));
-
-        step = "COMMIT";
+        step[0] = "COMMIT";
         connection.commit();
         committed = true;
         return done(new UseCaseResult.Committed<>(plan.result()));
@@ -259,8 +282,60 @@ public final class UseCases {
         }
       }
     } catch (Exception e) {
-      return failure(useCase, step, e);
+      return failure(useCase, step[0], e);
     }
+  }
+
+  /**
+   * The same writes inside the caller's transaction, under a savepoint so that a failed or
+   * conflicting attempt leaves the caller's earlier work intact.
+   */
+  private <C, E extends DomainEvent> Attempt<E> persistJoined(
+      UseCase<C, E> useCase, Context context, C command, Plan<E> plan, Tx joined) {
+    String[] step = {"BEGIN"};
+    Connection connection = joined.connection();
+    @Nullable Savepoint savepoint = null;
+    try {
+      savepoint = connection.setSavepoint();
+      if (!write(useCase, context, command, plan, joined, step)) {
+        rollbackToQuietly(connection, savepoint);
+        return new Conflict<>();
+      }
+      step[0] = "SAVEPOINT";
+      connection.releaseSavepoint(savepoint);
+      return done(new UseCaseResult.Committed<>(plan.result()));
+    } catch (Exception e) {
+      if (savepoint != null) {
+        rollbackToQuietly(connection, savepoint);
+      }
+      return failure(useCase, step[0], e);
+    }
+  }
+
+  /** Applies the plan, writes the events and the audit row; false when an aggregate is stale. */
+  private <C, E extends DomainEvent> boolean write(
+      UseCase<C, E> useCase, Context context, C command, Plan<E> plan, Tx tx, String[] step)
+      throws Exception {
+    step[0] = "PERSIST";
+    for (Plan.Step planned : plan.steps()) {
+      if (!apply(planned, tx)) {
+        return false;
+      }
+    }
+
+    step[0] = "OUTBOX";
+    List<DomainEvent> events = new ArrayList<>(plan.steps().size());
+    for (Plan.Step planned : plan.steps()) {
+      events.add(planned.event());
+    }
+    sink.writeEvents(tx, context, events);
+    if (!plan.dispatchJobs().isEmpty()) {
+      sink.writeDispatchJobs(tx, context, plan.dispatchJobs());
+    }
+
+    step[0] = "AUDIT";
+    sink.writeAudit(tx, auditEntry(useCase.name(), context, command, plan));
+    return true;
   }
 
   /** Applies one planned write; false when the aggregate is stale. */
@@ -414,6 +489,14 @@ public final class UseCases {
 
   private static <E extends DomainEvent> Attempt<E> done(UseCaseResult<E> result) {
     return new Done<>(result);
+  }
+
+  private static void rollbackToQuietly(Connection connection, Savepoint savepoint) {
+    try {
+      connection.rollback(savepoint);
+    } catch (SQLException e) {
+      LOG.warn("rollback to savepoint failed", e);
+    }
   }
 
   private static void rollbackQuietly(Connection connection) {
