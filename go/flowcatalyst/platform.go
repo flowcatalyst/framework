@@ -27,11 +27,30 @@ var ErrDisabled = errors.New("the flowcatalyst module is disabled (flowcatalyst.
 // PlatformError is a call to the platform that failed. Its message names what failed without the
 // platform's answer or any credential: it is shown on the unauthenticated health endpoint.
 type PlatformError struct {
-	msg   string
-	cause error
+	msg           string
+	cause         error
+	kind          CallKind
+	status        int
+	code          string
+	serverMessage string
 }
 
 func (e *PlatformError) Error() string { return e.msg }
+
+// Kind says what kind of failure it was; [KindOther] when not known.
+func (e *PlatformError) Kind() CallKind { return e.kind }
+
+// Status is the HTTP status the platform answered; 0 when there was no answer or the call went
+// through the SDK.
+func (e *PlatformError) Status() int { return e.status }
+
+// Code is the platform's error code, such as EMAIL_EXISTS; empty when it sent none.
+func (e *PlatformError) Code() string { return e.code }
+
+// ServerMessage is the platform's message for the person who made the request, cleaned of control
+// characters and at most 300 characters; empty when it sent none. It never holds a request body or
+// a credential.
+func (e *PlatformError) ServerMessage() string { return e.serverMessage }
 
 // Unwrap returns the underlying error (the SDK's, which may carry the platform's answer: log it,
 // never return it to a caller).
@@ -80,6 +99,7 @@ type PlatformClient struct {
 	sdk       *client.FlowCatalystClient
 	reporting *client.FlowCatalystClient
 	tokens    *auth.ClientCredentialsProvider
+	http      *platformHTTP
 	enabled   bool
 
 	mu       sync.Mutex
@@ -104,7 +124,17 @@ func newPlatformClient(baseURL url.URL, app fw.ApplicationCode, clientID string,
 		return client.New(base, client.WithTokenProvider(tokens.Token), client.WithTimeout(timeout),
 			client.WithHTTPClient(httpc), client.WithRetry(attempts, 100*time.Millisecond))
 	}
-	return &PlatformClient{app: app, sdk: mk(3), reporting: mk(1), tokens: tokens, enabled: true}
+	token := func(ctx context.Context) (string, error) {
+		tok, err := tokens.Token(ctx)
+		if err != nil {
+			return "", tokenError(err)
+		}
+		return tok, nil
+	}
+	return &PlatformClient{
+		app: app, sdk: mk(3), reporting: mk(1), tokens: tokens, enabled: true,
+		http: newPlatformHTTP(base, timeout, token, tokens.Invalidate),
+	}
 }
 
 // Enabled reports whether the module is active (flowcatalyst.enabled).

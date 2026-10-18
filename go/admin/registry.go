@@ -45,6 +45,10 @@ func ConsoleView(application fw.ApplicationCode) string {
 	return application.String() + ":admin:console:view"
 }
 
+// Web returns the HTTP declarations the registry declares its operations in, for packages that
+// register wire-type names in the same document.
+func (d *Declared) Web() *httpfw.Declared { return d.web }
+
 // Application returns the application code the registry serves; every admin permission starts
 // with it.
 func (d *Declared) Application() fw.ApplicationCode { return d.application }
