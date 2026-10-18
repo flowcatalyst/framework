@@ -1,4 +1,4 @@
-package main
+package ordersweb
 
 import (
 	"bytes"
@@ -21,7 +21,10 @@ import (
 	"github.com/flowcatalyst/framework/go/usecase"
 )
 
-func TestMain(m *testing.M) { fwtest.Main(m) }
+func TestMain(m *testing.M) {
+	ConfigDir = "../config"
+	fwtest.Main(m)
+}
 
 // started runs the demo application against a fresh database and returns what build made.
 type started struct {
@@ -41,9 +44,9 @@ func start(t *testing.T, url string, client fw.ClientID) *started {
 		"DATABASE_INSTANCES_MAIN_USERNAME": "postgres",
 		"DATABASE_INSTANCES_MAIN_PASSWORD": "postgres",
 	}
-	app := newApp(fw.WithEnvironment(env), fw.WithConfigDir("config"), fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
-	d := declareScenario(app)
-	r, err := app.Start(t.Context(), build(d, deps{out: s.out, client: client, built: func(b *fw.Boot, r *usecase.Runner, db *database.DB) {
+	app := NewApp(fw.WithEnvironment(env), fw.WithConfigDir("../config"), fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
+	d := DeclareScenario(app)
+	r, err := app.Start(t.Context(), BuildScenario(d, Deps{Out: s.out, Client: client, Built: func(b *fw.Boot, r *usecase.Runner, db *database.DB) {
 		s.boot, s.runner, s.db = b, r, db
 	}}))
 	if err != nil {

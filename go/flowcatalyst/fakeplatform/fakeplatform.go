@@ -78,8 +78,11 @@ func Start() *Platform {
 // BaseURL is the address to give the application as flowcatalyst.base-url.
 func (p *Platform) BaseURL() string { return p.srv.URL }
 
-// Close stops the fake.
-func (p *Platform) Close() { p.srv.Close() }
+// Close stops the fake, dropping connections that are still open.
+func (p *Platform) Close() {
+	p.srv.CloseClientConnections() // a call still in flight must not hold the shutdown
+	p.srv.Close()
+}
 
 // Requests returns every request received so far, oldest first.
 func (p *Platform) Requests() []Recorded {

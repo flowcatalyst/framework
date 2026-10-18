@@ -133,6 +133,25 @@ accepts no wildcard in a role. An application that declares a role `admin` itsel
 `flowcatalyst/fakeplatform` is the in-process stand-in for the platform used by the tests and the
 browser launcher (token endpoint, canned and routed answers, every request recorded).
 
+## The orders demo
+
+`ordersweb.Declare(app, ext)` takes an `ordersweb.Extension`: nil means no admin area (the Java
+`withoutAdmin`, whose document is the vector `openapi/orders-demo.json`), `ordersweb.NoPlatform` the
+area with `about`, `config` and the demo's own `orders` section (`orders.AdminSection`, permission
+`orders-demo:admin:orders:view`), and the extension of the `flowcatalyst` module the whole area:
+about, event types, roles, users, activity, config, orders, in that navigation order. The roles are
+the Java table: `orders-demo:admin` holds `orders-demo:admin:*:*`, `orders-demo:auditor` the console,
+users and activity views only.
+
+The command `go/flowcatalyst/examples/orders-demo` (`serve`, `e2e`, `openapi`) is the one with the
+platform sections, because only the `flowcatalyst` module imports the platform client; its `openapi`
+output equals `conformance/openapi/orders-demo-admin.json` byte for byte (test
+`TestTheAdminDocumentIsTheSharedVector`). Its end-to-end launcher starts a `demoPlatform`
+(`demoplatform.go`, the Java `DemoPlatform` and `DemoDirectory`): the demo's event types and roles,
+users and invitations that change as the pages create, resend and revoke them, events and dispatch
+jobs, and another application's records that must never show; the controls `platform-reads` and
+`reset` act on it. `make -C go e2e-orders` runs the shared browser suite against it.
+
 ## Checked by
 
 `admin_test.go`: the section rules, the registry rules failing start-up with every problem, the gate

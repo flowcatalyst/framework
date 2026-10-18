@@ -1,4 +1,9 @@
-package main
+// Package ordersweb is the orders-demo application: the write path of the Java OrdersDemo scenario
+// and the web application of the Java OrdersWeb (sessions and login against the platform, the typed
+// orders API, the single-page application and, with an [Extension], the admin area), as a library so
+// that the command in this directory and the one in the flowcatalyst module (which adds the
+// platform-backed admin sections) run the same code.
+package ordersweb
 
 import (
 	"context"
@@ -6,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 
+	"github.com/flowcatalyst/framework/go/admin"
 	"github.com/flowcatalyst/framework/go/auth"
 	"github.com/flowcatalyst/framework/go/auth/authdb"
 	"github.com/flowcatalyst/framework/go/database"
@@ -20,52 +26,104 @@ import (
 	"github.com/flowcatalyst/framework/go/usecase"
 )
 
-func newApp(opts ...fw.Option) *fw.App { return fw.New("orders-demo", opts...) }
+// NewApp returns the application, named orders-demo.
+func NewApp(opts ...fw.Option) *fw.App { return fw.New("orders-demo", opts...) }
 
-type declared struct {
+// Declared is what the application declared: the database, the outbox, the HTTP module, the auth
+// module and, with an [Extension], the admin registry.
+type Declared struct {
 	db     *database.Declared
 	outbox *usecase.Declared
 	web    *httpfw.Declared
 	auth   *auth.Declared
+	adm    *admin.Declared
+	ext    Extension
 }
 
-// declare declares what the demo uses, in the Java demo's module order: database, outbox, orders,
+// OpenAPI writes the document of everything declared, or every problem found; it needs no
+// configuration and no database.
+func (d Declared) OpenAPI() (document []byte, problems []string) { return d.web.OpenAPI() }
+
+// Extension adds to the admin area what needs more than the core module: the sections that read the
+// platform (the flowcatalyst module's platformadmin). A nil Extension means no admin area at all
+// (the Java OrdersWeb.withoutAdmin, whose document is the shared vector openapi/orders-demo.json);
+// [NoPlatform] means the admin area without platform sections.
+type Extension interface {
+	// Declare registers the extension's sections with the admin registry and declares whatever else
+	// it needs, at declaration time. It is called between the framework's own `about` section and the
+	// config section, which fixes the navigation order (about, the extension's, config, orders).
+	Declare(app *fw.App, web *httpfw.Declared, adm *admin.Declared)
+	// Build is called in the build function, after the migrations ran and before the server is built;
+	// the routes it returns are served with the application's own.
+	Build(ctx context.Context, b *fw.Boot, dbs *database.Databases) (*httpfw.Routes, error)
+	// Finish is called at declaration time once every section is registered (the config section and
+	// the demo's own included), for what needs the whole registry: the definitions the sync sends.
+	Finish(adm *admin.Declared)
+}
+
+type noPlatform struct{}
+
+func (noPlatform) Declare(*fw.App, *httpfw.Declared, *admin.Declared) {}
+
+func (noPlatform) Finish(*admin.Declared) {}
+
+func (noPlatform) Build(context.Context, *fw.Boot, *database.Databases) (*httpfw.Routes, error) {
+	return nil, nil //nolint:nilnil // no routes
+}
+
+// NoPlatform is the extension of an application without the platform's sections: the admin area has
+// about, config and the demo's own section.
+var NoPlatform Extension = noPlatform{}
+
+// Declare declares what the demo uses, in the Java demo's module order: database, outbox, orders,
 // then the HTTP module with the orders API, the session table's migration and the auth module
-// (sessions and login, and the session endpoints' document). Everything the
-// openapi command needs is declared here, so `orders-demo openapi` needs no database or
-// configuration.
-func declare(app *fw.App) declared {
-	d := declareScenario(app)
+// (sessions and login, and the session endpoints' document) and, when ext is not nil, the admin
+// area. Everything the openapi command needs is declared here, so `orders-demo openapi` needs no
+// database or configuration.
+func Declare(app *fw.App, ext Extension) Declared {
+	d := DeclareScenario(app)
 	d.web = httpfw.Declare(app)
 	orders.DeclareAPI(d.web)
 	authdb.Declare(app)
 	d.auth = auth.Declare(app, d.web)
+	if ext != nil {
+		d.ext = ext
+		d.adm = admin.Declare(d.web, fw.MustApplicationCode("orders-demo"))
+		ext.Declare(app, d.web, d.adm)
+		d.adm.Config()
+		d.adm.Section(orders.AdminSection(d.web))
+		ext.Finish(d.adm)
+	}
 	return d
 }
 
-// declareScenario declares only what the command-line scenario (`orders-demo` with no arguments)
+// DeclareScenario declares only what the command-line scenario (`orders-demo` with no arguments)
 // uses: the database, the outbox and the orders. It needs no HTTP or auth settings.
-func declareScenario(app *fw.App) declared {
-	d := declared{db: database.Declare(app), outbox: usecase.Declare(app)}
+func DeclareScenario(app *fw.App) Declared {
+	d := Declared{db: database.Declare(app), outbox: usecase.Declare(app)}
 	orders.Declare(app)
 	return d
 }
 
-type deps struct {
-	out    io.Writer
-	client fw.ClientID // the demo's client; "demo" when zero
-	built  func(b *fw.Boot, r *usecase.Runner, db *database.DB)
-
-	// The next three are for the tests and the end-to-end launcher (e2e.go); a plain `serve` leaves
-	// them zero.
-	authOptions []auth.Option                    // after the demo's own, so they win
-	spa         fs.FS                            // the single-page application; the embedded build when nil
-	served      func(*auth.Module, *database.DB) // called once the server is built
+// Deps are the parts of the application that tests and the end-to-end launcher replace; a plain
+// `serve` leaves them zero.
+type Deps struct {
+	// Out is where the scenario prints.
+	Out io.Writer
+	// Client is the demo's client; "demo" when zero.
+	Client fw.ClientID
+	// Built is called once the scenario's services are built.
+	Built func(b *fw.Boot, r *usecase.Runner, db *database.DB)
+	// AuthOptions are applied after the demo's own, so they win.
+	AuthOptions []auth.Option
+	// SPA is the single-page application; the embedded build when nil.
+	SPA fs.FS
+	// Served is called once the server is built.
+	Served func(*auth.Module, *database.DB)
 }
 
 // roles are the demo's roles and what each grants (the Java OrdersWeb table): the clerk and the viewer
-// use the orders API; the administrator and the auditor are for the admin area (G6), which Go does not
-// have yet, so only the orders roles are used by anything here.
+// use the orders API; the administrator and the auditor are for the admin area.
 var roles = map[string][]string{
 	"orders-demo:clerk":   {orders.Read.String(), orders.Manage.String()},
 	"orders-demo:viewer":  {orders.Read.String()},
@@ -73,10 +131,10 @@ var roles = map[string][]string{
 	"orders-demo:auditor": {"orders-demo:admin:console:view", "orders-demo:admin:users:view", "orders-demo:admin:activity:view"},
 }
 
-// buildWeb is build for `orders-demo serve`: the same services, then the HTTP server with the
+// BuildWeb is the build function for `orders-demo serve`: the same services, then the HTTP server with the
 // orders API behind sessions and login (the database session store, the platform as identity
 // provider), and the embedded single-page application as the router's fallback.
-func buildWeb(d declared, x deps) fw.BuildFunc {
+func BuildWeb(d Declared, x Deps) fw.BuildFunc {
 	return func(ctx context.Context, b *fw.Boot) (fw.Serve, error) {
 		dbs, err := database.Connect(ctx, b, d.db)
 		if err != nil {
@@ -107,14 +165,31 @@ func buildWeb(d declared, x deps) fw.BuildFunc {
 			auth.PostLogoutRedirect("/signed-out"),
 			auth.FailureHandler(failures),
 			auth.Permissions(auth.ScopesMapper().And(auth.ByRole(roles))),
-		}, x.authOptions...)
+		}, x.AuthOptions...)
 		mod, err := d.auth.Build(ctx, b, opts...)
 		if err != nil {
 			return nil, err
 		}
 		rt := httpfw.NewRoutes("orders-api")
-		(&orders.API{Service: svc, DB: db, Store: orders.Repository{}}).Bind(rt)
-		dist := x.spa
+		api := &orders.API{Service: svc, DB: db, Store: orders.Repository{}}
+		api.Bind(rt)
+		tables := []*httpfw.Routes{mod.Routes(), rt}
+		if d.adm != nil {
+			api.BindAdmin(rt)
+			adminRoutes, err := d.adm.Build(b)
+			if err != nil {
+				return nil, err
+			}
+			tables = append(tables, adminRoutes)
+			extRoutes, err := d.ext.Build(ctx, b, dbs)
+			if err != nil {
+				return nil, err
+			}
+			if extRoutes != nil {
+				tables = append(tables, extRoutes)
+			}
+		}
+		dist := x.SPA
 		if dist == nil {
 			dist = web.Dist()
 		}
@@ -123,18 +198,19 @@ func buildWeb(d declared, x deps) fw.BuildFunc {
 			return nil, err
 		}
 		rt.SPA(site)
-		srv, err := httpfw.NewServer(b, d.web, []*httpfw.Routes{mod.Routes(), rt}, httpfw.WithResolver(mod.Resolver()))
+		srv, err := httpfw.NewServer(b, d.web, tables, httpfw.WithResolver(mod.Resolver()))
 		if err != nil {
 			return nil, err
 		}
-		if x.served != nil {
-			x.served(mod, db)
+		if x.Served != nil {
+			x.Served(mod, db)
 		}
 		return srv, nil
 	}
 }
 
-func build(d declared, x deps) fw.BuildFunc {
+// BuildScenario is the build function of the command-line scenario.
+func BuildScenario(d Declared, x Deps) fw.BuildFunc {
 	return func(ctx context.Context, b *fw.Boot) (fw.Serve, error) {
 		dbs, err := database.Connect(ctx, b, d.db)
 		if err != nil {
@@ -155,17 +231,17 @@ func build(d declared, x deps) fw.BuildFunc {
 		if err != nil {
 			return nil, err
 		}
-		if x.built != nil {
-			x.built(b, runner, db)
+		if x.Built != nil {
+			x.Built(b, runner, db)
 		}
-		client := x.client
+		client := x.Client
 		if client.IsZero() {
 			client = fw.MustClientID("demo")
 		}
 		return fw.ServeFunc(func(ctx context.Context) error {
 			report, err := run(ctx, svc, db, client)
 			for _, line := range report {
-				_, _ = fmt.Fprintln(x.out, line)
+				_, _ = fmt.Fprintln(x.Out, line)
 			}
 			return err
 		}), nil

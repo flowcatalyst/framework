@@ -1,4 +1,4 @@
-package main
+package ordersweb
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -37,14 +38,35 @@ import (
 // the binary was compiled after `vite build`.
 //
 // Control endpoints (any method): ready, sign-in-as, provider-down, authorize-error, end-sessions,
-// reset (deletes every order; sessions stay) and login-rate-limit (a real limiter of one request a
-// minute on the sign-in routes). platform-reads answers ok and does nothing: the Go demo has no
-// platform client or admin area yet (G6), so there are no platform reads to fail.
+// reset (deletes every order and puts the fake platform's users and invitations back; sessions
+// stay), login-rate-limit (a real limiter of one request a minute on the sign-in routes) and
+// platform-reads (value=403 or 500 makes the platform's reads and writes fail; empty: normal again).
+// Without an [E2EHooks] extension there is no platform, and platform-reads answers ok and does
+// nothing.
+
+// ConfigDir is the directory of config/application.yaml the launcher reads, relative to the working
+// directory (the command runs from examples/orders-demo).
+var ConfigDir = "config"
 
 const e2eClientID = "orders-web"
 
-func e2eMain(ctx context.Context, args []string) int {
-	if err := runE2e(ctx, args, os.Stdout); err != nil {
+// E2EHooks is what an [Extension] gives the end-to-end launcher when it stands up a platform of its
+// own: a fake the application is pointed at, and the controls that change it.
+type E2EHooks interface {
+	// Environment is added to the application's environment (flowcatalyst.* pointing at the fake).
+	Environment() map[string]string
+	// Reads sets how the fake answers the platform reads and writes: 200 normally, anything else
+	// is an error answer on every one.
+	Reads(status int)
+	// Reset puts the fake's users and invitations back to where they started.
+	Reset()
+	// Close stops the fake.
+	Close()
+}
+
+// E2EMain runs the launcher and returns the exit code; ext may be nil.
+func E2EMain(ctx context.Context, args []string, ext Extension) int {
+	if err := RunE2E(ctx, args, os.Stdout, ext); err != nil {
 		fmt.Fprintln(os.Stderr, "orders-demo e2e:", err)
 		return 1
 	}
@@ -67,8 +89,9 @@ func (s *switchableLimit) middleware() httpfw.Middleware {
 	}
 }
 
-// runE2e runs the launcher until ctx ends; out receives the READY line.
-func runE2e(ctx context.Context, args []string, out io.Writer) error {
+// RunE2E runs the launcher until ctx ends; out receives the READY line. ext is the admin area's
+// extension: nil for none (the default of the command in this directory is [NoPlatform]).
+func RunE2E(ctx context.Context, args []string, out io.Writer, ext Extension) error {
 	if len(args) < 2 {
 		return errors.New("usage: orders-demo e2e <app-port> <control-port> [--dist <dir>] [<public-origin>]")
 	}
@@ -123,12 +146,17 @@ func runE2e(ctx context.Context, args []string, out io.Writer) error {
 		mu sync.Mutex
 		db *database.DB
 	)
-	app := newApp(fw.WithEnvironment(env), fw.WithConfigDir("config"))
-	d := declare(app)
-	run, err := app.Start(ctx, buildWeb(d, deps{
-		spa:         dist,
-		authOptions: []auth.Option{auth.RateLimit(limit.middleware())},
-		served: func(_ *auth.Module, handle *database.DB) {
+	hooks, _ := ext.(E2EHooks)
+	if hooks != nil {
+		defer hooks.Close()
+		maps.Copy(env, hooks.Environment())
+	}
+	app := NewApp(fw.WithEnvironment(env), fw.WithConfigDir(ConfigDir))
+	d := Declare(app, ext)
+	run, err := app.Start(ctx, BuildWeb(d, Deps{
+		SPA:         dist,
+		AuthOptions: []auth.Option{auth.RateLimit(limit.middleware())},
+		Served: func(_ *auth.Module, handle *database.DB) {
 			mu.Lock()
 			db = handle
 			mu.Unlock()
@@ -173,7 +201,13 @@ func runE2e(ctx context.Context, args []string, out io.Writer) error {
 			return "ok", execute("DELETE FROM fw_session")
 		},
 		"/control/reset": func(map[string]string) (string, error) {
-			return "ok", execute("TRUNCATE order_lines, orders, outbox_messages CASCADE")
+			if err := execute("TRUNCATE order_lines, orders, outbox_messages CASCADE"); err != nil {
+				return "", err
+			}
+			if hooks != nil {
+				hooks.Reset()
+			}
+			return "ok", nil
 		},
 		"/control/login-rate-limit": func(q map[string]string) (string, error) {
 			if q["value"] != "true" {
@@ -191,7 +225,21 @@ func runE2e(ctx context.Context, args []string, out io.Writer) error {
 			limit.current.Store(&m)
 			return "ok", nil
 		},
-		"/control/platform-reads": func(map[string]string) (string, error) { return "ok", nil },
+		"/control/platform-reads": func(q map[string]string) (string, error) {
+			// value=403 (or 500): the platform refuses the admin pages' reads; empty: normal again
+			status := http.StatusOK
+			if v := q["value"]; v != "" {
+				n, err := strconv.Atoi(v)
+				if err != nil || n < 100 || n > 599 {
+					return "", fmt.Errorf("platform-reads: value %q is not an HTTP status", v)
+				}
+				status = n
+			}
+			if hooks != nil {
+				hooks.Reads(status)
+			}
+			return "ok", nil
+		},
 	}
 	mux := http.NewServeMux()
 	for path, handler := range control {

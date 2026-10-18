@@ -1,4 +1,4 @@
-package main
+package ordersweb
 
 import (
 	"bytes"
@@ -32,7 +32,10 @@ type site struct {
 // startWeb starts `orders-demo serve` on the embedded build with the database session store and a
 // test identity provider; extra overrides the environment. The public base URL is a port reserved
 // beforehand so the real sign-in round trip can be driven.
-func startWeb(t *testing.T, extra map[string]string) *site {
+func startWeb(t *testing.T, extra map[string]string) *site { return startWebWith(t, extra, nil) }
+
+// startWebWith is startWeb with the admin area of the extension (nil: no admin area).
+func startWebWith(t *testing.T, extra map[string]string, ext Extension) *site {
 	t.Helper()
 	port := reservePort(t)
 	origin := fmt.Sprintf("http://127.0.0.1:%d", port)
@@ -51,10 +54,10 @@ func startWeb(t *testing.T, extra map[string]string) *site {
 		"AUTH_PUBLIC_BASE_URL":             origin,
 	}
 	maps.Copy(env, extra)
-	app := newApp(fw.WithEnvironment(env), fw.WithConfigDir("config"), fw.WithOutput(io.Discard, io.Discard))
-	d := declare(app)
+	app := NewApp(fw.WithEnvironment(env), fw.WithConfigDir("../config"), fw.WithOutput(io.Discard, io.Discard))
+	d := Declare(app, ext)
 	s := &site{base: origin, provider: provider}
-	run, err := app.Start(t.Context(), buildWeb(d, deps{served: func(m *auth.Module, _ *database.DB) { s.mod = m }}))
+	run, err := app.Start(t.Context(), BuildWeb(d, Deps{Served: func(m *auth.Module, _ *database.DB) { s.mod = m }}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,8 +294,8 @@ func mustOpen(t *testing.T, name string) io.Reader {
 // declarations, with no database and no configuration, and it is the Java demo's document.
 func TestTheCommittedOpenAPIDocumentIsCurrent(t *testing.T) {
 	t.Parallel()
-	app := newApp(fw.WithEnvironment(map[string]string{}), fw.WithConfigDir(t.TempDir()))
-	d := declare(app)
+	app := NewApp(fw.WithEnvironment(map[string]string{}), fw.WithConfigDir(t.TempDir()))
+	d := Declare(app, nil)
 	doc, problems := d.web.OpenAPI()
 	if len(problems) > 0 {
 		t.Fatalf("the document cannot be written: %v", problems)
@@ -300,7 +303,7 @@ func TestTheCommittedOpenAPIDocumentIsCurrent(t *testing.T) {
 	if !bytes.Equal(doc, web.OpenAPI()) {
 		t.Fatal("web/openapi.json is stale: run `go run ./examples/orders-demo openapi --out examples/orders-demo/web/openapi.json` from go/")
 	}
-	vector, err := os.ReadFile(filepath.Join("..", "..", "..", "conformance", "openapi", "orders-demo.json"))
+	vector, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "conformance", "openapi", "orders-demo.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,14 +319,14 @@ func TestServingNeedsTheAuthSettings(t *testing.T) {
 		"DATABASE_INSTANCES_MAIN_USERNAME": "postgres", "DATABASE_INSTANCES_MAIN_PASSWORD": "postgres",
 		"HTTP_PORT": "0",
 	}
-	app := newApp(fw.WithEnvironment(env), fw.WithConfigDir("config"), fw.WithOutput(io.Discard, io.Discard))
-	_, err := app.Start(t.Context(), buildWeb(declare(app), deps{}))
+	app := NewApp(fw.WithEnvironment(env), fw.WithConfigDir("../config"), fw.WithOutput(io.Discard, io.Discard))
+	_, err := app.Start(t.Context(), BuildWeb(Declare(app, nil), Deps{}))
 	if err == nil || !strings.Contains(err.Error(), "auth.issuer") {
 		t.Fatalf("got %v", err)
 	}
 }
 
-func fs_ReadFile(name string) ([]byte, error) { return os.ReadFile(filepath.Join("web", name)) }
+func fs_ReadFile(name string) ([]byte, error) { return os.ReadFile(filepath.Join("..", "web", name)) }
 
 func TestTheRolesDecideWhatAnOrdersCallMayDo(t *testing.T) {
 	t.Parallel()
@@ -410,5 +413,51 @@ func TestSigningInAndOutThroughTheProvider(t *testing.T) {
 	}
 	if a := get("/api/orders"); a.status != 401 {
 		t.Errorf("after logout: %d %s", a.status, a.body)
+	}
+}
+
+// The admin area of the core module (no platform sections): the administrator sees about, config and
+// the demo's own section; the clerk is refused; the auditor has the console only.
+func TestTheAdminAreaWithoutThePlatform(t *testing.T) {
+	t.Parallel()
+	s := startWebWith(t, nil, NoPlatform)
+	admin, clerk, auditor := s.cookie(t, "orders-demo:admin"), s.cookie(t, "orders-demo:clerk"), s.cookie(t, "orders-demo:auditor")
+
+	nav := decode[struct {
+		Sections []struct {
+			ID string `json:"id"`
+		} `json:"sections"`
+	}](t, s.apiAs(t, admin, "GET", "/api/admin/navigation", ""))
+	var ids []string
+	for _, sec := range nav.Sections {
+		ids = append(ids, sec.ID)
+	}
+	if strings.Join(ids, ",") != "about,config,orders" {
+		t.Errorf("the administrator's sections: %v", ids)
+	}
+	for _, path := range []string{"/api/admin/navigation", "/api/admin/about", "/api/admin/config", "/api/admin/orders/overview"} {
+		if a := s.apiAs(t, clerk, "GET", path, ""); a.status != 403 || !strings.Contains(a.body, `"FORBIDDEN"`) {
+			t.Errorf("clerk %s: %d %s", path, a.status, a.body)
+		}
+	}
+	if a := s.apiAs(t, auditor, "GET", "/api/admin/about", ""); a.status != 200 {
+		t.Errorf("auditor about: %d", a.status)
+	}
+	if a := s.apiAs(t, auditor, "GET", "/api/admin/config", ""); a.status != 403 {
+		t.Errorf("auditor config: %d", a.status)
+	}
+	if a := s.apiAs(t, s.cookie(t, "orders-demo:clerk", "orders-demo:admin"), "POST", "/api/orders", `{"customer":"Ada"}`); a.status != 201 {
+		t.Fatalf("place: %d %s", a.status, a.body)
+	}
+	overview := decode[struct {
+		Open           int   `json:"open"`
+		Cancelled      int   `json:"cancelled"`
+		OpenTotalCents int64 `json:"openTotalCents"`
+	}](t, s.apiAs(t, admin, "GET", "/api/admin/orders/overview", ""))
+	if overview.Open != 1 || overview.Cancelled != 0 {
+		t.Errorf("overview %+v", overview)
+	}
+	if a := s.apiAs(t, admin, "GET", "/api/admin/config", ""); a.status != 200 || strings.Contains(a.body, "postgres\"") {
+		t.Errorf("config: %d", a.status)
 	}
 }

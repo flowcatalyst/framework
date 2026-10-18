@@ -1,4 +1,4 @@
-package main
+package ordersweb
 
 import (
 	"encoding/json/v2"
@@ -34,7 +34,7 @@ func TestRunsOnADatabaseTheJavaDemoMigrated(t *testing.T) {
 		vector string
 		files  fs.FS
 	}{{"outbox.json", usecase.OutboxMigrations()}, {"orders.json", orders.Migrations()}} {
-		raw, err := os.ReadFile(filepath.Join("..", "..", "..", "conformance", "migrations", set.vector))
+		raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "conformance", "migrations", set.vector))
 		if err != nil {
 			t.Fatal(err)
 		}

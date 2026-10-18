@@ -184,37 +184,40 @@ the real store: `cookie, _ := t.Cookie(ctx, auth.User("prn_1", "ingestor:operato
 
 ## The orders demo on sessions, and the browser suite
 
-`orders-demo serve` (`examples/orders-demo/app.go`) no longer has a fixed-token resolver or `501`
-session endpoints. `declare` calls `authdb.Declare(app)` and `auth.Declare(app, web)`; `buildWeb`
+`orders-demo serve` (`examples/orders-demo/ordersweb/app.go`, since G6 a library package the two commands share) no longer has a fixed-token resolver or `501`
+session endpoints. `Declare` calls `authdb.Declare(app)` and `auth.Declare(app, web)`; `BuildWeb`
 builds the module with `auth.SessionStore(authdb.Factory(dbs))`, `auth.Application("orders-demo")`,
 `auth.PostLogoutRedirect("/signed-out")`, `auth.RedirectFailuresTo("/sign-in-failed")` and the Java
 `OrdersWeb`'s role table (`orders-demo:clerk` reads and manages orders, `viewer` reads, `admin` and
-`auditor` hold the admin permissions that only the admin area, G6, will use), and passes
+`auditor` hold the admin permissions of the admin area, [G6](admin.md)), and passes
 `mod.Routes()` and `mod.Resolver()` to `httpfw.NewServer`. It needs `AUTH_ISSUER`, `AUTH_CLIENT_ID` and
 `AUTH_PUBLIC_BASE_URL`; the scenario command (`orders-demo` with no argument) declares none of this.
 
-`orders-demo e2e <app-port> <control-port> [--dist <dir>] [<public-origin>]` (`e2e.go`) is the Go
+`orders-demo e2e <app-port> <control-port> [--dist <dir>] [<public-origin>]` (`ordersweb/e2e.go`) is the Go
 counterpart of the Java `OrdersE2e` on the [e2e kit](../e2e-kit.md): the real application on an
 embedded PostgreSQL 18 (never 15432), `authtest.Provider` as the platform, the kit's control endpoints
 (`ready`, `sign-in-as`, `provider-down`, `authorize-error`, `end-sessions`) and the orders' own
 (`reset`, `login-rate-limit`), the `READY` line, and an orderly stop on SIGTERM or SIGINT.
 `--dist` serves the SPA from a directory (`vite build` writes `examples/orders-demo/web/dist`), so a
-rebuilt SPA needs no recompile. `/control/platform-reads` answers `ok` and does nothing: the Go demo has
-no platform client or admin area yet.
+rebuilt SPA needs no recompile. With the platform extension (the command of the `flowcatalyst` module, below)
+the launcher also stands up a fake platform, and `/control/platform-reads?value=403` makes its reads and
+writes fail (empty: normal) and `/control/reset` puts its users and invitations back; the core command
+has no platform and `platform-reads` answers `ok` and does nothing.
 
-`make -C go e2e-orders` builds the SPA and the launcher and runs the shared suite
+`make -C go e2e-orders` builds the SPA and the launcher of the `flowcatalyst` module
+(`go/flowcatalyst/examples/orders-demo`: the same `ordersweb` library with the platform-backed admin
+sections and a fake platform, see [the application admin](admin.md)) and runs the shared suite
 `ui/apps/orders/e2e` through the kit's runner with `examples/orders-demo/e2e/playwright.config.ts` (the
 kit's configuration with the Go launcher as the web server), plus the Go-only specs in
 `examples/orders-demo/e2e/session.spec.ts` (cookie attributes, the CSRF refusal, a copied cookie dead
-after sign-out, the next sign-in's person). Result on 2026-10-18, Chromium, strict CSP monitor and
-axe: 53 shared tests, 28 passed, 4 skipped (the screenshots, as on Java), 21 failed; with the Go-only
-specs, 32 passed. The 20 failures of `admin.spec.ts` and `admin-data.spec.ts` are the admin area, which
-Go does not have until G6; the 21st is `auth.spec.ts` "sign out ends the session", which asserts that the
-final URL carries `post_logout_redirect_uri=`. The Java launcher points the platform's
-`end_session_endpoint` at the SPA's own `/signed-out` (another origin than the issuer's), which the
-Go module ignores as the security review's I1 requires; the Go provider's end-session endpoint is on
-the issuer and redirects to `/signed-out`, so the page is reached (and the heading is asserted)
-but with no query string. Java's `Platform` does not yet apply I1 (see "Differences").
+after sign-out, the next sign-in's person). Result on 2026-10-18 with the admin area (G6), Chromium,
+strict CSP monitor and axe: 53 shared tests, 49 run: 48 passed, 4 skipped (the screenshots, as on Java)
+and 1 failed; with the Go-only specs, 52 passed. The failure is `auth.spec.ts` "sign out ends the
+session", which asserts that the final URL carries `post_logout_redirect_uri=`. The Java launcher points
+the platform's `end_session_endpoint` at the SPA's own `/signed-out` (another origin than the issuer's),
+which the Go module ignores as the security review's I1 requires; the Go provider's end-session
+endpoint is on the issuer and redirects to `/signed-out`, so the page is reached (and the heading is
+asserted) but with no query string. Java's `Platform` does not yet apply I1 (see "Differences").
 
 ### Differences from Java, and what was not verified
 

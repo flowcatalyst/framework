@@ -1,4 +1,4 @@
-package main
+package ordersweb
 
 import (
 	"bytes"
@@ -50,7 +50,7 @@ func TestTheE2eLauncherDrivesSignInThroughTheControlEndpoints(t *testing.T) {
 	out := &lockedBuffer{}
 	done := make(chan error, 1)
 	go func() {
-		done <- runE2e(ctx, []string{strconv.Itoa(appPort), strconv.Itoa(controlPort)}, out)
+		done <- RunE2E(ctx, []string{strconv.Itoa(appPort), strconv.Itoa(controlPort)}, out, nil)
 	}()
 	t.Cleanup(func() {
 		cancel()
