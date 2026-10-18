@@ -1,0 +1,2141 @@
+{
+  "description" : "Use case runner scenarios (write-path contract sections 3a, 4, 4a, 5). Setup: aggregate table thing(id text primary key, client_id text, version bigint, name text, code text UNIQUE); rows are written as 'id|client|version|name|code' ('-' = null code). Command: op (create | edit | remove | emit), id, name, code; create inserts a new thing (version 0 -> 1), edit changes name and/or code of the thing found, remove deletes it, emit plans an event only. useCase: validate/authorize = ok | refuse (an error of kind VALIDATION / AUTHORIZATION) | throw (an exception whose message must never reach the error); load = none | ok (finds the thing by id, scoped to the context's client) | throw; whenMissing is NOT_FOUND THING_NOT_FOUND; authorizeLoaded = none | ok (refuses a thing named 'locked' with AUTHORIZATION LOCKED) | refuse (always AUTHORIZATION LOCKED) | hide (answers whenMissing) | throw; execute = edit | create | remove | emit | reject (BUSINESS_RULE REJECTED) | throw | crossClient / crossClientDelete (a plan holding a thing of client 'other') | createThenClash (saves two things, the second violating the unique code); without a load phase edit/remove find the thing themselves (trace 'find'). conflict = fail | retry (maxAttempts, backoff 5 ms, jittered 0.5x to 1.5x). faults: concurrentWrite (another writer bumps the row's version after the attempt loaded it, so the update affects 0 rows) | sqlState (the update throws an SQLException with that SQLSTATE) | persistError (any other exception in the persist step) | events | audit (the sink throws) | commitTrigger (a deferred constraint fails at COMMIT) | begin (the database cannot give a connection) | interrupt (the wait between attempts is interrupted); attempts = the 1-based attempts the fault applies to. join: null runs in the runner's own transaction; else the runner is handed the caller's connection (autoCommit false unless stated), callerInsert writes the row mine|acme|1|callers|C-1 in it first, end = commit | rollback, followUp = a further command run on the same transaction after the first. expect: result committed | failed; error {kind, code, httpStatus, details} (message is Java's wording in messageJava and is not compared; a cause's text never appears in it); trace = the phases called, in order, across all attempts; attempts = how many attempts ran; waits = how many waits between attempts; events = [{type, subject}] the sink received (committed work only); audits = [{entityType, entityId, operation}]; things = the aggregate rows after the scenario ('id|client|version|name|code'); for a join: seenByOthersBeforeEnd = rows another connection sees while the caller's transaction is open, and followUp the result of the second run; throws = the exception class name when the run is an argument error. Outbox rows proper are covered by outbox/outbox.json; here the sink's events stand for them.",
+  "howToRun" : "Per scenario: reset the database, create the table, insert prior, build the use case from 'useCase', inject the faults, run it with the context (client, principal usr_1) and the command (joined or not), then compare the expect block. Regenerate from Java with -Dconformance.update=true (UseCaseScenariosConformanceTest).",
+  "scenarios" : [ {
+    "name" : "create commits version 1, one event, one audit row",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:created",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "edit commits version 2",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|2|washer|B-1" ]
+    }
+  }, {
+    "name" : "remove deletes the row",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "remove",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "remove",
+      "id" : "t1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:removed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ ]
+    }
+  }, {
+    "name" : "a plan with only an event writes no aggregate",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "emit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "emit",
+      "id" : "t1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "validate refuses",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "refuse",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "VALIDATION",
+        "code" : "NAME_REQUIRED",
+        "httpStatus" : 400,
+        "details" : { }
+      },
+      "messageJava" : "name?",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "validate throws",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "throw",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "VALIDATE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (VALIDATE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "authorize refuses",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "refuse",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "AUTHORIZATION",
+        "code" : "FORBIDDEN_OP",
+        "httpStatus" : 403,
+        "details" : { }
+      },
+      "messageJava" : "no",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "authorize throws",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "throw",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "AUTHORIZE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (AUTHORIZE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "execute throws",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "throw",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "EXECUTE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (EXECUTE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "execute rejects",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "reject",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "BUSINESS_RULE",
+        "code" : "REJECTED",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "not allowed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: order is validate, authorize, load, authorizeLoaded, execute",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load", "authorizeLoaded", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|2|washer|B-1" ]
+    }
+  }, {
+    "name" : "load phase without a record check",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|2|washer|B-1" ]
+    }
+  }, {
+    "name" : "load phase: authorize refuses so nothing is loaded",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "refuse",
+      "load" : "ok",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "AUTHORIZATION",
+        "code" : "FORBIDDEN_OP",
+        "httpStatus" : 403,
+        "details" : { }
+      },
+      "messageJava" : "no",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: validate refuses so nothing is loaded",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "refuse",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "VALIDATION",
+        "code" : "NAME_REQUIRED",
+        "httpStatus" : 400,
+        "details" : { }
+      },
+      "messageJava" : "name?",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: the record is missing",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "NOT_FOUND",
+        "code" : "THING_NOT_FOUND",
+        "httpStatus" : 404,
+        "details" : { }
+      },
+      "messageJava" : "no such thing",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ ]
+    }
+  }, {
+    "name" : "load phase: another client's record is missing",
+    "prior" : [ "t1|other|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "NOT_FOUND",
+        "code" : "THING_NOT_FOUND",
+        "httpStatus" : 404,
+        "details" : { }
+      },
+      "messageJava" : "no such thing",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|other|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: authorizeLoaded refuses",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "refuse",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "AUTHORIZATION",
+        "code" : "LOCKED",
+        "httpStatus" : 403,
+        "details" : { }
+      },
+      "messageJava" : "that thing is locked",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load", "authorizeLoaded" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: authorizeLoaded answers whenMissing to hide existence",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "hide",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "NOT_FOUND",
+        "code" : "THING_NOT_FOUND",
+        "httpStatus" : 404,
+        "details" : { }
+      },
+      "messageJava" : "no such thing",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load", "authorizeLoaded" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: load throws",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "throw",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "LOAD",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (LOAD).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: authorizeLoaded throws",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "throw",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "AUTHORIZE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (AUTHORIZE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load", "authorizeLoaded" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "load phase: a record the check refuses by its content",
+    "prior" : [ "t1|acme|1|locked|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "AUTHORIZATION",
+        "code" : "LOCKED",
+        "httpStatus" : 403,
+        "details" : { }
+      },
+      "messageJava" : "that thing is locked",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "load", "authorizeLoaded" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|locked|B-1" ]
+    }
+  }, {
+    "name" : "stale aggregate with fail",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "STALE_AGGREGATE",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "The record was changed by someone else; reload it and try again.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|2|bolt|B-1" ]
+    }
+  }, {
+    "name" : "stale aggregate with retry(3) succeeds on attempt 2",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 2,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|3|washer|B-1" ]
+    }
+  }, {
+    "name" : "stale aggregate with retry(3) and a load phase re-runs load and authorizeLoaded",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "ok",
+      "authorizeLoaded" : "ok",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 2,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "load", "authorizeLoaded", "execute", "validate", "authorize", "load", "authorizeLoaded", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|3|washer|B-1" ]
+    }
+  }, {
+    "name" : "stale aggregate on every attempt exhausts the attempts",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1, 2, 3 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "STALE_AGGREGATE",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "The record was changed by someone else; reload it and try again.",
+      "attempts" : 3,
+      "waits" : 2,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|4|bolt|B-1" ]
+    }
+  }, {
+    "name" : "stale aggregate with retry(2) exhausted after two attempts",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 2,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1, 2 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "STALE_AGGREGATE",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "The record was changed by someone else; reload it and try again.",
+      "attempts" : 2,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|3|bolt|B-1" ]
+    }
+  }, {
+    "name" : "SQLSTATE 40001 with fail",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "sqlState",
+      "state" : "40001",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "STALE_AGGREGATE",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "The record was changed by someone else; reload it and try again.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "SQLSTATE 40001 retried",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "sqlState",
+      "state" : "40001",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 2,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|2|washer|B-1" ]
+    }
+  }, {
+    "name" : "SQLSTATE 40P01 retried",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "sqlState",
+      "state" : "40P01",
+      "attempts" : [ 1, 2 ]
+    } ],
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 3,
+      "waits" : 2,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ "t1|acme|2|washer|B-1" ]
+    }
+  }, {
+    "name" : "SQLSTATE 40001 exhausted",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 2,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "sqlState",
+      "state" : "40001",
+      "attempts" : [ 1, 2 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "STALE_AGGREGATE",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "The record was changed by someone else; reload it and try again.",
+      "attempts" : 2,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "SQLSTATE 23505 is a unique violation and is not retried",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "sqlState",
+      "state" : "23505",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "UNIQUE_VIOLATION",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "A record with the same unique value already exists.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "a real unique violation names the constraint and is not retried",
+    "prior" : [ "t1|acme|1|bolt|B-1", "t2|acme|1|nut|N-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t2",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "UNIQUE_VIOLATION",
+        "httpStatus" : 409,
+        "details" : {
+          "constraint" : "thing_code_key"
+        }
+      },
+      "messageJava" : "A record with the same unique value already exists.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1", "t2|acme|1|nut|N-1" ]
+    }
+  }, {
+    "name" : "a unique violation on insert",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t9",
+      "name" : "dup",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "UNIQUE_VIOLATION",
+        "httpStatus" : 409,
+        "details" : {
+          "constraint" : "thing_code_key"
+        }
+      },
+      "messageJava" : "A record with the same unique value already exists.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "a stale delete with fail",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "remove",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "remove",
+      "id" : "t1"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "STALE_AGGREGATE",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "The record was changed by someone else; reload it and try again.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|2|bolt|B-1" ]
+    }
+  }, {
+    "name" : "persist failure",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "persistError",
+      "state" : "XX000",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "PERSIST",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (PERSIST).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "events (outbox) failure rolls everything back",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "events",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "OUTBOX",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (OUTBOX).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ ]
+    }
+  }, {
+    "name" : "audit failure rolls everything back",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "audit",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "AUDIT",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (AUDIT).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:created",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ ],
+      "things" : [ ]
+    }
+  }, {
+    "name" : "commit failure rolls everything back",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "commit-fails",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "commitTrigger",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "COMMIT",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (COMMIT).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:created",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "things" : [ ]
+    }
+  }, {
+    "name" : "begin failure: the database cannot give a connection",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "begin",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "BEGIN",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (BEGIN).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ ]
+    }
+  }, {
+    "name" : "a failure after the first write rolls the first write back",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "createThenClash",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "-",
+      "name" : "x",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "UNIQUE_VIOLATION",
+        "httpStatus" : 409,
+        "details" : {
+          "constraint" : "thing_code_key"
+        }
+      },
+      "messageJava" : "A record with the same unique value already exists.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "a plan holding another client's aggregate",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "crossClient",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "CROSS_CLIENT_WRITE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (CROSS_CLIENT_WRITE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "a plan deleting another client's aggregate",
+    "prior" : [ "t1|other|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "crossClientDelete",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "remove",
+      "id" : "t1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "CROSS_CLIENT_WRITE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (CROSS_CLIENT_WRITE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|other|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "a cross client plan is not retried",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "crossClient",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "CROSS_CLIENT_WRITE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (CROSS_CLIENT_WRITE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "interrupted while waiting between attempts",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1 ]
+    }, {
+      "kind" : "interrupt",
+      "attempts" : [ 1 ]
+    } ],
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "INTERRUPTED",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (INTERRUPTED).",
+      "attempts" : 1,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "things" : [ "t1|acme|2|bolt|B-1" ]
+    }
+  }, {
+    "name" : "join: commits in the caller's transaction, visible after the caller commits",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false
+    },
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:created",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "seenByOthersBeforeEnd" : [ ],
+      "things" : [ "mine|acme|1|callers|C-1", "t1|acme|1|bolt|B-1" ]
+    }
+  }, {
+    "name" : "join: gone when the caller rolls back",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "rollback",
+      "autoCommit" : false
+    },
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ {
+        "type" : "things:stock:thing:created",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "seenByOthersBeforeEnd" : [ ],
+      "things" : [ ]
+    }
+  }, {
+    "name" : "join: a unique violation rolls back to the savepoint and the transaction is usable",
+    "prior" : [ "t0|acme|1|first|DUP" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "DUP"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false,
+      "followUp" : {
+        "op" : "create",
+        "id" : "t2",
+        "name" : "washer",
+        "code" : "W-1"
+      }
+    },
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "UNIQUE_VIOLATION",
+        "httpStatus" : 409,
+        "details" : {
+          "constraint" : "thing_code_key"
+        }
+      },
+      "messageJava" : "A record with the same unique value already exists.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "followUp" : {
+        "result" : "committed",
+        "events" : 1
+      },
+      "seenByOthersBeforeEnd" : [ "t0|acme|1|first|DUP" ],
+      "things" : [ "mine|acme|1|callers|C-1", "t0|acme|1|first|DUP", "t2|acme|1|washer|W-1" ]
+    }
+  }, {
+    "name" : "join: stale aggregate with fail",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1 ]
+    } ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false
+    },
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "CONFLICT",
+        "code" : "STALE_AGGREGATE",
+        "httpStatus" : 409,
+        "details" : { }
+      },
+      "messageJava" : "The record was changed by someone else; reload it and try again.",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "seenByOthersBeforeEnd" : [ "t1|acme|2|bolt|B-1" ],
+      "things" : [ "mine|acme|1|callers|C-1", "t1|acme|2|bolt|B-1" ]
+    }
+  }, {
+    "name" : "join: stale aggregate retried on the same transaction",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 2,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "concurrentWrite",
+      "attempts" : [ 1 ]
+    } ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false
+    },
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 2,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "seenByOthersBeforeEnd" : [ "t1|acme|2|bolt|B-1" ],
+      "things" : [ "mine|acme|1|callers|C-1", "t1|acme|3|washer|B-1" ]
+    }
+  }, {
+    "name" : "join: SQLSTATE 40001 retried on the same transaction",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "retry",
+        "maxAttempts" : 3,
+        "backoffMs" : 5
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "sqlState",
+      "state" : "40001",
+      "attempts" : [ 1 ]
+    } ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false
+    },
+    "expect" : {
+      "result" : "committed",
+      "attempts" : 2,
+      "waits" : 1,
+      "trace" : [ "validate", "authorize", "execute", "find", "validate", "authorize", "execute", "find" ],
+      "events" : [ {
+        "type" : "things:stock:thing:changed",
+        "subject" : "stock.thing.t1"
+      } ],
+      "audits" : [ {
+        "entityType" : "Thing",
+        "entityId" : "t1",
+        "operation" : "scenario"
+      } ],
+      "seenByOthersBeforeEnd" : [ "t1|acme|1|bolt|B-1" ],
+      "things" : [ "mine|acme|1|callers|C-1", "t1|acme|2|washer|B-1" ]
+    }
+  }, {
+    "name" : "join: events failure keeps the caller's earlier work",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ {
+      "kind" : "events",
+      "attempts" : [ 1 ]
+    } ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false,
+      "followUp" : {
+        "op" : "create",
+        "id" : "t2",
+        "name" : "washer",
+        "code" : "W-1"
+      }
+    },
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "OUTBOX",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (OUTBOX).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "followUp" : {
+        "result" : "committed",
+        "events" : 1
+      },
+      "seenByOthersBeforeEnd" : [ ],
+      "things" : [ "mine|acme|1|callers|C-1", "t2|acme|1|washer|W-1" ]
+    }
+  }, {
+    "name" : "join: a rejected run writes nothing and keeps the transaction",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "edit",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false
+    },
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "NOT_FOUND",
+        "code" : "THING_NOT_FOUND",
+        "httpStatus" : 404,
+        "details" : { }
+      },
+      "messageJava" : "no such thing",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute", "find" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "seenByOthersBeforeEnd" : [ ],
+      "things" : [ "mine|acme|1|callers|C-1" ]
+    }
+  }, {
+    "name" : "join: a connection in auto-commit is an argument error",
+    "prior" : [ ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "create",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "create",
+      "id" : "t1",
+      "name" : "bolt",
+      "code" : "B-1"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "join" : {
+      "callerInsert" : false,
+      "end" : "commit",
+      "autoCommit" : true
+    },
+    "expect" : {
+      "throws" : "IllegalArgumentException",
+      "things" : [ ]
+    }
+  }, {
+    "name" : "join: a cross client plan fails and the caller's work survives",
+    "prior" : [ "t1|acme|1|bolt|B-1" ],
+    "useCase" : {
+      "validate" : "ok",
+      "authorize" : "ok",
+      "load" : "none",
+      "authorizeLoaded" : "none",
+      "execute" : "crossClient",
+      "conflict" : {
+        "policy" : "fail"
+      }
+    },
+    "command" : {
+      "op" : "edit",
+      "id" : "t1",
+      "name" : "washer"
+    },
+    "client" : "acme",
+    "faults" : [ ],
+    "join" : {
+      "callerInsert" : true,
+      "end" : "commit",
+      "autoCommit" : false
+    },
+    "expect" : {
+      "result" : "failed",
+      "error" : {
+        "kind" : "INTERNAL",
+        "code" : "CROSS_CLIENT_WRITE",
+        "httpStatus" : 500,
+        "details" : { }
+      },
+      "messageJava" : "The operation could not be completed (CROSS_CLIENT_WRITE).",
+      "attempts" : 1,
+      "waits" : 0,
+      "trace" : [ "validate", "authorize", "execute" ],
+      "events" : [ ],
+      "audits" : [ ],
+      "seenByOthersBeforeEnd" : [ "t1|acme|1|bolt|B-1" ],
+      "things" : [ "mine|acme|1|callers|C-1", "t1|acme|1|bolt|B-1" ]
+    }
+  } ]
+}
