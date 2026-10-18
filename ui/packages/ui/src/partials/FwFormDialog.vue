@@ -7,13 +7,15 @@
 // error region, then focuses the first invalid field. Closing a changed form (Cancel, X, Escape, a
 // click outside) asks "Discard changes?" first; Keep editing is the focused answer. Edit forms
 // (`requireChange`) enable Save only once a value changed (a value typed back counts as unchanged).
+// A field that commits to the state on blur (UInputNumber) counts as changed while it is typed in:
+// the dialog also compares the fields' own drafts with the ones it opened with (friction F21).
 import type { ServiceError } from "@flowcatalyst/api-runtime";
 import { applyServiceError } from "@flowcatalyst/api-runtime";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UForm from "@nuxt/ui/components/Form.vue";
 import UModal from "@nuxt/ui/components/Modal.vue";
-import { nextTick, shallowRef, useId, useTemplateRef, watch } from "vue";
+import { computed, nextTick, shallowRef, useId, useTemplateRef, watch } from "vue";
 import type { z } from "zod";
 import FwAlertDialog from "../components/FwAlertDialog.vue";
 import { useDirtyForm } from "../composables/useDirtyForm.ts";
@@ -66,6 +68,23 @@ const busy = shallowRef(false);
 const formError = shallowRef<string | undefined>(undefined);
 const askDiscard = shallowRef(false);
 const dirtyForm = useDirtyForm(() => state);
+// The fields' drafts: what the inputs show, which runs ahead of `state` for a field that commits on blur.
+const draftBaseline = shallowRef<string | undefined>(undefined);
+const draftTick = shallowRef(0);
+const draftChanged = computed(() => {
+  const tick = draftTick.value; // re-evaluate after every input event
+  return tick >= 0 && draftBaseline.value !== undefined && drafts() !== draftBaseline.value;
+});
+const changed = computed(() => dirtyForm.dirty.value || draftChanged.value);
+
+function drafts(): string {
+  const inputs = fields.value?.querySelectorAll<HTMLInputElement>("input:not([type=hidden]), textarea") ?? [];
+  return JSON.stringify(Array.from(inputs, (input) => (input.type === "checkbox" || input.type === "radio" ? input.checked : input.value)));
+}
+
+function onFieldInput(): void {
+  draftTick.value += 1;
+}
 
 watch(
   open,
@@ -74,8 +93,16 @@ watch(
       formError.value = undefined;
       busy.value = false;
       dirtyForm.markClean();
+      draftBaseline.value = undefined;
+      // The fields are in the DOM once the modal rendered: a macrotask, as focusFirst.
+      setTimeout(() => {
+        if (open.value) {
+          draftBaseline.value = drafts();
+        }
+      }, 0);
     } else {
       dirtyForm.reset();
+      draftBaseline.value = undefined;
     }
   },
   { immediate: true },
@@ -101,7 +128,7 @@ function requestClose(): void {
   if (busy.value) {
     return;
   }
-  if (dirtyForm.dirty.value) {
+  if (changed.value) {
     askDiscard.value = true;
   } else {
     open.value = false;
@@ -120,6 +147,7 @@ async function onSubmit(event: FormSubmitEvent<O>): Promise<void> {
     const error = await submit(event.data);
     if (error === undefined) {
       dirtyForm.markClean();
+      draftBaseline.value = drafts();
       open.value = false;
       emit("saved", event.data);
       return;
@@ -186,7 +214,7 @@ async function submitForm(): Promise<void> {
             {{ formError }}
           </p>
         </div>
-        <div ref="fields" class="flex flex-col gap-4">
+        <div ref="fields" class="flex flex-col gap-4" @input="onFieldInput" @change="onFieldInput">
           <slot />
         </div>
       </UForm>
@@ -199,7 +227,7 @@ async function submitForm(): Promise<void> {
         <UButton
           :label="submitLabel"
           :loading="busy"
-          :disabled="busy || (requireChange && !dirtyForm.dirty.value)"
+          :disabled="busy || (requireChange && !changed)"
           data-testid="fw-form-submit"
           v-bind="keepFocus"
           @click="submitForm"

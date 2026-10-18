@@ -50,6 +50,24 @@ const limit = optionalNumber(state, "limit");
   `ui/packages/ui/test/optional-fields.test.ts` (including the type tests). Both are exported from
   the package index. Design notes and the report that asked for them: [U3, Camel feedback i](../ui/u3.md).
 
+## Edit dialogs: `requireChange` and number fields
+
+`FwFormDialog` with `require-change` keeps Save disabled until a value differs from the one the
+dialog opened with. `UInputNumber` commits what is typed to the form state only on blur or Enter, so
+the dialog also compares what the fields show (their drafts) with what they showed on opening:
+Save enables as soon as a number is typed, without leaving the field, and disables again when the
+old value is typed back. A click on Save blurs the focused field first, so the value being typed is
+the one that is sent. The tickets example's SLA dialog has a browser test for it
+(`ui/apps/tickets/e2e/sla.spec.ts`, friction F21).
+
+## Badge colours and contrast
+
+`FwStatusBadge` is solid by default and every solid colour passes WCAG AA. The `soft` and `subtle`
+variants put the colour's text on its own 10 % tint; for success and warning the alias is below 4.5:1
+there (4.38 and 4.48), so the package's theme (`fcComponentTheme.badge`) draws those two variants'
+text one shade darker in the light theme (green-800, orange-800; both above 7:1; the dark theme keeps
+the alias). A test pins the ratios (`ui/packages/ui/test/theme-css.test.ts`, friction F20).
+
 ## Forms with variant fields
 
 A form whose fields depend on a kind (a source that is `HTTP` or `QUEUE`, a generated `oneOf`

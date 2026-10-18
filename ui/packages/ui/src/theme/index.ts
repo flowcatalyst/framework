@@ -73,6 +73,10 @@ export const fcIcons = [
  *   default is a marketing header (4xl title, a rule, 2rem padding). The kit's is compact.
  * - alert: the description at full opacity. Nuxt UI draws it at 90 %, which takes the success and
  *   warning colours of an outline alert below 4.5:1 (4.17 and 4.42 on white).
+ * - badge: the soft and subtle variants of success and warning use a darker text shade in the light
+ *   theme (green-800, orange-800). The alias on its own 10 % tint reads 4.38:1 and 4.48:1, under AA
+ *   (friction F20); the darker shades read above 7:1. Dark keeps the alias. Solid, outline and the
+ *   other colours are Nuxt UI's.
  * - navigationMenu (vertical) and dashboardSidebar: comfortable sidebar spacing (owner feedback
  *   2026-10-14; Nuxt UI's defaults are tight). Item 30 -> 40 px high (py-1.5 -> py-2.5; the target
  *   is 24 px at least, WCAG 2.2 SC 2.5.8), icon-to-label gap 6 -> 12 px, 4 px between items (0), 16 px
@@ -104,6 +108,14 @@ export const fcComponentTheme = {
   },
   alert: {
     slots: { description: "opacity-100" },
+  },
+  badge: {
+    compoundVariants: [
+      { color: "success" as const, variant: "soft" as const, class: "text-green-800 dark:text-success" },
+      { color: "success" as const, variant: "subtle" as const, class: "text-green-800 dark:text-success" },
+      { color: "warning" as const, variant: "soft" as const, class: "text-orange-800 dark:text-warning" },
+      { color: "warning" as const, variant: "subtle" as const, class: "text-orange-800 dark:text-warning" },
+    ],
   },
   navigationMenu: {
     variants: {

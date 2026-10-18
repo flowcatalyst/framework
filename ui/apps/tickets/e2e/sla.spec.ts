@@ -49,6 +49,26 @@ test("everyone sees the policy; only a lead edits it; the server's rule is shown
   await csp.expectClean();
 });
 
+test("Save enables while a number is being typed, without leaving the field, and disables when it is typed back (F21)", async ({ page, csp }) => {
+  await switchTo(page, { roles: [LEAD], sub: "prn_lena", name: "Lena Lead" });
+  await openPage(page, "/sla", "SLA policy");
+  await page.getByTestId("edit-sla").click();
+  const dialog = page.getByRole("dialog", { name: "Edit SLA policy" });
+  const save = dialog.getByRole("button", { name: "Save policy" });
+  await expect(save).toBeDisabled();
+  const urgent = page.getByTestId("sla-urgent");
+  const original = await urgent.inputValue();
+  await urgent.fill("45"); // no Tab: the field has not committed yet
+  await expect(save).toBeEnabled();
+  await urgent.fill(original);
+  await expect(save).toBeDisabled();
+  await urgent.fill("45");
+  await save.click(); // straight for the button, as a user does
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("sla-table")).toContainText("45 min");
+  await csp.expectClean();
+});
+
 test("the deadline of a new ticket comes from the client's policy; the sweep marks it overdue when time runs out", async ({ page, csp }) => {
   await switchTo(page, { roles: [LEAD], sub: "prn_lena", name: "Lena Lead" });
   await openPage(page, "/sla", "SLA policy");

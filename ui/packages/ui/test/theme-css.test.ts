@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { fcComponentTheme } from "../src/theme/index.ts";
 
 const read = (relative: string): string => readFileSync(join(import.meta.dirname, relative), "utf8");
 const tokens = read("../../../../ui-kit/theme/tokens.css");
@@ -155,14 +156,36 @@ describe("contrast of the colour aliases (WCAG AA, 4.5:1)", () => {
     }
   });
 
-  it("light, text on the colour's own 10 % tint (soft and subtle variants): success and warning stay below AA", () => {
-    // One shade is not enough for these two (an owner decision, docs/ui/u1.md): no FlowCatalyst part
-    // uses a soft or subtle success or warning, and the gallery does not show one. The ratios are
-    // pinned so a change of the tokens shows here.
+  it("light, text on the colour's own 10 % tint (soft and subtle variants): the alias stays below AA for success and warning", () => {
+    // One shade is not enough for these two (an owner decision, docs/ui/u1.md). The ratios are pinned
+    // so a change of the tokens shows here; FwStatusBadge (and any UBadge) gets the darker text shade
+    // from fcComponentTheme.badge, checked by the next test.
     const ratios = Object.fromEntries(aliases.map((alias) => {
       const fg = color(light, alias);
       return [alias, round(contrast(rgb(fg), over(fg, 0.1, "#ffffff")))];
     }));
     expect(ratios).toEqual({ "--ui-primary": 4.78, "--ui-success": 4.38, "--ui-info": 5.13, "--ui-warning": 4.48, "--ui-error": 5.45 });
+  });
+
+  it("light, soft and subtle badges of success and warning use a darker text shade that passes AA (friction F20)", () => {
+    const shades: Record<string, { text: string; alias: string }> = {
+      "text-green-800": { text: "#166534", alias: "--ui-success" },
+      "text-orange-800": { text: "#9a3412", alias: "--ui-warning" },
+    };
+    const overrides = fcComponentTheme.badge.compoundVariants;
+    expect(overrides.map((o) => `${o.color}/${o.variant}`).sort()).toEqual(["success/soft", "success/subtle", "warning/soft", "warning/subtle"]);
+    for (const override of overrides) {
+      const lightClass = override.class.split(" ")[0] ?? "";
+      const shade = shades[lightClass];
+      expect(shade, `${override.color}: ${lightClass}`).toBeDefined();
+      if (shade === undefined) {
+        continue;
+      }
+      const tintBase = color(light, shade.alias);
+      // The tint, and the hovered row (bg-muted) under it, are the two backgrounds a badge sits on.
+      expect(round(contrast(rgb(shade.text), over(tintBase, 0.1, "#ffffff"))), lightClass).toBeGreaterThanOrEqual(4.5);
+      expect(round(contrast(rgb(shade.text), over(tintBase, 0.1, color(light, "--ui-bg-muted")))), `${lightClass} on a hovered row`).toBeGreaterThanOrEqual(4.5);
+      expect(override.class).toContain(`dark:text-${override.color}`);
+    }
   });
 });

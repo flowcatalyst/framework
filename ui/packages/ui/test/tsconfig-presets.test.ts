@@ -93,7 +93,7 @@ describe("tsconfig presets, extended by package name", () => {
         execFileSync(tsc, ["--build", app], { encoding: "utf8", stdio: "pipe" });
         return "";
       } catch (error) {
-        return String((error as { stdout?: unknown }).stdout);
+        return error instanceof Error && "stdout" in error ? String(error.stdout) : String(error);
       }
     }
 
