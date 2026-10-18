@@ -23,11 +23,26 @@ is a container and the platform is a fake.
 `@axe-core/playwright` as dev dependencies, the peer dependencies of `@flowcatalyst/ui`):
 
 ```json
-"e2e": "vite build && playwright test"
+"e2e": "vite build && node node_modules/@flowcatalyst/ui/src/e2e/cli.ts playwright test"
 ```
 
 `vite build` writes the SPA into the module's `web/dist`; Maven copies it into the classes, so the backend
 serves the build you just made.
+
+**Run Playwright through the kit, not through your own `playwright` binary.** The kit imports
+`@playwright/test`; consumed with `link:` it resolves that import from the framework checkout, while the
+application's `node_modules/.bin/playwright` is the application's own copy. Two copies in one process fail
+with `did not expect test.beforeEach() to be called here`. The kit therefore ships a runner that starts the
+Playwright CLI from the copy it resolves itself and passes every argument through:
+
+```json
+"e2e": "vite build && node node_modules/@flowcatalyst/ui/src/e2e/cli.ts playwright test"
+```
+
+Any Playwright subcommand works the same way (`... cli.ts playwright test --headed -g "list"`,
+`... cli.ts playwright show-trace trace.zip`); the exit code is the CLI's. In code: `playwrightCliPath()`
+and `runPlaywright(args)` from `@flowcatalyst/ui/e2e`. Calling the application's own `playwright` instead
+is the pitfall.
 
 **2. The configuration** (`playwright.config.ts`). The two ports are yours and must be free of 8080, 15432
 and the other applications' (taken: 4391 gallery, 4392 and 4393 orders, 4394 and 4395 tickets, 4396 and 4397 the Camel

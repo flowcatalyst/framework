@@ -1,6 +1,7 @@
 // @vitest-environment node
 // The end-to-end kit's own tests (src/e2e): the pure parts. The migrated applications' Playwright suites
 // (orders, tickets) are the integration proof of the rest.
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { backendCommand, defineE2eConfig } from "../src/e2e/config.ts";
 import { CONTROL_PORT_ENV, control, controlOrigin, signInAs, signInQuery } from "../src/e2e/control.ts";
 import { isForeignRequest } from "../src/e2e/fixtures.ts";
+import { playwrightArguments, playwrightCliPath } from "../src/e2e/playwright.ts";
 import { findRepositoryRoot, javaArguments, mavenArguments } from "../src/e2e/start-backend.ts";
 
 const options = {
@@ -129,5 +131,21 @@ describe("the backend launcher's commands", () => {
     const deep = join(root, "ui", "apps", "orders");
     mkdirSync(deep, { recursive: true });
     expect(findRepositoryRoot(deep)).toBe(root);
+  });
+});
+
+describe("the Playwright runner command", () => {
+  it("resolves the CLI from the kit's own @playwright/test and passes arguments through", () => {
+    const cli = playwrightCliPath();
+    expect(cli).toMatch(/@playwright[\\/]test[\\/]cli\.js$/);
+    expect(playwrightArguments(["test", "--headed", "-g", "list"])).toEqual([cli, "test", "--headed", "-g", "list"]);
+  });
+
+  it("runs end to end: the CLI answers --version and its exit code comes back", () => {
+    const out = spawnSync(process.execPath, [join(import.meta.dirname, "../src/e2e/cli.ts"), "playwright", "--version"], { encoding: "utf8" });
+    expect(out.status).toBe(0);
+    expect(out.stdout).toMatch(/^Version \d+\.\d+/);
+    const bad = spawnSync(process.execPath, [join(import.meta.dirname, "../src/e2e/cli.ts"), "playwright", "no-such-command"], { encoding: "utf8" });
+    expect(bad.status).not.toBe(0);
   });
 });

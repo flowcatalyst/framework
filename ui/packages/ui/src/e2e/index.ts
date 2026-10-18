@@ -17,3 +17,4 @@ export {
 } from "./control.ts";
 export { createTest, expect, fetchJson, isForeignRequest, openPage, test, type CspMonitor, type CspOptions, type JsonAnswer } from "./fixtures.ts";
 export { findRepositoryRoot, javaArguments, mavenArguments, startBackend, type BackendOptions } from "./start-backend.ts";
+export { playwrightArguments, playwrightCliPath, runPlaywright } from "./playwright.ts";
