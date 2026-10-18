@@ -34,6 +34,14 @@ Java module's tests in update mode, review the output, commit both, then make th
 - An allowed difference is recorded in the vector as `"rust": {...}` with a reason, so a
   difference is always deliberate and visible.
 
+## Format of the newer vectors
+
+Every vector file written from 2026-10-18 on (receivers, usecase, settings, ratelimit) opens with two
+fields: `description` (the setup, the input format and how each `expect` is to be read) and `howToRun`
+(what a runner in another language does with a case). Cases carry a `name`, the input, and an `expect`;
+where Java's wording of an error is not part of the contract it is recorded as `messageJava` and is
+not compared. A Java-only quirk the vector records is flagged in the case (`note`, `javaLiteralCase`).
+
 ## Areas
 
 | Directory | Written by (Java test) | What |
@@ -52,3 +60,10 @@ Java module's tests in update mode, review the output, commit both, then make th
 | `admin/config.json` | `framework-admin` `AdminConfigConformanceTest` | `GET /api/admin/config[/{key}]` (admin contract 10): declared settings and an environment in, per case the settings with state, source and value, a secret or credential-named value never shown, URLs without user info |
 | `admin/platform-reads.json` | `framework-flowcatalyst` `PlatformAdminConformanceTest` | the event types and roles sections (admin contract 11): platform answers in, per case the confined, filtered, sorted, cursor-paged answer, `404` for another application's record, `502 PLATFORM_ERROR` for a refusing platform, `403` without calling the platform |
 | `openapi/` | `framework-http` `OpenApiConformanceTest` (`fixture.json`), `framework-auth` `AuthOpenApiTest` (`auth.json`), orders-demo `OrdersOpenApiTest` (`orders-demo.json`) | OpenAPI documents (OpenAPI contract section 10), compared as **exact bytes**, not as parsed JSON: the fixture API covering every rule, the two session operations, and a sample application; the fixture API is described in [`openapi/README.md`](openapi/README.md) |
+| `receivers/signature.json` | `framework-flowcatalyst` `SignatureConformanceTest` | the receiver gate (flowcatalyst contract section 4): per delivery (secret, bearer, require-signature, clock, ordered headers, body) accepted, or `401 UNAUTHENTICATED` with `details.reason`; plus the HMAC function alone |
+| `receivers/dispatch.json` | `framework-flowcatalyst` `DispatchVectorConformanceTest` | `POST /fc/dispatch` for a registered handler outcome and a request: status, `FlowCatalyst-Outcome`, body, which handler ran and what it was handed |
+| `receivers/scheduled-jobs.json` | `framework-flowcatalyst` `ScheduledJobsVectorConformanceTest` | `POST /fc/scheduled-jobs`: validation, the `202`, the firing the handler gets, the overlap lock (free, held, down, lost, none) and the completion calls the platform receives |
+| `usecase/scenarios.json` | `framework-usecase` `UseCaseScenariosConformanceTest` | runner scenarios (write-path contract 3a, 4, 4a, 5) against PostgreSQL: phase trace, result (kind, code, details, status), events, audits, rows; conflicts, step codes, joined runs |
+| `settings/client-settings.json`, `migrations/client-settings.json` | `framework-client-settings` `ClientSettingsConformanceTest` | per-client settings: key rules, scripted reads and writes against `fw_client_settings` with the stored rows, and the migration history row |
+| `ratelimit/gcra.json` | `framework-http` `RateLimitConformanceTest` | GCRA decisions by the memory driver with a pinned clock, per-request policies, policy range checks, limiter names, the bounded table |
+| `ratelimit/http.json` | `framework-http` `RateLimitConformanceTest` | the rate-limit middleware: the `429` envelope, `Retry-After` and `RateLimit-*` headers, failure modes, per-request policy failures, and the key resolvers (client address, `X-Forwarded-For`, header) |

@@ -321,3 +321,15 @@ repeating or going back; more than 4096 ids in one millisecond borrow the next o
 Outside use cases, screens and lists read through plain typed queries on the database instance;
 they do not load aggregates. M2a provides a small JDBC helper (prepare, bind typed values, map
 rows to records); M2b replaces hand-written mapping with generated code.
+
+## Conformance vectors (2026-10-18)
+
+`conformance/usecase/scenarios.json` (54 scenarios, written by `UseCaseScenariosConformanceTest` against
+PostgreSQL): the phase order and which phases run (section 3a), conflicts under `fail` and `retry`,
+SQLSTATE `40001`, `40P01` and `23505`, every step code (`VALIDATE` through `COMMIT`, `BEGIN` included),
+`CROSS_CLIENT_WRITE`, `INTERRUPTED`, and the joined runs of section 4a (commit and rollback by the caller,
+the savepoint, a retry on the caller's transaction, the auto-commit argument error). The sink's events stand for
+the outbox rows (`outbox/outbox.json` covers the rows themselves). Not in the contract and not in the vector:
+the joined run names its savepoint-release step `SAVEPOINT`, and a repository that affects more than one row is
+`INTERNAL`/`PERSIST`. The codes `PERMISSION_REQUIRED` and `NOT_AUTHORIZED` do not exist in the Java framework
+(`Authorize` is an application check; the application picks the error), so the vector has no such case.

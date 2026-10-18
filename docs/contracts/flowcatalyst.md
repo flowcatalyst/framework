@@ -550,3 +550,21 @@ concurrently and through the receiver; the retention purge (cutoff edges, batche
 shutdown); the lock-gated job end to end on the database lock driver
 with two replicas and a lease taken by another process. (The outbox delivery tests an earlier
 draft listed are the platform's, since the platform delivers.)
+
+## Conformance vectors (2026-10-18)
+
+Three vectors fix the receivers for other languages (`conformance/README.md`; written by Java tests, which
+fail when the vector and the code disagree):
+
+- `conformance/receivers/signature.json`: the gate of section 4 (42 deliveries and 3 HMAC values): window
+  edges, timestamp and signature shapes, upper-case hex, secrets, duplicate headers, the bearer gate,
+  `require-signature` false. Java accepts an upper-case signature (it is lower-cased first); a signature
+  header without a timestamp is refused `MISSING_TIMESTAMP` even with `require-signature` false; with no secret
+  and `require-signature` false a signed delivery is accepted unverified. Java's HMAC refuses an empty key, so
+  the "matching empty-key MAC" is not in the file: a verifier that can compute one must still refuse.
+- `conformance/receivers/dispatch.json`: `POST {prefix}/dispatch` (59 cases): outcomes, the 503 cases,
+  pattern precedence, envelope and data-only bodies, the `X-FlowCatalyst-Client` forms, header validation. The
+  receiver does not look at `Content-Type`.
+- `conformance/receivers/scheduled-jobs.json`: `POST {prefix}/scheduled-jobs` (64 cases): validation, the
+  firing handed over, completion bodies and truncation, the retry count, timeouts and every lock state. A lock
+  store that is down, a lock held and a lock lost are all `202` at the request and `FAILURE` at completion.

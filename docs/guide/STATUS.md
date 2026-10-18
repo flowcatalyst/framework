@@ -145,6 +145,11 @@ against the code. Known differences at the last verification:
 - `contracts/http.md` section 10 shows `Datastar.stream(request)` returning a generator; the code is
   `Datastar.stream(Request, Datastar.Events)` (a callback). The contract also omits
   `Response.html(...)`, which exists.
+- Conformance vectors of 2026-10-18 (`conformance/README.md`): the contracts for the receivers, the write path,
+  client settings and rate limiting each end with a section listing what the new vectors fix and where Java does more
+  than the contract says (upper-case signatures accepted, no `Content-Type` check, the `SAVEPOINT` step name, a stored
+  JSON `null`, Jackson's coercion of numeric strings, `InetAddress.ofLiteral`'s wide IP syntax). No `PERMISSION_REQUIRED`
+  or `NOT_AUTHORIZED` code exists in the framework.
 - `contracts/checked-sql.md` section 4 says `check` is bound to `verify` "only when the project
   enables it"; the plugin has no such switch, and the example binds it unconditionally.
 - The contract amendments of 2026-10-14 for the SPA are built (MO): `contracts/sessions-and-login.md`

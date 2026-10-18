@@ -121,7 +121,7 @@ let a request through unlimited: the middleware calls the handler without comput
 and writes no state, and sends no `RateLimit-*` headers. It is recognised by identity only
 (`isUnlimited()`), so a policy with equal numbers, a null, or a throwing resolver can never mean "no
 limit" (section 5). Not for `RateLimiter.acquire` called directly. Go and Rust have no equivalent
-yet; the shared vectors do not cover per-request policies.
+yet (section 6: the shared vectors now cover per-request policies and `UNLIMITED`).
 
 **State and the key namespace.** GCRA stores one TAT per key, an absolute time; the policy is an
 input to each decision and is never stored, and it is not part of the key. So a change to a key's
@@ -258,3 +258,15 @@ runs one script that takes the interval and burst as arguments, and there is no 
 4. **RULED by the owner 2026-10-18 (confirmed as written).** Per-request policies (section 3a): the cap at an empty bucket after a policy change (instead of
    keeping the old debt); null from the resolver means the limiter's default policy, uncounted; a resolver
    failure follows `onStoreFailure` (`ALLOW` = the limiter's default policy, not unlimited).
+
+## 6. Conformance vectors (2026-10-18)
+
+`conformance/ratelimit/gcra.json` (16 scenarios, 91 steps, 21 policy range checks, 17 names; the memory driver
+with a pinned clock; per-request policies included, so section 3a's earlier "the shared vectors do not cover
+per-request policies" no longer holds) and `conformance/ratelimit/http.json` (33 cases, 99 requests: the 429
+envelope, header rounding, failure modes, `UNLIMITED`, the key bound and the resolvers), written by
+`RateLimitConformanceTest`. The redis driver truncates `period / limit` to whole microseconds; the vectors use whole
+microseconds so both drivers agree. Section 4 says "IP literal" without defining it; the vector records what
+`InetAddress.ofLiteral` accepts, which is wider than `netip` (zone `%1`, leading zeros `010.001.001.001` read as
+decimal, short `1.2.3` read as `1.2.0.3`, a bare integer `2130706433`, IPv4-mapped IPv6 normalised to IPv4); each is
+a case in which a stricter parser may differ and say why.

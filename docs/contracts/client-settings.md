@@ -142,3 +142,16 @@ admin page and a generic settings endpoint, per-setting permissions, change hist
 registry that lists every setting an application defines (the admin and docs pages that want one
 declare the list themselves), encrypted values (secrets are `SecretResolver`'s, per-client secrets
 contract).
+
+## 10. Conformance vectors (2026-10-18)
+
+`conformance/settings/client-settings.json` (key rules; 16 scripts of 86 operations: defaults, writes and
+versions, `without`, reads that do not decode, the rule messages, the stored JSONB per value type, stale and
+first-write conflicts, the cross-client refusal) and `conformance/migrations/client-settings.json` (the history
+row), written by `ClientSettingsConformanceTest`. The migration file is the shared source of the table; it also has
+`DEFAULT '{}'` and a `CHECK (jsonb_typeof(settings) = 'object')` that section 3 does not list. Recorded Java behaviour
+the contract does not state: a stored JSON `null` for a key gives the default through the store but `null` from
+`ClientSettings.get`; Jackson coerces a string `"12"` to an integer setting and `12.0` to `12`; the key order of the
+text Java sends is unspecified (the table prints `jsonb` in its own order, which is what the vector compares). The
+trial's `POLICY_NOT_ORDERED` and `MINUTES_INVALID` are the application's codes: the module carries only the rule's
+message (`IllegalArgumentException`: `client setting <key>: <message>`).

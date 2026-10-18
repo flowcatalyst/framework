@@ -113,3 +113,5 @@ malformed entries (Go's `netip` is stricter than Java's; record each difference)
 Metrics and health text (scoping decision 5), sessions beyond sign-in failure (token checks, cookie flags,
 rotation, expiry: ask after the next Java sessions change), secrets. Config key-rules vector remains deferred
 (G1).
+
+Java vectors landed in 3d62eec (first commit 9444d8e).
