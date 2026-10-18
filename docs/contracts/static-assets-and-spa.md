@@ -245,8 +245,9 @@ The table is fixed so Java and Go answer the same bytes (the JDK's and Go's MIME
   file entirely, `Csp.baseline()` included. Without the file the default is `Csp.strict()` with no
   hashes, as before. `SpaTesting.assertServesBuild` fails when an inline script of `index.html` is
   not allowed by the `script-src` actually served (naming the hash to use), so a stale file or a
-  hand-copied hash cannot pass the application's tests. Go: not read yet (it builds its policy from
-  its options); the vectors do not cover the file.
+  hand-copied hash cannot pass the application's tests. Go (since 2026-10-18, G5c) reads it the same
+  way (`spa.New` with no `Options.CSP`; `httpfw/spa_test.go` holds the cases of the Java `SpaTest`);
+  the vectors do not cover the file.
 - **Baseline (opt-in, in code):** the platform's policy, which restricts framing, plugins and
   `<base>` only: `frame-ancestors 'none'; object-src 'none'; base-uri 'self'`. It does not restrict
   scripts, styles or connections; an application whose pages cannot run under strict chooses it.

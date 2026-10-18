@@ -326,3 +326,82 @@ func etagOf(h http.Header) string {
 	}
 	return ""
 }
+
+// csp-hashes.json, written by the Vite plugin beside index.html (contract section 7), mirrors the Java
+// SpaTest cases: the default policy takes its hashes, the file is never served, an explicit policy
+// replaces it, an empty list or no file is plain strict, and a broken file is a start-up error.
+func TestSPADefaultPolicyTakesTheBuildsHashes(t *testing.T) {
+	t.Parallel()
+	files := build(map[string]string{"csp-hashes.json": `{"scriptHashes":["sha256-AbC+/09=","sha384-xyz"]}`})
+	d, err := mount(t, files, spa.Options{}, func(rt *httpfw.Routes) { rt.Handle("GET /api/x", echoRoute("x")) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := spa.Strict("sha256-AbC+/09=", "sha384-xyz").String()
+	for _, path := range []string{"/", "/dashboard", "/assets/app-1a2b.js", "/assets/missing.js", "/api/missing"} {
+		if got := do(d, "GET", path, "").header.Get("Content-Security-Policy"); got != want {
+			t.Errorf("%s: %q, want %q", path, got, want)
+		}
+	}
+	// never served: the usual JSON 404 of a missing asset
+	if r := do(d, "GET", "/csp-hashes.json", ""); r.status != 404 || strings.Contains(r.body, "sha256-") {
+		t.Errorf("the hashes file is served: %d %q", r.status, r.body)
+	}
+	s, err := spa.New(files, spa.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain, _ := spa.New(build(nil), spa.Options{}); s.Files() != plain.Files() {
+		t.Errorf("the hashes file is indexed: %d files, want %d", s.Files(), plain.Files())
+	}
+}
+
+func TestSPAExplicitPolicyReplacesTheHashesFile(t *testing.T) {
+	t.Parallel()
+	files := build(map[string]string{"csp-hashes.json": `{"scriptHashes":["sha256-AbC+/09="]}`})
+	d, err := mount(t, files, spa.Options{CSP: spa.Strict("sha256-Other=")}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := do(d, "GET", "/", "").header.Get("Content-Security-Policy"); got != spa.Strict("sha256-Other=").String() {
+		t.Errorf("explicit strict: %q", got)
+	}
+	d, err = mount(t, files, spa.Options{CSP: spa.Baseline()}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := do(d, "GET", "/", "").header.Get("Content-Security-Policy"); got != spa.Baseline().String() {
+		t.Errorf("baseline: %q", got)
+	}
+}
+
+func TestSPAEmptyOrMissingHashesIsPlainStrict(t *testing.T) {
+	t.Parallel()
+	for name, files := range map[string]fstest.MapFS{
+		"no file":    build(nil),
+		"empty list": build(map[string]string{"csp-hashes.json": `{"scriptHashes":[]}`}),
+	} {
+		d, err := mount(t, files, spa.Options{}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := do(d, "GET", "/", "").header.Get("Content-Security-Policy"); got != spa.Strict().String() {
+			t.Errorf("%s: %q", name, got)
+		}
+	}
+}
+
+func TestSPABrokenHashesFileIsAStartupError(t *testing.T) {
+	t.Parallel()
+	for _, bad := range []string{`not json`, `{}`, `{"scriptHashes":"sha256-x="}`, `{"scriptHashes":["'unsafe-inline'"]}`, `{"scriptHashes":["sha256-ok=", 5]}`, `{"scriptHashes":null}`} {
+		_, err := spa.New(build(map[string]string{"csp-hashes.json": bad}), spa.Options{})
+		if err == nil || !strings.Contains(err.Error(), "csp-hashes.json") {
+			t.Errorf("%s: %v", bad, err)
+		}
+		// an explicit policy does not read the file, so a broken one cannot matter... but it is
+		// still never served, and (as in Java) is only checked when it would be used.
+		if _, err := spa.New(build(map[string]string{"csp-hashes.json": bad}), spa.Options{CSP: spa.Strict()}); err != nil {
+			t.Errorf("%s with an explicit policy: %v", bad, err)
+		}
+	}
+}

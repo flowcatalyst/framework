@@ -10,6 +10,7 @@ package spa
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -41,7 +42,9 @@ type Options struct {
 	// error.
 	MaxFiles int
 	MaxBytes int64
-	// CSP is the Content-Security-Policy of the SPA's responses (default [Strict] with no hashes).
+	// CSP is the Content-Security-Policy of the SPA's responses. Without one, the default is
+	// [Strict] with the script hashes of csp-hashes.json beside index.html when the build wrote
+	// it (contract section 7), else [Strict] with none; a policy given here replaces the file.
 	CSP CSP
 }
 
@@ -81,9 +84,6 @@ func New(fsys fs.FS, opts Options) (*SPA, error) {
 	if err := segment(s.assetsDirectory, "the assets directory"); err != nil {
 		return nil, err
 	}
-	if s.csp.value == "" {
-		s.csp = Strict()
-	}
 	switch p := opts.Prefix; {
 	case p == "" || p == "/":
 	case !strings.HasPrefix(p, "/"):
@@ -117,7 +117,42 @@ func New(fsys fs.FS, opts Options) (*SPA, error) {
 	if err := s.load(fsys, maxFiles, maxBytes); err != nil {
 		return nil, err
 	}
+	// never served, whether or not it is used
+	hashes, hasHashes := s.files[hashesFile]
+	delete(s.files, hashesFile)
+	if s.csp.value == "" {
+		s.csp = Strict()
+		if hasHashes {
+			scriptHashes, err := parseHashes(hashes.bytes)
+			if err != nil {
+				return nil, fmt.Errorf("cannot use %s (%w); regenerate it with the web build", hashesFile, err)
+			}
+			s.csp = Strict(scriptHashes...)
+		}
+	}
 	return s, nil
+}
+
+// hashesFile is written by the flowcatalystUi() Vite plugin beside index.html: {"scriptHashes":
+// ["sha256-..."]}, one per inline script of the build.
+const hashesFile = "csp-hashes.json"
+
+func parseHashes(content []byte) ([]string, error) {
+	var doc struct {
+		ScriptHashes *[]string `json:"scriptHashes"`
+	}
+	if err := json.Unmarshal(content, &doc); err != nil {
+		return nil, fmt.Errorf("it must be {\"scriptHashes\": [\"sha256-...\"]}: %w", err)
+	}
+	if doc.ScriptHashes == nil {
+		return nil, errors.New("it must be {\"scriptHashes\": [\"sha256-...\"]}")
+	}
+	for _, h := range *doc.ScriptHashes {
+		if !hashPattern.MatchString(h) {
+			return nil, fmt.Errorf("%q is not a sha256-, sha384- or sha512- hash", h)
+		}
+	}
+	return *doc.ScriptHashes, nil
 }
 
 func (s *SPA) load(fsys fs.FS, maxFiles int, maxBytes int64) error {

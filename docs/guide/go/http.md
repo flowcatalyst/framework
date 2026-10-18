@@ -169,6 +169,12 @@ Every SPA response carries `X-Content-Type-Options`, `Referrer-Policy: same-orig
 snippet from `@flowcatalyst/ui/csp`; it also sends `Cross-Origin-Opener-Policy` and
 `Permissions-Policy`); `spa.Baseline()` is the opt-in that only restricts framing, plugins and
 `<base>`. The Java builder has had the same default since 2026-10-15, so the conformance test
-uses the default policy. No compression, `Range` or `Last-Modified`. The ETag is
+uses the default policy. Without a policy in `spa.Options.CSP`, the default takes its script hashes
+from `csp-hashes.json` beside `index.html` (the `flowcatalystUi()` Vite plugin writes it; since G5c,
+2026-10-18, as Java's `Spa` does): the file is never served (the usual JSON `404`), is not counted
+among the files, and a file that is not `{"scriptHashes": ["sha256-..."]}` (or holds a value that is
+not a `sha256-`, `sha384-` or `sha512-` hash) fails `spa.New`. A policy passed in `Options.CSP`
+replaces the file, `spa.Baseline()` included, and the file is then not read. The vectors do not cover
+the file; `httpfw/spa_test.go` has the Java `SpaTest` cases. No compression, `Range` or `Last-Modified`. The ETag is
 stored under the name `ETag` as the contract spells it, where `http.Header.Get` looks for `Etag`;
 a client on the wire sees either.
