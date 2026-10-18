@@ -90,19 +90,19 @@ func NewService(r *usecase.Runner, d Deps, p Policies) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	assign, err := usecase.DefineLoaded(r, assignTicket{d}, usecase.WithConflictPolicy(p.Assign))
+	assign, err := usecase.DefineLoaded(r, assignTicket{Deps: d}, usecase.WithConflictPolicy(p.Assign))
 	if err != nil {
 		return nil, err
 	}
-	change, err := usecase.DefineLoaded(r, changeStatus{d}, usecase.WithConflictPolicy(p.Change))
+	change, err := usecase.DefineLoaded(r, changeStatus{Deps: d}, usecase.WithConflictPolicy(p.Change))
 	if err != nil {
 		return nil, err
 	}
-	comment, err := usecase.DefineLoaded(r, addComment{d}, usecase.WithConflictPolicy(p.Comment))
+	comment, err := usecase.DefineLoaded(r, addComment{Deps: d}, usecase.WithConflictPolicy(p.Comment))
 	if err != nil {
 		return nil, err
 	}
-	flag, err := usecase.DefineLoaded(r, flagSLABreach{d}, usecase.WithConflictPolicy(p.Flag))
+	flag, err := usecase.DefineLoaded(r, flagSLABreach{Deps: d}, usecase.WithConflictPolicy(p.Flag))
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,11 @@ func (u openTicket) Execute(ctx context.Context, cx fw.Context, a usecase.Author
 
 // ---- assign-ticket ---------------------------------------------------------------------------
 
-type assignTicket struct{ Deps }
+type assignTicket struct {
+	Deps
+	// No record-level rule: stated, not defaulted (friction G76-3).
+	usecase.NoRecordCheck[AssignTicketCmd, usecase.Loaded[domain.Ticket]]
+}
 
 func (assignTicket) Name() usecase.Name { return usecase.MustName("assign-ticket") }
 
@@ -238,7 +242,11 @@ func (u assignTicket) Execute(_ context.Context, cx fw.Context, a usecase.Author
 
 // ---- change-status ---------------------------------------------------------------------------
 
-type changeStatus struct{ Deps }
+type changeStatus struct {
+	Deps
+	// No record-level rule: stated, not defaulted (friction G76-3).
+	usecase.NoRecordCheck[ChangeStatusCmd, usecase.Loaded[domain.Ticket]]
+}
 
 func (changeStatus) Name() usecase.Name { return usecase.MustName("change-status") }
 
@@ -339,7 +347,11 @@ func (u addComment) Execute(_ context.Context, cx fw.Context, a usecase.Authoriz
 
 // ---- flag-sla-breach -------------------------------------------------------------------------
 
-type flagSLABreach struct{ Deps }
+type flagSLABreach struct {
+	Deps
+	// No record-level rule: stated, not defaulted (friction G76-3).
+	usecase.NoRecordCheck[FlagSLABreachCmd, usecase.Loaded[domain.Ticket]]
+}
 
 func (flagSLABreach) Name() usecase.Name { return usecase.MustName("flag-sla-breach") }
 
@@ -408,7 +420,3 @@ func (u setSLAPolicy) Execute(ctx context.Context, cx fw.Context, a usecase.Auth
 	}
 	return usecase.NewPlan(ev, u.Settings.Step(cx, current, saved)), nil
 }
-
-// The record-level check is found by an interface assertion at run time, so a signature that drifts
-// would silently skip it: this line makes that a compile error (friction G76-3).
-var _ usecase.RecordAuthorizer[AddCommentCmd, usecase.Loaded[domain.Ticket]] = addComment{}

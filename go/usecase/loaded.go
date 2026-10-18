@@ -16,7 +16,9 @@ import (
 // Order inside one attempt: Validate, Authorize, Load, AuthorizeLoaded, Execute. Register it with
 // [DefineLoaded]. Like [UseCase] it has Authorize, so one without it does not compile.
 //
-// A use case may also implement [RecordAuthorizer], the record-level check, which is optional.
+// The record-level check, AuthorizeLoaded, is part of the interface, so a use case that forgets it
+// or declares it with a drifted signature does not compile. One with nothing to check embeds
+// [NoRecordCheck], which says so.
 type LoadedUseCase[C any, E event.Event, L any] interface {
 	// Name names the use case for logs, metrics and the audit row.
 	Name() Name
@@ -30,16 +32,24 @@ type LoadedUseCase[C any, E event.Event, L any] interface {
 	Load(ctx context.Context, cx fw.Context, cmd Authorized[C], db *database.DB) (record L, found bool, err error)
 	// WhenMissing is the error of a missing record.
 	WhenMissing() *Error
+	// AuthorizeLoaded is the record-level access check (authorizeLoaded). Return a *Error to refuse
+	// (conventionally AUTHORIZATION); a rule that must not reveal that the record exists returns
+	// WhenMissing's error instead. Any other error is INTERNAL / AUTHORIZE, the cause logged and
+	// never shown. Embed [NoRecordCheck] when there is nothing to check.
+	AuthorizeLoaded(ctx context.Context, cx fw.Context, cmd Authorized[C], record L) error
 	// Execute receives the record that was loaded and checked, applies the rules and returns the plan.
 	Execute(ctx context.Context, cx fw.Context, cmd Authorized[C], record L, db *database.DB) (*Plan[E], error)
 }
 
-// RecordAuthorizer is the optional record-level access check of a [LoadedUseCase]
-// (authorizeLoaded). Return a *Error to refuse (conventionally AUTHORIZATION); a rule that must not
-// reveal that the record exists returns the use case's WhenMissing error instead. Any other error
-// is INTERNAL / AUTHORIZE, the cause logged and never shown.
-type RecordAuthorizer[C any, L any] interface {
-	AuthorizeLoaded(ctx context.Context, cx fw.Context, cmd Authorized[C], record L) error
+// NoRecordCheck is the explicit "this use case has no record-level check": embed it in a loaded
+// use case and the AuthorizeLoaded requirement is met by a method that permits. It is a choice made
+// in the use case's declaration, visible in review; a use case that defines its own AuthorizeLoaded
+// with a drifted signature does not compile, because the method then shadows this one.
+type NoRecordCheck[C any, L any] struct{}
+
+// AuthorizeLoaded permits every record.
+func (NoRecordCheck[C, L]) AuthorizeLoaded(context.Context, fw.Context, Authorized[C], L) error {
+	return nil
 }
 
 // loadedPhases adapts a [LoadedUseCase] to the runner's phases.
@@ -60,11 +70,9 @@ func (p loadedPhases[C, E, L]) run(ctx context.Context, cx fw.Context, cmd Autho
 		}
 		return nil, missing
 	}
-	if ra, ok := any(p.LoadedUseCase).(RecordAuthorizer[C, L]); ok {
-		*step = stepAuthorize
-		if err := ra.AuthorizeLoaded(ctx, cx, cmd, record); err != nil {
-			return nil, err
-		}
+	*step = stepAuthorize
+	if err := p.AuthorizeLoaded(ctx, cx, cmd, record); err != nil {
+		return nil, err
 	}
 	*step = stepExecute
 	return p.Execute(ctx, cx, cmd, record, db)

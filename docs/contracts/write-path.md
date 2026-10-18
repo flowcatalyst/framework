@@ -82,7 +82,7 @@ Order inside one attempt: validate, authorize, **load**, **authorizeLoaded**, ex
    (conventionally `NOT_FOUND`); `authorizeLoaded` and `execute` do not run. The repository's `find`
    already filters by client, so another client's record is missing.
 3. `authorizeLoaded` returns an error or empty, like `authorize`; its error is the result (kind
-   `AUTHORIZATION` by convention) and `execute` does not run. It is optional. The check chooses its
+   `AUTHORIZATION` by convention) and `execute` does not run. It is optional (in Go it is part of the use case's type and "none" is written explicitly, so it cannot be skipped by accident). The check chooses its
    error: a rule that must not reveal that the record exists answers with `whenMissing`'s error
    instead of an authorization error.
 4. A throwing `load` is `INTERNAL` with code `LOAD`, a throwing `authorizeLoaded` is `INTERNAL` with

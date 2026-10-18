@@ -58,9 +58,12 @@ kinds map to 400, 403, 404, 409, 409 and 500).
 `usecase.LoadedUseCase[C, E, L]` (write-path contract 3a) is a second interface, registered with
 `usecase.DefineLoaded`; plain use cases are unchanged. It has `Name`, `Validate` and `Authorize` as
 before (so one without `Authorize` still does not compile), then `Load(ctx, cx, cmd, db) (L, found, err)`,
-`WhenMissing() *usecase.Error` and `Execute(ctx, cx, cmd, record L, db)`. The optional record-level
-check is a further method, `AuthorizeLoaded(ctx, cx, cmd, record L) error`, picked up by the runner
-when the use case has it (`usecase.RecordAuthorizer`).
+`WhenMissing() *usecase.Error`, `AuthorizeLoaded(ctx, cx, cmd, record L) error` (the record-level check)
+and `Execute(ctx, cx, cmd, record L, db)`. The record-level check is part of the type, so a use case that
+forgets it, or declares it with a drifted signature (another command type, a pointer receiver), does not
+compile; the runner never skips it. A use case with no record-level rule says so by embedding
+`usecase.NoRecordCheck[C, L]`, which permits every record. (In Java `authorizeLoaded` is an optional
+builder call; the Go type makes the same choice explicit.)
 
 Order inside one attempt: validate, authorize, **load**, **authorizeLoaded**, execute. A caller
 refused by `Authorize` causes no read; `found=false` ends the run with `WhenMissing`'s error and the
@@ -69,7 +72,7 @@ rest does not run (`Find` filters by client, so another client's record is missi
 conflict re-runs all of it, so the retry loads and checks again. A load that returns an error is
 `INTERNAL` / `LOAD`, a failing `AuthorizeLoaded` `INTERNAL` / `AUTHORIZE`; the cause is logged and
 never in the message. Go differs from Java only in shape: the check is a method rather than a
-builder call.
+builder call, and "no check" is written (`NoRecordCheck`) rather than left out.
 
 ## Running inside the caller's transaction
 

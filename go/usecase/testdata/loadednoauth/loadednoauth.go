@@ -14,7 +14,9 @@ type ev struct{ Meta event.Metadata }
 
 func (e ev) Metadata() event.Metadata { return e.Meta }
 
-type open struct{}
+type open struct {
+	usecase.NoRecordCheck[string, int]
+}
 
 func (open) Name() usecase.Name                                 { return usecase.MustName("open") }
 func (open) Validate(context.Context, fw.Context, string) error { return nil }

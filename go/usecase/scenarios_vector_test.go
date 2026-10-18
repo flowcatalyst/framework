@@ -367,7 +367,13 @@ func (u scnLoaded) Load(ctx context.Context, cx fw.Context, a usecase.Authorized
 
 func (u scnLoaded) WhenMissing() *usecase.Error { return errThingNotFound }
 
-// scnChecked has the record-level check; the scenarios whose authorizeLoaded is "none" use scnLoaded.
+// scnUnchecked embeds the explicit no-check; the scenarios whose authorizeLoaded is "none" use it.
+type scnUnchecked struct {
+	scnLoaded
+	usecase.NoRecordCheck[scnCommand, scnRecord]
+}
+
+// scnChecked has the record-level check.
 type scnChecked struct{ scnLoaded }
 
 var errLocked = usecase.Authorization(usecase.MustErrorCode("LOCKED"), "The thing is locked.")
@@ -497,7 +503,7 @@ func runScenario(t *testing.T, c *scnCase) {
 	case c.UseCase.Load == "none":
 		d, err = usecase.Define(e.runner, usecase.UseCase[scnCommand, scnEvent](base), policy)
 	case c.UseCase.AuthorizeLoaded == "none":
-		d, err = usecase.DefineLoaded(e.runner, usecase.LoadedUseCase[scnCommand, scnEvent, scnRecord](scnLoaded{base}), policy)
+		d, err = usecase.DefineLoaded(e.runner, usecase.LoadedUseCase[scnCommand, scnEvent, scnRecord](scnUnchecked{scnLoaded: scnLoaded{base}}), policy)
 	default:
 		d, err = usecase.DefineLoaded(e.runner, usecase.LoadedUseCase[scnCommand, scnEvent, scnRecord](scnChecked{scnLoaded{base}}), policy)
 	}
@@ -725,7 +731,7 @@ func TestUseCaseScenarioVectors(t *testing.T) {
 	}
 }
 
-type noMissing struct{ scnLoaded }
+type noMissing struct{ scnUnchecked }
 
 func (noMissing) WhenMissing() *usecase.Error { return nil }
 
@@ -734,7 +740,7 @@ func TestDefineLoadedNeedsAWhenMissingError(t *testing.T) {
 	e := newEnv(t)
 	st := &scnState{faults: map[string]map[int]string{}}
 	c := &scnCase{}
-	uc := noMissing{scnLoaded{scnUseCase{c: c, st: st, repo: scnRepo{st: st}, events: e.events}}}
+	uc := noMissing{scnUnchecked{scnLoaded: scnLoaded{scnUseCase{c: c, st: st, repo: scnRepo{st: st}, events: e.events}}}}
 	if _, err := usecase.DefineLoaded(e.runner, usecase.LoadedUseCase[scnCommand, scnEvent, scnRecord](uc)); err == nil {
 		t.Fatal("a loaded use case with no WhenMissing error was defined")
 	}
