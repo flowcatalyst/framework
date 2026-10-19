@@ -208,6 +208,29 @@ java -jar app.jar sync               # push to the platform
   `DRY_RUN`) returns a `SyncReport` of `CategoryResult`s, and throws `SyncException` (carrying the
   report) if any category failed, after attempting all of them. It is idempotent.
 
+### What the platform needs before the first sync
+
+Found by running the tickets trial against a real platform (Go, G7.7; the same on Java). The sync
+authenticates as the application's service account (`flowcatalyst.client-id`), and the platform refuses it
+until that account is set up:
+
+| Without | The platform answers | Do |
+|---|---|---|
+| The account's role `platform:application-service` | `403 PERMISSION_REQUIRED` for every category | `PUT /api/service-accounts/{id}/roles`, or create the account with `POST /api/applications/{id}/provision-service-account` |
+| The account attached to the application | `400 APPLICATION_SERVICE_ACCOUNT_REQUIRED` for connections, then `404 CONNECTION_NOT_FOUND` for the subscription that uses it | `POST /api/applications/{id}/service-account` (or `provision-service-account`) |
+| Anchor reach (a service account created with `clientIds` is `PARTNER`, and `scope: ANCHOR` is ignored while it has any) | `403 ANCHOR_REQUIRED_FOR_PLATFORM_SWEEP` for scheduled jobs, which the sync sends platform-scoped | an account with no `clientIds` and `scope: ANCHOR` |
+
+The roles the application declares exist on the platform only after the first successful sync, so assign them to
+people after it. A **new client's dispatch queue is picked up by the platform's router within 5 minutes** (its
+configuration refreshes every 5 minutes): the first dispatch job for a client created just before may wait that
+long in `QUEUED`.
+
+A scheduled job is delivered to its `targetUrl`; **the platform has no default for it** (a job without one fails
+every firing with `No target URL configured for job`). The Go module therefore sends this service's own
+`{flowcatalyst.subscription-target-base-url}{flowcatalyst.receivers.path}/scheduled-jobs` for a job that has a
+registered handler and names no target, and resolves a path target against the base like a subscription's. **The
+Java module does not yet** (open: declare `targetUrl` on the job until it does).
+
 ## The outbox: the platform delivers it
 
 The framework's [write path](write-path.md#6-the-outbox) writes event and audit rows to

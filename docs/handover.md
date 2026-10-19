@@ -4,6 +4,19 @@ The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; cont
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
 rewritten at hand-off and can lag the code in between.
 
+- **G7.7 (2026-10-19): the tickets trial against a real platform.** Go, then Java, against an isolated local `fcdev`
+  (transcript: `go/g77-real-platform.md`). Everything the fake hid worked except one thing: a scheduled job is synced
+  with **no `targetUrl` and the platform has no default**, so every firing failed. **Go fixed** (`becf624`: the
+  sync sends the service's own `/fc/scheduled-jobs` for a job with a handler and no target when
+  `subscription-target-base-url` is set; a path target resolves against the base). **Java still has it** (live
+  confirmed; the Java hand-off is the same default in `DefinitionSync`/`SdkMapping`, plus the same test). Also
+  documented in `guide/flowcatalyst-module.md` what the service account needs before the first sync
+  (`platform:application-service`, attached to the application, anchor reach with no `clientIds`). Platform-side,
+  not fixed (not ours to edit): an ANCHOR scope on an account that has `clientIds` is accepted and ignored; the
+  router picks up a new client's queue only at its 5-minute refresh; unchanged roles/connections/subscriptions
+  report `updated` on every sync; `attemptCount` 0 on a job that succeeded. Not verified: a second replica, other
+  browsers, the SPA on the real platform. `contracts/client-settings.md` section 7 is now marked confirmed by the
+  owner (2026-10-19).
 - **State at 072bd58 (2026-10-18), Java side.**
   - **Pushed / published.** `origin/main` (checked with `git ls-remote`) is at `072bd58`, the same as the local
     `HEAD`: nothing is waiting to be pushed from this checkout. (An earlier hand-off said about 85 commits were unpushed

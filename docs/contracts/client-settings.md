@@ -110,7 +110,9 @@ provides `ClientSettingsRepository` and `ClientSettingsStore`), `ClientSetting<T
 `ClientSettingsId`, `ClientSettingsRepository`, `ClientSettingsStore`. Depends on `framework-core`,
 `framework-database` and `framework-usecase`.
 
-## 7. Rulings taken (defaults applied; owner to confirm)
+## 7. Rulings taken (confirmed by the owner 2026-10-19)
+
+The defaults below, as implemented in Java and in Go, are confirmed by the owner (2026-10-19).
 
 1. **Definitions in code, values in the database** (section 2). Alternative: a settings list in
    configuration with a default per key. Not chosen: the owner's rule puts many-instance things in
