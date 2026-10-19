@@ -231,6 +231,10 @@ public final class E2eLauncher implements AutoCloseable {
     env.put("HTTP_PORT", String.valueOf(appPort));
     env.put("AUTH_ISSUER", provider.issuer().toString());
     env.put("AUTH_CLIENT_ID", clientId);
+    // The kit's login client is PUBLIC. An environment variable beats every file, so a blank one makes the
+    // run independent of a developer's config/secrets.local.yaml (read in test), whose real secret would
+    // otherwise turn this into a confidential client and fail every sign-in.
+    env.put("AUTH_CLIENT_SECRET", "");
     env.put("AUTH_PUBLIC_BASE_URL", origin);
     return env;
   }

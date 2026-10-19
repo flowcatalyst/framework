@@ -94,7 +94,14 @@ e2e.endSessions(() -> pg.execute("DELETE FROM fw_session"))
   (the Vite dev server). `start(args, clientId, clock)` makes the provider follow a clock your suite moves
   (the tickets suite does, and passes the same clock to its `App`).
 - `environment()` returns a fresh map with `APP_ENV=test`, `HTTP_HOST`, `HTTP_PORT`, `AUTH_ISSUER`,
-  `AUTH_CLIENT_ID` and `AUTH_PUBLIC_BASE_URL`; add the database, platform and other entries.
+  `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET` (blank) and `AUTH_PUBLIC_BASE_URL`; add the database, platform and
+  other entries. The blank secret keeps the run independent of the developer's machine: the kit's login
+  client is PUBLIC, but `APP_ENV=test` still reads `config/secrets.local.yaml`, and a real
+  `auth.client-secret` there would make it a confidential client and fail every sign-in (`LOGIN_FAILED`).
+  An environment variable beats every file, and a blank `auth.client-secret` means a public client
+  ([sessions and login](sessions-and-login.md)), so the file's secret never reaches the run. An
+  application that builds its environment without `environment()` sets `AUTH_CLIENT_SECRET` to the empty
+  string itself, as the Go launchers do.
 - `own(resource)` hands over what must be closed on shutdown (the database fixture, fakes, the `App`); they
   are closed last first, then the provider.
 - `control(path, handler)` registers your endpoint under `/control/`. The handler gets the decoded query and
@@ -165,7 +172,8 @@ The TypeScript half is the same; the backend half is a subcommand of the applica
 demo runs `orders-demo e2e <app-port> <control-port> [--dist <dir>]` (embedded PostgreSQL, the Go test
 identity provider, the standard control endpoints and the orders' own), and its Playwright configuration
 (`go/examples/orders-demo/e2e/playwright.config.ts`) is `defineE2eConfig` with the web server replaced by
-that command. `make -C go e2e-orders` runs the shared orders suite against it. Details and the result:
+that command, which sets `AUTH_CLIENT_SECRET` to the empty string in its environment for the reason given
+above. `make -C go e2e-orders` runs the shared orders suite against it. Details and the result:
 [Go sessions and login](go/sessions-and-login.md#the-orders-demo-on-sessions-and-the-browser-suite).
 
 ## What is tested, and what is not

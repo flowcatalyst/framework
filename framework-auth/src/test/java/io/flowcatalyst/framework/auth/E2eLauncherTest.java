@@ -52,10 +52,25 @@ class E2eLauncherTest {
           .containsEntry("HTTP_HOST", "127.0.0.1")
           .containsEntry("HTTP_PORT", "4001")
           .containsEntry("AUTH_CLIENT_ID", "demo-web")
+          .containsEntry("AUTH_CLIENT_SECRET", "")
           .containsEntry("AUTH_PUBLIC_BASE_URL", "http://127.0.0.1:5175")
           .containsEntry("AUTH_ISSUER", launcher.provider().issuer().toString());
       assertThat(launcher.appPort()).isEqualTo(4001);
       assertThat(launcher.controlPort()).isEqualTo(4002);
+    }
+  }
+
+  @Test
+  void aSecretInTheDevelopersLocalFileDoesNotReachTheKitsPublicClient(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+    java.nio.file.Files.writeString(dir.resolve("secrets.local.yaml"), "auth:\n  client-secret: a-real-secret\n");
+    try (E2eLauncher launcher = E2eLauncher.start(new String[] {"4001", "4002"}, "demo-web")) {
+      java.util.Map<String, String> env = launcher.environment();
+      env.put("AUTH_PUBLIC_BASE_URL", "https://app.example");
+      try (AuthApp t = AuthApp.start(dir, b -> {}, java.util.Map.of("AUTH_CLIENT_SECRET", env.get("AUTH_CLIENT_SECRET")))) {
+        Browser b = t.browser();
+        assertThat(b.signIn("/").status()).isEqualTo(302);
+        assertThat(t.provider.lastTokenAuthorization()).isEmpty();
+      }
     }
   }
 

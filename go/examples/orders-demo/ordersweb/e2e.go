@@ -131,11 +131,14 @@ func RunE2E(ctx context.Context, args []string, out io.Writer, ext Extension) er
 	defer stopPG()
 
 	env := map[string]string{
-		"APP_ENV":                          "test",
-		"HTTP_HOST":                        "127.0.0.1",
-		"HTTP_PORT":                        args[0],
-		"AUTH_ISSUER":                      provider.Issuer(),
-		"AUTH_CLIENT_ID":                   e2eClientID,
+		"APP_ENV":        "test",
+		"HTTP_HOST":      "127.0.0.1",
+		"HTTP_PORT":      args[0],
+		"AUTH_ISSUER":    provider.Issuer(),
+		"AUTH_CLIENT_ID": e2eClientID,
+		// A blank environment value beats every file: the run does not read the developer's
+		// secrets.local.yaml secret, which would make this PUBLIC client confidential.
+		"AUTH_CLIENT_SECRET":               "",
 		"AUTH_PUBLIC_BASE_URL":             origin,
 		"DATABASE_INSTANCES_MAIN_URL":      pgURL,
 		"DATABASE_INSTANCES_MAIN_USERNAME": "postgres",
