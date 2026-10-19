@@ -28,7 +28,7 @@ platform's discovery document and signing keys.
 ```go
 tokens, err := auth.NewPlatformTokens("https://platform.example.com", 10*time.Second, b.Clock(), logger)
 switch r := tokens.Verify(ctx, bearer).(type) {
-case auth.Valid:        // r.Token.Principal, r.Token.MayActFor("acme"), r.Token.ExpiresAt
+case auth.Valid:        // r.Token.Principal, r.Token.MayActFor("acme"), r.Token.MayUse("orders"), r.Token.ExpiresAt
 case auth.Invalid:      // 401; r.Reason is the contract's name (alg, signature, expired, token_use, ...)
 case auth.Unavailable:  // 503: the keys cannot be read right now; not a verdict on the token
 }

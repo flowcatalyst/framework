@@ -124,6 +124,21 @@ func TestAValidTokenSaysWhoAndWhat(t *testing.T) {
 	}
 }
 
+func TestMayUseMatchesTheApplicationCodeOrStar(t *testing.T) {
+	f := newTokens(t)
+	a := f.valid(t, f.provider.AccessToken(map[string]any{"applications": []any{"app_1:orders", "billing"}}))
+	for code, want := range map[string]bool{"orders": true, "billing": true, "app_1": false, "order": false, "": false} {
+		if a.MayUse(code) != want {
+			t.Errorf("MayUse(%q) = %v", code, !want)
+		}
+	}
+	all := f.valid(t, f.provider.AccessToken(map[string]any{"applications": []any{"*"}}))
+	none := f.valid(t, f.provider.AccessToken(map[string]any{"applications": []any{}}))
+	if !all.MayUse("anything") || none.MayUse("orders") {
+		t.Fatal("star allows every application, an empty list none")
+	}
+}
+
 func TestUnknownKidsTriggerAtMostOneKeyReadAMinute(t *testing.T) {
 	f := newTokens(t)
 	f.valid(t, f.provider.AccessToken(nil))

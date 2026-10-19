@@ -49,6 +49,28 @@ func (p Principal) MayActFor(client string) bool {
 	return false
 }
 
+// MayUse reports whether the principal may use an application: an Applications entry that is "*",
+// or whose code is the value. An entry "<id>:<code>" matches on the part after the first colon; an
+// entry without a colon is compared whole.
+func (p Principal) MayUse(applicationCode string) bool {
+	if applicationCode == "" {
+		return false
+	}
+	for _, entry := range p.Applications {
+		if entry == "*" {
+			return true
+		}
+		code := entry
+		if _, after, ok := strings.Cut(entry, ":"); ok {
+			code = after
+		}
+		if code == applicationCode {
+			return true
+		}
+	}
+	return false
+}
+
 // HomeClientIdentifier is the identifier of the home client, from the Clients entry
 // "<homeClient>:<identifier>"; false when there is no home client or the token did not name its
 // identifier.

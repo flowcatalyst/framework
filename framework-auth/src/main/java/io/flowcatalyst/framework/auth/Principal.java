@@ -81,6 +81,31 @@ public record Principal(
   }
 
   /**
+   * Whether the principal may use an application: an {@code applications} entry that is {@code *},
+   * or whose code is the value. An entry {@code <id>:<code>} matches on the part after the first
+   * colon; an entry without a colon is compared whole.
+   *
+   * @param applicationCode the application's code, for example {@code orders}
+   * @return true when allowed
+   */
+  public boolean mayUse(String applicationCode) {
+    if (applicationCode.isEmpty()) {
+      return false;
+    }
+    for (String entry : applications) {
+      if (entry.equals("*")) {
+        return true;
+      }
+      int colon = entry.indexOf(':');
+      String code = colon >= 0 ? entry.substring(colon + 1) : entry;
+      if (code.equals(applicationCode)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * The identifier of the home client, from the {@code clients} entry {@code <homeClient>:<identifier>}.
    *
    * @return the identifier, or empty when there is no home client or the token did not name its

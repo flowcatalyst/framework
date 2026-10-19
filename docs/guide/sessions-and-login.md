@@ -205,6 +205,12 @@ switch (tokens.verify(bearer)) {
 }
 ```
 
+`mayActFor` answers for a client; `mayUse(applicationCode)` (on `Principal` and `AccessToken`; Go
+`MayUse`) answers for an application, from the `applications` claim: `*` allows every application,
+an entry `<id>:<code>` matches on the code after the first colon, an entry without a colon matches
+whole, and an empty code is never allowed. A token that must be for this service's own application
+checks `mayUse("<code>")`, for example `v.token().mayUse("orders")`.
+
 Keep one `PlatformTokens` per platform (it caches the keys). With `AuthModule` listed, use the
 provided one: `app.get(PlatformTokens.class)`.
 

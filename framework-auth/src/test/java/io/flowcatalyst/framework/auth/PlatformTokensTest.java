@@ -104,6 +104,22 @@ class PlatformTokensTest {
   }
 
   @Test
+  void mayUseMatchesTheApplicationCodeOrStar() {
+    AccessToken a = valid(Map.of("applications", List.of("app_1:orders", "billing")));
+    assertThat(a.mayUse("orders")).isTrue();
+    assertThat(a.mayUse("billing")).isTrue();
+    assertThat(a.mayUse("app_1")).isFalse();
+    assertThat(a.mayUse("order")).isFalse();
+    assertThat(a.mayUse("")).isFalse();
+    assertThat(valid(Map.of("applications", List.of("*"))).mayUse("anything")).isTrue();
+    assertThat(valid(Map.of("applications", List.of())).mayUse("orders")).isFalse();
+  }
+
+  private AccessToken valid(Map<String, Object> claims) {
+    return ((TokenResult.Valid) tokens.verify(provider.accessToken(claims))).token();
+  }
+
+  @Test
   void unknownKidsTriggerAtMostOneKeyReadAMinute() {
     assertThat(tokens.verify(provider.accessToken(Map.of()))).isInstanceOf(TokenResult.Valid.class);
     assertThat(provider.keyFetches()).isEqualTo(1);

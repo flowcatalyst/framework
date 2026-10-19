@@ -32,4 +32,15 @@ public record AccessToken(Principal principal, @Nullable String authorizedParty,
   public boolean mayActFor(String client) {
     return principal.mayActFor(client);
   }
+
+  /**
+   * Whether the principal may use an application.
+   *
+   * @param applicationCode the application's code
+   * @return true when allowed
+   * @see Principal#mayUse(String)
+   */
+  public boolean mayUse(String applicationCode) {
+    return principal.mayUse(applicationCode);
+  }
 }

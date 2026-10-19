@@ -22,6 +22,9 @@ type AccessToken struct {
 // MayActFor reports whether the token's principal may act for a client ([Principal.MayActFor]).
 func (a AccessToken) MayActFor(client string) bool { return a.Principal.MayActFor(client) }
 
+// MayUse reports whether the token's principal may use an application ([Principal.MayUse]).
+func (a AccessToken) MayUse(applicationCode string) bool { return a.Principal.MayUse(applicationCode) }
+
 // TokenResult is the closed set of outcomes of [PlatformTokens.Verify]: [Valid], [Invalid] or
 // [Unavailable].
 //
