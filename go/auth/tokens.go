@@ -63,6 +63,12 @@ type tokensOptions struct{ allowHTTP bool }
 // AllowPlainHTTP accepts an http:// issuer. For APP_ENV local and test only.
 func AllowPlainHTTP() TokensOption { return func(o *tokensOptions) { o.allowHTTP = true } }
 
+// AllowPlainHTTPIn accepts an http:// issuer only when env (APP_ENV) is local or test, the check
+// [Module] makes; an application passes its environment instead of writing the test.
+func AllowPlainHTTPIn(env string) TokensOption {
+	return func(o *tokensOptions) { o.allowHTTP = env == "local" || env == "test" }
+}
+
 // NewPlatformTokens returns a verifier for the platform at issuer (its base URL, which is also its
 // tokens' issuer and audience). timeout bounds each call to the platform; clock decides whether a
 // token is still valid. log may be nil.

@@ -23,7 +23,8 @@ import tools.jackson.databind.JsonNode;
  * }</pre>
  *
  * <p>An {@code http://} issuer is refused ({@link IllegalArgumentException}) unless the verifier is
- * built with {@link #createAllowingPlainHttp}, which is for {@code APP_ENV} local and test.
+ * built with {@link #forEnvironment} (which allows it only for {@code APP_ENV} local and test) or
+ * {@link #createAllowingPlainHttp}.
  *
  * <p>Thread-safe; build one per platform and keep it, so the keys are cached. {@link AuthModule}
  * provides one.
@@ -63,6 +64,21 @@ public final class PlatformTokens {
     return create(issuer, timeout, clock, true);
   }
 
+  /**
+   * Creates a verifier, allowing a plain {@code http} issuer only when {@code environment} is
+   * {@code local} or {@code test}. This is the check {@link AuthModule} makes, so an application
+   * passes {@code config.environment()} instead of writing it.
+   *
+   * @param environment the application's environment ({@code APP_ENV})
+   * @param issuer the platform's base URL, which is also its tokens' issuer and audience
+   * @param timeout how long to wait for the platform's discovery document and keys
+   * @param clock the clock that decides whether a token is still valid
+   * @return the verifier
+   */
+  public static PlatformTokens forEnvironment(String environment, URI issuer, Duration timeout, InstantSource clock) {
+    return create(issuer, timeout, clock, "local".equals(environment) || "test".equals(environment));
+  }
+
   private static PlatformTokens create(URI issuer, Duration timeout, InstantSource clock, boolean allowPlainHttp) {
     String scheme = issuer.getScheme();
     boolean https = "https".equalsIgnoreCase(scheme);
@@ -72,7 +88,7 @@ public final class PlatformTokens {
           "the issuer "
               + issuer
               + (http
-                  ? " is plain http, which is allowed only in local and test environments (use PlatformTokens.createAllowingPlainHttp there)"
+                  ? " is plain http. create never allows it: use PlatformTokens.forEnvironment(config.environment(), ...), which allows it only when APP_ENV is local or test, or createAllowingPlainHttp"
                   : " must be an absolute https URL"));
     }
     return new PlatformTokens(new Platform(issuer, timeout, clock, allowPlainHttp), clock);

@@ -214,3 +214,13 @@ func TestWithNoKeysAndThePlatformDownATokenIsUncheckableNotInvalid(t *testing.T)
 	f.clock.Advance(6 * time.Second)
 	f.valid(t, token)
 }
+
+func TestAllowPlainHTTPIn(t *testing.T) {
+	for env, want := range map[string]bool{"local": true, "test": true, "production": false, "": false} {
+		var o tokensOptions
+		AllowPlainHTTPIn(env)(&o)
+		if o.allowHTTP != want {
+			t.Errorf("env %q: allowHTTP = %v, want %v", env, o.allowHTTP, want)
+		}
+	}
+}

@@ -305,6 +305,13 @@ rewritten at hand-off and can lag the code in between.
   the Java tests still have to write the HTTP, Datastar, metrics, rate-limit, secrets and receiver
   vectors the other implementations need.
 
+## BREAKING: PlatformTokens refuses an http issuer (b234015, found by the camel app 2026-10-19)
+
+`PlatformTokens.create` (Java) and `NewPlatformTokens` (Go) refuse an `http://` issuer. An application
+that verifies tokens against a local fcdev must say so: Java `PlatformTokens.forEnvironment(config.environment(), issuer, timeout, clock)`,
+Go `auth.AllowPlainHTTPIn(env)` (both allow plain http only for `local` and `test`, the check `AuthModule` makes), or the explicit
+`createAllowingPlainHttp` / `AllowPlainHTTP()`. The refusal message now names these.
+
 ## BREAKING: Spa default CSP (2026-10-15, G1 of `ui/u3.md`, owner approved)
 
 `Spa.classpath(..)/directory(..).build()` without `contentSecurityPolicy(..)` now sends the strict

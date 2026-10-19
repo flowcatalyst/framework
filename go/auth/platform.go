@@ -73,7 +73,7 @@ func newPlatform(issuer string, timeout time.Duration, clock fw.Clock, log *slog
 		return nil, fmt.Errorf("the issuer must be an absolute http(s) URL: %q", issuer)
 	}
 	if strings.EqualFold(u.Scheme, "http") && !allowHTTP {
-		return nil, fmt.Errorf("the issuer %q is plain http, which is allowed only in local and test environments (pass AllowPlainHTTP there)", issuer)
+		return nil, fmt.Errorf("the issuer %q is plain http, which NewPlatformTokens refuses by default: pass AllowPlainHTTPIn(env), which allows it only when APP_ENV is local or test, or AllowPlainHTTP", issuer)
 	}
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)

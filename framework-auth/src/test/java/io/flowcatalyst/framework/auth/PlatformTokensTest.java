@@ -179,4 +179,15 @@ class PlatformTokensTest {
     clock.advance(Duration.ofSeconds(6));
     assertThat(tokens.verify(token)).isInstanceOf(TokenResult.Valid.class);
   }
+
+  @Test
+  void forEnvironmentAllowsPlainHttpOnlyForLocalAndTest() {
+    var http = java.net.URI.create("http://localhost:8080");
+    var timeout = Duration.ofSeconds(1);
+    org.assertj.core.api.Assertions.assertThatCode(() -> PlatformTokens.forEnvironment("local", http, timeout, java.time.InstantSource.system())).doesNotThrowAnyException();
+    org.assertj.core.api.Assertions.assertThatCode(() -> PlatformTokens.forEnvironment("test", http, timeout, java.time.InstantSource.system())).doesNotThrowAnyException();
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> PlatformTokens.forEnvironment("production", http, timeout, java.time.InstantSource.system()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("forEnvironment");
+  }
 }
