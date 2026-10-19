@@ -226,10 +226,12 @@ configuration refreshes every 5 minutes): the first dispatch job for a client cr
 long in `QUEUED`.
 
 A scheduled job is delivered to its `targetUrl`; **the platform has no default for it** (a job without one fails
-every firing with `No target URL configured for job`). The Go module therefore sends this service's own
-`{flowcatalyst.subscription-target-base-url}{flowcatalyst.receivers.path}/scheduled-jobs` for a job that has a
-registered handler and names no target, and resolves a path target against the base like a subscription's. **The
-Java module does not yet** (open: declare `targetUrl` on the job until it does).
+every firing with `No target URL configured for job`). So, with `flowcatalyst.subscription-target-base-url` set,
+the sync sends this service's own `{subscription-target-base-url}{flowcatalyst.receivers.path}/scheduled-jobs` for a
+job that declares no target, as long as a scheduled-job handler is registered and the receivers are enabled; a path
+target (`/internal/run`) is resolved against the base like a subscription's, and an absolute URL is sent as
+declared. Without the base nothing is guessed (the job goes with its declared target or none), and a path target
+without the base fails start-up. Java and Go behave the same (`conformance/flowcatalyst/job-targets.json`).
 
 ## The outbox: the platform delivers it
 

@@ -274,7 +274,17 @@ public final class FlowCatalystModule implements Module {
     app.provide(
         DefinitionSync.class,
         lookup ->
-            new DefinitionSync(lookup.get(PlatformClient.class), lookup.get(DefinitionCatalog.class)));
+            new DefinitionSync(
+                lookup.get(PlatformClient.class),
+                lookup.get(DefinitionCatalog.class),
+                () -> {
+                  Config config = lookup.get(Config.class);
+                  return new JobTargets(
+                      config.find(SUBSCRIPTION_TARGET_BASE_URL).orElse(null),
+                      config.get(RECEIVERS_ENABLED),
+                      lookup.get(Receivers.class).hasJobHandlers(),
+                      config.get(RECEIVERS_PATH));
+                }));
     app.command(new SyncCommand());
   }
 

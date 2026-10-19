@@ -1,0 +1,180 @@
+{
+  "description" : "The targetUrl the definition sync sends for each scheduled job (flowcatalyst contract section 4c). The platform has no default target: a job without one fails every firing. Setup per case: settings (flowcatalyst.* keys; unset = default, receivers.path '/fc', receivers.enabled true), handlers (job codes with a registered scheduled-job handler), jobs (code and declared targetUrl; null or blank = none). With subscription-target-base-url set: a job that declares no target and the service has any scheduled-job handler registered and receivers enabled is sent {base without trailing slashes}{receivers.path}/scheduled-jobs; a path target ('/...') is sent {base without trailing slashes}{path}; an absolute target is sent as declared (trimmed). With no base, the declared target is sent as declared, or none. expect.targets is the targetUrl per job in order (null = the field is absent or empty). A case with expect.problem is refused at start-up and the message of a validation problem contains that text: a path target needs the base; any target that is neither an absolute http(s) URL nor a path is refused.",
+  "howToRun" : "For each case configure the settings, register a scheduled-job handler for each code in handlers, declare the jobs, then run the sync (apply) against a fake platform and compare the targetUrl of each job in the scheduled-jobs request with expect.targets (null = absent or empty); for expect.problem assert that start-up/validation fails with a problem containing the text. Regenerate from Java with -Dconformance.update=true (JobTargetsConformanceTest).",
+  "cases" : [ {
+    "name" : "no target, base, handler: the service's own receiver",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091/"
+      },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      } ]
+    },
+    "expect" : {
+      "targets" : [ "http://svc.example:8091/fc/scheduled-jobs" ]
+    }
+  }, {
+    "name" : "blank target is no target",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091"
+      },
+      "handlers" : [ "blank" ],
+      "jobs" : [ {
+        "code" : "blank",
+        "targetUrl" : "  "
+      } ]
+    },
+    "expect" : {
+      "targets" : [ "http://svc.example:8091/fc/scheduled-jobs" ]
+    }
+  }, {
+    "name" : "a path target resolves against the base, an absolute one is sent as declared",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091/"
+      },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      }, {
+        "code" : "rel",
+        "targetUrl" : "/custom/run"
+      }, {
+        "code" : "abs",
+        "targetUrl" : "https://elsewhere.example/jobs"
+      } ]
+    },
+    "expect" : {
+      "targets" : [ "http://svc.example:8091/fc/scheduled-jobs", "http://svc.example:8091/custom/run", "https://elsewhere.example/jobs" ]
+    }
+  }, {
+    "name" : "receivers.path is honoured",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091",
+        "flowcatalyst.receivers.path" : "/hooks"
+      },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      } ]
+    },
+    "expect" : {
+      "targets" : [ "http://svc.example:8091/hooks/scheduled-jobs" ]
+    }
+  }, {
+    "name" : "a base with a path keeps it; trailing slashes are dropped",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091/svc//"
+      },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      }, {
+        "code" : "rel",
+        "targetUrl" : "/custom/run"
+      } ]
+    },
+    "expect" : {
+      "targets" : [ "http://svc.example:8091/svc/fc/scheduled-jobs", "http://svc.example:8091/svc/custom/run" ]
+    }
+  }, {
+    "name" : "no handler registered: no guess",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091"
+      },
+      "handlers" : [ ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      } ]
+    },
+    "expect" : {
+      "targets" : [ null ]
+    }
+  }, {
+    "name" : "a handler for another job still counts (any handler)",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091"
+      },
+      "handlers" : [ "other" ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      } ]
+    },
+    "expect" : {
+      "targets" : [ "http://svc.example:8091/fc/scheduled-jobs" ]
+    }
+  }, {
+    "name" : "receivers disabled: no guess",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091",
+        "flowcatalyst.receivers.enabled" : "false"
+      },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      } ]
+    },
+    "expect" : {
+      "targets" : [ null ]
+    }
+  }, {
+    "name" : "no base: sent as declared, nothing guessed",
+    "setup" : {
+      "settings" : { },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "none",
+        "targetUrl" : null
+      }, {
+        "code" : "abs",
+        "targetUrl" : "https://elsewhere.example/jobs"
+      } ]
+    },
+    "expect" : {
+      "targets" : [ null, "https://elsewhere.example/jobs" ]
+    }
+  }, {
+    "name" : "a path target without a base is refused at start-up",
+    "setup" : {
+      "settings" : { },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "rel",
+        "targetUrl" : "/custom/run"
+      } ]
+    },
+    "expect" : {
+      "problem" : "targetUrl '/custom/run' is a path; set flowcatalyst.subscription-target-base-url"
+    }
+  }, {
+    "name" : "a non-http target is refused at start-up",
+    "setup" : {
+      "settings" : {
+        "flowcatalyst.subscription-target-base-url" : "http://svc.example:8091"
+      },
+      "handlers" : [ "none" ],
+      "jobs" : [ {
+        "code" : "ftp",
+        "targetUrl" : "ftp://x/y"
+      } ]
+    },
+    "expect" : {
+      "problem" : "targetUrl must be an absolute http(s) URL or a path starting with '/'"
+    }
+  } ]
+}

@@ -309,8 +309,16 @@ public final class DefinitionCatalog {
       positive(module, j.code(), "timeoutSeconds", j.timeoutSeconds());
       positive(module, j.code(), "deliveryMaxAttempts", j.deliveryMaxAttempts());
       String targetUrl = j.targetUrl();
-      if (targetUrl != null && !absoluteHttp(targetUrl.trim())) {
-        problem(module, j.code(), "targetUrl must be an absolute http(s) URL");
+      String target = targetUrl == null ? "" : targetUrl.trim();
+      if (target.startsWith("/")) {
+        if (!targetBase) {
+          problem(
+              module,
+              j.code(),
+              "targetUrl '" + target + "' is a path; set flowcatalyst.subscription-target-base-url or use an absolute URL");
+        }
+      } else if (!target.isEmpty() && !absoluteHttp(target)) {
+        problem(module, j.code(), "targetUrl must be an absolute http(s) URL or a path starting with '/'");
       }
       unique(module, "scheduled job", j.code(), scheduledJobs, j);
     }

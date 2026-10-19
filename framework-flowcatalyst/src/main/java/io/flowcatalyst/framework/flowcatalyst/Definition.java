@@ -245,7 +245,9 @@ public sealed interface Definition {
    * @param tracksCompletion whether the application reports completion of each firing
    * @param timeoutSeconds how long a firing may run
    * @param deliveryMaxAttempts attempts to deliver one firing
-   * @param targetUrl overrides the application's default callback URL
+   * @param targetUrl where each firing is delivered: an absolute http(s) URL, or a path resolved against
+   *     {@code flowcatalyst.subscription-target-base-url}; none means this service's own
+   *     scheduled-job receiver when that base is set (the platform has no default)
    */
   record ScheduledJob(
       String code,

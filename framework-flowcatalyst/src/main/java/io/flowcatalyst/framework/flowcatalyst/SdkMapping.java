@@ -10,7 +10,7 @@ final class SdkMapping {
 
   private SdkMapping() {}
 
-  static DefinitionSet toSet(String application, DefinitionCatalog catalog) {
+  static DefinitionSet toSet(String application, DefinitionCatalog catalog, JobTargets targets) {
     return DefinitionSet.define(application)
         .withRoles(catalog.roles().stream().map(SdkMapping::role).toList())
         .withEventTypes(
@@ -39,7 +39,7 @@ final class SdkMapping {
                         new Definitions.Process(
                             p.code(), p.name(), p.description(), p.body(), p.diagramType(), p.tags()))
                 .toList())
-        .withScheduledJobs(catalog.scheduledJobs().stream().map(SdkMapping::scheduledJob).toList());
+        .withScheduledJobs(catalog.scheduledJobs().stream().map(j -> scheduledJob(j, targets)).toList());
   }
 
   private static Definitions.Role role(Definition.Role r) {
@@ -68,7 +68,7 @@ final class SdkMapping {
         null);
   }
 
-  private static Definitions.ScheduledJob scheduledJob(Definition.ScheduledJob j) {
+  private static Definitions.ScheduledJob scheduledJob(Definition.ScheduledJob j, JobTargets targets) {
     return new Definitions.ScheduledJob(
         j.code(),
         j.name(),
@@ -80,7 +80,7 @@ final class SdkMapping {
         j.tracksCompletion(),
         j.timeoutSeconds(),
         j.deliveryMaxAttempts(),
-        j.targetUrl(),
+        targets.resolve(j.targetUrl()),
         null);
   }
 }

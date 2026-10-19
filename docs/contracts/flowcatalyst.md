@@ -66,6 +66,17 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
 - **Docs sync:** the platform has `POST /api/applications/{appCode}/docs/sync` but the Java SDK
   has no docs category. Platform/SDK work: add it to the SDK; until then `docs(...)` definitions
   are accepted and skipped with a warning.
+- **Scheduled-job targets (2026-10-19, finding G77-1).** The platform has no default target for a
+  job: one synced without `targetUrl` fails every firing with `No target URL configured for job`.
+  With `flowcatalyst.subscription-target-base-url` set, a job that declares no target (null or
+  blank), while the service has any scheduled-job handler registered and `flowcatalyst.receivers.enabled`
+  is true, is synced with `{base}{flowcatalyst.receivers.path}/scheduled-jobs`; a path target
+  (`/...`) is resolved against the base like a subscription's (base without trailing slashes, then
+  the path); an absolute target is sent as declared. With no base nothing is guessed: the declared
+  target, or none. Validation: a path target without the base, or a target that is neither an
+  absolute http(s) URL nor a path, fails start-up. The handler check happens when the sync runs
+  (after boot). Vector: `conformance/flowcatalyst/job-targets.json` (Java test
+  `JobTargetsConformanceTest`; Go compares).
 - Sync is idempotent. Removing a definition from code does not delete it on the platform unless
   the SDK's sync set marks the category as authoritative; the framework does not set that flag
   (deletions are an operator action).
@@ -568,3 +579,6 @@ fail when the vector and the code disagree):
 - `conformance/receivers/scheduled-jobs.json`: `POST {prefix}/scheduled-jobs` (64 cases): validation, the
   firing handed over, completion bodies and truncation, the retry count, timeouts and every lock state. A lock
   store that is down, a lock held and a lock lost are all `202` at the request and `FAILURE` at completion.
+- `conformance/flowcatalyst/job-targets.json` (2026-10-19): the `targetUrl` the definition sync sends for each
+  scheduled job (section 2, "Scheduled-job targets"): base, `receivers.path`, `receivers.enabled`, handlers
+  registered, declared target in; per job the target sent, or the start-up refusal out.

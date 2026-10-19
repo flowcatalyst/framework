@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,10 +72,12 @@ public final class DefinitionSync {
 
   private final PlatformClient client;
   private final DefinitionCatalog catalog;
+  private final Supplier<JobTargets> jobTargets;
 
-  DefinitionSync(PlatformClient client, DefinitionCatalog catalog) {
+  DefinitionSync(PlatformClient client, DefinitionCatalog catalog, Supplier<JobTargets> jobTargets) {
     this.client = client;
     this.catalog = catalog;
+    this.jobTargets = jobTargets;
   }
 
   /**
@@ -90,7 +93,7 @@ public final class DefinitionSync {
       throw new IllegalStateException("the flowcatalyst module is disabled (flowcatalyst.enabled)");
     }
     warnAboutUnusedPermissions();
-    DefinitionSet set = SdkMapping.toSet(client.application().value(), catalog);
+    DefinitionSet set = SdkMapping.toSet(client.application().value(), catalog, jobTargets.get());
     List<CategoryResult> results = new ArrayList<>();
     for (Step step : steps()) {
       CategoryResult result = mode == Mode.DRY_RUN ? dryRun(step) : apply(step, set);
