@@ -138,7 +138,7 @@ srv, err := httpfw.NewServer(b, web, []*httpfw.Routes{mod.Routes(), mine}, httpf
 ```
 
 Configuration holds only `auth.issuer`, `auth.client-id`, `auth.client-secret` (set for a CONFIDENTIAL
-client), `auth.public-base-url` and `auth.cookie-keys` (cookie store only); the component `auth` is
+client; unset, empty or blank is a PUBLIC one), `auth.public-base-url` and `auth.cookie-keys` (cookie store only); the component `auth` is
 claimed, so `auth.isuer` or `auth.idle-timeout` fails start-up. Everything else is a build option,
 with the contract's defaults: `IdleTimeout` (30 min), `AbsoluteTimeout` (8 h), `Permissions`
 (`ScopesMapper`: a bearer token's `scope`, nothing for a session), `Clients` (`HomeClient`),

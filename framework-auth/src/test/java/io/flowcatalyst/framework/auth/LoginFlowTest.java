@@ -251,6 +251,25 @@ class LoginFlowTest {
   }
 
   @Test
+  void aBlankClientSecretIsAPublicClient() throws Exception {
+    // blank in the environment, then blank (spaces only) in a file: both mean no secret
+    t.close();
+    t = AuthApp.start(dir, b -> {}, Map.of("AUTH_CLIENT_SECRET", ""));
+    Browser first = t.browser();
+    assertThat(first.signIn("/").status()).isEqualTo(302);
+    assertThat(t.provider.lastTokenAuthorization()).isEmpty();
+    assertThat(first.jar).containsKey("__Host-fw_session");
+
+    t.close();
+    java.nio.file.Files.writeString(dir.resolve("application.yaml"), "auth:\n  client-secret: \"  \"\n");
+    t = AuthApp.start(dir, b -> {}, Map.of());
+    Browser second = t.browser();
+    assertThat(second.signIn("/").status()).isEqualTo(302);
+    assertThat(t.provider.lastTokenAuthorization()).isEmpty();
+    assertThat(second.jar).containsKey("__Host-fw_session");
+  }
+
+  @Test
   void twoLoginsInFlightInOneBrowserBothComplete() {
     Browser b = t.browser();
     String first = b.startSignIn("/a");

@@ -187,7 +187,8 @@ public final class AuthModule implements Module {
       LOG.warn("the platform ({}) is reached over plain http: development only", issuer);
     }
     String clientId = config.get(CLIENT_ID);
-    Secret secret = config.find(CLIENT_SECRET).orElse(null);
+    // a blank value means no secret: a PUBLIC client (the same as the key being unset)
+    Secret secret = config.find(CLIENT_SECRET).filter(v -> !v.reveal().isBlank()).orElse(null);
     SessionStore store = store(lookup, config, clock);
     String origin = CsrfGuard.origin(base);
 

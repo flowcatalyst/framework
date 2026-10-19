@@ -297,6 +297,11 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 		}
 	}
 	secret, _ := d.clientSecret.Lookup(b)
+	// a blank value means no secret: a PUBLIC client, the same as the key being unset
+	clientSecret := strings.TrimSpace(secret.Reveal())
+	if clientSecret != "" {
+		clientSecret = secret.Reveal()
+	}
 	clientID := d.clientID.Get(b)
 	origin := httpfw.OriginOf(base)
 
@@ -306,7 +311,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 	}
 	tokens := &PlatformTokens{platform: p, clock: b.Clock()}
 	rp := &relyingParty{
-		platform: p, clientID: clientID, clientSecret: secret.Reveal(), redirectURI: origin + "/auth/callback",
+		platform: p, clientID: clientID, clientSecret: clientSecret, redirectURI: origin + "/auth/callback",
 		scope: o.scope, theme: o.loginTheme, clock: b.Clock(),
 	}
 	cookies := cookieNames{secure: secure}

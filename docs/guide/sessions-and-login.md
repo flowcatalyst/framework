@@ -51,7 +51,7 @@ credentials.
 |---|---|---|
 | `auth.issuer` (required) | `AUTH_ISSUER` | the platform's base URL, which is also its tokens' `iss` |
 | `auth.client-id` (required) | `AUTH_CLIENT_ID` | the OAuth client id of your login client |
-| `auth.client-secret` | `AUTH_CLIENT_SECRET` | only for a CONFIDENTIAL login client; leave it unset for a PUBLIC one |
+| `auth.client-secret` | `AUTH_CLIENT_SECRET` | only for a CONFIDENTIAL login client; leave the key unset or empty (blank) for a PUBLIC one: a blank value is the same as unset |
 | `auth.public-base-url` (required) | `AUTH_PUBLIC_BASE_URL` | your application's origin as browsers see it, for example `https://orders.example.com`; no path |
 | `auth.cookie-keys` | `AUTH_COOKIE_KEYS` | only for the cookie store (below) |
 

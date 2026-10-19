@@ -285,6 +285,18 @@ func TestConfidentialClientUsesBasic(t *testing.T) {
 	}
 }
 
+func TestBlankClientSecretIsAPublicClient(t *testing.T) {
+	for _, blank := range []string{`""`, `"  "`} {
+		a := mustStart(t, config{files: "auth:\n  client-secret: " + blank + "\n"})
+		if a.browser().signIn("/").status != 302 {
+			t.Fatal("sign in")
+		}
+		if a.provider.LastTokenAuthorization() != "" {
+			t.Fatalf("a blank secret is a public client, got %q", a.provider.LastTokenAuthorization())
+		}
+	}
+}
+
 func TestTwoLoginsInFlightAndRotation(t *testing.T) {
 	a := mustStart(t, config{})
 	b := a.browser()

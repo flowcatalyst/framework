@@ -55,7 +55,7 @@ Only connection and secret settings are configuration (owner ruling 2026-10-13):
 |---|---|---|---|
 | `auth.issuer` | URI | yes | the platform's base URL; must equal the discovery document's `issuer` and every token's `iss` exactly (a trailing `/` is removed before comparing) |
 | `auth.client-id` | string | yes | the OAuth client id of the application's login client |
-| `auth.client-secret` | secret | no | set for a CONFIDENTIAL login client; unset means a PUBLIC client (the platform refuses a secret from a public client) |
+| `auth.client-secret` | secret | no | set for a CONFIDENTIAL login client; unset, empty or blank (spaces only) means a PUBLIC client, no `Authorization` header on the token request (the platform refuses a secret from a public client) |
 | `auth.public-base-url` | URI | yes | the application's public origin as the browser sees it, for example `https://ingest.example.com`; the redirect URI is `{public-base-url}/auth/callback` and the trusted origin of the CSRF check is its origin |
 | `auth.cookie-keys` | secret | only for the `cookie` driver | the keys that seal cookies (section 6.5) |
 
