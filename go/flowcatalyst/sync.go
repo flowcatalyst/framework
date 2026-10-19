@@ -353,10 +353,29 @@ func (p *Platform) resolveTarget(target string) string {
 	return target
 }
 
+// jobTarget is where the platform delivers a job's firings. The platform has no default for it (a job
+// with no target fails every firing with "No target URL configured for job"), so a job that names
+// none is delivered to this service's own scheduled-job receiver, {subscription-target-base-url}{receivers.path}/scheduled-jobs;
+// a path target is resolved against the base like a subscription's. With no base configured the
+// job's own absolute URL, or none, is sent as declared.
+func (p *Platform) jobTarget(target string) string {
+	target = strings.TrimSpace(target)
+	if p.targetBase == "" {
+		return target
+	}
+	if target == "" {
+		if !p.recv.hasJobs() || !p.s.rEnabled.Get(p.b) {
+			return ""
+		}
+		target = p.s.rPath.Get(p.b) + "/scheduled-jobs"
+	}
+	return p.resolveTarget(target)
+}
+
 func (p *Platform) scheduledJob(j ScheduledJob) fcsync.ScheduledJobDefinition {
 	def := fcsync.ScheduledJobDefinition{
 		Code: j.Code, Name: j.Name, Description: j.Description, Crons: j.Crons, Timezone: j.Timezone,
-		Concurrent: j.Concurrent, TracksCompletion: j.TracksCompletion, TargetURL: strings.TrimSpace(j.TargetURL),
+		Concurrent: j.Concurrent, TracksCompletion: j.TracksCompletion, TargetURL: p.jobTarget(j.TargetURL),
 	}
 	if j.Payload != nil {
 		if b, err := javafmt.MarshalJSON(j.Payload); err == nil {

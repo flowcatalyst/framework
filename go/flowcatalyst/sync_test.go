@@ -396,3 +396,58 @@ func TestATransientFailureOfASyncCallIsRetriedBySDKTransport(t *testing.T) {
 		t.Fatalf("%d calls, want the SDK's 3 attempts", n)
 	}
 }
+
+// The platform has no default target for a scheduled job (a job without one fails every firing), so the
+// sync sends this service's own receiver as the target when the base is configured (found against a
+// real platform, G7.7).
+func TestAJobWithNoTargetIsDeliveredToTheServicesOwnReceiverAndAPathIsResolvedAgainstTheBase(t *testing.T) {
+	targets := func(env map[string]string, register bool, jobs ...flowcatalyst.ScheduledJob) []string {
+		t.Helper()
+		o := rigOptions{env: env, define: func(d *flowcatalyst.Declared) {
+			defs := d.Definitions("m")
+			for _, j := range jobs {
+				defs.ScheduledJob(j)
+			}
+		}}
+		if register {
+			o.locks = true
+			o.register = func(fc *flowcatalyst.Platform) error {
+				for _, j := range jobs {
+					if err := fc.Receivers().OnScheduledJob(j.Code, flowcatalyst.JobOptions{}, okJob); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+		}
+		r := startRig(t, o)
+		if _, err := r.fc.Sync(t.Context(), flowcatalyst.SyncApply); err != nil {
+			t.Fatal(err)
+		}
+		req, _ := r.platform.syncOf("scheduled-jobs")
+		var out []string
+		for _, j := range req.json(t)["jobs"].([]any) {
+			target, _ := j.(map[string]any)["targetUrl"].(string)
+			out = append(out, target)
+		}
+		return out
+	}
+	none := flowcatalyst.NewScheduledJob("none", "None", "0 0 2 * * *")
+	path := flowcatalyst.NewScheduledJob("path", "Path", "0 0 2 * * *").Targeting("/custom/run")
+	abs := flowcatalyst.NewScheduledJob("abs", "Abs", "0 0 2 * * *").Targeting("https://elsewhere.example/jobs")
+	base := map[string]string{"FLOWCATALYST_SUBSCRIPTION_TARGET_BASE_URL": "http://svc.example:8091/"}
+
+	if got := targets(base, true, none, path, abs); !slices.Equal(got, []string{"http://svc.example:8091/fc/scheduled-jobs", "http://svc.example:8091/custom/run", "https://elsewhere.example/jobs"}) {
+		t.Errorf("with a base and a handler: %v", got)
+	}
+	withPath := map[string]string{"FLOWCATALYST_SUBSCRIPTION_TARGET_BASE_URL": "http://svc.example:8091", "FLOWCATALYST_RECEIVERS_PATH": "/hooks"}
+	if got := targets(withPath, true, none); !slices.Equal(got, []string{"http://svc.example:8091/hooks/scheduled-jobs"}) {
+		t.Errorf("with receivers.path: %v", got)
+	}
+	if got := targets(base, false, none); !slices.Equal(got, []string{""}) {
+		t.Errorf("no handler here, so no guess: %v", got)
+	}
+	if got := targets(nil, true, none, abs); !slices.Equal(got, []string{"", "https://elsewhere.example/jobs"}) {
+		t.Errorf("no base: %v", got)
+	}
+}

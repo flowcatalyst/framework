@@ -143,8 +143,9 @@ func (j ScheduledJob) AllowingConcurrent(v bool) ScheduledJob { j.Concurrent = v
 // WithPayload returns a copy that sends payload (any JSON value) with every firing.
 func (j ScheduledJob) WithPayload(payload any) ScheduledJob { j.Payload = payload; return j }
 
-// Targeting returns a copy delivered to an absolute http(s) URL instead of the platform's default
-// for the application.
+// Targeting returns a copy delivered to an absolute http(s) URL, or to a path on
+// flowcatalyst.subscription-target-base-url, instead of this service's own scheduled-job receiver (the
+// default when that base is configured; the platform itself has no default).
 func (j ScheduledJob) Targeting(url string) ScheduledJob { j.TargetURL = url; return j }
 
 // WithTimeout returns a copy with a positive per-firing timeout in seconds (0 is the platform's
@@ -449,8 +450,14 @@ func (v *validation) scheduledJob(module string, j ScheduledJob) {
 	}
 	v.positive(module, j.Code, "timeoutSeconds", j.TimeoutSeconds)
 	v.positive(module, j.Code, "deliveryMaxAttempts", j.DeliveryMaxAttempts)
-	if j.TargetURL != "" && !absoluteHTTP(strings.TrimSpace(j.TargetURL)) {
-		v.problem(module, j.Code, "targetUrl must be an absolute http(s) URL")
+	switch target := strings.TrimSpace(j.TargetURL); {
+	case target == "":
+	case strings.HasPrefix(target, "/"):
+		if !v.targetBase {
+			v.problem(module, j.Code, "targetUrl '"+target+"' is a path; set flowcatalyst.subscription-target-base-url or use an absolute URL")
+		}
+	case !absoluteHTTP(target):
+		v.problem(module, j.Code, "targetUrl must be an absolute http(s) URL or a path starting with '/'")
 	}
 	if v.unique(module, "scheduled job", j.Code) {
 		v.cat.jobs = append(v.cat.jobs, j)

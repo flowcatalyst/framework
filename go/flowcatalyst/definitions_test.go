@@ -169,6 +169,11 @@ func TestEveryOtherRuleOfASubscriptionAJobAndAPool(t *testing.T) {
 		j := flowcatalyst.NewScheduledJob("j", "J", "0 0 2 * * *")
 		j.TargetURL = "/relative"
 		d.ScheduledJob(j)
+	}, "j", "targetUrl '/relative' is a path; set flowcatalyst.subscription-target-base-url")
+	bad(func(d *flowcatalyst.Definitions) {
+		j := flowcatalyst.NewScheduledJob("j", "J", "0 0 2 * * *")
+		j.TargetURL = "ftp://x/y"
+		d.ScheduledJob(j)
 	}, "j", "targetUrl must be an absolute")
 	bad(func(d *flowcatalyst.Definitions) {
 		j := flowcatalyst.NewScheduledJob("j", "J", "0 0 2 * * *")
