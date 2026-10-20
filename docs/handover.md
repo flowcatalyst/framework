@@ -77,6 +77,8 @@ rewritten at hand-off and can lag the code in between.
 - Review by the first application (2026-10-09): 28 findings on the guide, all handled: pages fixed,
   gaps turned into MA items 7 to 9 in the plan, three small code changes (env-variable collision
   check, receivers 404 / `enabled`, anchor check in `verify.sh`).
+- MA-12 (2026-10-20): registered HTTP clients can be removed (`ServiceClients.unregister/replace/registerScoped`) with their
+  `fw_http_client_*` series (`Counter/Timer.removeSeries`, default methods); reported by a consuming app (per-ingestion clients).
 - MA built 2026-10-10, all nine items, each its own commit with contract, tests and guide:
   (7) informational health checks `9d73eb2`; (8) `framework-http` on core only, `ServiceError`,
   Enforcer rule `9cde933`; (2) `AppBuilder.override`, test mode = `APP_ENV=test` `21704e4`; (1)

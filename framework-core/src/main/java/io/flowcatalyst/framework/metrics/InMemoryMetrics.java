@@ -94,9 +94,17 @@ final class InMemoryMetrics implements Metrics {
     }
     Family<CounterCell> f =
         register(name, help, MetricsSnapshot.Type.COUNTER, labelNames, List.of(), CounterCell::new);
-    return values -> {
-      CounterCell cell = f.series(values);
-      return cell == null ? NOOP_COUNTER : cell;
+    return new Counter() {
+      @Override
+      public Series labels(String... values) {
+        CounterCell cell = f.series(values);
+        return cell == null ? NOOP_COUNTER : cell;
+      }
+
+      @Override
+      public int removeSeries(String labelName, String labelValue) {
+        return f.remove(labelName, labelValue);
+      }
     };
   }
 
@@ -143,9 +151,17 @@ final class InMemoryMetrics implements Metrics {
             labelNames,
             buckets,
             () -> new TimerCell(bounds, clock, true));
-    return values -> {
-      TimerCell cell = f.series(values);
-      return cell == null ? noopTimer : cell;
+    return new Timer() {
+      @Override
+      public Series labels(String... values) {
+        TimerCell cell = f.series(values);
+        return cell == null ? noopTimer : cell;
+      }
+
+      @Override
+      public int removeSeries(String labelName, String labelValue) {
+        return f.remove(labelName, labelValue);
+      }
     };
   }
 
@@ -353,6 +369,23 @@ final class InMemoryMetrics implements Metrics {
         dropped();
       }
       return created;
+    }
+
+    /** Removes the series whose value for the label equals the given one; returns how many. */
+    int remove(String labelName, String labelValue) {
+      int index = labelNames.indexOf(labelName);
+      if (index < 0) {
+        throw new IllegalArgumentException("metric " + name + " has labels " + labelNames + ", not " + labelName);
+      }
+      String wanted = cut(labelValue);
+      int removed = 0;
+      for (List<String> key : series.keySet()) {
+        if (key.get(index).equals(wanted) && series.remove(key) != null) {
+          size.decrementAndGet();
+          removed++;
+        }
+      }
+      return removed;
     }
 
     private void dropped() {

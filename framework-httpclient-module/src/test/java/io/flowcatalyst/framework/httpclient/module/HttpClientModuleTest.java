@@ -29,7 +29,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -465,6 +467,126 @@ class HttpClientModuleTest {
       assertThatIllegalArgumentException()
           .isThrownBy(() -> clients.register(ServiceOptions.builder("own", URI.create(base())).build()));
       assertThatIllegalArgumentException().isThrownBy(() -> clients.get("missing"));
+    }
+  }
+
+  /** The service label values that have a series in the client metrics. */
+  static java.util.Set<String> measuredServices(App app) {
+    java.util.Set<String> out = new java.util.TreeSet<>();
+    for (MetricsSnapshot.Family f : app.get(Metrics.class).snapshot().families()) {
+      if (f.name().startsWith("fw_http_client_")) {
+        f.samples().forEach(s -> out.add(s.labelValues().get(0)));
+      }
+    }
+    return out;
+  }
+
+  static ServiceOptions opts(String name, String base) {
+    return ServiceOptions.builder(name, URI.create(base)).build();
+  }
+
+  @Test
+  void aRegisteredClientCanBeRemovedWithItsMetrics() throws IOException {
+    HttpClientModule module = HttpClientModule.builder().client("fixed", HttpClientOptions.defaults()).build();
+    try (App app = start("http-clients:\n  instances:\n    fixed: { base-url: " + base() + " }\n", Map.of(), module)) {
+      ServiceClients clients = app.get(ServiceClients.class);
+      clients.get("fixed").get("/x").send();
+      ServiceClient route = clients.register(opts("route-v1", base()));
+      route.get("/x").send();
+      assertThat(measuredServices(app)).containsExactly("fixed", "route-v1");
+
+      assertThat(clients.unregister("route-v1")).isTrue();
+      assertThat(clients.unregister("route-v1")).isFalse();
+      assertThat(clients.names()).containsExactly("fixed");
+      assertThatIllegalArgumentException().isThrownBy(() -> clients.get("route-v1"));
+      assertThat(measuredServices(app)).containsExactly("fixed");
+      // a held reference still works, is no longer measured, and leaves no series behind
+      assertThat(route.get("/x").send().status()).isEqualTo(200);
+      assertThat(measuredServices(app)).containsExactly("fixed");
+      // the name is free again
+      clients.register(opts("route-v1", base())).get("/x").send();
+      assertThat(measuredServices(app)).containsExactly("fixed", "route-v1");
+      // configured clients are not removable or replaceable
+      assertThatIllegalArgumentException().isThrownBy(() -> clients.unregister("fixed"));
+      assertThatIllegalArgumentException().isThrownBy(() -> clients.replace(opts("fixed", base())));
+    }
+  }
+
+  @Test
+  void replaceSwapsTheClientAndStartsFreshMetrics() throws IOException {
+    try (App app = start("", Map.of())) {
+      ServiceClients clients = app.get(ServiceClients.class);
+      ServiceClient first = clients.replace(opts("route", base()));
+      first.get("/x").send();
+      ServiceClient second = clients.replace(opts("route", base()));
+      assertThat(second).isNotSameAs(first);
+      assertThat(clients.get("route")).isSameAs(second);
+      assertThat(clients.names()).containsExactly("route");
+      assertThat(measuredServices(app)).isEmpty();
+      first.get("/x").send(); // the replaced client is no longer measured
+      assertThat(measuredServices(app)).isEmpty();
+      second.get("/x").send();
+      assertThat(measuredServices(app)).containsExactly("route");
+    }
+  }
+
+  @Test
+  void aScopedRegistrationUnregistersOnCloseOnlyWhileItIsStillTheCurrentClient() throws IOException {
+    try (App app = start("", Map.of())) {
+      ServiceClients clients = app.get(ServiceClients.class);
+      try (ServiceClients.Registration r = clients.registerScoped(opts("tmp", base()))) {
+        r.client().get("/x").send();
+        assertThat(clients.names()).containsExactly("tmp");
+        assertThatIllegalArgumentException().isThrownBy(() -> clients.registerScoped(opts("tmp", base())));
+      }
+      assertThat(clients.names()).isEmpty();
+      assertThat(measuredServices(app)).isEmpty();
+
+      ServiceClients.Registration old = clients.registerScoped(opts("tmp", base()));
+      ServiceClient newer = clients.replace(opts("tmp", base()));
+      old.close(); // must not remove the replacement
+      assertThat(clients.get("tmp")).isSameAs(newer);
+      old.close();
+    }
+  }
+
+  @Test
+  void concurrentRegisterUseAndRemoveLeaveNoClientsAndNoMeters() throws Exception {
+    try (App app = start("", Map.of())) {
+      ServiceClients clients = app.get(ServiceClients.class);
+      int threads = 8;
+      int rounds = 25;
+      CountDownLatch go = new CountDownLatch(1);
+      AtomicInteger failures = new AtomicInteger();
+      List<Thread> workers = new ArrayList<>();
+      for (int t = 0; t < threads; t++) {
+        String name = "route-" + (t % 2); // pairs of threads fight over the same name
+        workers.add(
+            Thread.ofVirtual()
+                .start(
+                    () -> {
+                      try {
+                        go.await();
+                        for (int i = 0; i < rounds; i++) {
+                          ServiceClient c = clients.replace(opts(name, base()));
+                          c.get("/x").send();
+                          clients.unregister(name);
+                          c.get("/x").send(); // a removed client still in use
+                        }
+                      } catch (Exception e) {
+                        failures.incrementAndGet();
+                      }
+                    }));
+      }
+      go.countDown();
+      for (Thread w : workers) {
+        w.join();
+      }
+      assertThat(failures).hasValue(0);
+      clients.unregister("route-0");
+      clients.unregister("route-1");
+      assertThat(clients.names()).isEmpty();
+      assertThat(measuredServices(app)).isEmpty();
     }
   }
 

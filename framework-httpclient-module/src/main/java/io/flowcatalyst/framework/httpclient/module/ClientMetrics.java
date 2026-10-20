@@ -44,4 +44,40 @@ final class ClientMetrics implements ClientObserver {
     requests.labels(service, method.name(), outcome).inc();
     durations.labels(service, method.name()).recordNanos(nanos);
   }
+
+  /**
+   * An observer for one client that can be retired: after {@link Scoped#close()} its attempts are
+   * dropped and the client's series are removed, so a removed client leaves no meters behind.
+   */
+  Scoped scoped() {
+    return new Scoped();
+  }
+
+  /** Records for one registered client until closed. */
+  final class Scoped implements ClientObserver {
+    private boolean closed;
+
+    @Override
+    public synchronized void attempted(
+        String service,
+        RequestMethod method,
+        String pathTemplate,
+        int status,
+        HttpClientException.@Nullable Kind failure,
+        long nanos,
+        int attempt) {
+      if (!closed) {
+        ClientMetrics.this.attempted(service, method, pathTemplate, status, failure, nanos, attempt);
+      }
+    }
+
+    /** Stops recording and removes the service's series; later attempts in flight are not recorded. */
+    synchronized void close(String service) {
+      if (!closed) {
+        closed = true;
+        requests.removeSeries("service", service);
+        durations.removeSeries("service", service);
+      }
+    }
+  }
 }

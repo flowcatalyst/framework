@@ -91,6 +91,28 @@ ServiceClient api =
                 .build());
 ```
 
+### Clients that come and go
+
+A name is unique, and a client lives until it is removed, so a client per route version, tenant
+or ingestion must be removed when it is done or its metrics series pile up. Use a scoped
+registration, `unregister` or `replace` (from `HttpClientModuleTest`):
+
+```java
+try (ServiceClients.Registration r = clients.registerScoped(options)) {
+  r.client().get("/ping").send();
+}
+clients.unregister("route-v1");          // true when it was registered here
+clients.replace(options);                // register, or swap the registered client of that name
+```
+
+Removing a client removes its `service` series from `fw_http_client_requests_total` and
+`fw_http_client_request_duration_seconds` (via `Counter.removeSeries` and `Timer.removeSeries`).
+It is safe while the client is in use: calls in flight finish, a reference still held keeps
+working but is no longer measured (it never re-creates a series), and `get(name)` stops finding
+it. The connection pool belongs to the engine, so nothing else is released. A scoped
+registration's `close` removes only its own client, not one that replaced it. Configured clients
+(`HttpClientModule.builder().client(...)`) cannot be removed or replaced: that throws.
+
 ## Requests and responses
 
 ```java

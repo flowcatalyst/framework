@@ -174,6 +174,27 @@ class MetricsTest {
   }
 
   @Test
+  void removingSeriesByLabelValueFreesThemAndTheLimit() {
+    Metrics small = Metrics.memory(3, clock);
+    Counter c = small.counter("app_users_total", "Per user.", "user", "kind");
+    Timer t = small.timer("app_users_seconds", "Per user.", "user");
+    for (int i = 0; i < 3; i++) {
+      c.labels("u0", "k" + i).inc();
+    }
+    t.labels("u0").recordNanos(5);
+    assertThat(c.removeSeries("user", "u0")).isEqualTo(3);
+    assertThat(t.removeSeries("user", "u0")).isEqualTo(1);
+    assertThat(c.removeSeries("user", "u0")).isZero();
+    assertThat(family(small, "app_users_total").samples()).isEmpty();
+    assertThat(family(small, "app_users_seconds").samples()).isEmpty();
+    for (int i = 0; i < 3; i++) {
+      c.labels("u1", "k" + i).inc(); // room again
+    }
+    assertThat(family(small, "app_users_total").samples()).hasSize(3);
+    assertThatIllegalArgumentException().isThrownBy(() -> c.removeSeries("nope", "x"));
+  }
+
+  @Test
   void theNumberOfSeriesIsBoundedAndDropsAreCounted() {
     Metrics small = Metrics.memory(3, clock);
     Counter c = small.counter("app_users_total", "Per user, which is a mistake.", "user");

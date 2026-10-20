@@ -4,6 +4,7 @@ import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.httpclient.HttpClients;
 import io.flowcatalyst.framework.httpclient.ServiceClient;
 import io.flowcatalyst.framework.httpclient.ServiceOptions;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +27,7 @@ public final class ServiceClients {
   private final ClientMetrics metrics;
   private final ReentrantLock lock = new ReentrantLock();
   private final Map<String, ServiceClient> clients;
+  private final Map<String, ClientMetrics.Scoped> registered = new HashMap<>();
 
   ServiceClients(HttpClients engine, ClientMetrics metrics, Map<String, ServiceClient> configured) {
     this.engine = engine;
@@ -75,16 +77,126 @@ public final class ServiceClients {
    * @throws IllegalArgumentException when the name is taken
    */
   public ServiceClient register(ServiceOptions options) {
-    ServiceClient client = engine.service(HttpClientModule.observed(options, metrics));
+    ClientMetrics.Scoped observer = metrics.scoped();
+    ServiceClient client = engine.service(HttpClientModule.observed(options, observer));
     lock.lock();
     try {
       if (clients.putIfAbsent(options.name(), client) != null) {
         throw new IllegalArgumentException("service client '" + options.name() + "' already exists");
       }
+      registered.put(options.name(), observer);
     } finally {
       lock.unlock();
     }
     return client;
+  }
+
+  /**
+   * Adds a client built in code, or swaps the registered client of that name for a new one (for
+   * example when a route's endpoint or credentials changed). The previous client is
+   * {@linkplain #unregister(String) unregistered}.
+   *
+   * @param options the service
+   * @return the new client
+   * @throws IllegalArgumentException when the name belongs to a configured client
+   */
+  public ServiceClient replace(ServiceOptions options) {
+    ClientMetrics.Scoped observer = metrics.scoped();
+    ServiceClient client = engine.service(HttpClientModule.observed(options, observer));
+    String name = options.name();
+    lock.lock();
+    try {
+      if (clients.containsKey(name) && !registered.containsKey(name)) {
+        throw new IllegalArgumentException("service client '" + name + "' is configured and cannot be replaced");
+      }
+      unregister(name);
+      clients.put(name, client);
+      registered.put(name, observer);
+    } finally {
+      lock.unlock();
+    }
+    return client;
+  }
+
+  /**
+   * Removes a client added with {@link #register} or {@link #replace}, and its client metrics
+   * series (the {@code service} label value), so per-route or per-tenant clients do not
+   * accumulate. Calls already in flight finish normally; a reference still held keeps working but
+   * is no longer measured, and {@link #get(String)} no longer finds it. The shared connection pool
+   * belongs to the engine and is untouched. Configured clients cannot be removed.
+   *
+   * @param name the client's name
+   * @return true when a registered client was removed, false when there was none by that name
+   * @throws IllegalArgumentException when the name is a configured client
+   */
+  public boolean unregister(String name) {
+    lock.lock();
+    try {
+      ClientMetrics.Scoped observer = registered.remove(name);
+      if (observer == null) {
+        if (clients.containsKey(name)) {
+          throw new IllegalArgumentException("service client '" + name + "' is configured and cannot be removed");
+        }
+        return false;
+      }
+      clients.remove(name);
+      observer.close(name);
+      return true;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Registers a client that is removed when the returned handle is closed.
+   *
+   * <pre>{@code
+   * try (ServiceClients.Registration r = clients.registerScoped(options)) {
+   *   r.client().get("/ping").send();
+   * }
+   * }</pre>
+   *
+   * @param options the service
+   * @return the handle; closing it unregisters the client (closing twice is harmless)
+   * @throws IllegalArgumentException when the name is taken
+   */
+  public Registration registerScoped(ServiceOptions options) {
+    return new Registration(this, options.name(), register(options));
+  }
+
+  /** A registered client that unregisters itself on {@link #close()}. */
+  public static final class Registration implements AutoCloseable {
+    private final ServiceClients owner;
+    private final String name;
+    private final ServiceClient client;
+
+    private Registration(ServiceClients owner, String name, ServiceClient client) {
+      this.owner = owner;
+      this.name = name;
+      this.client = client;
+    }
+
+    /**
+     * The client.
+     *
+     * @return the client
+     */
+    public ServiceClient client() {
+      return client;
+    }
+
+    /** Unregisters the client, only if it is still this registration's (not replaced meanwhile). */
+    @Override
+    public void close() {
+      owner.lock.lock();
+      try {
+        if (owner.clients.get(name) == client) {
+          owner.unregister(name);
+        }
+      } finally {
+        owner.lock.unlock();
+      }
+    }
   }
 
   /**

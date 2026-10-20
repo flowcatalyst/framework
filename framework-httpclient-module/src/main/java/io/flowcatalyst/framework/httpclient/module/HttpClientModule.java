@@ -14,6 +14,7 @@ import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.httpclient.Auth;
 import io.flowcatalyst.framework.httpclient.ClientCredentials;
+import io.flowcatalyst.framework.httpclient.ClientObserver;
 import io.flowcatalyst.framework.httpclient.HttpClients;
 import io.flowcatalyst.framework.httpclient.ServiceClient;
 import io.flowcatalyst.framework.httpclient.ServiceOptions;
@@ -257,7 +258,7 @@ public final class HttpClientModule implements Module {
     return built;
   }
 
-  static ServiceOptions observed(ServiceOptions options, ClientMetrics metrics) {
+  static ServiceOptions observed(ServiceOptions options, ClientObserver metrics) {
     return new ServiceOptions(
         options.name(),
         options.baseUrl(),

@@ -165,6 +165,12 @@ http-clients:
   application's).
 - `ServiceClients.register(ServiceOptions)` returns the client; the options' own observer is
   replaced by the metrics observer. `ServiceClients.names()` lists configured and registered clients.
+- Registered clients can be removed (2026-10-20): `unregister(name)` (false when absent, throws for
+  a configured client), `replace(options)` (register or swap) and `registerScoped(options)`
+  (`Registration`, `AutoCloseable`). Removal drops the client's `service` series from both client
+  metrics (`Counter.removeSeries` / `Timer.removeSeries`, new default methods that return 0 for a
+  driver keeping no series); a held reference keeps working, unmeasured. Serialised on the
+  registry lock; each client's observer is retired under its own lock so no attempt re-creates a series.
 - Every request carries `User-Agent: flowcatalyst-framework-httpclient`. Gzip and deflate answers
   are decompressed (the size limit applies to the bytes received).
 - A `RESPONSE_TOO_LARGE` failure is never retried (a larger answer will not get smaller).

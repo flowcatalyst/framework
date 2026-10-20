@@ -93,6 +93,11 @@ returns the series to record on, which you may keep for hot paths. A family with
 directly (`counter.inc()`, `gauge.set(v)`, `timer.record(d)`). A timer's series also has
 `time(callable)`, which records even when the work throws.
 
+A label value that will never be recorded again (a closed client, a finished tenant) is dropped
+with `counter.removeSeries("label", "value")` (also on `Timer`), which returns how many series it
+removed and frees their share of `app.metrics.max-series`. A series handle kept from before is
+detached: ask `labels(...)` again to start a new series. `ServiceClients.unregister` uses it.
+
 ### Rules
 
 Checked when the instrument is created (an `IllegalArgumentException` means a bug in your code):
