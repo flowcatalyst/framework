@@ -320,6 +320,11 @@ All pages are in `web/src/pages`, wired by `web/src/router.ts`, `web/src/pages.t
 data, shared with the Vite config so icons are found) and `web/src/App.vue` (`FwAppShell` for the
 signed-in pages, bare pages for the public ones).
 
+`FwAppShell` keeps the page in a centred column up to 72 rem. A page of wide tables takes the whole
+panel with the shell's `width` prop (`"contained"`, the default, or `"full"`); bind it to the route,
+for example `:width="route.meta.width === 'full' ? 'full' : 'contained'"`, and delete any CSS that
+overrode the shell's `max-w-6xl` class.
+
 | Page | File | What it does | Built from |
 |---|---|---|---|
 | Ingestions list, route `/ingestions` (`/` redirects) | `IngestionsPage.vue` | Code, name, client, source kind and summary, State (Active/Paused), Runtimes (worst route status). A **client filter** the server applies (`?clientId=`, debounced), a **search** of the loaded rows, refresh, clear filters, `New ingestion`. Phone: code, name and state only. Errors toast and say "Could not load the ingestions" | `FwListPage`, `useListState`, `stringFilter`, `FwStatusBadge`, `listIngestions` |

@@ -11,11 +11,11 @@ import FwAppShell from "../src/layouts/FwAppShell.vue";
 
 const KEY = "fc:shell-sidebar-collapsed";
 
-async function mountShell() {
+async function mountShell(width?: "contained" | "full") {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/", component: { render: () => h("p", "page") } }] });
   await router.push("/");
   const App = defineComponent({
-    render: () => h(UApp, null, { default: () => h(FwAppShell, { appName: "Acme", navigation: [{ label: "Home", to: "/", icon: "i-lucide-house" }] }) }),
+    render: () => h(UApp, null, { default: () => h(FwAppShell, { ...(width === undefined ? {} : { width }), appName: "Acme", navigation: [{ label: "Home", to: "/", icon: "i-lucide-house" }] }) }),
   });
   const wrapper = mount(App, { global: { plugins: [router, ui] }, attachTo: document.body });
   await flushPromises();
@@ -100,5 +100,25 @@ describe("FwAppShell sidebar toggle", () => {
     await flushPromises();
     expect(document.cookie).not.toContain("dashboard");
     wrapper.unmount();
+  });
+});
+
+describe("FwAppShell width", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("is a contained column by default and the whole panel when full", async () => {
+    const contained = await mountShell();
+    const main = document.querySelector("main");
+    expect(main?.getAttribute("data-width")).toBe("contained");
+    expect(main?.classList.contains("max-w-6xl")).toBe(true);
+    contained.unmount();
+
+    const full = await mountShell("full");
+    const wide = document.querySelector("main");
+    expect(wide?.getAttribute("data-width")).toBe("full");
+    expect(wide?.classList.contains("max-w-6xl")).toBe(false);
+    full.unmount();
   });
 });

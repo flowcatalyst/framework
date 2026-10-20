@@ -28,6 +28,7 @@ const {
   navigation,
   pageTitle = "",
   user,
+  width = "contained",
 } = defineProps<{
   appName: string;
   navigation: readonly FwNavItem[];
@@ -35,6 +36,12 @@ const {
   pageTitle?: string;
   /** The signed-in user to show; default the session's. */
   user?: { readonly name: string; readonly email?: string };
+  /**
+   * How wide the page may be: "contained" (the default, a centred column up to 72 rem) or "full"
+   * (the whole panel, for wide tables). Reactive, so an application can bind it to the current
+   * route, for example `:width="route.meta.width === 'full' ? 'full' : 'contained'"`.
+   */
+  width?: "contained" | "full";
 }>();
 
 const emit = defineEmits<{
@@ -170,7 +177,7 @@ const navUi = {
         </UDashboardNavbar>
       </template>
       <template #body>
-        <main class="mx-auto w-full max-w-6xl">
+        <main class="w-full" :class="width === 'full' ? '' : 'mx-auto max-w-6xl'" :data-width="width">
           <slot />
         </main>
         <FwAnnouncer />
