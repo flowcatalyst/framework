@@ -113,6 +113,11 @@ it. The connection pool belongs to the engine, so nothing else is released. A sc
 registration's `close` removes only its own client, not one that replaced it. Configured clients
 (`HttpClientModule.builder().client(...)`) cannot be removed or replaced: that throws.
 
+In a unit test with no `App`, build the registry directly:
+`ServiceClients.create(HttpClients.create(), Metrics.memory(1000, MonotonicClock.system()))`. It
+starts empty and behaves as the module's does, so code that registers clients can be tested
+without the module.
+
 ## Requests and responses
 
 ```java

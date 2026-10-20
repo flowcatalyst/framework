@@ -4,6 +4,7 @@ import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.httpclient.HttpClients;
 import io.flowcatalyst.framework.httpclient.ServiceClient;
 import io.flowcatalyst.framework.httpclient.ServiceOptions;
+import io.flowcatalyst.framework.metrics.Metrics;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,6 +34,23 @@ public final class ServiceClients {
     this.engine = engine;
     this.metrics = metrics;
     this.clients = new LinkedHashMap<>(configured);
+  }
+
+  /**
+   * A registry with no configured clients, built without an application: for unit tests of code
+   * that registers clients in code ({@link #register}, {@link #replace}, {@link #registerScoped})
+   * and for tools that run outside the framework. Behaves exactly as the one the module provides.
+   *
+   * <pre>{@code
+   * ServiceClients clients = ServiceClients.create(HttpClients.create(), Metrics.memory(1000, MonotonicClock.system()));
+   * }</pre>
+   *
+   * @param engine the HTTP engine the clients are built on
+   * @param metrics where client metrics go ({@code Metrics.memory(...)} in tests)
+   * @return an empty registry
+   */
+  public static ServiceClients create(HttpClients engine, Metrics metrics) {
+    return new ServiceClients(engine, new ClientMetrics(metrics), Map.of());
   }
 
   /**

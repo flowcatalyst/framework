@@ -15,6 +15,8 @@ import io.flowcatalyst.framework.httpclient.Auth;
 import io.flowcatalyst.framework.httpclient.RetryPolicy;
 import io.flowcatalyst.framework.httpclient.ServiceClient;
 import io.flowcatalyst.framework.httpclient.ServiceOptions;
+import io.flowcatalyst.framework.core.MonotonicClock;
+import io.flowcatalyst.framework.httpclient.HttpClients;
 import io.flowcatalyst.framework.metrics.Metrics;
 import io.flowcatalyst.framework.metrics.MetricsSnapshot;
 import java.io.IOException;
@@ -528,6 +530,20 @@ class HttpClientModuleTest {
       second.get("/x").send();
       assertThat(measuredServices(app)).containsExactly("route");
     }
+  }
+
+  @Test
+  void aRegistryBuiltWithoutAnAppRegistersMeasuresAndUnregisters() throws IOException {
+    Metrics metrics = Metrics.memory(1000, MonotonicClock.system());
+    ServiceClients clients = ServiceClients.create(HttpClients.create(), metrics);
+    try (ServiceClients.Registration r = clients.registerScoped(opts("tmp", base()))) {
+      r.client().get("/x").send();
+      assertThat(clients.names()).containsExactly("tmp");
+      assertThat(metrics.snapshot().families().stream().anyMatch(f -> f.name().startsWith("fw_http_client_")))
+          .isTrue();
+    }
+    assertThat(clients.names()).isEmpty();
+    assertThat(metrics.snapshot().families().stream().flatMap(f -> f.samples().stream())).isEmpty();
   }
 
   @Test
