@@ -1326,7 +1326,7 @@
     "policyResolver" : false,
     "requests" : [ {
       "at" : 1000000000000,
-      "remote" : "fe80::1%eth0",
+      "remote" : "fe80::1%nosuchif0",
       "headers" : [ ]
     }, {
       "at" : 1000000000000,
@@ -1723,7 +1723,7 @@
     }, {
       "at" : 1000000000000,
       "remote" : "10.0.0.1",
-      "headers" : [ [ "X-Forwarded-For", "fe80::1%eth0" ] ]
+      "headers" : [ [ "X-Forwarded-For", "fe80::1%nosuchif0" ] ]
     } ],
     "expect" : [ {
       "status" : 200,

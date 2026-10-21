@@ -12,6 +12,12 @@ on:
   push:
     tags:
       - "v*"
+  # A dry run: builds and tests everything at the given version and uploads nothing.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build and test (nothing is published)"
+        default: "0.0.0-ci"
 
 permissions:
   contents: read
@@ -42,7 +48,11 @@ jobs:
       - name: Work out the version from the tag
         id: version
         run: |
-          tag="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            tag="v${{ github.event.inputs.version }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
           version="${tag#v}"
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "tag '$tag' is not v<major>.<minor>.<patch>[-qualifier]" >&2
@@ -75,7 +85,14 @@ jobs:
           -DprocessAllModules=true
           -DgenerateBackupPoms=false
 
-      - name: Build, test and deploy
+      # Everything is built and every test runs BEFORE anything is uploaded: Maven deploys module by
+      # module, so a test failing in the middle of a single "deploy" run would leave a version
+      # half-published (this happened to v0.1.0).
+      - name: Build and test (nothing is uploaded)
+        run: ./mvnw -B -Prelease verify
+
+      - name: Deploy
+        if: github.event_name == 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./mvnw -B -Prelease deploy
+        run: ./mvnw -B -Prelease deploy -DskipTests

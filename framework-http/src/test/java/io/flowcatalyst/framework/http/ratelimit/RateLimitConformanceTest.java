@@ -338,7 +338,7 @@ class RateLimitConformanceTest {
     c.add(resolver("clientAddress: odd IPv4 spellings", "clientAddress", 0, null,
         List.of(r(t0, "010.001.001.001"), r(t0, "0x7f.0.0.1"), r(t0, "1.2.3"), r(t0, "256.1.1.1"), r(t0, "1.2.3.4.5"), r(t0, " 1.2.3.4"), r(t0, "2130706433"))));
     c.add(resolver("clientAddress: zone ids and long values", "clientAddress", 0, null,
-        List.of(r(t0, "fe80::1%eth0"), r(t0, "fe80::1%1"), r(t0, "1".repeat(65)), r(t0, "2001:db8:1:2:3:4:5:6"))));
+        List.of(r(t0, "fe80::1%nosuchif0"), r(t0, "fe80::1%1"), r(t0, "1".repeat(65)), r(t0, "2001:db8:1:2:3:4:5:6"))));
     c.add(resolver("forwardedFor(1): the entry the proxy wrote, a spoofed left side is ignored", "forwardedFor", 1, null,
         List.of(r(t0, "10.0.0.1", "X-Forwarded-For", "203.0.113.5"), r(t0, "10.0.0.1", "X-Forwarded-For", "1.1.1.1, 203.0.113.5"),
             r(t0, "10.0.0.1", "X-Forwarded-For", "1.1.1.1, 2.2.2.2, 203.0.113.5"))));
@@ -353,7 +353,7 @@ class RateLimitConformanceTest {
             r(t0, "10.0.0.1", "X-Forwarded-For", ", 1.2.3.4"))));
     c.add(resolver("forwardedFor(1): IPv6 entries, brackets, mapped IPv4, zone", "forwardedFor", 1, null,
         List.of(r(t0, "10.0.0.1", "X-Forwarded-For", "2001:db8:1:2::9"), r(t0, "10.0.0.1", "X-Forwarded-For", "[2001:db8:1:2::9]"),
-            r(t0, "10.0.0.1", "X-Forwarded-For", "::ffff:203.0.113.5"), r(t0, "10.0.0.1", "X-Forwarded-For", "fe80::1%eth0"))));
+            r(t0, "10.0.0.1", "X-Forwarded-For", "::ffff:203.0.113.5"), r(t0, "10.0.0.1", "X-Forwarded-For", "fe80::1%nosuchif0"))));
     c.add(resolver("forwardedFor(2): several header lines are one list in order", "forwardedFor", 2, null,
         List.of(r(t0, "10.0.0.1", "X-Forwarded-For", "1.1.1.1", "X-Forwarded-For", "203.0.113.5, 10.0.0.9"),
             r(t0, "10.0.0.1", "X-Forwarded-For", "1.1.1.1, 203.0.113.5", "X-Forwarded-For", "10.0.0.9"))));
