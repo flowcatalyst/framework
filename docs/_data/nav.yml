@@ -19,6 +19,7 @@
     - { title: Migrating config to code, path: guide/migrating-config-to-code.md }
     - { title: Context, path: guide/context.md }
     - { title: Locks, path: guide/locks.md }
+    - { title: Object stores, path: guide/object-stores.md }
     - { title: The write path, path: guide/write-path.md }
     - { title: Checked SQL, path: guide/checked-sql.md }
     - { title: Background and metrics, path: guide/background-and-metrics.md }
@@ -79,6 +80,7 @@
     - { title: Config and code contract, path: contracts/config-and-code.md }
     - { title: Database and Redis, path: contracts/database-and-redis.md }
     - { title: Locks contract, path: contracts/locks.md }
+    - { title: Object stores contract, path: contracts/object-stores.md }
     - { title: Write path contract, path: contracts/write-path.md }
     - { title: Checked SQL contract, path: contracts/checked-sql.md }
     - { title: HTTP contract, path: contracts/http.md }

@@ -43,6 +43,8 @@
     <module>framework-locks</module>
     <module>framework-locks-database</module>
     <module>framework-locks-redis</module>
+    <module>framework-objectstore</module>
+    <module>framework-objectstore-s3</module>
     <module>framework-usecase</module>
     <module>framework-client-settings</module>
     <module>framework-http</module>

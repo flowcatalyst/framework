@@ -4,6 +4,10 @@ The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; cont
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
 rewritten at hand-off and can lag the code in between.
 
+- **MA-13 (2026-10-21): object stores.** `framework-objectstore` (+ `-s3`): put/get/delete bytes by key, stores named in code,
+  `memory`/`folder`/`s3` drivers, folder refused unless `APP_ENV` is `local` or `test`; contract `contracts/object-stores.md`, guide
+  `guide/object-stores.md`. Asked for by the ingest control plane (its `SetArchive`); that app switches once this is available
+  (built locally with `./mvnw install`; nothing published). Not in Go or Rust.
 - **G7.7 (2026-10-19): the tickets trial against a real platform.** Go, then Java, against an isolated local `fcdev`
   (transcript: `go/g77-real-platform.md`). Everything the fake hid worked except one thing: a scheduled job is synced
   with **no `targetUrl` and the platform has no default**, so every firing failed. **Go fixed** (`becf624`: the
