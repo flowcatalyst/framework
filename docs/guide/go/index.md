@@ -13,7 +13,7 @@ The Java pages of this guide describe the Java framework only.
 [locks](locks.md)) and G2 (the [write path](write-path.md) and [checked SQL](checked-sql.md)) and G3
 ([HTTP and the SPA](http.md), [typed operations and OpenAPI](openapi.md)) and G4 (the platform:
 [rate limiting](rate-limiting.md), the [HTTP client](http-client.md), [secrets](secrets.md) and the
-[FlowCatalyst module](flowcatalyst.md)) are built, and so are the load phase and the transaction join of the write path and [per-client settings](client-settings.md) (G7.3 to G7.5); G5b ([sessions and login](sessions-and-login.md)) is built, and so is G7.6, the tickets trial in Go ([a whole service on the FlowCatalyst module](flowcatalyst.md#a-whole-service-on-it-the-tickets-trial)).
+[FlowCatalyst module](flowcatalyst.md)) are built, and so are the load phase and the transaction join of the write path and [per-client settings](client-settings.md) (G7.3 to G7.5); G8 ([object stores](object-stores.md)) is built, G5b ([sessions and login](sessions-and-login.md)) is built, and so is G7.6, the tickets trial in Go ([a whole service on the FlowCatalyst module](flowcatalyst.md#a-whole-service-on-it-the-tickets-trial)).
 Nothing is published; module and package names are the design's working names.
 
 ## The tree
@@ -30,6 +30,7 @@ go/
   clientsettings/        per-client settings: definitions in code, fw_client_settings, repository, store
   httpclient/            the HTTP client library; module/ the framework adapter (named clients, metrics)
   secrets/               per-client secrets: Env and File stores, cache policy, resolver
+  objectstore/           object stores: memory and folder drivers, Build; s3store/ the S3 driver, objectstoretest/ the contract suite
   fwtest/                PostgreSQL 18 and Redis for tests, a database per test, a fake clock
   internal/conformance/  the conformance runner: checks the shared vectors in ../conformance/
   cmd/fwvet/             the framework's analyzers, run by go vet
