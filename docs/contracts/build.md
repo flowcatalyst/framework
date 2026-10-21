@@ -78,7 +78,12 @@ itself (getting started, step 1) until the SDK is published somewhere.
 1. **Publishing the SDK.** Either the platform repository publishes `flowcatalyst-sdk` (preferred:
    it owns the artifact), or this workflow also deploys the SDK jar it builds into this repository's
    package registry. The conservative choice taken: neither; documented.
-2. **Group id and naming** remain placeholders (implementation plan, open question 6). Publishing
-   fixes them in consumers' builds; settle before the first tag.
-3. **First version number** (`0.1.0` suggested; the tag decides).
+2. **Group id and naming**: settled 2026-10-21, kept as published: group id `io.flowcatalyst.framework`,
+   artifacts `framework-*`. Consumers build against these now.
+3. **First version number**: settled 2026-10-21. `v0.1.0` was tagged first and its publish run failed
+   midway (framework-http's rate-limit conformance test depended on the host having an `eth0` network
+   interface), leaving ten modules uploaded as 0.1.0; **0.1.0 is incomplete, do not use it**. The release is
+   `v0.1.1`, which published all 27 artifacts. The workflow now runs `verify` (everything built and tested)
+   before a separate `deploy -DskipTests`, and a `workflow_dispatch` dry run builds and tests without
+   uploading, so a test failure cannot leave a half-published version again.
 4. **Javadoc jars** are not produced (GitHub Packages does not require them; Maven Central would).

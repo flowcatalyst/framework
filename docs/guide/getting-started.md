@@ -1,10 +1,13 @@
 <!-- types: AppBuilder, App, Module, Launch -->
 # Getting started
 
-> **Status: a BOM, publishing ready, nothing published yet.** An application imports
-> `framework-bom` and needs no framework parent and no special compiler setup. The artifacts will be
-> served by GitHub Packages from the first `v*` tag (the workflow is in the repository); until then,
-> build the framework into your local Maven repository (step 1). See [STATUS](STATUS.md).
+> **Status: published to GitHub Packages as 0.1.1** (2026-10-21; use 0.1.1 or later, **not 0.1.0**, which is
+> only partly uploaded: the first publish run failed in the middle). An application imports
+> `framework-bom:0.1.1` and needs no framework parent and no special compiler setup. The registry is
+> `https://maven.pkg.github.com/flowcatalyst/framework`; GitHub Packages asks for a token with
+> `read:packages` even for a public repository (a `github` server entry in `~/.m2/settings.xml`). You can still
+> build the framework into your local Maven repository instead (step 1). `flowcatalyst-sdk` is not
+> published by the framework: it comes from the platform repository. See [STATUS](STATUS.md).
 
 ## Prerequisites
 

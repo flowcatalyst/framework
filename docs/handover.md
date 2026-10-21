@@ -4,6 +4,10 @@ The plan and status live in `implementation-plan.md` and `guide/STATUS.md`; cont
 `contracts/`; developer docs in `guide/` (keep them current: see `../CLAUDE.md`). This note is
 rewritten at hand-off and can lag the code in between.
 
+- **Released (2026-10-21): framework v0.1.1 on GitHub Packages** (`io.flowcatalyst.framework`, 27 artifacts, workflow run 39582304709).
+  `v0.1.0` is an incomplete upload (ten modules, then a Linux-only test failure) and must not be used; it was left in place rather than
+  deleted. The publish workflow now builds and tests before it uploads and has a dry-run trigger. Consumers need a token with
+  `read:packages`. The object store (MA-13) is in this release.
 - **MA-13 (2026-10-21): object stores.** `framework-objectstore` (+ `-s3`): put/get/delete bytes by key, stores named in code,
   `memory`/`folder`/`s3` drivers, folder refused unless `APP_ENV` is `local` or `test`; contract `contracts/object-stores.md`, guide
   `guide/object-stores.md`. Asked for by the ingest control plane (its `SetArchive`); that app switches once this is available
