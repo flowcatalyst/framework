@@ -16,6 +16,18 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-core</artifactId>
     </dependency>
+    <!-- Tests only: the shared conformance vectors (key rules) -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

@@ -27,6 +27,10 @@ no space, backslash, control character or non-ASCII. A refused key is `IllegalAr
 from `put`, `get` and `delete` on every driver. A key must not be both a value and the start of
 another key; the folder driver reports it as `ObjectStoreException`.
 
+The rules are also a shared vector, `conformance/objectstore/keys.json`: 47 candidate keys and whether each is
+accepted (a long key is written as `repeat` and `length`: the text repeated and cut to that length). Java writes it;
+Go and Rust compare their own checks against it.
+
 ## 3. Limits and errors
 
 `maxBytes` per store, default 64 MiB (`withMaxBytes`). Over the limit: `put` throws

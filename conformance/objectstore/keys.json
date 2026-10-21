@@ -1,0 +1,151 @@
+{
+  "description" : "Object store key rules (object-stores contract, section 2): each candidate key and whether it is accepted. A long key is described as 'repeat' (the text repeated until the key is 'length' characters, the last repeat cut) instead of written out.",
+  "cases" : [ {
+    "key" : "a",
+    "valid" : true
+  }, {
+    "key" : "A1",
+    "valid" : true
+  }, {
+    "key" : "0",
+    "valid" : true
+  }, {
+    "key" : "a.b",
+    "valid" : true
+  }, {
+    "key" : "a-b_c",
+    "valid" : true
+  }, {
+    "key" : "a/b/c",
+    "valid" : true
+  }, {
+    "key" : "a/b.json",
+    "valid" : true
+  }, {
+    "key" : "UPPER/lower",
+    "valid" : true
+  }, {
+    "key" : "a..b",
+    "valid" : true
+  }, {
+    "key" : "a.",
+    "valid" : true
+  }, {
+    "key" : "a-",
+    "valid" : true
+  }, {
+    "key" : "a_",
+    "valid" : true
+  }, {
+    "key" : "9/9",
+    "valid" : true
+  }, {
+    "key" : "sets/2026-10-21/apply-1.json",
+    "valid" : true
+  }, {
+    "key" : "<repeat>512",
+    "repeat" : "x",
+    "length" : 512,
+    "valid" : true
+  }, {
+    "key" : "<repeat>511",
+    "repeat" : "a/",
+    "length" : 511,
+    "valid" : true
+  }, {
+    "key" : "",
+    "valid" : false
+  }, {
+    "key" : "/",
+    "valid" : false
+  }, {
+    "key" : "/a",
+    "valid" : false
+  }, {
+    "key" : "a/",
+    "valid" : false
+  }, {
+    "key" : "a//b",
+    "valid" : false
+  }, {
+    "key" : ".",
+    "valid" : false
+  }, {
+    "key" : "..",
+    "valid" : false
+  }, {
+    "key" : "a/..",
+    "valid" : false
+  }, {
+    "key" : "../a",
+    "valid" : false
+  }, {
+    "key" : "a/./b",
+    "valid" : false
+  }, {
+    "key" : "a/../b",
+    "valid" : false
+  }, {
+    "key" : ".hidden",
+    "valid" : false
+  }, {
+    "key" : "a/.hidden",
+    "valid" : false
+  }, {
+    "key" : "-a",
+    "valid" : false
+  }, {
+    "key" : "_a",
+    "valid" : false
+  }, {
+    "key" : "a/-b",
+    "valid" : false
+  }, {
+    "key" : "a b",
+    "valid" : false
+  }, {
+    "key" : "a/ b",
+    "valid" : false
+  }, {
+    "key" : "a\\b",
+    "valid" : false
+  }, {
+    "key" : "a\u0000b",
+    "valid" : false
+  }, {
+    "key" : "a\nb",
+    "valid" : false
+  }, {
+    "key" : "a\tb",
+    "valid" : false
+  }, {
+    "key" : "é",
+    "valid" : false
+  }, {
+    "key" : "a/é",
+    "valid" : false
+  }, {
+    "key" : "a:b",
+    "valid" : false
+  }, {
+    "key" : "a?b",
+    "valid" : false
+  }, {
+    "key" : "a#b",
+    "valid" : false
+  }, {
+    "key" : "a%2e",
+    "valid" : false
+  }, {
+    "key" : "a*b",
+    "valid" : false
+  }, {
+    "key" : "a@b",
+    "valid" : false
+  }, {
+    "key" : "<repeat>513",
+    "repeat" : "x",
+    "length" : 513,
+    "valid" : false
+  } ]
+}
