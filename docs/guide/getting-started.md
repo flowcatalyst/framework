@@ -33,7 +33,20 @@ This runs the whole build, including the tests (which need Docker). To skip the 
 `verify`, so it needs Docker even then. To leave the examples out:
 `./mvnw install -DskipTests -pl '!examples/locks-demo,!examples/orders-demo'`.
 
-The artifacts get group id `io.flowcatalyst.framework` and version `0.1.0-SNAPSHOT`.
+The artifacts get group id `io.flowcatalyst.framework` and the version in the poms, which is
+`0.1.0-SNAPSHOT` on every commit **and at every release tag**: the publish workflow sets the release
+version at publish time and the tag's sources are not changed. So `./mvnw install` at the `v0.1.1` tag
+installs `0.1.0-SNAPSHOT`, not 0.1.1. To get a release's version locally, set it first, as the workflow
+does:
+
+```
+git checkout v0.1.1
+./mvnw -B org.codehaus.mojo:versions-maven-plugin:2.19.1:set -DnewVersion=0.1.1 -DprocessAllModules=true -DgenerateBackupPoms=false
+./mvnw install -DskipTests
+git checkout -- .          # put the poms back
+```
+
+Or depend on the published artifacts (the status note at the top of this page).
 
 The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.11` (the
 FlowCatalyst Java SDK). **That artifact is not published to Maven Central or to any other remote
@@ -142,8 +155,8 @@ Then list the modules you use, without versions:
 ```
 
 The checked-SQL Maven plugin is a plugin, which a BOM cannot manage: give it the framework's version
-yourself (`<version>0.1.0-SNAPSHOT</version>`, or a `framework.version` property you also use for the
-BOM); see [Checked SQL](checked-sql.md).
+yourself (the version you installed or the published one, for example `<version>0.1.1</version>`, or a
+`framework.version` property you also use for the BOM); see [Checked SQL](checked-sql.md).
 
 The modules, and what each is for:
 

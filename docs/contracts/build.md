@@ -12,7 +12,7 @@ An application outside this repository needs **only**:
 3. Java 25 (`maven.compiler.release` 25) and a surefire that runs JUnit 6 (3.x; the framework's own
    build uses 3.6.0);
 4. a repository that serves the artifacts (GitHub Packages, section 3, or the local repository after
-   `./mvnw install`).
+   `./mvnw install`; note that the poms carry `0.1.0-SNAPSHOT` even at a release tag, section 3).
 
 It does **not** need `framework-parent`, Error Prone, NullAway or `.mvn/jvm.config`. Those are the
 framework's own build strictness; the framework jars are ordinary Java 25 bytecode. (The first
