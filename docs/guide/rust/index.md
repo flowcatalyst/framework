@@ -9,7 +9,7 @@ framework tables. The design is in [`docs/rust/`](../../rust/design.md); the pla
 
 **State:** milestones R0 (the workspace), R1 (foundation and locks: [application and
 config](core.md), [database and Redis](database.md), [locks](locks.md)) and R2 (the
-[write path](write-path.md) and [checked SQL](checked-sql.md)) are built. HTTP (R3) and the platform
+[write path](write-path.md) and [checked SQL](checked-sql.md)) are built, and so are the Rust object stores (RA-13, the counterpart of the Java MA-13: [object stores](object-stores.md)). HTTP (R3) and the platform
 module (R4 onwards) are not started. Nothing is published; crate names are the
 design's working names (`fw-*`). The Java pages of this guide describe the Java framework only.
 
@@ -26,6 +26,7 @@ rust/
   crates/fw-db          PostgreSQL instances, the migration runner, Db and Tx
   crates/fw-redis       Redis connections
   crates/fw-locks       leases, with_lock, the lock gate; drivers memory, database (feature postgres), redis (feature redis)
+  crates/fw-objectstore object stores: put, get, delete by key; drivers memory, folder, s3 (feature s3)
   crates/fw-usecase     use cases, the runner, plans, Fresh/Loaded, events, the outbox, dispatch jobs
   crates/fw-test        PostgreSQL 18 and Redis for tests, a fresh database per test
   conformance/          the conformance runner: checks the shared vectors in ../conformance/

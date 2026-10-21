@@ -73,6 +73,9 @@ zeroize = "1.8"
 uuid = { version = "1", default-features = false, features = ["v4", "std"] }
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json"] }
 redis = { version = "0.29", default-features = false, features = ["tokio-comp", "connection-manager", "script"] }
+# S3 driver of fw-objectstore. No sigv4a (multi-region access points), nothing else the driver uses.
+aws-config = { version = "1.13", features = ["behavior-version-latest"] }
+aws-sdk-s3 = { version = "1.153", default-features = false, features = ["behavior-version-latest", "rt-tokio", "http-1x", "default-https-client"] }
 testcontainers = "0.27"
 testcontainers-modules = { version = "0.15", default-features = false, features = ["postgres", "redis"] }
 
@@ -81,5 +84,6 @@ fw-core = { path = "crates/fw-core" }
 fw-db = { path = "crates/fw-db" }
 fw-redis = { path = "crates/fw-redis" }
 fw-locks = { path = "crates/fw-locks" }
+fw-objectstore = { path = "crates/fw-objectstore" }
 fw-usecase = { path = "crates/fw-usecase" }
 fw-test = { path = "crates/fw-test" }
