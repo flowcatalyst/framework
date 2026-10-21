@@ -49,6 +49,7 @@
     - { title: "Rust: application and config", path: guide/rust/core.md }
     - { title: "Rust: database and Redis", path: guide/rust/database.md }
     - { title: "Rust: locks", path: guide/rust/locks.md }
+    - { title: "Rust: object stores", path: guide/rust/object-stores.md }
     - { title: "Rust: write path", path: guide/rust/write-path.md }
     - { title: "Rust: checked SQL", path: guide/rust/checked-sql.md }
 - group: Go
@@ -57,6 +58,7 @@
     - { title: "Go: application and config", path: guide/go/core.md }
     - { title: "Go: database and Redis", path: guide/go/database.md }
     - { title: "Go: locks", path: guide/go/locks.md }
+    - { title: "Go: object stores", path: guide/go/object-stores.md }
     - { title: "Go: write path", path: guide/go/write-path.md }
     - { title: "Go: HTTP and the SPA", path: guide/go/http.md }
     - { title: "Go: typed operations and OpenAPI", path: guide/go/openapi.md }

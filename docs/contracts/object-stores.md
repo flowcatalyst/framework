@@ -73,4 +73,25 @@ driver's test. The S3 driver is tested against an in-process S3 (the real SDK ov
 ## 7. Not in this contract
 
 Streaming reads and writes, listing, metadata and content types, conditional puts, multipart uploads,
-pre-signed URLs, encryption settings, and a Go or Rust implementation.
+pre-signed URLs and encryption settings.
+
+## 8. Go
+
+The Go framework implements this contract (guide: `guide/go/object-stores.md`, status G8): package
+`objectstore` with the `memory` and `folder` drivers, `objectstore/s3store` on the AWS SDK for Go v2, and
+`objectstore/objectstoretest`, the contract suite. It is the second runtime; the key rules are checked
+against the shared vector `conformance/objectstore/keys.json`. Go-shaped differences: `get` returns
+`(value, found, error)`, a refused key or an oversized value is an error wrapping
+`ErrInvalidArgument`, and any I/O or service failure wraps `ErrStore`. The S3 test also ran against
+LocalStack on 2026-10-21.
+
+## 9. Rust
+
+The Rust framework implements this contract (guide: `guide/rust/object-stores.md`, status RA-13): crate
+`fw-objectstore` with the `memory` and `folder` drivers and the `s3` driver behind the Cargo feature
+`s3` (AWS SDK for Rust), and `fw_objectstore::testing`, the contract suite. The key rules are checked
+against the shared vector `conformance/objectstore/keys.json`. Rust-shaped differences: `get` returns
+`Option<Vec<u8>>`, a refused key or an oversized value is `ObjectStoreError::Argument`, any I/O or service
+failure is `ObjectStoreError::Failed`, stores are built with `ObjectStores::builder()...build(boot)`
+(no module), and the S3 client has nothing to close. The S3 test also ran against LocalStack on
+2026-10-21.
