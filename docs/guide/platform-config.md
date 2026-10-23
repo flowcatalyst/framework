@@ -26,8 +26,8 @@ SecretsModule.builder()
 List `FlowCatalystModule` as well; the driver takes the `PlatformClient` from it, and start-up fails
 if `flowcatalyst.enabled` is false.
 
-**What the service account needs.** Reading a secret is a permission on the platform:
-`platform:application-service:config:reveal`, carried by the platform's `platform:application-service`
+**What the service account needs.** Every platform-config call is a permission on the platform:
+`platform:application-service:config:view` (list), `:update` (set, delete) and `:reveal` (read a secret), all carried by the platform's `platform:application-service`
 role, which an application's provisioned service account holds. It reaches only the application(s) the
 account is bound to and, for an account below anchor tier, only the values of clients it may act for.
 After upgrading a platform that predates the permission, make sure the platform's roles are synced.
