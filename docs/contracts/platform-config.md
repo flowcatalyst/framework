@@ -35,8 +35,12 @@ application's config to an application-scoped account), so the framework check i
 
 Path segments are percent-encoded. `clientId` is the client's id (`clt_...`) **or its identifier** (`acme`; the
 platform resolves either to the id, stores the id, and answers `404` for an unknown client), absent for the
-global value. An application's service account may reveal its own application's secrets without any
-extra permission; nothing else is needed on the platform side.
+global value. **Reveal is always a permission** (amended 2026-10-23): the application's service account needs
+`platform:application-service:config:reveal`, which the platform's `platform:application-service` role carries (an
+account provisioned for the application has it; check it after a platform upgrade that predates the permission).
+The platform confines it to the application(s) the account is bound to and, below anchor tier, to client-scoped
+values of the clients it may act for. Nothing else is needed on the platform side; the platform's role sync
+(`platform:application-service` is seeded) delivers the permission to existing accounts.
 
 ## 3. The `platform` secrets driver
 

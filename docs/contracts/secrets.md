@@ -112,8 +112,10 @@ secret to an application, confined to its own application, audited and encrypted
 ## 5. Platform findings (reported, not framework code)
 
 1. No secret-resolution endpoint: **closed 2026-10-23** (the reveal endpoint, above).
-2. **Confinement gap** (closed with the reveal endpoint: ordinary reads now return `***` for a secret, and only the
-   application's own service account, or a caller holding `platform:admin:config:reveal`, may reveal). As found: `GET /api/config/{app}/{section}/{property}?clientId=` (and
+2. **Confinement gap** (closed with the reveal endpoint: ordinary reads now return `***` for a secret, and only a
+   caller holding `platform:admin:config:reveal`, or an application's service account holding
+   `platform:application-service:config:reveal` (carried by the `platform:application-service` role; confined to
+   its bound applications and clients), may reveal). As found: `GET /api/config/{app}/{section}/{property}?clientId=` (and
    `GET /api/platform-config/{app}`) return SECRET-typed values **unmasked to any anchor-tier
    caller**, and an application's provisioned service account is anchor tier
    (`principal.NewService`), so one application's service account can read another application's
