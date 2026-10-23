@@ -108,7 +108,7 @@ Delete the section; name the stores in code. `new SecretsModule()` is gone: use 
 | `env: { driver: env, prefix: CLIENT_SECRET_ }` | `SecretsModule.builder().store("env", SecretStores.env("CLIENT_SECRET_"))` |
 | `files: { driver: file, directory: /run/secrets/clients, max-bytes: 4096 }` | `.store("files", SecretStores.file(Path.of("/run/secrets/clients")).withMaxBytes(4096))` |
 | `cache-ttl: 1m, cache-max: 500` | `.withCache(CachePolicy.of(Duration.ofMinutes(1), 500))`; `cache-ttl: 0s` is `CachePolicy.none()` |
-| `driver: platform` | `SecretStores.platform()` (still fails start-up: blocked on the platform) |
+| `driver: platform` | `PlatformSecrets.store()` from `framework-flowcatalyst` ([platform config](platform-config.md)) |
 | `secrets.default: files` | `.defaultStore("files")` |
 
 A directory or prefix that differs per deployment: declare a setting of your own and read it in a

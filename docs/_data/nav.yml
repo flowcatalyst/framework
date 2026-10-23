@@ -42,6 +42,7 @@
 - group: FlowCatalyst
   items:
     - { title: The FlowCatalyst module, path: guide/flowcatalyst-module.md }
+    - { title: Platform config and secrets, path: guide/platform-config.md }
     - { title: Receivers, path: guide/receivers.md }
 - group: Rust
   items:

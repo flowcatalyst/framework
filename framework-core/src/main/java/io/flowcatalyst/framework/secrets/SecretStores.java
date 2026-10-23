@@ -47,8 +47,9 @@ public final class SecretStores {
   }
 
   /**
-   * The {@code platform} driver. Blocked: the platform has no endpoint that resolves a per-client
-   * secret for an application (secrets contract section 4), so start-up fails saying so.
+   * The {@code platform} driver's placeholder. The driver needs the platform client, which this
+   * module cannot depend on, so start-up fails naming {@code PlatformSecrets.store()} in {@code
+   * framework-flowcatalyst}, which is the driver (secrets contract section 4).
    *
    * @return the store
    */
@@ -140,9 +141,9 @@ public final class SecretStores {
   }
 
   /**
-   * The {@code platform} driver, blocked on the platform.
+   * The placeholder {@link #platform()} returns; it never builds a store.
    *
-   * @param cache how found values would be cached
+   * @param cache unused
    */
   public record PlatformStore(CachePolicy cache) implements SecretStoreFactory {
 
@@ -152,7 +153,15 @@ public final class SecretStores {
     }
   }
 
-  private static SecretStore cached(SecretStore store, CachePolicy cache, Lookup lookup) {
+  /**
+   * Wraps a store in the framework's cache, for a driver written outside this module.
+   *
+   * @param store the store
+   * @param cache how found values are kept; a zero time to live returns the store itself
+   * @param lookup typed access to services (the monotonic clock)
+   * @return the cached store
+   */
+  public static SecretStore cached(SecretStore store, CachePolicy cache, Lookup lookup) {
     return cache.ttl().isZero()
         ? store
         : new CachingSecretStore(store, cache.ttl(), cache.maxEntries(), lookup.get(MonotonicClock.class));

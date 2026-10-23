@@ -84,11 +84,12 @@ client `acme-corp`, name `sftp-password`, prefix `CLIENT_SECRET_` →
 - The variables come from the environment the application was built with (in tests, the map given
   to `AppBuilder.environment`), read by exact name; they are never listed.
 
-### The `platform` driver: not available
+### The `platform` driver
 
-FlowCatalyst has no endpoint yet that returns a per-client secret to an application, so a store
-built with `SecretStores.platform()` fails start-up with a message saying so. What the platform needs to offer is in
-the contract, section 4.
+`PlatformSecrets.store()` in `framework-flowcatalyst` reads a client's secret from the platform's
+configuration with the reveal call, as the application's service account. It is described on
+[Platform config and secrets](platform-config.md). `SecretStores.platform()` in this module is only a
+placeholder: it fails start-up with a message naming `PlatformSecrets.store()`.
 
 ## Using it
 

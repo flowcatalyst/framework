@@ -304,11 +304,11 @@ class SecretsTest {
   // ---- the resolver and the platform driver ------------------------------------------------
 
   @Test
-  void thePlatformDriverIsBlockedAndSaysSo() throws IOException {
+  void thePlatformPlaceholderFailsAtStartAndNamesThePlatformSecretsDriver() throws IOException {
     Throwable t =
         catchThrowable(
             () -> start(SecretsModule.builder().store("p", SecretStores.platform()).build(), Map.of()));
-    assertThat(t).isInstanceOf(StartupException.class).hasMessageContaining("blocked on the platform");
+    assertThat(t).isInstanceOf(StartupException.class).hasMessageContaining("PlatformSecrets.store()");
   }
 
   @Test

@@ -76,6 +76,29 @@ final class PlatformAdminParsing {
     return new ResendResult(opt(n, "inviteLink"), opt(n, "expiresAt"));
   }
 
+  static PlatformConfigData.Property configProperty(JsonNode n) {
+    return new PlatformConfigData.Property(
+        text(n, "section"),
+        text(n, "property"),
+        opt(n, "clientId"),
+        text(n, "valueType"),
+        text(n, "value"),
+        opt(n, "description"),
+        text(n, "updatedAt"));
+  }
+
+  static List<PlatformConfigData.Property> configProperties(JsonNode n) {
+    List<PlatformConfigData.Property> out = new ArrayList<>();
+    for (JsonNode p : array(n.get("items"))) {
+      out.add(configProperty(p));
+    }
+    return List.copyOf(out);
+  }
+
+  static PlatformConfigData.Revealed revealed(JsonNode n) {
+    return new PlatformConfigData.Revealed(text(n, "section"), text(n, "property"), opt(n, "clientId"), text(n, "value"), text(n, "updatedAt"));
+  }
+
   static EventInfo event(JsonNode n) {
     return new EventInfo(
         text(n, "id"),

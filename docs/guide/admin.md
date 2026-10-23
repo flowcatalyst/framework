@@ -1,4 +1,4 @@
-<!-- types: AdminModule, AdminSection, Admin, AdminApi, AdminRegistry, AdminConfigModule, AdminConfigApi, PlatformAdminModule, PlatformAdminApi, PlatformUsersAdminModule, PlatformUsersApi, PlatformActivityAdminModule, PlatformActivityApi, PlatformAdminData, PlatformClient, SettingStatus, Definitions, Operation, Context -->
+<!-- types: AdminModule, AdminSection, Admin, AdminApi, AdminRegistry, AdminConfigModule, AdminConfigApi, PlatformAdminModule, PlatformAdminApi, PlatformUsersAdminModule, PlatformConfigAdminModule, PlatformUsersApi, PlatformActivityAdminModule, PlatformActivityApi, PlatformAdminData, PlatformClient, SettingStatus, Definitions, Operation, Context -->
 # The admin area
 
 Every application gets the same small administration area, inside its own SPA and behind its own
@@ -25,6 +25,7 @@ needs.
 | `AdminConfigModule`: the config section (reads the application's own `Config`) | `framework-admin` |
 | `PlatformAdminModule`: the event types and roles sections (read the platform) | `framework-flowcatalyst` |
 | `PlatformUsersAdminModule`: users, invitations, invite / resend / revoke | `framework-flowcatalyst` |
+| `PlatformConfigAdminModule`: the application's platform config and secrets, with a separate `reveal` permission ([guide](platform-config.md)) | `framework-flowcatalyst` |
 | `PlatformActivityAdminModule`: events and dispatch jobs with attempts | `framework-flowcatalyst` |
 | `FwAdminShell`, `FwAdminAbout`, `adminRoutes`, `adminNavigation`, `useAdminNavigation`, `AdminPage`; the data pages: `standardAdminPages`, `replaceAdminPage`, `AdminDataApi`, `adminPermissions` | `@flowcatalyst/ui` |
 

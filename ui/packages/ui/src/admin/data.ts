@@ -187,6 +187,36 @@ export interface AdminConfigView {
   readonly health: { readonly ready: boolean; readonly checks: readonly { readonly name: string; readonly status: "UP" | "DOWN" | "TIMED_OUT"; readonly critical: boolean }[] };
 }
 
+/** A property the platform holds for the application (`ConfigItem`); a secret's `value` is always `***`. */
+export interface AdminPlatformConfigItemView {
+  readonly section: string;
+  readonly property: string;
+  readonly clientId?: string | undefined;
+  readonly valueType: "PLAIN" | "SECRET";
+  readonly value: string;
+  readonly description?: string | undefined;
+  readonly updatedAt: string;
+}
+
+export interface AdminPlatformConfigListView {
+  readonly items: AdminPlatformConfigItemView[];
+}
+
+export interface AdminPlatformConfigSetBody {
+  readonly value: string;
+  readonly valueType: "PLAIN" | "SECRET";
+  readonly description?: string | undefined;
+}
+
+/** The one answer that carries a secret's plaintext (`RevealedValue`). */
+export interface AdminPlatformConfigRevealedView {
+  readonly section: string;
+  readonly property: string;
+  readonly clientId?: string | undefined;
+  readonly value: string;
+  readonly updatedAt: string;
+}
+
 /** What a generated call answers (client-fetch without `throwOnError`): data, or an error and the response. */
 export interface AdminCallResult<T> {
   readonly data?: T | undefined;
@@ -256,6 +286,26 @@ export interface AdminDataApi {
     AdminPageView<AdminDispatchJobView>
   >;
   readonly getAdminDispatchJob?: AdminCall<{ readonly path: { readonly id: string } }, AdminDispatchJobDetailView>;
+  readonly listAdminPlatformConfig?: AdminCall<
+    { readonly query?: { readonly section?: string; readonly clientId?: string } },
+    AdminPlatformConfigListView
+  >;
+  readonly setAdminPlatformConfig?: AdminCall<
+    {
+      readonly path: { readonly section: string; readonly property: string };
+      readonly query?: { readonly clientId?: string };
+      readonly body: AdminPlatformConfigSetBody;
+    },
+    AdminPlatformConfigItemView
+  >;
+  readonly deleteAdminPlatformConfig?: (options: {
+    readonly path: { readonly section: string; readonly property: string };
+    readonly query?: { readonly clientId?: string };
+  }) => PromiseLike<{ readonly error?: unknown; readonly response?: Response }>;
+  readonly revealAdminPlatformConfig?: AdminCall<
+    { readonly path: { readonly section: string; readonly property: string }; readonly query?: { readonly clientId?: string } },
+    AdminPlatformConfigRevealedView
+  >;
 }
 
 /** What the plugin option `admin` holds. */
@@ -319,6 +369,9 @@ export interface AdminPermissions {
   readonly usersRevoke: string;
   readonly activityView: string;
   readonly configView: string;
+  readonly platformConfigView: string;
+  readonly platformConfigManage: string;
+  readonly platformConfigReveal: string;
 }
 
 export function adminPermissions(application: string): AdminPermissions {
@@ -333,6 +386,9 @@ export function adminPermissions(application: string): AdminPermissions {
     usersRevoke: p("users", "revoke"),
     activityView: p("activity", "view"),
     configView: p("config", "view"),
+    platformConfigView: p("platform-config", "view"),
+    platformConfigManage: p("platform-config", "manage"),
+    platformConfigReveal: p("platform-config", "reveal"),
   };
 }
 
@@ -344,4 +400,14 @@ export const inviteBodySchema = z.object({
   roles: z.array(z.string().min(1).max(100).regex(/\S/)).min(1).max(50),
   sendInvitation: z.boolean().optional(),
   returnInviteLink: z.boolean().optional(),
+});
+
+/** The add/edit form's rules: the constants of the server's `SetBody` and path names (platform config contract section 4). */
+export const platformConfigFormSchema = z.object({
+  section: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/, "Lower-case letters, digits and hyphens, starting with a letter"),
+  property: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/, "Lower-case letters, digits and hyphens, starting with a letter"),
+  clientId: z.string().max(100),
+  valueType: z.enum(["PLAIN", "SECRET"]),
+  value: z.string().min(1, "A value is required").max(65536).regex(/\S/, "A value is required"),
+  description: z.string().max(500),
 });

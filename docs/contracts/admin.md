@@ -90,6 +90,7 @@ is the shape the platform's definition sync accepts (flowcatalyst.md section 2).
 | `{app}:admin:{section}:view` | reading a section (M4e: `event-types`, `roles`, `config`, `users`, `activity`) |
 | `{app}:admin:users:invite`, `:resend`, `:revoke` | inviting a user, sending an invitation again, revoking one (section 12) |
 | `{app}:admin:{section}:manage` | changing a section |
+| `{app}:admin:platform-config:view`, `:manage`, `:reveal` | the platform-config section: listing, writing, and reading a secret's plaintext (section 14) |
 
 One suggested role, `{app}:admin`, grants `{app}:admin:*:*`. The application maps its platform role
 to it in its permission mapping (Java: `PermissionMapper.byRole(Map.of("orders-demo:admin",
@@ -478,3 +479,12 @@ page size (`pageSize`, default 25, the server clamps to 1 to 200) is the applica
 drawer routes' permissions; subsets and replacement; the missing-call error; one page mounted on a
 fake client (page size, the rows); and the orders and tickets browser suites against the real Java
 servers (the orders suite exercises all six pages; the tickets suite mounts `about` and `config`).
+
+## 14. Platform config (2026-10-23)
+
+The section `platform-config` (`/admin/platform-config`, "Platform config") shows and edits the configuration and
+secrets the application keeps on the platform, as the application's own service account, with `PlatformConfigAdminModule`
+in `framework-flowcatalyst`. Operations `listAdminPlatformConfig`, `setAdminPlatformConfig`, `deleteAdminPlatformConfig`
+and `revealAdminPlatformConfig`; permissions `view`, `manage` and `reveal` (reveal is separate and is a `POST`). The
+wire, the rules and what was built are in [platform-config.md](platform-config.md) (sections 4 and 8). The shared page
+(a seventh standard page) is section 5 of that contract and is not built yet.

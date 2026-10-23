@@ -581,6 +581,79 @@ public final class PlatformClient {
     return PlatformAdminParsing.jobs(http().call("GET", "/api/dispatch-jobs/event/" + PlatformHttp.enc(eventId), java.util.Map.of(), null));
   }
 
+  // ---- platform configuration (platform-config contract section 2) -------------------------------
+
+  /**
+   * Lists the application's configuration: {@code GET /api/platform-config/{app}}. The platform
+   * answers {@code ***} for every secret.
+   *
+   * @return the properties, global and per client
+   * @throws PlatformException when the platform refuses or cannot be reached
+   */
+  public List<PlatformConfigData.Property> configProperties() {
+    return PlatformAdminParsing.configProperties(
+        http().call("GET", "/api/platform-config/" + PlatformHttp.enc(application().value()), java.util.Map.of(), null));
+  }
+
+  /**
+   * Sets a property: {@code PUT /api/config/{app}/{section}/{property}?clientId=}.
+   *
+   * @param section the section
+   * @param property the property
+   * @param clientId the platform client id, or null for the global value
+   * @param request the value, its type and description
+   * @return the property as stored; a secret's value is {@code ***}
+   * @throws PlatformException when the platform refuses or cannot be reached
+   */
+  public PlatformConfigData.Property setConfigProperty(
+      String section, String property, @Nullable String clientId, PlatformConfigData.SetRequest request) {
+    java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("value", request.value());
+    body.put("valueType", request.valueType());
+    if (request.description() != null) {
+      body.put("description", request.description());
+    }
+    return PlatformAdminParsing.configProperty(http().call("PUT", configPath(section, property), clientQuery(clientId), body));
+  }
+
+  /**
+   * Deletes a property: {@code DELETE /api/config/{app}/{section}/{property}?clientId=}. The platform
+   * answers {@code 204} whether or not it existed.
+   *
+   * @param section the section
+   * @param property the property
+   * @param clientId the platform client id, or null for the global value
+   * @throws PlatformException when the platform refuses or cannot be reached
+   */
+  public void deleteConfigProperty(String section, String property, @Nullable String clientId) {
+    http().call("DELETE", configPath(section, property), clientQuery(clientId), null);
+  }
+
+  /**
+   * Reads a secret's plaintext: {@code GET /api/config/{app}/{section}/{property}/secret?clientId=}.
+   * The platform audits it. A failure never carries the value.
+   *
+   * @param section the section
+   * @param property the property
+   * @param clientId the platform client id, or null for the global value
+   * @return the plaintext; hand it to the caller and to nobody else, and never log it
+   * @throws PlatformException (kind {@code NOT_FOUND} for no such property, {@code REJECTED} with code
+   *     {@code NOT_A_SECRET} for a plain one, {@code FORBIDDEN} when not allowed)
+   */
+  public PlatformConfigData.Revealed revealConfigSecret(String section, String property, @Nullable String clientId) {
+    return PlatformAdminParsing.revealed(http().call("GET", configPath(section, property) + "/secret", clientQuery(clientId), null));
+  }
+
+  private String configPath(String section, String property) {
+    return "/api/config/" + PlatformHttp.enc(application().value()) + "/" + PlatformHttp.enc(section) + "/" + PlatformHttp.enc(property);
+  }
+
+  private static java.util.Map<String, @Nullable String> clientQuery(@Nullable String clientId) {
+    java.util.Map<String, @Nullable String> q = new java.util.LinkedHashMap<>();
+    q.put("clientId", clientId);
+    return q;
+  }
+
   private String appPath() {
     return "/api/applications/" + PlatformHttp.enc(application().value());
   }

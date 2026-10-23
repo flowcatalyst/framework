@@ -1,0 +1,86 @@
+<!-- types: PlatformSecrets, PlatformConfigAdminModule, PlatformConfigApi, PlatformConfigData, PlatformClient, SecretStores, SecretsModule, CachePolicy -->
+# Platform config and secrets
+
+The platform keeps configuration for each application: named values addressed by **section** and
+**property**, global or per client, each **plain** or **secret**. A secret is encrypted at rest and
+shown as `***` by every ordinary read; the one way to read it is the **reveal** call, which the
+platform records. `framework-flowcatalyst` gives an application two things on top of it, both acting
+as the application's own service account and both confined to its own platform application code:
+
+1. the `platform` secrets driver, so `SecretResolver` resolves a per-client secret from the platform;
+2. an admin section to list, add, change, delete and reveal that configuration.
+
+The design and the wire are in the [contract](../contracts/platform-config.md); the shared page for the
+section is not built yet, so today the section is served and the page is yours.
+
+## The `platform` secrets driver
+
+```java
+SecretsModule.builder()
+    .store("platform", PlatformSecrets.store())            // section "secrets", cache 5 min
+    .store("platform-ftp", PlatformSecrets.store().section("ftp").withCache(CachePolicy.of(Duration.ofMinutes(1), 1000)))
+    .defaultStore("platform")
+    .build()
+```
+
+List `FlowCatalystModule` as well; the driver takes the `PlatformClient` from it, and start-up fails
+if `flowcatalyst.enabled` is false.
+
+- A reference `name` for client `c` is the platform property `(application, section, name)` at client
+  scope `c`. The application is the configured `flowcatalyst.application`; a reference cannot name
+  another one.
+- The client is the platform's client id (`clt_...`) **or the client's identifier** (`acme`), so an application
+  that names clients by code needs no translation; the platform resolves both to the same scope. A name that is
+  neither shape is `Refused` without a call, and a client the platform does not know is `NotFound`. There is **no fall-back** to the global value: a missing per-client value is `NotFound`.
+- `404` is `NotFound` (never cached); `400 NOT_A_SECRET` is `Refused`; a `403`, a server error, a
+  network error or an undecodable answer is a `SecretStoreException` that names the store, client and
+  secret and never a value or a response body.
+- Found values are cached by the framework's `CachePolicy` (default 5 minutes). Rotation is seen when
+  the entry expires or after `SecretResolver.evict`; the platform's `updatedAt` is not used.
+- `SecretStores.platform()` in core is a placeholder that fails start-up naming `PlatformSecrets.store()`
+  (core cannot depend on the platform client). `SecretStores.cached` is public so a driver outside
+  core can use the same cache.
+
+`PlatformClient` has the four calls behind it, if you need them directly: `configProperties()`,
+`setConfigProperty(section, property, clientId, request)`, `deleteConfigProperty(...)` and
+`revealConfigSecret(...)`, with the small records in `PlatformConfigData`. A secret's plaintext is
+in `Revealed` and `SetRequest` only, and both print as `value=withheld`.
+
+## The admin section
+
+```java
+// as in PlatformConfigAdminTest
+b.module(AdminModule.of(APP)).module(PlatformConfigAdminModule.of(APP)).module(new FlowCatalystModule());
+```
+
+List it after `AdminModule` and `FlowCatalystModule`; `flowcatalyst.application` must equal the code
+you pass. The section id is `platform-config`, the path `/admin/platform-config`.
+
+| Operation id | Method and path | Permission |
+|---|---|---|
+| `listAdminPlatformConfig` | `GET /api/admin/platform-config` (`section?`, `clientId?`) | `{app}:admin:platform-config:view` |
+| `setAdminPlatformConfig` | `PUT /api/admin/platform-config/{section}/{property}` (`clientId?`) | `{app}:admin:platform-config:manage` |
+| `deleteAdminPlatformConfig` | `DELETE /api/admin/platform-config/{section}/{property}` (`clientId?`) | `manage` |
+| `revealAdminPlatformConfig` | `POST /api/admin/platform-config/{section}/{property}/reveal` (`clientId?`) | `{app}:admin:platform-config:reveal` |
+
+- Section and property names match `[a-z][a-z0-9-]{0,63}`; anything else is `400 INVALID_NAME` and no
+  platform call. A value is required, not blank, at most 65 536 characters.
+- A secret's `value` is `***` in every answer except the reveal, whatever the platform sent. The
+  reveal answer carries `Cache-Control: no-store`. It is a `POST` so it is never prefetched or cached.
+- Deleting a property that is not there is `204`. Revealing one that is not there is
+  `404 CONFIG_NOT_FOUND`; revealing a plain one is `400 NOT_A_SECRET`.
+- The framework writes an INFO log line for every write, delete and reveal naming the signed-in
+  principal, section, property and client, never a value.
+- The framework does not check `clientId` against the user's clients (a `Context` holds one client);
+  the platform refuses a client the application may not use, and its reason reaches the person.
+
+### Permissions and roles
+
+`reveal` is separate from `manage` on purpose: writing a secret does not let the caller read it back.
+The suggested `{app}:admin` role (`{app}:admin:*:*`) holds all three. To keep plaintext away from
+administrators in general, grant `view` and `manage` explicitly in that role instead of the wildcard
+and give `{app}:admin:platform-config:reveal` to a narrower role. The platform records each reveal
+against the service account, so the application's own log line is the record of who asked.
+
+Per-client secrets appear in this section under the secrets driver's section (`secrets` unless you
+chose another), scoped to a client: that is where they are managed.

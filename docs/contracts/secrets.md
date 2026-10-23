@@ -1,7 +1,7 @@
 # Contract: per-client secrets (MA item 5)
 
-Status: built 2026-10-10 for the `env` and `file` drivers. The `platform` driver is **blocked on
-the platform** (section 5). Security-sensitive: read the threat model (section 2) before changing
+Status: built 2026-10-10 for the `env` and `file` drivers; the `platform` driver built 2026-10-23
+([platform-config contract](platform-config.md) section 3). Security-sensitive: read the threat model (section 2) before changing
 anything here.
 
 ## 1. What it is for
@@ -97,24 +97,23 @@ that; the rules of each driver below are unchanged.*
   is logged at WARN without its target). It must be a regular file of at most `max-bytes` bytes,
   read as strict UTF-8; one trailing `\n` or `\r\n` is removed. An empty file is `NotFound`.
 
-### `platform` (blocked)
+### `platform`
 
-The platform has **no endpoint that resolves a secret reference or returns a per-client
-credential** to an application (Go source read 2026-10-10: `internal/secrets` is unused,
-`aws-sm://`-style references are stored but never resolved at read time). Configuring
-`driver: platform` fails start-up with a problem saying so. When the platform adds the endpoint,
-the driver implements `SecretStore` against it through the platform client; what the framework
-needs from it:
+Built 2026-10-23 as `PlatformSecrets.store()` in `framework-flowcatalyst` (core cannot depend on the platform
+client); `SecretStores.platform()` stays as a placeholder whose start-up failure names it. A reference is the
+platform configuration property `(application, section, name)` at the client's scope, read with the platform's
+reveal call as the application's service account; the section defaults to `secrets`; no fall-back to the global
+value. The design, the result table and the cache rules are in [platform-config](platform-config.md) section 3.
 
-- `GET` a secret by application, client and name, authorised for the application's own service
-  account and **confined to its own application** and to clients it may act for;
-- values encrypted at rest, never returned to any other caller, every read audited;
-- an explicit expiry or version so the cache can follow rotation.
+History: until 2026-10-23 this driver was blocked, because the platform had no endpoint that returned a per-client
+secret to an application, confined to its own application, audited and encrypted at rest. The reveal endpoint
+(platform commit `4d4c6c8c`) is that endpoint.
 
 ## 5. Platform findings (reported, not framework code)
 
-1. No secret-resolution endpoint (above).
-2. **Confinement gap:** `GET /api/config/{app}/{section}/{property}?clientId=` (and
+1. No secret-resolution endpoint: **closed 2026-10-23** (the reveal endpoint, above).
+2. **Confinement gap** (closed with the reveal endpoint: ordinary reads now return `***` for a secret, and only the
+   application's own service account, or a caller holding `platform:admin:config:reveal`, may reveal). As found: `GET /api/config/{app}/{section}/{property}?clientId=` (and
    `GET /api/platform-config/{app}`) return SECRET-typed values **unmasked to any anchor-tier
    caller**, and an application's provisioned service account is anchor tier
    (`principal.NewService`), so one application's service account can read another application's
@@ -127,4 +126,4 @@ needs from it:
 1. Whether service-scoped (not per-client) secrets should also go through `SecretResolver`
    (today: config settings of type `secret`).
 2. Whether a world-readable secret file should be refused rather than warned about.
-3. The platform endpoint's shape (section 4) and fixing the confinement gap (section 5).
+3. ~~The platform endpoint's shape and the confinement gap~~ done 2026-10-23.

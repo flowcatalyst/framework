@@ -5,7 +5,7 @@ import type { AdminPage } from "./types.ts";
 import { adminPermissions } from "./data.ts";
 
 /** The ids of the standard pages; each is the id of the server section that serves it. */
-export const STANDARD_ADMIN_PAGE_IDS = ["about", "event-types", "roles", "users", "activity", "config"] as const;
+export const STANDARD_ADMIN_PAGE_IDS = ["about", "event-types", "roles", "users", "activity", "config", "platform-config"] as const;
 export type StandardAdminPageId = (typeof STANDARD_ADMIN_PAGE_IDS)[number];
 
 export const ADMIN_ICON_ABOUT = "i-lucide-info";
@@ -14,11 +14,12 @@ export const ADMIN_ICON_ROLES = "i-lucide-key-round";
 export const ADMIN_ICON_USERS = "i-lucide-users";
 export const ADMIN_ICON_ACTIVITY = "i-lucide-activity";
 export const ADMIN_ICON_CONFIG = "i-lucide-sliders-horizontal";
+export const ADMIN_ICON_PLATFORM_CONFIG = "i-lucide-key-round";
 
 /**
  * The standard pages for an application (its `AdminModule` application code), in navigation order.
  * `ids` picks a subset (an application whose server has only the about and config sections passes
- * `["about", "config"]`); the default is all six. The pages read the calls and the application code from
+ * `["about", "config"]`); the default is all seven. The pages read the calls and the application code from
  * the plugin option `admin` (`AdminDataOptions`), so install it.
  */
 export function standardAdminPages(application: string, ids: readonly StandardAdminPageId[] = STANDARD_ADMIN_PAGE_IDS): AdminPage[] {
@@ -106,6 +107,14 @@ export function standardAdminPages(application: string, ids: readonly StandardAd
       permission: permissions.configView,
       path: "/admin/config",
       component: () => import("./pages/AdminConfigPage.vue").then((m) => m.default),
+    },
+    "platform-config": {
+      id: "platform-config",
+      title: "Platform config",
+      icon: ADMIN_ICON_PLATFORM_CONFIG,
+      permission: permissions.platformConfigView,
+      path: "/admin/platform-config",
+      component: () => import("./pages/AdminPlatformConfigPage.vue").then((m) => m.default),
     },
   };
   return ids.map((id) => all[id]);

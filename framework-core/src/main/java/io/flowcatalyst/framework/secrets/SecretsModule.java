@@ -30,8 +30,9 @@ public final class SecretsModule implements Module {
   public static final String ID = "secrets";
 
   static final String BLOCKED =
-      "the platform driver is blocked on the platform: FlowCatalyst has no endpoint that resolves a"
-          + " per-client secret for an application (secrets contract, section 4); use env or file";
+      "SecretStores.platform() cannot build the platform driver (framework-core does not depend on"
+          + " framework-flowcatalyst): use PlatformSecrets.store() from framework-flowcatalyst"
+          + " (secrets contract, section 4)";
 
   private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9-]*");
 

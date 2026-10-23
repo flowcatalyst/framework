@@ -13,7 +13,7 @@ import { replaceAdminPage, standardAdminPages, STANDARD_ADMIN_PAGE_IDS } from ".
 import AdminEventTypesPage from "../src/admin/pages/AdminEventTypesPage.vue";
 
 describe("standardAdminPages", () => {
-  it("lists the six standard pages in navigation order with the server's permission names", () => {
+  it("lists the seven standard pages in navigation order with the server's permission names", () => {
     const pages = standardAdminPages("acme");
     expect(pages.map((p) => p.id)).toEqual([...STANDARD_ADMIN_PAGE_IDS]);
     expect(pages.map((p) => p.permission)).toEqual([
@@ -23,6 +23,7 @@ describe("standardAdminPages", () => {
       "acme:admin:users:view",
       "acme:admin:activity:view",
       "acme:admin:config:view",
+      "acme:admin:platform-config:view",
     ]);
     // Every page passes the shell's own route rules (a permission, a path under /admin, unique ids).
     expect(() => adminRoutes(pages)).not.toThrow();
@@ -35,6 +36,15 @@ describe("standardAdminPages", () => {
         expect(child.meta?.admin).toBe(true);
       }
     }
+  });
+
+  it("the platform config page sits after config at /admin/platform-config", () => {
+    const pages = standardAdminPages("acme");
+    expect(pages.map((p) => p.id).slice(-2)).toEqual(["config", "platform-config"]);
+    const page = pages.at(-1);
+    expect(page?.path).toBe("/admin/platform-config");
+    expect(page?.permission).toBe("acme:admin:platform-config:view");
+    expect(standardAdminPages("acme", ["platform-config", "about"]).map((p) => p.id)).toEqual(["platform-config", "about"]);
   });
 
   it("an application mounts a subset, and replaces a page by id", () => {
@@ -63,6 +73,9 @@ describe("standardAdminPages", () => {
       usersRevoke: "orders-demo:admin:users:revoke",
       activityView: "orders-demo:admin:activity:view",
       configView: "orders-demo:admin:config:view",
+      platformConfigView: "orders-demo:admin:platform-config:view",
+      platformConfigManage: "orders-demo:admin:platform-config:manage",
+      platformConfigReveal: "orders-demo:admin:platform-config:reveal",
     });
   });
 });
