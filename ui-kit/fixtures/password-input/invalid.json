@@ -1,0 +1,4 @@
+{
+  "props": {"id": "new-pw2", "name": "password", "signal": "newPwTwo", "meter": true, "invalid": true, "describedBy": "new-pw2-err"},
+  "source": "password-input.md: server rejected the password (describedBy after the strength line)"
+}

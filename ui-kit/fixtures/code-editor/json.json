@@ -1,0 +1,4 @@
+{
+  "props": { "id": "payload", "name": "payload", "value": "{\"a\": 1}", "language": "json", "label": "Payload", "attrs": { "data-bind:payload": true } },
+  "source": "code-editor.md Structure with a data-bind attribute"
+}

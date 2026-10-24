@@ -1,0 +1,18 @@
+{
+  "props": {
+    "id": "grant-app",
+    "name": "app",
+    "label": "Applications",
+    "options": [
+      {"value": "billing", "label": "Billing"},
+      {"value": "orders", "label": "Orders"},
+      {"value": "platform", "label": "Platform"}
+    ],
+    "selected": ["billing", "platform"],
+    "placeholder": "No applications",
+    "chips": true,
+    "search": true,
+    "signal": "grantAppQ"
+  },
+  "source": "multi-select.md Props: chips (with search)"
+}

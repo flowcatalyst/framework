@@ -1,0 +1,20 @@
+{
+  "props": {
+    "id": "sa",
+    "signal": "saTab",
+    "label": "Service account sections",
+    "tabs": [
+      {"value": "details", "label": "Details"},
+      {"value": "roles", "label": "Roles"}
+    ],
+    "selected": "roles",
+    "param": "section",
+    "listClass": "flex-wrap",
+    "class": "mt-2"
+  },
+  "slots": {
+    "details": "<p>details</p>",
+    "roles": "<p>roles</p>"
+  },
+  "source": "tab-list.md Props: selected, param, listClass, class"
+}

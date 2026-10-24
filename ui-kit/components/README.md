@@ -15,6 +15,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Button](button.md) | fc-web themed copy | (a) native |
 | [Card](card.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
 | [Checkbox](checkbox.md) | fc-web themed copy | (a) native |
+| [Code editor (CodeMirror island)](code-editor.md) | new (Go platform port) | (a) native fallback; (d) island |
 | [Code block (highlighted code, copy)](code-block.md) | new (Go platform port) | (a) native; (b) copy |
 | [Code chips](code-chips.md) | hand-built | (a) native |
 | [Confirm dialog (hand-built)](confirm-dialog.md) | hand-built | (b) Datastar opens/closes a native modal `<dialog>` |
@@ -22,6 +23,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Data table / list page (composition)](data-table.md) | composition of `table`, `table-toolbar`, `paginator`, `empty-state`, `drawer`, `page-header` | (b) client-side filter/sort/drawer |
 | [Date range (two native date inputs)](date-range.md) | new (Go platform port) | (a) native; (b) bounds on focus |
 | [Detail field / detail value (FcDetailField)](detail-field.md) | hand-built | (a) native |
+| [Diagram (Mermaid island)](diagram.md) | new (Go platform port) | (a) native fallback; (d) island |
 | [Dialog](dialog.md) | fc-web themed copy | (b) Datastar attributes opening a native modal `<dialog>` |
 | [Dirty form (Save enabled on change)](dirty-form.md) | hand-built behaviour | (b) Datastar |
 | [Drawer (record drawer)](drawer.md) | hand-built | (b) Datastar signal |
@@ -42,8 +44,12 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Legacy button (.fc-btn) and icon button (.fc-icon-btn)](legacy-fc-btn.md) | hand-built | (a) native |
 | [Local time](local-time.md) | hand-built | (b) Datastar `data-init` |
 | [Multi-select (checklist with search)](multi-select.md) | new (Go platform port) | (a) `<details>` + checkboxes; (b) search; (c) summary/options patched |
+| [Markdown (sanitised)](markdown.md) | new (Go platform port) | (a) server-rendered |
 | [Page header](page-header.md) | hand-built | (a) native |
 | [Pagination](pagination.md) | fc-web themed copy | (a) native (links) |
+| [Password input](password-input.md) | new (Go platform port) | (b) Datastar signals |
+| [Permission-denied dialog](permission-denied-dialog.md) | port of the SPA modal | (a) native modal `<dialog>`; (c) server-opened |
+| [Secret reference input](secret-ref-input.md) | new (Go platform port) | (a) native `pattern` |
 | [Paginator](paginator.md) | hand-built | (a) native links |
 | [Pick list (dual pane)](pick-list.md) | hand-built | (b) Datastar signals (array bind, filter) |
 | [Progress](progress.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
@@ -60,6 +66,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Table](table.md) | fc-web themed copy | (a) native |
 | [Table toolbar](table-toolbar.md) | hand-built | (a) native form; (c) live, with the state part as patch target |
 | [Tabs](tabs.md) | upstream Topcoat UI registry 0.9.0 | (b) Datastar signal (client tabs) or (a) plain links / (c) server-rendered panel |
+| [Tab list (ARIA tabs, URL-synced)](tab-list.md) | new (Go platform port) | (b) Datastar signal + keys; (a) `?tab=` links |
 | [Tag](tag.md) | hand-built | (a) native |
 | [Textarea](textarea.md) | upstream Topcoat UI registry 0.9.0 | (a) native |
 | [Toggle and toggle group](toggle.md) | upstream Topcoat UI registry 0.9.0 | (a) native |

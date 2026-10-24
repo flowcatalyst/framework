@@ -1,0 +1,18 @@
+{
+  "props": {
+    "id": "dj",
+    "signal": "djTab",
+    "label": "Dispatch job sections",
+    "tabs": [
+      {"value": "overview", "label": "Overview"},
+      {"value": "attempts", "label": "Attempts"},
+      {"value": "payload", "label": "Payload"}
+    ]
+  },
+  "slots": {
+    "overview": "<p class=\"text-sm\">Overview panel.</p>",
+    "attempts": "<p class=\"text-sm\">Attempts panel.</p>",
+    "payload": "<p class=\"text-sm\">Payload panel.</p>"
+  },
+  "source": "tab-list.md: the ARIA tab pattern, first tab selected"
+}

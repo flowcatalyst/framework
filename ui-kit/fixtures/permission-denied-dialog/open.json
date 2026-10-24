@@ -1,0 +1,4 @@
+{
+  "props": {"id": "perm-open", "kind": "denied", "message": "Forbidden", "homeUrl": "/ui/dashboard", "open": true},
+  "source": "permission-denied-dialog.md Props: open, homeUrl (patched in by the server)"
+}

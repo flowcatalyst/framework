@@ -622,6 +622,99 @@
     color: var(--muted-foreground);
   }
 
+  /* ------------------------------------ multi-select chips (multi-select.md) */
+  .fc-multiselect-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .fc-multiselect-chips:empty { display: none; }
+  .fc-multiselect-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    max-width: 100%;
+    padding: 2px 4px 2px 8px;
+    border-radius: 999px;
+    background: var(--fc-primary-tint);
+    font-size: 12px;
+    color: var(--fc-text-strong);
+  }
+  .fc-multiselect-chip > span { min-width: 0; overflow-wrap: anywhere; }
+  .fc-multiselect-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .fc-multiselect-chip-remove:hover { background: var(--fc-hover); }
+  .fc-multiselect-chip-remove:focus-visible { outline: 2px solid var(--ring); }
+
+  /* ------------------------------------- password input (password-input.md) */
+  .fc-password { display: flex; flex-direction: column; gap: 6px; }
+  .fc-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    transform: translateY(-50%);
+    border-radius: 6px;
+    color: var(--muted-foreground);
+    cursor: pointer;
+  }
+  .fc-password-toggle:hover { color: var(--foreground); }
+  .fc-password-toggle:focus-visible { outline: 2px solid var(--ring); }
+  .fc-password-meter { display: flex; gap: 4px; }
+  .fc-password-meter > span {
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--foreground) 15%, transparent);
+  }
+  .fc-password-meter[data-score="1"] > span:nth-child(-n+1) { background: #dc2626; }
+  .fc-password-meter[data-score="2"] > span:nth-child(-n+2) { background: #ea580c; }
+  .fc-password-meter[data-score="3"] > span:nth-child(-n+3) { background: #ca8a04; }
+  .fc-password-meter[data-score="4"] > span:nth-child(-n+4) { background: #16a34a; }
+  .fc-password-strength { min-height: 1.25em; margin: 0; font-size: 12px; color: var(--muted-foreground); }
+  .fc-password-help { margin: 0; font-size: 12px; color: var(--muted-foreground); }
+
+  /* ------------------------------------------------ markdown (markdown.md) */
+  .fc-markdown { font-size: 14px; line-height: 1.6; color: var(--foreground); overflow-wrap: anywhere; }
+  .fc-markdown > :first-child { margin-top: 0; }
+  .fc-markdown h1, .fc-markdown h2, .fc-markdown h3, .fc-markdown h4, .fc-markdown h5, .fc-markdown h6 {
+    margin: 1.5em 0 0.5em;
+    font-weight: 600;
+    line-height: 1.25;
+    scroll-margin-top: 5rem;
+  }
+  .fc-markdown h1 { font-size: 1.75rem; }
+  .fc-markdown h2 { font-size: 1.35rem; padding-bottom: 0.25em; border-bottom: 1px solid var(--border); }
+  .fc-markdown h3 { font-size: 1.1rem; }
+  .fc-markdown h4, .fc-markdown h5, .fc-markdown h6 { font-size: 1rem; }
+  .fc-markdown p, .fc-markdown ul, .fc-markdown ol, .fc-markdown pre, .fc-markdown table, .fc-markdown blockquote { margin: 0 0 1em; }
+  .fc-markdown ul { list-style: disc; padding-left: 1.5rem; }
+  .fc-markdown ol { list-style: decimal; padding-left: 1.5rem; }
+  .fc-markdown li > ul, .fc-markdown li > ol { margin: 0.25em 0 0; }
+  .fc-markdown a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+  .fc-markdown blockquote { padding-left: 1em; border-left: 3px solid var(--border); color: var(--muted-foreground); }
+  .fc-markdown code { padding: 0.1em 0.35em; border-radius: 4px; background: color-mix(in srgb, var(--foreground) 8%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+  .fc-markdown pre { padding: 12px 14px; overflow-x: auto; border-radius: 8px; background: color-mix(in srgb, var(--foreground) 6%, transparent); }
+  .fc-markdown pre code { padding: 0; background: none; font-size: 13px; }
+  .fc-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+  .fc-markdown th, .fc-markdown td { padding: 6px 10px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+  .fc-markdown th { background: color-mix(in srgb, var(--foreground) 5%, transparent); font-weight: 600; }
+  .fc-markdown hr { margin: 1.5em 0; border: 0; border-top: 1px solid var(--border); }
+  .fc-markdown img { max-width: 100%; }
+
   /* ------------------------------------------------------- danger zone */
   .fc-danger-title {
     font-size: 18px;

@@ -1,0 +1,4 @@
+{
+  "props": {"source": "# Title\n\nSome *emphasis*, **bold**, `code` and a [link](https://example.com/docs).\n\n## Table\n\n| Name | Tier |\n|---|:-:|\n| ada | ANCHOR |\n\n```json\n{\"a\": 1}\n```\n\n- one\n- two\n"},
+  "source": "markdown.md: headings with ids, table, fence, list"
+}

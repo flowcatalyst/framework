@@ -1,0 +1,4 @@
+{
+  "props": { "name": "config", "value": "a: 1\nb: [x, y]", "language": "yaml", "readOnly": true, "label": "Config", "rows": 6, "class": "mt-2" },
+  "source": "code-editor.md options: language yaml, readonly, rows, class"
+}

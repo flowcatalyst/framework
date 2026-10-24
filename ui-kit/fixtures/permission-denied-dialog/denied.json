@@ -1,0 +1,4 @@
+{
+  "props": {"id": "perm-denied", "kind": "denied", "message": "You do not have permission to view dispatch pools.", "requiredPermission": "platform:messaging:dispatch-pool:view"},
+  "source": "SPA PermissionDeniedModal.vue, permission case"
+}

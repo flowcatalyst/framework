@@ -1,0 +1,4 @@
+{
+  "props": {"id": "perm-session", "kind": "session", "message": "Your session has expired. Please log in again.", "loginUrl": "/ui/login?redirect=%2Fui%2Fpools"},
+  "source": "SPA PermissionDeniedModal.vue, session-expired case"
+}

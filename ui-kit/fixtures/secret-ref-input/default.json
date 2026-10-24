@@ -1,0 +1,4 @@
+{
+  "props": {"id": "conn-secret", "name": "secretRef", "required": true},
+  "source": "secret-ref-input.md: empty"
+}

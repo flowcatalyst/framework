@@ -1,0 +1,5 @@
+{
+  "props": { "label": "Order flow", "bundle": "/assets/mermaid.min.js" },
+  "slots": { "default": "graph TD\n  A-->B" },
+  "source": "diagram.md Structure"
+}

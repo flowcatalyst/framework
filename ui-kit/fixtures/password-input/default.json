@@ -1,0 +1,4 @@
+{
+  "props": {"id": "login-pw", "name": "password", "signal": "loginPw", "autocomplete": "current-password", "required": true},
+  "source": "password-input.md: sign-in field, toggle only"
+}

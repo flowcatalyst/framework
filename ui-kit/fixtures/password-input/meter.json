@@ -1,0 +1,4 @@
+{
+  "props": {"id": "new-pw", "name": "password", "signal": "newPw", "meter": true, "required": true, "placeholder": "At least 12 characters"},
+  "source": "password-input.md: new password with the strength meter"
+}

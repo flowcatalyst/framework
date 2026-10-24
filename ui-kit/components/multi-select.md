@@ -59,6 +59,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `manyLabel` | string | `{0} selected` | the summary above `maxLabels`; `{0}` is the count (`{0} apps selected`) |
 | `search` | boolean | false | adds the search box |
 | `signal` | string | - | required with `search`: the search text's signal (camelCase, unique per page) |
+| `chips` | boolean | false | lists the chosen options as removable chips under the trigger (`<div id="{id}-chips" class="fc-multiselect-chips">`; each chip is `<span class="fc-multiselect-chip" data-value>` with a label and a `fc-multiselect-chip-remove` button, `aria-label="Remove {label}"`) |
 | `emptyText` | string | `No options` | |
 | `open` | boolean | false | render the disclosure open |
 | `optionAttrs` | attrs | - | on every checkbox (a live filter: `{"data-on:change": "@get('/ui/x', {contentType: 'form'})"}`) |
@@ -66,6 +67,10 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `class` | string | - | on the root |
 
 The summary text is computed by the template from `options`, `selected`, `placeholder`, `maxLabels` and `manyLabel`, in option order.
+
+## Chips
+
+With `chips` the disclosure's change handler also rebuilds the chip list from the checked options (labels as text, never markup), and a click on a chip's remove button unchecks that option and fires its `change`, so the summary, the chips and any live `@get` update together. The chips are outside the `<details>`: they stay visible when it is closed. Fixture: `fixtures/multi-select/chips`.
 
 ## Accessibility
 

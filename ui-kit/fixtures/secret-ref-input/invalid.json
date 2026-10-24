@@ -1,0 +1,4 @@
+{
+  "props": {"id": "conn-secret2", "name": "secretRef", "value": "Not A Name", "invalid": true, "describedBy": "conn-secret2-err", "class": "max-w-md"},
+  "source": "secret-ref-input.md: invalid value with error text"
+}
