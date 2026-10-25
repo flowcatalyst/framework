@@ -1,0 +1,23 @@
+{
+  "props": {
+    "id": "pick-roles",
+    "signal": "rolesPicked",
+    "filterSignal": "rolesQ",
+    "name": "roles",
+    "itemIdPrefix": "pk-role-",
+    "bulk": true,
+    "items": [
+      {"value": "orders:approver", "key": "r0", "name": "Approver", "code": "orders:approver", "group": "orders", "description": "Approves orders over the limit", "checked": true},
+      {"value": "orders:viewer", "key": "r1", "name": "Viewer", "code": "orders:viewer", "group": "orders"},
+      {"value": "platform:super-admin", "key": "r2", "name": "Super Admin", "code": "platform:super-admin", "group": "platform", "note": "Above your access", "checked": true, "locked": true},
+      {"value": "platform:viewer", "key": "r3", "name": "Viewer", "code": "platform:viewer", "group": "platform"}
+    ],
+    "availableTitle": "Available roles (4)",
+    "selectedTitle": "Selected",
+    "filterPlaceholder": "Filter roles",
+    "emptyText": "No roles selected",
+    "saveLabel": "Save roles",
+    "action": "/users/42/roles"
+  },
+  "source": "pick-list.md Props: group, description, locked, key, bulk; derived from the Structure (no gallery example yet)"
+}

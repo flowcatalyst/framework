@@ -47,7 +47,9 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `filterSignal` | string | - | the filter text's signal |
 | `name` | string | - | the checkboxes' shared name |
 | `itemIdPrefix` | string | - | checkbox ids are `{itemIdPrefix}{value}` (values must be id-safe) |
-| `items` | list<{value, name, code, note, checked}> | [] | `note` is a short marker under the code (`Inactive`) |
+| `items` | list<{value, key, name, code, note, checked, group, description, locked}> | [] | `note` is a short marker under the code (`Inactive`); see **Roles and other long lists** for `key`, `group`, `description`, `locked` |
+| `bulk` | bool | false | adds **Select shown** and **Clear** under the filter |
+| `embedded` | variant | - | the second template, `PickListFields`: the two panes in a `div`, no `form` and no Save button, for a picker inside a form that already submits (a dialog) |
 | `availableTitle` | string | - | left pane heading |
 | `selectedTitle` | string | `Selected` | right pane heading, followed by the count |
 | `filterPlaceholder` | string | - | also the filter's `aria-label` |
@@ -55,6 +57,18 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `saveLabel` | string | - | |
 | `action` | string | - | renders `method="post" action` on the form |
 | `formAttrs` | attrs | - | on the form (Datastar submit) |
+
+## Roles and other long lists
+
+Added for role pickers (a user's or service account's roles), where the list is long, spans applications and has entries the editor may not change.
+
+- **`key`**: the id-safe token of a row's checkbox id (`{itemIdPrefix}{key}`), for a `value` that is not id-safe (a role name such as `orders:approver`). Unique within the list; with no `key` the `value` is the token, as before. Values are written into the signal as quoted string literals, so any text is safe there.
+- **`group`**: a heading over a run of items (an application's name or code). Items are given sorted so each group is contiguous. A heading in the left pane shows while the filter matches any of its rows; one in the right pane shows while any of its rows is picked.
+- **`description`**: one truncated line under the code, the full text in `title`. The filter matches it as well as the name and code.
+- **`locked`**: a pick the user may see but not change (a role above the editor's own access). It is shown ticked and disabled on the left, listed on the right with a lock instead of the remove control, **counted** in the heading, and **still submitted**: the checkbox is disabled, so a hidden input with the same `name` carries it. It has no slot in the positional `picked` array (it is not bound), and the count is `$picked.filter(Boolean).length + {number of locked}`. Use `note` to say why.
+- **`bulk`**: *Select shown* ticks every row the filter shows and leaves the others as they are; *Clear* unticks every unlocked row, shown or not.
+
+Fixture: `fixtures/pick-list/roles`.
 
 ## Accessibility
 
