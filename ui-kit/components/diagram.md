@@ -11,7 +11,7 @@ A Mermaid diagram drawn from its source text, with the source kept below it. The
 
 ```html
 <fc-diagram class="block" data-bundle="/assets/mermaid.min.js">
-  <div class="fc-diagram-view overflow-auto rounded-md border border-border bg-card p-4 [&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:max-w-full" role="img" aria-label="Order flow" hidden></div>
+  <div class="fc-diagram-view overflow-auto rounded-md border border-border bg-card p-4 [&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:max-w-full" role="img" aria-label="Order flow" hidden data-ignore></div>
   <details class="mt-3 text-sm">
     <summary class="cursor-pointer text-muted-foreground">Diagram source</summary>
     <pre class="fc-code-block mt-2" tabindex="0" aria-label="Order flow source"><code>graph TD
@@ -25,7 +25,7 @@ A Mermaid diagram drawn from its source text, with the source kept below it. The
 | Part | Element | Classes / attributes | Role |
 |---|---|---|---|
 | Root | `<fc-diagram>` | `block`, `data-bundle` = URL of the Mermaid bundle | custom element |
-| View | `<div class="fc-diagram-view">` | bordered, scrollable; `role="img"`, `aria-label`; `hidden` until drawn | the SVG goes here |
+| View | `<div class="fc-diagram-view">` | bordered, scrollable; `role="img"`, `aria-label`; `hidden` until drawn; `data-ignore` | the SVG goes here; Datastar never evaluates attributes inside it |
 | Source | `<details>` with a `code-block` `<pre>` | closed | the Mermaid text; opens itself when the drawing fails |
 
 ## Props
@@ -46,7 +46,13 @@ The drawing is one image with the label; the full content is in the source, whic
 
 ## Behaviour
 
-`fc-diagram.js` (loaded by the page, once) defines the element. On connection it reads the source, loads the bundle from `data-bundle` the first time any diagram on the page needs it (a script tag added then, so pages without diagrams never fetch the 5 MB file), calls `mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme })` (the dark theme when `<html class="dark">`) and puts `mermaid.render`'s SVG into the view. A source Mermaid rejects, or a bundle that does not load, leaves the view hidden and opens the source.
+`fc-diagram.js` (loaded by the page, once) defines the element. On connection it reads the source, loads the bundle from `data-bundle` the first time any diagram on the page needs it (a script tag added then, so pages without diagrams never fetch the 5 MB file), calls `mermaid.initialize({ startOnLoad: false, securityLevel: "strict", dompurifyConfig, theme })` (the dark theme when `<html class="dark">`) and puts `mermaid.render`'s SVG into the view. A source Mermaid rejects, or a bundle that does not load, leaves the view hidden and opens the source.
+
+The drawing must never carry Datastar attributes. A label is author-controlled HTML, Mermaid's DOMPurify pass keeps `data-*` by default, and Datastar evaluates `data-init`, `data-effect`, `data-signals`, `data-on:*` and the rest on any node added to the page (the kit's CSP allows `'unsafe-eval'` for Datastar's expressions). So the element:
+
+1. passes `dompurifyConfig: { FORBID_TAGS: ["style"], ALLOW_DATA_ATTR: false, FORBID_ATTR: ["data-init", "data-effect", ...every Datastar plugin] }`, which Mermaid applies to labels (it replaces Mermaid's own label default, `FORBID_TAGS: ["style"]`, so that is kept);
+2. renders into a scratch node inside the view (`mermaid.render(id, source, scratch)`), off-screen but laid out because Mermaid measures text, never into `document.body`: the view's `data-ignore` covers Mermaid's temporary nodes too;
+3. parses the finished SVG into an inert `<template>`, removes every attribute named `data-<datastar plugin>` (with any `:key`, `__modifier` or `-suffix`), and only then moves it into the view. Mermaid's own `data-look`, `data-id`, `data-et`, `data-color-id` are styling hooks and stay.
 
 ## Notes for a template author
 
