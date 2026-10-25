@@ -2,8 +2,8 @@
 
 Status: design 2026-10-23, Java first. Amended 2026-10-25 (section 8, "Amendments of 2026-10-25"): per-client
 confinement and `CLIENT_FORBIDDEN` restored, `X-On-Behalf-Of`, strict not-found codes, cache aliases / stale-on-error /
-single flight, one name rule for properties and secrets. Java side built 2026-10-23 (section 8); the UI (section 5) and the real-platform run (section 6) are
-not done. Depends on the platform's secret reveal endpoint (platform repo, commit
+single flight, one name rule for properties and secrets. Java side built 2026-10-23 (section 8); the UI (section 5) built
+2026-10-23 and brought in line with the amendments 2026-10-25 (section 8); the real-platform run (section 6) is not done. Depends on the platform's secret reveal endpoint (platform repo, commit
 `4d4c6c8c`, published doc `70-platform-configuration.md`) and on the SDK releases of 2026-10-23.
 
 ## 1. What it is for
@@ -214,6 +214,26 @@ the session holds `reveal`, asks for confirmation ("this is recorded"), shows th
 Copy and Close, and **discards the value when the dialog closes**. The edit/delete controls appear only
 with `manage`. A page whose operation was not passed shows the standard missing-operation alert.
 
+**Clients (amended 2026-10-25).** The page reads the session (`GET /auth/session`): `permissions` and `client` (the
+`Context`'s client identifier, or `_platform`). With `all-clients` the form's client is a free field (id or identifier,
+empty for global) and rows show the stored id. Without it:
+
+- the page shows a note that the user acts for the global values and their own client only, naming the `all-clients`
+  permission;
+- the add form has no free client field: it offers *Global* or *Your client* (the session's identifier); a `_platform`
+  session gets no choice (global only);
+- every call for a client (set, delete, reveal, including a row's, which carries the stored id) sends the **session's
+  identifier**, which section 4's rule always accepts for the own client;
+- a client row shows the identifier with the stored id beside it.
+
+A `403 CLIENT_FORBIDDEN` that still arrives is shown with the same explanation (form error region, or the flash for
+delete and reveal).
+
+**Secret values (amended 2026-10-25).** The form refuses `***` as a secret's value (and, as before, a blank value), so
+the mask is never sent; the platform's `400 SECRET_VALUE_MASKED` and `400 SECRET_VALUE_REQUIRED`, passed on by the
+module, are shown on the value field. **Names**: the form's property rule is `SecretRef.isValidName`
+(`[a-z0-9]+(-[a-z0-9]+)*`, at most 100), the section rule section 4's.
+
 ## 6. Tests the build must have
 
 - **Driver:** found, not found (not cached), not-a-secret, `403`, `5xx` and network errors; the value is
@@ -289,3 +309,9 @@ confinement, stored `clientId` in answers, `***` refused as a secret value) impl
 - **F4 One name rule** (section 4, Validation). `SecretRef.isValidName` and `SecretRef.NAME_MAX` are public; the admin
   property rule is that definition.
 - Tests: `CachingSecretStoreTest` (14, core), `PlatformSecretsTest` (18), `PlatformConfigAdminTest` (25).
+- **F5 The shared page** (section 5, Clients and Secret values). `adminPermissions(app).platformConfigAllClients`; the
+  page and dialog follow `all-clients` and the session's client; `SECRET_VALUE_MASKED` / `SECRET_VALUE_REQUIRED` mapped
+  to the value field, `CLIENT_FORBIDDEN` explained; `platformConfigFormSchema`'s property rule is the secret name rule
+  and it refuses `***` for a secret. Tests: `platform-config-page.test.ts` (19: the earlier 9 plus confinement, own
+  identifier sent, `_platform`, all-clients, `CLIENT_FORBIDDEN`, `SECRET_VALUE_MASKED` on the field, `***` refused, the
+  name rule). The page still filters the loaded list itself and never sends the list's `clientId` filter.

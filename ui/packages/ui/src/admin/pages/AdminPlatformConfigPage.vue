@@ -4,6 +4,12 @@
 // a value; the form never asks for it back. Add, change and delete need `manage`; reading a secret needs
 // `reveal`, asks first (it is recorded) and shows the value in a dialog that forgets it on close. A plain
 // list (not paged): the search and the filters narrow the rows already loaded.
+//
+// Clients (contract section 4, Validation): with `{app}:admin:platform-config:all-clients` the user names
+// any client; without it only the global values and the session's own client, which the page sends as the
+// session's client identifier (what the admin module accepts before it has learned the stored id). The
+// list then holds global rows and the own client's rows the module can recognise. A `403 CLIENT_FORBIDDEN`
+// still says why, and the platform's `SECRET_VALUE_MASKED` / `SECRET_VALUE_REQUIRED` land on the value.
 import { toServiceError, type ServiceError } from "@flowcatalyst/api-runtime";
 import FwListPage from "../../partials/FwListPage.vue";
 import FwLocalTime from "../../components/FwLocalTime.vue";
@@ -33,6 +39,55 @@ const confirm = useConfirm();
 const permissions = usePermissions();
 const canManage = computed(() => permissions.can(admin.permissions.platformConfigManage));
 const canReveal = computed(() => permissions.can(admin.permissions.platformConfigReveal));
+const allClients = computed(() => permissions.can(admin.permissions.platformConfigAllClients));
+/** The session's own client identifier; undefined for a session for no particular client (`_platform`). */
+const ownClient = computed(() => {
+  const client = permissions.user.value?.client;
+  return client === undefined || client === "" || client === "_platform" ? undefined : client;
+});
+
+/**
+ * The `clientId` a call sends for a row's or a form's client. Without all-clients every client the page
+ * offers is the own one, sent as the session's identifier (a row carries the stored id, which the module
+ * matches only once it has learned the pair).
+ */
+function requestClient(reference: string | undefined): string | undefined {
+  const text = reference?.trim() ?? "";
+  if (text === "") {
+    return undefined;
+  }
+  return allClients.value ? text : (ownClient.value ?? text);
+}
+
+function clientQuery(reference: string | undefined): { query?: { clientId: string } } {
+  const clientId = requestClient(reference);
+  return clientId === undefined ? {} : { query: { clientId } };
+}
+
+/** How a row's client reads: its stored id, or (without all-clients, where it is the own client) the identifier. */
+function clientLabel(clientId: string): string {
+  return allClients.value || ownClient.value === undefined ? clientId : ownClient.value;
+}
+
+const confinement = computed(() =>
+  ownClient.value === undefined
+    ? `You are signed in for no particular client, so you see and manage global values only. Client values need the permission ${admin.permissions.platformConfigAllClients}.`
+    : `You see and manage the global values and those of your client, ${ownClient.value}. A value of your client is listed once this application has saved or revealed a value for it since it last started. Other clients need the permission ${admin.permissions.platformConfigAllClients}.`,
+);
+
+/** A failed call in the page's words: the platform's secret-value refusals go on the value field, a client refusal says why. */
+function explained(error: ServiceError): ServiceError {
+  switch (error.error) {
+    case "SECRET_VALUE_MASKED":
+      return { ...error, status: 400, details: { ...error.details, value: "SECRET_VALUE_MASKED: *** is how the platform hides a secret, not a value: enter the secret itself" } };
+    case "SECRET_VALUE_REQUIRED":
+      return { ...error, status: 400, details: { ...error.details, value: "SECRET_VALUE_REQUIRED: A secret needs a value" } };
+    case "CLIENT_FORBIDDEN":
+      return { ...error, message: `You may not act for that client. ${confinement.value}` };
+    default:
+      return error;
+  }
+}
 
 const items = shallowRef<Item[]>([]);
 const loading = shallowRef(false);
@@ -68,7 +123,7 @@ const shown = computed(() =>
 );
 
 function nameOf(i: Item): string {
-  return `${i.section}/${i.property}${i.clientId === undefined ? "" : ` for ${i.clientId}`}`;
+  return `${i.section}/${i.property}${i.clientId === undefined ? "" : ` for ${clientLabel(i.clientId)}`}`;
 }
 
 function actionsOf(i: Item): RowAction[] {
@@ -90,7 +145,16 @@ const columns: FwListColumn<Item>[] = [
     accessorKey: "clientId",
     header: "Client",
     phone: "hide",
-    cell: ({ row }) => (row.original.clientId === undefined ? h("span", { class: "text-muted" }, "Global") : h("span", { class: "font-mono text-[13px]" }, row.original.clientId)),
+    cell: ({ row }) => {
+      const id = row.original.clientId;
+      if (id === undefined) {
+        return h("span", { class: "text-muted" }, "Global");
+      }
+      const label = clientLabel(id);
+      return label === id
+        ? h("span", { class: "font-mono text-[13px]" }, id)
+        : h("span", { class: "font-mono text-[13px]", title: id }, [label, h("span", { class: "text-muted" }, ` (${id})`)]);
+    },
   },
   {
     accessorKey: "value",
@@ -151,15 +215,14 @@ function startEdit(item: Item): void {
 }
 
 async function save(data: FormData): Promise<ServiceError | undefined> {
-  const clientId = data.clientId.trim();
   const description = data.description.trim();
   const { data: made, error, response } = await requireCall(admin, "setAdminPlatformConfig")({
     path: { section: data.section, property: data.property },
-    ...(clientId === "" ? {} : { query: { clientId } }),
+    ...clientQuery(data.clientId),
     body: { value: data.value, valueType: data.valueType, ...(description === "" ? {} : { description }) },
   });
   if (made === undefined) {
-    return toServiceError(error, response);
+    return explained(toServiceError(error, response));
   }
   flash.success(`${nameOf(made)} saved.`);
   await load();
@@ -178,10 +241,10 @@ async function remove(item: Item): Promise<void> {
   }
   const { error, response } = await requireCall(admin, "deleteAdminPlatformConfig")({
     path: { section: item.section, property: item.property },
-    ...(item.clientId === undefined ? {} : { query: { clientId: item.clientId } }),
+    ...clientQuery(item.clientId),
   });
   if (error !== undefined) {
-    flash.error(toServiceError(error, response).message);
+    flash.error(explained(toServiceError(error, response)).message);
     return;
   }
   flash.success(`${nameOf(item)} deleted.`);
@@ -202,10 +265,10 @@ async function reveal(item: Item): Promise<void> {
   }
   const { data, error, response } = await requireCall(admin, "revealAdminPlatformConfig")({
     path: { section: item.section, property: item.property },
-    ...(item.clientId === undefined ? {} : { query: { clientId: item.clientId } }),
+    ...clientQuery(item.clientId),
   });
   if (data === undefined) {
-    flash.error(toServiceError(error, response).message);
+    flash.error(explained(toServiceError(error, response)).message);
     return;
   }
   revealed.value = { value: data.value, label: nameOf(item) };
@@ -215,6 +278,15 @@ async function reveal(item: Item): Promise<void> {
 <template>
   <div class="space-y-4">
     <UAlert v-if="failure !== undefined" color="error" variant="subtle" title="Could not load" :description="failure" data-testid="platform-config-error" />
+    <UAlert
+      v-if="!allClients"
+      color="info"
+      variant="subtle"
+      icon="i-lucide-info"
+      :title="ownClient === undefined ? 'Global values only' : 'Your client only'"
+      :description="confinement"
+      data-testid="platform-config-confinement"
+    />
     <FwListPage
       v-model:search="search"
       title="Platform config"
@@ -242,7 +314,7 @@ async function reveal(item: Item): Promise<void> {
         </UFormField>
       </template>
     </FwListPage>
-    <PlatformConfigDialog v-model:open="editorOpen" :item="editing" :submit="save" />
+    <PlatformConfigDialog v-model:open="editorOpen" :item="editing" :submit="save" :all-clients="allClients" :own-client="ownClient" />
     <PlatformConfigRevealDialog :value="revealed?.value" :label="revealed?.label ?? ''" @close="revealed = undefined" />
   </div>
 </template>

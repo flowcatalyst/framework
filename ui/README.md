@@ -18,7 +18,8 @@ ui/
   THIRD-PARTY-NOTICES   the licences of the shipped bundle, generated from the gallery build
   packages/ui/          @flowcatalyst/ui: theme (Nuxt UI tokens and variants), Vite plugin, Vue plugin, Fw* parts, partials,
                         FwAppShell, composables, the seven standard admin pages (standardAdminPages; the last, platform-config,
-                        needs the four *AdminPlatformConfig operations in admin.api and the view/manage/reveal permissions) (source only)
+                        needs the four *AdminPlatformConfig operations in admin.api and the view/manage/reveal/all-clients
+                        permissions) (source only)
   packages/api-runtime/ @flowcatalyst/api-runtime: the configured hey-api client, the error envelope, the
                         browser session and its guard, Zod's CSP setting, the shared openapi-ts config,
                         and the generated client of the framework's own endpoints (auth.json)

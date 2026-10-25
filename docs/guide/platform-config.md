@@ -11,7 +11,8 @@ as the application's own service account and both confined to its own platform a
 2. an admin section to list, add, change, delete and reveal that configuration.
 
 The design and the wire are in the [contract](../contracts/platform-config.md); the shared page for the
-section is not built yet, so today the section is served and the page is yours.
+section is the `platform-config` page of `@flowcatalyst/ui`'s `standardAdminPages` ([below](#the-page)).
+
 
 ## The `platform` secrets driver
 
@@ -94,11 +95,42 @@ you pass. The section id is `platform-config`, the path `/admin/platform-config`
 
 ### Permissions and roles
 
+| Permission | Grants |
+|---|---|
+| `{app}:admin:platform-config:view` | the section and its list |
+| `{app}:admin:platform-config:manage` | add, change, delete |
+| `{app}:admin:platform-config:reveal` | read a secret's plaintext |
+| `{app}:admin:platform-config:all-clients` | name any client; without it a user acts for the global values and their own client only |
+
 `reveal` is separate from `manage` on purpose: writing a secret does not let the caller read it back.
 The suggested `{app}:admin` role (`{app}:admin:*:*`) holds all four (`view`, `manage`, `reveal`, `all-clients`). To keep plaintext away from
 administrators in general, grant `view` and `manage` explicitly in that role instead of the wildcard
-and give `{app}:admin:platform-config:reveal` to a narrower role. The platform records each reveal
+and give `{app}:admin:platform-config:reveal` to a narrower role. Likewise, a role for a client's own administrators
+should list `view` and `manage` (and `reveal` if wanted) without `all-clients`, so they manage their client's values and
+the global ones only; keep `all-clients` for the operators who look after every client. The platform records each reveal
 against the service account, so the application's own log line is the record of who asked.
 
 Per-client secrets appear in this section under the secrets driver's section (`secrets` unless you
 chose another), scoped to a client: that is where they are managed.
+
+### The page
+
+`standardAdminPages(application)` in `@flowcatalyst/ui` mounts the section's page at `/admin/platform-config` (the
+seventh standard page; pass the four `*AdminPlatformConfig` operations in `admin.api`). It reads the session
+(`GET /auth/session`: its `permissions` and its `client`) to decide what to show; the server checks every call again.
+
+- **Controls follow the permissions.** Add, edit and delete appear only with `manage`; Reveal only with `reveal`, on a
+  secret, after a confirmation that says the reveal is recorded. The revealed value is dropped when its dialog closes.
+- **Clients follow `all-clients`.** With it, the add form has a free client field (an id `clt_...` or an identifier such
+  as `acme`, empty for the global value) and rows show the stored id. Without it, the page says so in a note naming the
+  permission, the form offers only *Global* or *Your client, acme* (the session's client), every call for a client row
+  sends that identifier (what the module accepts before it has learned the stored id), and rows of the user's client
+  show `acme (clt_...)`. A session for no particular client (`_platform`) gets global values only and no client choice.
+  Until this process has seen a set or reveal answer for the user's client, the list shows only global rows (the
+  module cannot match the stored ids yet); saving a value of the client teaches it the pair. A `403 CLIENT_FORBIDDEN`
+  that still arrives is shown with the same explanation.
+- **Secrets are write-only.** The value of a secret is a password field that is never pre-filled; changing a secret
+  needs a new value, and `***` (the platform's mask) is refused as one in the form. The platform's own refusals,
+  `400 SECRET_VALUE_MASKED` and `400 SECRET_VALUE_REQUIRED`, are shown on the value field.
+- **Names** are checked as the module checks them: a section `[a-z][a-z0-9-]{0,63}`, a property a secret name
+  (`SecretRef.isValidName`).

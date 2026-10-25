@@ -25,7 +25,7 @@ needs.
 | `AdminConfigModule`: the config section (reads the application's own `Config`) | `framework-admin` |
 | `PlatformAdminModule`: the event types and roles sections (read the platform) | `framework-flowcatalyst` |
 | `PlatformUsersAdminModule`: users, invitations, invite / resend / revoke | `framework-flowcatalyst` |
-| `PlatformConfigAdminModule`: the application's platform config and secrets, with a separate `reveal` permission ([guide](platform-config.md)) | `framework-flowcatalyst` |
+| `PlatformConfigAdminModule`: the application's platform config and secrets, with a separate `reveal` permission and an `all-clients` permission to name any client (without it, a user's own client only) ([guide](platform-config.md)) | `framework-flowcatalyst` |
 | `PlatformActivityAdminModule`: events and dispatch jobs with attempts | `framework-flowcatalyst` |
 | `FwAdminShell`, `FwAdminAbout`, `adminRoutes`, `adminNavigation`, `useAdminNavigation`, `AdminPage`; the data pages: `standardAdminPages`, `replaceAdminPage`, `AdminDataApi`, `adminPermissions` | `@flowcatalyst/ui` |
 

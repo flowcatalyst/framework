@@ -76,6 +76,7 @@ describe("standardAdminPages", () => {
       platformConfigView: "orders-demo:admin:platform-config:view",
       platformConfigManage: "orders-demo:admin:platform-config:manage",
       platformConfigReveal: "orders-demo:admin:platform-config:reveal",
+      platformConfigAllClients: "orders-demo:admin:platform-config:all-clients",
     });
   });
 });

@@ -372,6 +372,8 @@ export interface AdminPermissions {
   readonly platformConfigView: string;
   readonly platformConfigManage: string;
   readonly platformConfigReveal: string;
+  /** Name any client in the platform config section; without it a user acts only for the session's own client. */
+  readonly platformConfigAllClients: string;
 }
 
 export function adminPermissions(application: string): AdminPermissions {
@@ -389,6 +391,7 @@ export function adminPermissions(application: string): AdminPermissions {
     platformConfigView: p("platform-config", "view"),
     platformConfigManage: p("platform-config", "manage"),
     platformConfigReveal: p("platform-config", "reveal"),
+    platformConfigAllClients: p("platform-config", "all-clients"),
   };
 }
 
@@ -402,12 +405,27 @@ export const inviteBodySchema = z.object({
   returnInviteLink: z.boolean().optional(),
 });
 
-/** The add/edit form's rules: the constants of the server's `SetBody` and path names (platform config contract section 4). */
-export const platformConfigFormSchema = z.object({
-  section: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/, "Lower-case letters, digits and hyphens, starting with a letter"),
-  property: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/, "Lower-case letters, digits and hyphens, starting with a letter"),
-  clientId: z.string().max(100),
-  valueType: z.enum(["PLAIN", "SECRET"]),
-  value: z.string().min(1, "A value is required").max(65536).regex(/\S/, "A value is required"),
-  description: z.string().max(500),
-});
+/** The platform's mask for a secret: never a value, so it is never sent as one (the platform refuses it: `SECRET_VALUE_MASKED`). */
+export const PLATFORM_SECRET_MASK = "***";
+
+/**
+ * The add/edit form's rules: the constants of the server's `SetBody` and path names (platform config contract
+ * section 4). A property name is exactly a secret name (`SecretRef.isValidName`: `[a-z0-9]+(-[a-z0-9]+)*`, at most
+ * 100 characters), so every property the `platform` secrets driver reads can be managed here.
+ */
+export const platformConfigFormSchema = z
+  .object({
+    section: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/, "Lower-case letters, digits and hyphens, starting with a letter"),
+    property: z
+      .string()
+      .max(100, "At most 100 characters")
+      .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Lower-case letters and digits, in groups joined by single hyphens"),
+    clientId: z.string().max(100),
+    valueType: z.enum(["PLAIN", "SECRET"]),
+    value: z.string().min(1, "A value is required").max(65536).regex(/\S/, "A value is required"),
+    description: z.string().max(500),
+  })
+  .refine((form) => form.valueType !== "SECRET" || form.value.trim() !== PLATFORM_SECRET_MASK, {
+    path: ["value"],
+    message: "*** is how the platform hides a secret, not a value: enter the secret itself",
+  });

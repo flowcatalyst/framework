@@ -90,7 +90,7 @@ is the shape the platform's definition sync accepts (flowcatalyst.md section 2).
 | `{app}:admin:{section}:view` | reading a section (M4e: `event-types`, `roles`, `config`, `users`, `activity`) |
 | `{app}:admin:users:invite`, `:resend`, `:revoke` | inviting a user, sending an invitation again, revoking one (section 12) |
 | `{app}:admin:{section}:manage` | changing a section |
-| `{app}:admin:platform-config:view`, `:manage`, `:reveal` | the platform-config section: listing, writing, and reading a secret's plaintext (section 14) |
+| `{app}:admin:platform-config:view`, `:manage`, `:reveal`, `:all-clients` | the platform-config section: listing, writing, reading a secret's plaintext, and naming any client rather than only the user's own (section 14) |
 
 One suggested role, `{app}:admin`, grants `{app}:admin:*:*`. The application maps its platform role
 to it in its permission mapping (Java: `PermissionMapper.byRole(Map.of("orders-demo:admin",
@@ -485,6 +485,7 @@ servers (the orders suite exercises all six pages; the tickets suite mounts `abo
 The section `platform-config` (`/admin/platform-config`, "Platform config") shows and edits the configuration and
 secrets the application keeps on the platform, as the application's own service account, with `PlatformConfigAdminModule`
 in `framework-flowcatalyst`. Operations `listAdminPlatformConfig`, `setAdminPlatformConfig`, `deleteAdminPlatformConfig`
-and `revealAdminPlatformConfig`; permissions `view`, `manage` and `reveal` (reveal is separate and is a `POST`). The
-wire, the rules and what was built are in [platform-config.md](platform-config.md) (sections 4 and 8). The shared page
-(a seventh standard page) is section 5 of that contract and is not built yet.
+and `revealAdminPlatformConfig`; permissions `view`, `manage`, `reveal` (reveal is separate and is a `POST`) and
+`all-clients` (added 2026-10-25: without it a user acts for the global values and their own client only, else `403
+CLIENT_FORBIDDEN`). The wire, the rules and what was built are in [platform-config.md](platform-config.md) (sections 4
+and 8). The shared page (a seventh standard page) is section 5 of that contract.
