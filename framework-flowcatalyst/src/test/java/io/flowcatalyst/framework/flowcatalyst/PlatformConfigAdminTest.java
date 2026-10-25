@@ -139,6 +139,18 @@ class PlatformConfigAdminTest {
     assertThat(platformCalls()).isEmpty();
   }
 
+  @Test
+  void aClientNamedByIdentifierMatchesItsRowsFromTheFirstListing() {
+    // The platform names each client row's identifier beside its stored id, so no set or reveal is
+    // needed first for "acme" to match clt_1's rows.
+    String row = item("ftp", "password", "clt_1", "SECRET", "***", null).replace("\"clientId\":\"clt_1\"", "\"clientId\":\"clt_1\",\"clientIdentifier\":\"acme\"");
+    platform.respondTo("GET", LIST, 200, "{\"items\":[" + item("general", "currency", null, "PLAIN", "ZAR", null) + "," + row + "]}");
+
+    JsonNode items = send("GET", "/api/admin/platform-config?clientId=acme", VIEW, null).tree().get("items");
+
+    assertThat(items).singleElement().satisfies(i -> assertThat(i.get("clientId").asString()).isEqualTo("clt_1"));
+  }
+
   // ---- set and delete ------------------------------------------------------------------------
 
   @Test

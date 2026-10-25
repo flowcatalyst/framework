@@ -150,10 +150,11 @@ public final class PlatformConfigAdminModule implements Module {
           if (clientId != null) {
             mayActFor(ctx, client, clientId);
           }
-          // Rows carry the stored id; a filter given as an identifier is compared as the stored id it is known to be.
-          String filterId = clientId == null ? null : client.canonicalClient(clientId);
           boolean everyClient = ctx.hasPermission(allClients(application));
           List<PlatformConfigData.Property> found = AdminPlatform.call(client, client::configProperties, null, null);
+          // Rows carry the stored id; a filter given as an identifier is compared as the stored id it is.
+          // Resolved after the listing, which names each row's identifier too.
+          String filterId = clientId == null ? null : client.canonicalClient(clientId);
           List<ConfigItem> items = new ArrayList<>();
           for (PlatformConfigData.Property p : found) {
             boolean show =

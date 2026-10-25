@@ -591,8 +591,20 @@ public final class PlatformClient {
    * @throws PlatformException when the platform refuses or cannot be reached
    */
   public List<PlatformConfigData.Property> configProperties() {
-    return PlatformAdminParsing.configProperties(
-        http().call("GET", "/api/platform-config/" + PlatformHttp.enc(application().value()), java.util.Map.of(), null));
+    var answer = http().call("GET", "/api/platform-config/" + PlatformHttp.enc(application().value()), java.util.Map.of(), null);
+    // Each client row names the client both ways (clientIdentifier beside the stored clientId), so
+    // the identifier-to-id pairs are known from the first listing, not only after a set or reveal.
+    var items = answer.get("items");
+    if (items != null && items.isArray()) {
+      for (var row : items) {
+        var identifier = row.get("clientIdentifier");
+        var stored = row.get("clientId");
+        if (identifier != null && identifier.isTextual() && stored != null && stored.isTextual()) {
+          learnClient(identifier.asText(), stored.asText());
+        }
+      }
+    }
+    return PlatformAdminParsing.configProperties(answer);
   }
 
   /**
@@ -739,9 +751,10 @@ public final class PlatformClient {
   private final java.util.concurrent.ConcurrentHashMap<String, String> clientAliases = new java.util.concurrent.ConcurrentHashMap<>();
 
   /**
-   * The stored client id for a client reference, as far as this process has learned it: the platform
-   * answers a set or a reveal that named a client by identifier with the stored id ({@code clt_...}),
-   * and this remembers the pair. A reference that is a stored id, or an identifier not yet seen, is
+   * The stored client id for a client reference, as far as this process has learned it: a listing
+   * names each client row's identifier beside its stored id ({@code clt_...}), and the platform
+   * answers a set or a reveal that named a client by identifier with the stored id; this remembers
+   * the pairs. A reference that is a stored id, or an identifier not yet seen, is
    * returned unchanged.
    *
    * @param client a client id or identifier

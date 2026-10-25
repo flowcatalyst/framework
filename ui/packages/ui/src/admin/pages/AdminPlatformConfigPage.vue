@@ -48,8 +48,8 @@ const ownClient = computed(() => {
 
 /**
  * The `clientId` a call sends for a row's or a form's client. Without all-clients every client the page
- * offers is the own one, sent as the session's identifier (a row carries the stored id, which the module
- * matches only once it has learned the pair).
+ * offers is the own one, sent as the session's identifier (a row carries the stored id; the module knows the
+ * pair from the platform's listing, which names both).
  */
 function requestClient(reference: string | undefined): string | undefined {
   const text = reference?.trim() ?? "";
@@ -72,7 +72,7 @@ function clientLabel(clientId: string): string {
 const confinement = computed(() =>
   ownClient.value === undefined
     ? `You are signed in for no particular client, so you see and manage global values only. Client values need the permission ${admin.permissions.platformConfigAllClients}.`
-    : `You see and manage the global values and those of your client, ${ownClient.value}. A value of your client is listed once this application has saved or revealed a value for it since it last started. Other clients need the permission ${admin.permissions.platformConfigAllClients}.`,
+    : `You see and manage the global values and those of your client, ${ownClient.value}. Other clients need the permission ${admin.permissions.platformConfigAllClients}.`,
 );
 
 /** A failed call in the page's words: the platform's secret-value refusals go on the value field, a client refusal says why. */

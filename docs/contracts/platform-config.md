@@ -105,7 +105,8 @@ used for invalidation in this version (it would need a second call per lookup). 
 (`CachingSecretStore` in core, for every driver) also:
 
 - **Keys on the canonical client.** `SecretStore.canonical(client)` (default: the client itself) is the form under which
-  an entry is kept. The platform driver maps an identifier to the stored id it has learned from a set or reveal answer
+  an entry is kept. The platform driver maps an identifier to the stored id it has learned from a listing (each row names
+  `clientIdentifier` beside `clientId`) or a set or reveal answer
   (`PlatformClient.canonicalClient`, a bounded in-process map), so `acme` and `clt_0ACME` share one entry once the pair is
   known, and `evict` under either name drops it (an entry cached before the pair was known is found by comparing
   canonical forms). `env` and `file` do not override it.
@@ -174,14 +175,14 @@ characters, and accepted `a-` style hyphen forms no secret reference allows). An
 `403 CLIENT_FORBIDDEN` and **no platform call** (restored 2026-10-25). The framework's request `Context` carries one client
 (the user's own, as an identifier) and no list of the user's clients, so the rule is: a user holding
 `{app}:admin:platform-config:all-clients` may name any client; any other user only the context's client, given as that
-identifier or as its stored id once this process has learned the pair (from a set or reveal answer), and never when the
+identifier or as its stored id once this process has learned the pair (from a listing, whose rows name both, or a set or reveal answer), and never when the
 context has no client (`_platform`). A client-scoped user therefore first acts by identifier; the page should send the
 identifier of the user's client. The platform confines the application's account again (section 2).
 
 The list applies the same rule to what it shows: with `all-clients` every row; without it the global rows and the rows of
-the user's own client (so, until the pair is known, only global rows). The `clientId` filter takes an id or an identifier and
-is normalised to the stored id before it is compared with the rows, which carry the stored id; an identifier this process has
-not yet learned matches no row (the platform offers no cheap lookup; the limitation is documented, not hidden). Set and
+the user's own client. The platform's list names each client row's identifier (`clientIdentifier`) beside its stored id, and
+the module learns the pairs from it before filtering, so the user's client's rows show from the first listing. The `clientId`
+filter takes an id or an identifier and is normalised to the stored id (after the listing) before it is compared with the rows. Set and
 reveal echo the stored `clientId` the platform answered with.
 
 **Errors.** `404 CONFIG_NOT_FOUND` for a missing property (reveal and delete-of-missing is `204`);
@@ -298,7 +299,7 @@ confinement, stored `clientId` in answers, `***` refused as a secret value) impl
   list filtering by own client, `PlatformClient.setConfigProperty` / `deleteConfigProperty` / `revealConfigSecret` gained
   overloads taking `onBehalfOf` (the old signatures delegate with null), `PlatformHttp.call` takes extra headers, and the
   list filter and the answers use the stored client id. `PlatformClient.canonicalClient(ref)` is the identifier-to-id map
-  (learned from set and reveal answers; up to 10 000 pairs). Decision: the narrowest safe rule, because the framework has no
+  (learned from listings, which name `clientIdentifier` beside `clientId`, and from set and reveal answers; up to 10 000 pairs). Decision: the narrowest safe rule, because the framework has no
   per-user client list (see item 1 above).
 - **F2 Strict not-found** (section 3). Only `Config_NOT_FOUND` and `Client_NOT_FOUND` are `NotFound`; any other `404` is a
   `SecretStoreException`. The admin reveal's `CONFIG_NOT_FOUND` mapping still takes any `404` (it reports to a person, not

@@ -86,8 +86,8 @@ you pass. The section id is `platform-config`, the path `/admin/platform-config`
   principal, section, property and client, never a value.
 - `clientId` must be a client the signed-in user may act for, else `403 CLIENT_FORBIDDEN` and no platform call. A
   `Context` holds one client (the user's own, as an identifier), so the rule is: a user holding
-  `{app}:admin:platform-config:all-clients` may name any client, anyone else only their own (by identifier, or by stored id
-  once a set or reveal has shown the pair). The list shows global rows and, without `all-clients`, only the user's own
+  `{app}:admin:platform-config:all-clients` may name any client, anyone else only their own (by identifier, or by stored id:
+  the platform's list names each client row's identifier beside its stored id, so the pair is known from the first listing). The list shows global rows and, without `all-clients`, only the user's own
   client's rows. The platform checks again and its reason reaches the person.
 - Set, delete and reveal send the signed-in principal's id as `X-On-Behalf-Of`, so the platform's audit row names the
   person as well as the service account. A set or delete also drops the cached secret of that client and name from the
@@ -126,8 +126,8 @@ seventh standard page; pass the four `*AdminPlatformConfig` operations in `admin
   permission, the form offers only *Global* or *Your client, acme* (the session's client), every call for a client row
   sends that identifier (what the module accepts before it has learned the stored id), and rows of the user's client
   show `acme (clt_...)`. A session for no particular client (`_platform`) gets global values only and no client choice.
-  Until this process has seen a set or reveal answer for the user's client, the list shows only global rows (the
-  module cannot match the stored ids yet); saving a value of the client teaches it the pair. A `403 CLIENT_FORBIDDEN`
+  The list shows the user's client's rows from the first load: the platform's list names each row's client identifier
+  beside its stored id. A `403 CLIENT_FORBIDDEN`
   that still arrives is shown with the same explanation.
 - **Secrets are write-only.** The value of a secret is a password field that is never pre-filled; changing a secret
   needs a new value, and `***` (the platform's mask) is refused as one in the form. The platform's own refusals,
