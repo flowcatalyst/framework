@@ -58,8 +58,18 @@ final class PlatformHttp {
    * @throws PlatformException when the platform refuses or cannot be reached
    */
   JsonNode call(String method, String path, Map<String, @Nullable String> query, @Nullable Object body) {
+    return call(method, path, query, body, Map.of());
+  }
+
+  /**
+   * Calls the platform with extra request headers.
+   *
+   * @param headers extra headers (already safe to send); never {@code Authorization}
+   * @see #call(String, String, Map, Object)
+   */
+  JsonNode call(String method, String path, Map<String, @Nullable String> query, @Nullable Object body, Map<String, String> headers) {
     for (int attempt = 0; ; attempt++) {
-      HttpResponse<String> response = send(method, path, query, body);
+      HttpResponse<String> response = send(method, path, query, body, headers);
       if (response.statusCode() == 401 && attempt == 0) {
         clearToken.run();
         continue;
@@ -68,7 +78,8 @@ final class PlatformHttp {
     }
   }
 
-  private HttpResponse<String> send(String method, String path, Map<String, @Nullable String> query, @Nullable Object body) {
+  private HttpResponse<String> send(
+      String method, String path, Map<String, @Nullable String> query, @Nullable Object body, Map<String, String> headers) {
     StringBuilder uri = new StringBuilder(base).append(path);
     char sep = '?';
     for (Map.Entry<String, @Nullable String> e : query.entrySet()) {
@@ -79,6 +90,9 @@ final class PlatformHttp {
     }
     HttpRequest.Builder request =
         HttpRequest.newBuilder(URI.create(uri.toString())).timeout(timeout).header("Authorization", "Bearer " + token.get()).header("Accept", "application/json");
+    for (Map.Entry<String, String> h : headers.entrySet()) {
+      request.header(h.getKey(), h.getValue());
+    }
     if (body == null) {
       request.method(method, HttpRequest.BodyPublishers.noBody());
     } else {

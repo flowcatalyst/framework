@@ -600,20 +600,43 @@ public final class PlatformClient {
    *
    * @param section the section
    * @param property the property
-   * @param clientId the platform client id, or null for the global value
+   * @param clientId the platform client id or identifier, or null for the global value
    * @param request the value, its type and description
    * @return the property as stored; a secret's value is {@code ***}
    * @throws PlatformException when the platform refuses or cannot be reached
    */
   public PlatformConfigData.Property setConfigProperty(
       String section, String property, @Nullable String clientId, PlatformConfigData.SetRequest request) {
+    return setConfigProperty(section, property, clientId, request, null);
+  }
+
+  /**
+   * Sets a property on behalf of someone: as {@link #setConfigProperty(String, String, String,
+   * PlatformConfigData.SetRequest)}, sending {@code X-On-Behalf-Of} so the platform's audit row names
+   * the signed-in person.
+   *
+   * @param section the section
+   * @param property the property
+   * @param clientId the platform client id or identifier, or null for the global value
+   * @param request the value, its type and description
+   * @param onBehalfOf who the change is for (an id or email, never a token), or null; cleaned to
+   *     printable ASCII, trimmed, at most 256 characters
+   * @return the property as stored; a secret's value is {@code ***}
+   * @throws PlatformException when the platform refuses or cannot be reached
+   */
+  public PlatformConfigData.Property setConfigProperty(
+      String section, String property, @Nullable String clientId, PlatformConfigData.SetRequest request, @Nullable String onBehalfOf) {
     java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
     body.put("value", request.value());
     body.put("valueType", request.valueType());
     if (request.description() != null) {
       body.put("description", request.description());
     }
-    return PlatformAdminParsing.configProperty(http().call("PUT", configPath(section, property), clientQuery(clientId), body));
+    PlatformConfigData.Property stored =
+        PlatformAdminParsing.configProperty(
+            http().call("PUT", configPath(section, property), clientQuery(clientId), body, behalfHeaders(onBehalfOf)));
+    learnClient(clientId, stored.clientId());
+    return stored;
   }
 
   /**
@@ -622,11 +645,25 @@ public final class PlatformClient {
    *
    * @param section the section
    * @param property the property
-   * @param clientId the platform client id, or null for the global value
+   * @param clientId the platform client id or identifier, or null for the global value
    * @throws PlatformException when the platform refuses or cannot be reached
    */
   public void deleteConfigProperty(String section, String property, @Nullable String clientId) {
-    http().call("DELETE", configPath(section, property), clientQuery(clientId), null);
+    deleteConfigProperty(section, property, clientId, null);
+  }
+
+  /**
+   * Deletes a property on behalf of someone (see {@link #setConfigProperty(String, String, String,
+   * PlatformConfigData.SetRequest, String)}).
+   *
+   * @param section the section
+   * @param property the property
+   * @param clientId the platform client id or identifier, or null for the global value
+   * @param onBehalfOf who the change is for, or null
+   * @throws PlatformException when the platform refuses or cannot be reached
+   */
+  public void deleteConfigProperty(String section, String property, @Nullable String clientId, @Nullable String onBehalfOf) {
+    http().call("DELETE", configPath(section, property), clientQuery(clientId), null, behalfHeaders(onBehalfOf));
   }
 
   /**
@@ -635,13 +672,93 @@ public final class PlatformClient {
    *
    * @param section the section
    * @param property the property
-   * @param clientId the platform client id, or null for the global value
+   * @param clientId the platform client id or identifier, or null for the global value
    * @return the plaintext; hand it to the caller and to nobody else, and never log it
    * @throws PlatformException (kind {@code NOT_FOUND} for no such property, {@code REJECTED} with code
    *     {@code NOT_A_SECRET} for a plain one, {@code FORBIDDEN} when not allowed)
    */
   public PlatformConfigData.Revealed revealConfigSecret(String section, String property, @Nullable String clientId) {
-    return PlatformAdminParsing.revealed(http().call("GET", configPath(section, property) + "/secret", clientQuery(clientId), null));
+    return revealConfigSecret(section, property, clientId, null);
+  }
+
+  /**
+   * Reads a secret's plaintext on behalf of someone (see {@link #setConfigProperty(String, String,
+   * String, PlatformConfigData.SetRequest, String)}).
+   *
+   * @param section the section
+   * @param property the property
+   * @param clientId the platform client id or identifier, or null for the global value
+   * @param onBehalfOf who the read is for, or null
+   * @return the plaintext; hand it to the caller and to nobody else, and never log it
+   * @throws PlatformException as for the overload without {@code onBehalfOf}
+   */
+  public PlatformConfigData.Revealed revealConfigSecret(
+      String section, String property, @Nullable String clientId, @Nullable String onBehalfOf) {
+    PlatformConfigData.Revealed revealed =
+        PlatformAdminParsing.revealed(
+            http().call("GET", configPath(section, property) + "/secret", clientQuery(clientId), null, behalfHeaders(onBehalfOf)));
+    learnClient(clientId, revealed.clientId());
+    return revealed;
+  }
+
+  /** The longest {@code X-On-Behalf-Of} value the platform accepts. */
+  static final int ON_BEHALF_OF_MAX = 256;
+
+  /**
+   * The text for the {@code X-On-Behalf-Of} header: printable ASCII only (control and non-ASCII
+   * characters removed), trimmed, at most 256 characters; null when nothing is left.
+   */
+  static @Nullable String onBehalfOfHeader(@Nullable String who) {
+    if (who == null) {
+      return null;
+    }
+    StringBuilder out = new StringBuilder(Math.min(who.length(), ON_BEHALF_OF_MAX));
+    for (int i = 0; i < who.length(); i++) {
+      char c = who.charAt(i);
+      if (c >= 0x20 && c <= 0x7E) {
+        out.append(c);
+      }
+    }
+    String text = out.toString().strip();
+    if (text.length() > ON_BEHALF_OF_MAX) {
+      text = text.substring(0, ON_BEHALF_OF_MAX).stripTrailing();
+    }
+    return text.isEmpty() ? null : text;
+  }
+
+  private static java.util.Map<String, String> behalfHeaders(@Nullable String onBehalfOf) {
+    String text = onBehalfOfHeader(onBehalfOf);
+    return text == null ? java.util.Map.of() : java.util.Map.of("X-On-Behalf-Of", text);
+  }
+
+  /** Most identifier-to-id pairs remembered; a client count beyond this just stops being aliased. */
+  private static final int MAX_ALIASES = 10_000;
+
+  private static final java.util.regex.Pattern ALIAS_VALUE = java.util.regex.Pattern.compile("[A-Za-z0-9._-]{1,100}");
+
+  private final java.util.concurrent.ConcurrentHashMap<String, String> clientAliases = new java.util.concurrent.ConcurrentHashMap<>();
+
+  /**
+   * The stored client id for a client reference, as far as this process has learned it: the platform
+   * answers a set or a reveal that named a client by identifier with the stored id ({@code clt_...}),
+   * and this remembers the pair. A reference that is a stored id, or an identifier not yet seen, is
+   * returned unchanged.
+   *
+   * @param client a client id or identifier
+   * @return the stored id when known, else {@code client}
+   */
+  public String canonicalClient(String client) {
+    return clientAliases.getOrDefault(client, client);
+  }
+
+  /** Remembers that the platform stores {@code requested} as {@code stored}. */
+  private void learnClient(@Nullable String requested, @Nullable String stored) {
+    if (requested == null || stored == null || requested.equals(stored) || !ALIAS_VALUE.matcher(stored).matches()) {
+      return;
+    }
+    if (clientAliases.size() < MAX_ALIASES || clientAliases.containsKey(requested)) {
+      clientAliases.put(requested, stored);
+    }
   }
 
   private String configPath(String section, String property) {

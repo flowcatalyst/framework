@@ -37,6 +37,9 @@ public final class PlatformSecrets {
   /** The section the driver reads unless told another. */
   public static final String DEFAULT_SECTION = "secrets";
 
+  /** The platform's codes for "no such property" and "no such client" on the config calls. */
+  static final java.util.Set<String> NOT_FOUND_CODES = java.util.Set.of("Config_NOT_FOUND", "Client_NOT_FOUND");
+
   private static final Pattern SECTION = Pattern.compile("[a-z][a-z0-9-]{0,63}");
   /** A client reference: the platform's client id, or a client identifier (a slug). No separators, no dots. */
   private static final Pattern PLATFORM_CLIENT =
@@ -110,6 +113,12 @@ public final class PlatformSecrets {
     }
 
     @Override
+    public ClientId canonical(ClientId client) {
+      String stored = platform.canonicalClient(client.value());
+      return stored.equals(client.value()) ? client : new ClientId(stored);
+    }
+
+    @Override
     public SecretResult find(ClientId client, String name) {
       if (!PLATFORM_CLIENT.matcher(client.value()).matches()) {
         return new SecretResult.Refused("the client must be the platform's client id (clt_...) or its identifier");
@@ -132,7 +141,12 @@ public final class PlatformSecrets {
     private SecretResult outcome(PlatformException e, ClientId client, String name) {
       switch (e.kind()) {
         case NOT_FOUND -> {
-          return new SecretResult.NotFound();
+          // Only the platform's own "no such property / no such client" codes mean not found. Any other 404
+          // (a route that does not exist, a proxy's page) says nothing about the secret.
+          if (e.code() != null && NOT_FOUND_CODES.contains(e.code())) {
+            return new SecretResult.NotFound();
+          }
+          throw failure("could not be read: " + e.getMessage() + " (not a platform not-found answer)", client, name);
         }
         case REJECTED -> {
           if ("NOT_A_SECRET".equals(e.code())) {

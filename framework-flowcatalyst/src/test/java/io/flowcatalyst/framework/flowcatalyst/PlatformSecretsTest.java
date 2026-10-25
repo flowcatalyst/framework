@@ -100,12 +100,26 @@ class PlatformSecretsTest {
 
   @Test
   void aMissingSecretIsNotFoundAndNotCachedSoALaterOneIsSeen() {
-    platform.respondTo("GET", PATH, 404, "{\"error\":\"NOT_FOUND\"}");
+    platform.respondTo("GET", PATH, 404, "{\"error\":\"Config_NOT_FOUND\"}");
     assertThat(resolver().resolve(ACME, SecretRef.of("ftp-password"))).isInstanceOf(SecretResult.NotFound.class);
     assertThatThrownBy(() -> resolver().require(ACME, SecretRef.of("ftp-password"))).isInstanceOf(SecretNotFoundException.class);
 
     platform.respondTo("GET", PATH, 200, revealed(VALUE));
     assertThat(resolver().require(ACME, SecretRef.of("ftp-password")).reveal()).isEqualTo(VALUE);
+  }
+
+  @Test
+  void onlyThePlatformsOwnNotFoundCodesMeanNotFound() {
+    platform.respondTo("GET", PATH, 404, "{\"error\":\"Client_NOT_FOUND\"}");
+    assertThat(resolver().resolve(ACME, SecretRef.of("ftp-password"))).isInstanceOf(SecretResult.NotFound.class);
+
+    // a 404 with another code, no code, or an HTML page from a proxy is a failure, not "no such secret"
+    for (String body : List.of("{\"error\":\"ROUTE_NOT_FOUND\",\"message\":\"" + VALUE + "\"}", "{\"error\":\"NOT_FOUND\"}", "{}", "<html>" + VALUE + "</html>", "")) {
+      platform.respondTo("GET", PATH, 404, body);
+      Throwable t = catchThrowable(() -> resolver().resolve(ACME, SecretRef.of("ftp-password")));
+      assertThat(t).as(body).isInstanceOf(SecretStoreException.class).hasMessageContaining("404");
+      assertThat(t.getMessage()).doesNotContain(VALUE);
+    }
   }
 
   @Test
@@ -240,5 +254,59 @@ class PlatformSecretsTest {
                     .start());
 
     assertThat(t).isInstanceOf(StartupException.class).hasMessageContaining("PlatformSecrets.store()");
+  }
+
+  // ---- aliases, stale on error ---------------------------------------------------------------------
+
+  @Test
+  void anIdentifierAndTheStoredIdShareOneCacheEntryAndEvictionWorksUnderEither() {
+    platform.respondTo("GET", PATH, 200, revealed(VALUE)); // answers clientId clt_0ACME whatever was asked
+    ClientId code = new ClientId("acme");
+
+    assertThat(resolver().require(code, SecretRef.of("ftp-password")).reveal()).isEqualTo(VALUE);
+    assertThat(resolver().require(ACME, SecretRef.of("ftp-password")).reveal()).isEqualTo(VALUE);
+    assertThat(resolver().require(code, SecretRef.of("ftp-password")).reveal()).isEqualTo(VALUE);
+    assertThat(reveals()).hasSize(1);
+    assertThat(reveals().getFirst().query()).isEqualTo("clientId=acme");
+
+    platform.respondTo("GET", PATH, 200, revealed("rotated"));
+    resolver().evict(ACME, SecretRef.of("ftp-password"));
+    assertThat(resolver().require(code, SecretRef.of("ftp-password")).reveal()).isEqualTo("rotated");
+    platform.respondTo("GET", PATH, 200, revealed("third"));
+    resolver().evict(code, SecretRef.of("ftp-password"));
+    assertThat(resolver().require(ACME, SecretRef.of("ftp-password")).reveal()).isEqualTo("third");
+  }
+
+  @Test
+  void aFailingPlatformServesTheLastValueWithAWarningAndNeverForNotFound() throws Exception {
+    app.close();
+    app = starting(PlatformSecrets.store().withCache(CachePolicy.of(java.time.Duration.ofMillis(20), 100).withStaleIfError(java.time.Duration.ofMinutes(5))), Map.of());
+    assertThat(resolver().require(ACME, SecretRef.of("ftp-password")).reveal()).isEqualTo(VALUE);
+    Thread.sleep(60); // past the ttl
+
+    try (LogCapture logs = LogCapture.start()) {
+      platform.respondTo("GET", PATH, 503, "{\"error\":\"DOWN\",\"message\":\"" + VALUE + "\"}");
+      assertThat(resolver().require(ACME, SecretRef.of("ftp-password")).reveal()).isEqualTo(VALUE);
+
+      String text = logs.text();
+      assertThat(text).contains("could not be read").contains("ftp-password").contains("clt_0ACME").contains("platform");
+      assertThat(text).doesNotContain(VALUE);
+    }
+
+    platform.respondTo("GET", PATH, 404, "{\"error\":\"Config_NOT_FOUND\"}");
+    assertThat(resolver().resolve(ACME, SecretRef.of("ftp-password"))).isInstanceOf(SecretResult.NotFound.class);
+    platform.respondTo("GET", PATH, 503, "{}");
+    assertThat(catchThrowable(() -> resolver().resolve(ACME, SecretRef.of("ftp-password")))).isInstanceOf(SecretStoreException.class);
+  }
+
+  @Test
+  void theStaleWindowCanBeSwitchedOff() throws Exception {
+    app.close();
+    app = starting(PlatformSecrets.store().withCache(CachePolicy.of(java.time.Duration.ofMillis(20), 100).withStaleIfError(java.time.Duration.ZERO)), Map.of());
+    resolver().require(ACME, SecretRef.of("ftp-password"));
+    Thread.sleep(60);
+    platform.respondTo("GET", PATH, 503, "{}");
+
+    assertThat(catchThrowable(() -> resolver().resolve(ACME, SecretRef.of("ftp-password")))).isInstanceOf(SecretStoreException.class);
   }
 }

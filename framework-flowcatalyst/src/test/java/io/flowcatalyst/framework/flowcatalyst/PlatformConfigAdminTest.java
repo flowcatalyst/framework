@@ -30,6 +30,7 @@ class PlatformConfigAdminTest {
   static final String VIEW = "orders:admin:platform-config:view";
   static final String MANAGE = "orders:admin:platform-config:manage";
   static final String REVEAL = "orders:admin:platform-config:reveal";
+  static final String ALL_CLIENTS = "orders:admin:platform-config:all-clients";
   static final String PLAINTEXT = "hunter2-PLAINTEXT-secret";
   static final String ENTERED = "entered-PLAINTEXT-secret";
 
@@ -86,7 +87,12 @@ class PlatformConfigAdminTest {
         + "\",\"updatedAt\":\"2026-10-23T10:00:00Z\"}";
   }
 
+  /** As {@link #sendAs}, for a user who may name any client (the all-clients permission is held too). */
   TestResponse send(String method, String path, String perms, String body) {
+    return sendAs(method, path, perms.isEmpty() ? ALL_CLIENTS : perms + "," + ALL_CLIENTS, body);
+  }
+
+  TestResponse sendAs(String method, String path, String perms, String body) {
     TestClient.Call call = client.request(Method.valueOf(method), path).header("X-Perms", perms);
     if (body != null) {
       call.jsonBody(body);
@@ -264,18 +270,36 @@ class PlatformConfigAdminTest {
 
   @Test
   void namesThatCouldChangeThePathAreRefusedWithoutACall() {
-    for (String bad : List.of("Upper", "1abc", "a_b", "a.b", "..%2F..%2Fx", "x%20y", "a".repeat(65), "-a")) {
-      for (String path : List.of("/api/admin/platform-config/" + bad + "/password", "/api/admin/platform-config/ftp/" + bad)) {
-        TestResponse put = send("PUT", path, MANAGE, SET_BODY);
-        assertThat(put.status()).as(path).isIn(400, 404);
-        assertThat(send("DELETE", path, MANAGE, null).status()).as(path).isIn(400, 404);
-        assertThat(send("POST", path + "/reveal", REVEAL, null).status()).as(path).isIn(400, 404);
-      }
+    List<String> badSections = List.of("Upper", "1abc", "a_b", "a.b", "..%2F..%2Fx", "x%20y", "a".repeat(65), "-a");
+    // a property is exactly a secret name: [a-z0-9]+(-[a-z0-9]+)*, at most 100 characters
+    List<String> badProperties = List.of("Upper", "a_b", "a.b", "..%2F..%2Fx", "x%20y", "-a", "a-", "a--b", "a".repeat(101));
+    for (String bad : badSections) {
+      assertRefused("/api/admin/platform-config/" + bad + "/password");
+    }
+    for (String bad : badProperties) {
+      assertRefused("/api/admin/platform-config/ftp/" + bad);
     }
     TestResponse r = send("DELETE", "/api/admin/platform-config/Upper/password", MANAGE, null);
     assertThat(r.status()).isEqualTo(400);
     assertThat(r.tree().get("error").asString()).isEqualTo("INVALID_NAME");
     assertThat(platformCalls()).isEmpty();
+  }
+
+  private void assertRefused(String path) {
+    assertThat(send("PUT", path, MANAGE, SET_BODY).status()).as(path).isIn(400, 404);
+    assertThat(send("DELETE", path, MANAGE, null).status()).as(path).isIn(400, 404);
+    assertThat(send("POST", path + "/reveal", REVEAL, null).status()).as(path).isIn(400, 404);
+  }
+
+  @Test
+  void aPropertyNameIsExactlyWhatTheSecretsDriverCanResolve() {
+    for (String ok : List.of("1abc", "api-key", "a", "0", "a".repeat(100), "a-1-b-2")) {
+      assertThat(io.flowcatalyst.framework.secrets.SecretRef.isValidName(ok)).as(ok).isTrue();
+      platform.respondTo("PUT", "/api/config/orders/secrets/" + ok, 200, item("secrets", ok, "clt_1", "SECRET", "***", null));
+      assertThat(send("PUT", "/api/admin/platform-config/secrets/" + ok + "?clientId=clt_1", MANAGE, SET_BODY).status()).as(ok).isEqualTo(200);
+    }
+    // and a section is still the section rule
+    assertThat(send("PUT", "/api/admin/platform-config/1abc/password", MANAGE, SET_BODY).status()).isEqualTo(400);
   }
 
   @Test
@@ -340,5 +364,138 @@ class PlatformConfigAdminTest {
     AppBuilder b = App.builder().configDirectory(dir).environment(Receiving.env(platform));
     b.module(PlatformAdminTest.http()).module(AdminModule.of(new ApplicationCode("billing"))).module(PlatformConfigAdminModule.of(new ApplicationCode("billing"))).module(new FlowCatalystModule());
     org.assertj.core.api.Assertions.assertThatThrownBy(b::start).hasMessageContaining("permission code must start with the application 'orders'");
+  }
+
+  // ---- the client rule (contract section 4, Validation) -------------------------------------------
+
+  @Test
+  void aUserWithoutAllClientsMayNameOnlyTheirOwnClientAndNothingElseIsCalled() {
+    for (String other : List.of("clt_9", "bevco", "ORDERS", "_platform")) {
+      TestResponse put = sendAs("PUT", "/api/admin/platform-config/ftp/password?clientId=" + other, MANAGE, SET_BODY);
+      assertThat(put.status()).as(other).isEqualTo(403);
+      assertThat(put.tree().get("error").asString()).isEqualTo("CLIENT_FORBIDDEN");
+      assertThat(sendAs("DELETE", "/api/admin/platform-config/ftp/password?clientId=" + other, MANAGE, null).status()).isEqualTo(403);
+      TestResponse reveal = sendAs("POST", "/api/admin/platform-config/ftp/password/reveal?clientId=" + other, REVEAL, null);
+      assertThat(reveal.status()).isEqualTo(403);
+      assertThat(reveal.tree().get("error").asString()).isEqualTo("CLIENT_FORBIDDEN");
+      assertThat(sendAs("GET", "/api/admin/platform-config?clientId=" + other, VIEW, null).status()).isEqualTo(403);
+    }
+    assertThat(platformCalls()).isEmpty();
+  }
+
+  @Test
+  void theOwnClientByIdentifierIsAllowedAndTheStoredIdItAnswersWithIsLearned() {
+    platform.respondTo("PUT", PROP, 200, item("ftp", "password", "clt_1", "SECRET", "***", null));
+
+    TestResponse set = sendAs("PUT", "/api/admin/platform-config/ftp/password?clientId=orders", MANAGE, SET_BODY);
+
+    assertThat(set.status()).isEqualTo(200);
+    assertThat(set.tree().get("clientId").asString()).isEqualTo("clt_1"); // the stored id, not the identifier asked for
+    assertThat(platformCalls().getFirst().query()).isEqualTo("clientId=orders");
+    // now the same client by its stored id is the user's own too
+    assertThat(sendAs("DELETE", "/api/admin/platform-config/ftp/password?clientId=clt_1", MANAGE, null).status()).isEqualTo(204);
+    assertThat(sendAs("DELETE", "/api/admin/platform-config/ftp/password?clientId=clt_2", MANAGE, null).status()).isEqualTo(403);
+  }
+
+  @Test
+  void aRevealAnswersTheStoredClientIdEvenWhenTheRequestNamedTheIdentifier() {
+    TestResponse r = sendAs("POST", "/api/admin/platform-config/ftp/password/reveal?clientId=orders", REVEAL, null);
+
+    assertThat(r.status()).isEqualTo(200);
+    assertThat(r.tree().get("clientId").asString()).isEqualTo("clt_1");
+    assertThat(platformCalls().getFirst().query()).isEqualTo("clientId=orders");
+  }
+
+  @Test
+  void aUserWithoutAllClientsSeesGlobalRowsAndTheirOwnClientsRowsOnceTheStoredIdIsKnown() {
+    TestResponse before = sendAs("GET", "/api/admin/platform-config", VIEW, null);
+    assertThat(before.tree().get("items")).extracting(n -> n.get("property").asString()).containsExactly("currency");
+
+    sendAs("POST", "/api/admin/platform-config/ftp/password/reveal?clientId=orders", REVEAL, null); // learns orders = clt_1
+    TestResponse after = sendAs("GET", "/api/admin/platform-config", VIEW, null);
+
+    assertThat(after.tree().get("items")).hasSize(3); // currency, and clt_1's two rows; never clt_2's
+    assertThat(after.body()).doesNotContain("clt_2");
+    // and with the permission, everyone's
+    assertThat(send("GET", "/api/admin/platform-config", VIEW, null).tree().get("items")).hasSize(4);
+  }
+
+  @Test
+  void theListFilterAcceptsAnIdentifierOnceKnownAndComparesItAsTheStoredId() {
+    // before the pair is known an identifier matches nothing (documented limitation) ...
+    assertThat(send("GET", "/api/admin/platform-config?clientId=orders", VIEW, null).tree().get("items")).isEmpty();
+
+    send("POST", "/api/admin/platform-config/ftp/password/reveal?clientId=orders", REVEAL, null);
+    TestResponse r = send("GET", "/api/admin/platform-config?clientId=orders", VIEW, null);
+
+    // ... and afterwards it is clt_1's rows, echoed with the stored id
+    assertThat(r.tree().get("items")).hasSize(2);
+    assertThat(r.tree().get("items")).allMatch(n -> n.get("clientId").asString().equals("clt_1"));
+  }
+
+  // ---- on behalf of --------------------------------------------------------------------------------
+
+  @Test
+  void theSignedInPrincipalIsSentAsOnBehalfOfOnSetDeleteAndRevealOnly() {
+    send("PUT", "/api/admin/platform-config/ftp/password?clientId=clt_1", MANAGE, SET_BODY);
+    send("DELETE", "/api/admin/platform-config/ftp/password?clientId=clt_1", MANAGE, null);
+    send("POST", "/api/admin/platform-config/ftp/password/reveal?clientId=clt_1", REVEAL, null);
+    send("GET", "/api/admin/platform-config", VIEW, null);
+
+    List<FakePlatform.Recorded> calls = platformCalls();
+    assertThat(calls).hasSize(4);
+    for (FakePlatform.Recorded c : calls.subList(0, 3)) {
+      assertThat(c.headers().get("x-on-behalf-of")).as(c.method()).isEqualTo("usr_1");
+      assertThat(c.headers().get("authorization")).startsWith("Bearer ");
+    }
+    assertThat(calls.get(3).headers()).doesNotContainKey("x-on-behalf-of");
+  }
+
+  @Test
+  void theOnBehalfOfTextIsCleanedAndBounded() {
+    assertThat(PlatformClient.onBehalfOfHeader(null)).isNull();
+    assertThat(PlatformClient.onBehalfOfHeader("  \n\t ")).isNull();
+    assertThat(PlatformClient.onBehalfOfHeader("  usr_1\r\nX-Evil: 1  ")).isEqualTo("usr_1X-Evil: 1");
+    assertThat(PlatformClient.onBehalfOfHeader("anna@example.com")).isEqualTo("anna@example.com");
+    assertThat(PlatformClient.onBehalfOfHeader("\u00e9a")).isEqualTo("a");
+    assertThat(PlatformClient.onBehalfOfHeader("x".repeat(300))).hasSize(256);
+  }
+
+  // ---- the secrets cache ---------------------------------------------------------------------------
+
+  @Test
+  void aWriteOrDeleteDropsTheCachedSecretOfThatClientSoTheNextLookupSeesIt() {
+    app.close();
+    AppBuilder b = App.builder().configDirectory(dir).environment(Receiving.env(platform));
+    b.module(PlatformAdminTest.http())
+        .module(AdminModule.of(APP))
+        .module(PlatformConfigAdminModule.of(APP))
+        .module(new FlowCatalystModule())
+        .module(io.flowcatalyst.framework.secrets.SecretsModule.builder().store("platform", PlatformSecrets.store()).build());
+    app = b.start();
+    client = TestClient.of(app.get(Routes.class), app.get(ContextResolver.class));
+    var resolver = app.get(io.flowcatalyst.framework.secrets.SecretResolver.class);
+    var acme = new io.flowcatalyst.framework.context.ClientId("clt_1");
+    var ref = io.flowcatalyst.framework.secrets.SecretRef.of("api-key");
+    String path = "/api/config/orders/secrets/api-key";
+    platform.respondTo("GET", path + "/secret", 200, revealed("v1"));
+    platform.respondTo("PUT", path, 200, item("secrets", "api-key", "clt_1", "SECRET", "***", null));
+    platform.respondTo("DELETE", path, 204, "");
+
+    assertThat(resolver.require(acme, ref).reveal()).isEqualTo("v1");
+    platform.respondTo("GET", path + "/secret", 200, revealed("v2"));
+    assertThat(resolver.require(acme, ref).reveal()).isEqualTo("v1"); // cached
+
+    assertThat(send("PUT", "/api/admin/platform-config/secrets/api-key?clientId=clt_1", MANAGE, SET_BODY).status()).isEqualTo(200);
+    assertThat(resolver.require(acme, ref).reveal()).isEqualTo("v2");
+
+    platform.respondTo("GET", path + "/secret", 404, "{\"error\":\"Config_NOT_FOUND\"}");
+    assertThat(send("DELETE", "/api/admin/platform-config/secrets/api-key?clientId=clt_1", MANAGE, null).status()).isEqualTo(204);
+    assertThat(resolver.resolve(acme, ref)).isInstanceOf(io.flowcatalyst.framework.secrets.SecretResult.NotFound.class);
+  }
+
+  private static String revealed(String value) {
+    return "{\"applicationCode\":\"orders\",\"section\":\"secrets\",\"property\":\"api-key\",\"clientId\":\"clt_1\",\"value\":\"" + value
+        + "\",\"updatedAt\":\"2026-10-23T10:00:00Z\"}";
   }
 }
