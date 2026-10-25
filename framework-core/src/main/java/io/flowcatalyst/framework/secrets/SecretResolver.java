@@ -97,6 +97,18 @@ public final class SecretResolver {
     store(storeName(ref)).evict(client, ref.name());
   }
 
+  /**
+   * Drops one cached value from every store, whichever store a reference would name (for a change
+   * made outside the resolver, such as the admin page writing a platform secret). A store that
+   * holds no such entry ignores it.
+   *
+   * @param client the client, under any of its names
+   * @param name the secret's name
+   */
+  public void evictEverywhere(ClientId client, String name) {
+    stores.values().forEach(s -> s.evict(client, name));
+  }
+
   /** Drops every cached value of every store. */
   public void evictAll() {
     stores.values().forEach(SecretStore::evictAll);

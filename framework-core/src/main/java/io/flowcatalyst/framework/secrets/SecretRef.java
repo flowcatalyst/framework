@@ -14,14 +14,27 @@ public record SecretRef(@Nullable String store, String name) {
 
   private static final Pattern STORE = Pattern.compile("[a-z][a-z0-9-]*");
   private static final Pattern NAME = Pattern.compile("[a-z0-9]+(-[a-z0-9]+)*");
-  static final int NAME_MAX = 100;
+
+  /** The longest secret name. */
+  public static final int NAME_MAX = 100;
+
+  /**
+   * Whether text is a valid secret name: {@code [a-z0-9]+(-[a-z0-9]+)*}, at most {@link #NAME_MAX}
+   * characters. The one definition; the admin page's property rule is this one.
+   *
+   * @param name the text
+   * @return true when valid
+   */
+  public static boolean isValidName(String name) {
+    return name.length() <= NAME_MAX && NAME.matcher(name).matches();
+  }
 
   /** Checks both parts. */
   public SecretRef {
     if (store != null && (store.length() > 100 || !STORE.matcher(store).matches())) {
       throw new IllegalArgumentException("secret store name must match [a-z][a-z0-9-]*");
     }
-    if (name.length() > NAME_MAX || !NAME.matcher(name).matches()) {
+    if (!isValidName(name)) {
       throw new IllegalArgumentException(
           "secret name must match [a-z0-9]+(-[a-z0-9]+)*, at most " + NAME_MAX + " characters");
     }

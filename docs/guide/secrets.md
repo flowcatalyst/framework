@@ -37,6 +37,20 @@ otherwise). Each store has a `CachePolicy` (`withCache`):
 | `defaults()` | found values reused for 5 minutes, at most 10 000 entries (the least recently used goes first) |
 | `of(ttl, maxEntries)` | ttl 0 to 24 h, entries 1 to 1 000 000 |
 | `none()` | no cache: every lookup reads the store |
+| `withStaleIfError(window)` | how long past its ttl an expired value may still be served while the store is failing: 0 to 24 h, default 5 minutes, 0 turns it off |
+
+The cache does three things beyond remembering a value:
+
+- **Stale on error.** If the store throws `SecretStoreException` (a platform that is down, a `5xx`, a
+  network error), the last value found is served for `staleIfError` past its expiry, and a WARN names
+  the store, client and secret (never the value). It never applies to "not found" or a refusal: those
+  are answers, they drop the entry, and the secret is gone. While the store keeps failing, every
+  lookup after the ttl still tries the store once before falling back.
+- **Single flight.** Concurrent lookups of one key that all miss make one call to the store; the others
+  wait for its result, or share its exception. Different keys do not wait for each other.
+- **Aliases.** A store that knows two names for one client (the platform driver: `clt_...` and the
+  identifier) overrides `SecretStore.canonical(client)`, so both names share one entry and
+  `evict` under either name drops it. Stores that do not (`env`, `file`) are unchanged.
 
 A `SecretStoreFactory` receives the lookup, so a directory or prefix that differs per deployment is
 a setting of your own, read there (from `SecretsTest`):
@@ -102,7 +116,8 @@ placeholder: it fails start-up with a message naming `PlatformSecrets.store()`.
 - A store that cannot be read (permissions, I/O, a file that is too large or not UTF-8) throws
   `SecretStoreException`.
 - After rotating a secret, `resolver.evict(client, ref)` or `resolver.evictAll()` makes the next call
-  read the store; otherwise the new value is seen within `cache-ttl`.
+  read the store; otherwise the new value is seen within `cache-ttl`. `resolver.evictEverywhere(client, name)`
+  drops one entry from every store (the platform-config admin page uses it after a write).
 
 Values only ever appear inside a `Secret`: `toString()` prints `Secret[****]`, and no exception
 message, result or log line contains a value or file content. Call `reveal()` only where you hand

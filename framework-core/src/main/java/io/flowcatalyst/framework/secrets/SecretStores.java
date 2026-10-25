@@ -164,6 +164,6 @@ public final class SecretStores {
   public static SecretStore cached(SecretStore store, CachePolicy cache, Lookup lookup) {
     return cache.ttl().isZero()
         ? store
-        : new CachingSecretStore(store, cache.ttl(), cache.maxEntries(), lookup.get(MonotonicClock.class));
+        : new CachingSecretStore(store, cache, lookup.get(MonotonicClock.class));
   }
 }
