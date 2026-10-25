@@ -11,7 +11,7 @@ One pattern for every create and edit form: a modal dialog holding a `<form>` th
 
 ```html
 <dialog id="pool-form" aria-labelledby="pool-form-title" aria-describedby="pool-form-desc" open
-        data-init="el.open && el.close(); el.showModal()"
+        data-init="el.removeAttribute('open'); el.showModal()"
         data-on:click="evt.target === el && ($poolFormDirty ? document.getElementById('pool-form-discard').showModal() : document.getElementById('pool-form').close())"
         data-on:cancel="$poolFormDirty && (evt.preventDefault(), document.getElementById('pool-form-discard').showModal())"
         class="{dialog overlay classes}">
@@ -83,7 +83,7 @@ The class lists in braces are `dialog.md`'s (overlay, content, `width` option), 
 | Value | Dialog |
 |---|---|
 | closed (default) | opened by a trigger (`data-on:click="document.getElementById('{id}').showModal()"`) |
-| open | `open` + `data-init="el.open && el.close(); el.showModal()"`: rendered visible (also without Datastar, non-modal) and made modal as soon as Datastar sees it; used when the server patches the dialog in or a page loads with it |
+| open | `open` + `data-init="el.removeAttribute('open'); el.showModal()"`: rendered visible (also without Datastar, non-modal) and made modal as soon as Datastar sees it; used when the server patches the dialog in or a page loads with it. Removing the attribute, not calling `close()`, matters: `close()` fires the `close` event, and a dialog that removes itself on close (`data-on:close="el.remove()"`) would destroy itself at start-up |
 
 ## Props
 

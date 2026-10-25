@@ -25,6 +25,36 @@ The SPA's dual-pane pickers (Manage Roles, Manage Application Access): checkboxe
 </form>
 ```
 
+The long-list parts (`group`, `description`, `locked`, `bulk`; full markup in `fixtures/pick-list/roles.html` and `embedded.html`), abridged to the new elements:
+
+```html
+<!-- left pane header, bulk: under the filter input -->
+<div class="flex gap-2">
+  <button type="button" class="inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 border-border text-foreground hover:bg-foreground/5 active:bg-foreground/10 h-8 gap-1.5 rounded-md px-3"
+          data-on:click="const c = [...document.getElementById('pick-roles').querySelectorAll('input[type=checkbox]:not(:disabled)')]; $rolesPicked = c.map((x, i) => x.closest('label').style.display === 'none' ? $rolesPicked[i] : x.value); const f = el.closest('form'); queueMicrotask(() => f && f.dispatchEvent(new Event('input', {bubbles: true})))">Select shown</button>
+  <button type="button" class="inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 border-transparent text-foreground hover:bg-foreground/5 active:bg-foreground/10 h-8 gap-1.5 rounded-md px-3"
+          data-on:click="$rolesPicked = $rolesPicked.map(() => ''); const f = el.closest('form'); queueMicrotask(() => f && f.dispatchEvent(new Event('input', {bubbles: true})))">Clear</button>
+</div>
+
+<!-- left pane: a group heading, then its rows -->
+<div data-show="!$rolesQ.trim() || el.dataset.filterText.includes($rolesQ.trim().toLowerCase())" data-filter-text="{every row's filter text}" class="px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-subtle-foreground uppercase">orders</div>
+<!-- a row's text: name, code, then the description (truncated, full text in title) and the note -->
+<span class="flex min-w-0 flex-col"><span class="truncate font-medium">Approver</span><span class="truncate font-mono text-[12px] text-muted-foreground">orders:approver</span><span class="truncate text-[12px] text-muted-foreground" title="Approves orders over the limit">Approves orders over the limit</span></span>
+<!-- a locked row (left): ticked, disabled, not bound; the hidden input submits it -->
+<label for="pk-role-r2" data-show="..." data-filter-text="..." class="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-foreground/5 has-[:checked]:bg-primary/10 cursor-default opacity-70">
+  <span class="flex min-w-0 flex-col">... <span class="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Above your access</span></span>
+  <span class="peer relative inline-flex shrink-0 has-[:disabled]:opacity-50"><input type="checkbox" class="...checkbox.md..." id="pk-role-r2" checked disabled><svg>...check...</svg><input type="hidden" name="roles" value="platform:super-admin"></span>
+</label>
+
+<!-- right pane: a group heading shown while one of its unlocked members is picked (data-members is a JSON array) -->
+<div data-members="[&#34;orders:approver&#34;,&#34;orders:viewer&#34;]" data-show="JSON.parse(el.dataset.members).some(v => $rolesPicked.includes(v))" class="px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-subtle-foreground uppercase">orders</div>
+<!-- a group holding a locked member: always shown, no data-members / data-show -->
+<div class="px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-subtle-foreground uppercase">platform</div>
+<!-- a locked row (right): a lock instead of the remove control -->
+<div class="flex items-center justify-between gap-3 rounded-md px-2 py-1.5"><span class="flex min-w-0 flex-col">...</span>
+  <span class="inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground" role="img" title="Cannot be changed" aria-label="Super Admin cannot be changed"><svg width="1em" height="1em" class="size-[0.9rem]" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-lock"/></svg></span></div>
+```
+
 ## Parts
 
 | Part | Element | Classes / attributes | Role |
@@ -35,6 +65,13 @@ The SPA's dual-pane pickers (Manage Roles, Manage Application Access): checkboxe
 | Right pane | same panel structure |  | Rows `data-value="{value}" data-show="$picked.includes(el.dataset.value)"` (the value is data, never in the expression), `style="display: none"` unless picked; remove control is a `<label for="{checkbox id}">` styled as a ghost icon button |
 | Count | `<span data-text="$picked.filter(Boolean).length">` |  |  |
 | Save | `button[type=submit]` | button `primary` | `data-attr:disabled="JSON.stringify($picked) === el.form.dataset.snapshot"` |
+| Group heading (left) | `<div data-show data-filter-text>` | `px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-subtle-foreground uppercase` | before the first row of each `group`; `data-filter-text` is every row's filter text, so the heading shows while any of its rows does; same `data-show` as a row |
+| Group heading (right) | `<div data-members data-show>` | same classes | `data-members` = JSON array of the group's **unlocked** values, `data-show="JSON.parse(el.dataset.members).some(v => $picked.includes(v))"`, `style="display: none"` unless one is picked at render. A group holding a **locked** member is rendered with neither attribute: always shown (its locked row always is) |
+| Description | `<span title>` in the row text, after the code | `truncate text-[12px] text-muted-foreground` | full text in `title`; part of the filter text |
+| Note | `<span>` last in the row text | `text-[11px] font-semibold tracking-wide text-muted-foreground uppercase` | |
+| Locked row (left) | `<label>` like a row | plus `cursor-default opacity-70` | checkbox `checked disabled`, **no** `name` and **no** `data-bind`; a sibling `<input type="hidden" name="{name}" value>` submits it |
+| Locked row (right) | `<div>` like a right row, no `data-value` / `data-show` | | the remove control is replaced by `<span role="img" title="Cannot be changed" aria-label="{name} cannot be changed" class="inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground">` with the `lock` icon |
+| Bulk buttons | `<div class="flex gap-2">` under the filter | **Select shown**: button `outline` `sm`; **Clear**: button `ghost` `sm` | expressions in **Behaviour** |
 
 ## Props
 
@@ -46,10 +83,10 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `signal` | string | - | the picked array's signal (camelCase, unique per page) |
 | `filterSignal` | string | - | the filter text's signal |
 | `name` | string | - | the checkboxes' shared name |
-| `itemIdPrefix` | string | - | checkbox ids are `{itemIdPrefix}{value}` (values must be id-safe) |
+| `itemIdPrefix` | string | - | checkbox ids are `{itemIdPrefix}{key or value}`: the item's `key` when it has one, else its `value` (which must then be id-safe) |
 | `items` | list<{value, key, name, code, note, checked, group, description, locked}> | [] | `note` is a short marker under the code (`Inactive`); see **Roles and other long lists** for `key`, `group`, `description`, `locked` |
 | `bulk` | bool | false | adds **Select shown** and **Clear** under the filter |
-| `embedded` | variant | - | the second template, `PickListFields`: the two panes in a `div`, no `form` and no Save button, for a picker inside a form that already submits (a dialog) |
+| `embedded` | bool | false | the panes only (the Go kit's `PickListFields`, or `PickList` with `embedded`): `<div id class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-signals>` holding the two panes, no `form`, no `data-init` snapshot and no Save button, for a picker inside a form that already submits (a dialog); `saveLabel`, `action` and `formAttrs` do not apply. Fixture: `fixtures/pick-list/embedded` |
 | `availableTitle` | string | - | left pane heading |
 | `selectedTitle` | string | `Selected` | right pane heading, followed by the count |
 | `filterPlaceholder` | string | - | also the filter's `aria-label` |
@@ -62,13 +99,13 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 
 Added for role pickers (a user's or service account's roles), where the list is long, spans applications and has entries the editor may not change.
 
-- **`key`**: the id-safe token of a row's checkbox id (`{itemIdPrefix}{key}`), for a `value` that is not id-safe (a role name such as `orders:approver`). Unique within the list; with no `key` the `value` is the token, as before. Values are written into the signal as quoted string literals, so any text is safe there.
-- **`group`**: a heading over a run of items (an application's name or code). Items are given sorted so each group is contiguous. A heading in the left pane shows while the filter matches any of its rows; one in the right pane shows while any of its rows is picked.
+- **`key`**: the id-safe token of a row's checkbox id (`{itemIdPrefix}{key}`), for a `value` that is not id-safe (a role name such as `orders:approver`). Unique within the list; with no `key` the `value` is the token, as before. With a `key`, a value may be any text: it is a quoted literal in the signal (**Behaviour**, Quoting), an element of a JSON array in `data-members`, and an attribute value elsewhere.
+- **`group`**: a heading over a run of items (an application's name or code). Items are given sorted so each group is contiguous. A heading in the left pane shows while the filter matches any of its rows; one in the right pane shows while any of its rows is picked, and always when the group holds a locked row.
 - **`description`**: one truncated line under the code, the full text in `title`. The filter matches it as well as the name and code.
 - **`locked`**: a pick the user may see but not change (a role above the editor's own access). It is shown ticked and disabled on the left, listed on the right with a lock instead of the remove control, **counted** in the heading, and **still submitted**: the checkbox is disabled, so a hidden input with the same `name` carries it. It has no slot in the positional `picked` array (it is not bound), and the count is `$picked.filter(Boolean).length + {number of locked}`. Use `note` to say why.
 - **`bulk`**: *Select shown* ticks every row the filter shows and leaves the others as they are; *Clear* unticks every unlocked row, shown or not.
 
-Fixture: `fixtures/pick-list/roles`.
+Fixtures: `fixtures/pick-list/roles`, `fixtures/pick-list/embedded` (a group whose only pick is locked; a value with a space).
 
 ## Accessibility
 
@@ -83,6 +120,10 @@ Fixture: `fixtures/pick-list/roles`.
 - **Filter:** each left row `data-show="!$pickQ.trim() || el.dataset.filterText.includes($pickQ.trim().toLowerCase())"`; the input `data-bind:pick-q`. Replaces `ui.js` `data-filter-list`.
 - **Mirror:** right-pane row `data-value="{value}" data-show="$picked.includes(el.dataset.value)"`. Replaces `ui.js` `data-mirror`.
 - **Dirty:** snapshot at init: `data-init="el.dataset.snapshot = JSON.stringify($picked)"` on the form; Save `data-attr:disabled="JSON.stringify($picked) === el.form.dataset.snapshot"`. Replaces `ui.js` `useDirtyForm`.
+- **Select shown:** `const c = [...document.getElementById('{id}').querySelectorAll('input[type=checkbox]:not(:disabled)')]; $picked = c.map((x, i) => x.closest('label').style.display === 'none' ? $picked[i] : x.value)`: the enabled checkboxes of **this** picker (found by its root id, so other checkboxes in a surrounding form never shift the positions) in DOM order, keeping the slot of a row the filter hides.
+- **Clear:** `$picked = $picked.map(() => '')` (locked rows have no slot, so they stay).
+- **Telling the form:** both bulk expressions end with `; const f = el.closest('form'); queueMicrotask(() => f && f.dispatchEvent(new Event('input', {bubbles: true})))`. A surrounding form's dirty tracking (`form-dialog.md`, `data-on:input`) sees input events, never a signal write. Datastar runs a `data-on` handler inside a batch and updates the bound checkboxes when the batch ends, after the expression returns; the microtask runs after that, so the form reads the new checkbox state (dispatching synchronously would read the old one).
+- **Quoting:** the initial `data-signals` array holds each value as a single-quoted JavaScript string literal: `\` is written `\\`, `'` is `\'`, CR is `\r`, LF is `\n`, and `<` is `\x3c`, so the literal can never be read as markup in whatever HTML context it is copied into; the whole attribute is then HTML-escaped as usual. `data-members` is JSON (`["orders:approver","orders:viewer"]`), read with `JSON.parse`, so values may hold spaces or any other text.
 - **Submit:** native form POST of the picked values under the one `name` (`roles=admin&roles=ops`) (a), or `@post('/users/42/roles', {contentType: 'form'})` (c) (the form fields are sent; the signals are not).
 
 ## Notes for a template author

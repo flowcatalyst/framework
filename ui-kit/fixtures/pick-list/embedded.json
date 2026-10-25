@@ -1,0 +1,21 @@
+{
+  "props": {
+    "id": "pick-dlg-roles",
+    "signal": "dlgRolesPicked",
+    "filterSignal": "dlgRolesQ",
+    "name": "roles",
+    "itemIdPrefix": "pk-dr-",
+    "embedded": true,
+    "bulk": true,
+    "items": [
+      {"value": "yard:dispatcher", "key": "d0", "name": "Dispatcher", "code": "yard:dispatcher", "group": "yard", "checked": true},
+      {"value": "yard:night shift", "key": "d1", "name": "Night shift", "code": "yard:night shift", "group": "yard", "description": "A value that is not id-safe: the key makes the id, data-members is a JSON array"},
+      {"value": "platform:auditor", "key": "d2", "name": "Auditor", "code": "platform:auditor", "group": "platform", "note": "Above your access", "checked": true, "locked": true}
+    ],
+    "availableTitle": "Available roles (3)",
+    "selectedTitle": "Selected",
+    "filterPlaceholder": "Filter roles",
+    "emptyText": "No roles selected"
+  },
+  "source": "pick-list.md Props: embedded (PickListFields); a group whose only pick is locked keeps its right-pane heading; a value with a space"
+}
