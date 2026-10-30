@@ -88,7 +88,7 @@ ${Kit.tableCell(new Props.TD(0, null, null), @`${Kit.badge(new Props.Badge(o.bad
 `)}
 ```
 
-All 59 fixture directories of `ui-kit/fixtures` (170 cases) are covered: button, legacy button, icon button,
+59 of the 66 fixture directories of `ui-kit/fixtures` (173 cases) are covered: button, legacy button, icon button,
 input, textarea, select, checkbox, switch, label, field, field group, form field, search input, filter
 select, toggle group, badge, tag, alert, flash banner, flash message, flash stack, spinner, skeleton,
 breadcrumb, empty state, page header, form section, detail field, code chips, code block, table and its
@@ -97,6 +97,17 @@ pagination, cursor pager, paginator, local time, date range, tabs, dialog, confi
 drawer (and its content part), form dialog, autocomplete (and its options part), pick list, multi-select,
 app shell, sidebar and user menu. Not components of the kit and not here: login pages (the platform hosts
 login), and anything the specs mark NP.
+
+Specified in `ui-kit/components` but with no `Kit` function yet: tab list, password input, secret reference
+input, permission-denied dialog, markdown, code editor and diagram. Their fixture directories are listed in
+`FixtureConformanceTest.NOT_YET`.
+
+The pick list covers long role lists: `Props.PickItem` takes `key` (the id token, for a value that is not
+id-safe), `group`, `description` and `locked` (shown ticked, counted, submitted through a hidden input, and not
+removable), and `Props.PickList` takes `bulk` (Select shown, Clear) and `embedded` (the two panes only, for a
+picker inside a form that already submits). `Props.MultiSelect` takes `chips`. The constructors without these
+parts still exist. A `value` without a `key` must be id-safe and is refused otherwise; with a `key` it may be
+any text.
 
 ### Escaping, and values that become code
 
@@ -183,8 +194,8 @@ from `fc_sidebar`. Icons reference `/icons/lucide-sprite.svg#i-<name>`; `Kit.wit
 
 - `FixtureConformanceTest` renders every fixture (strict props: an unknown name fails) and compares it with the
   golden after the kit's normalisation (`ui-kit/fixtures/README.md`); the list of fixture directories without
-  a renderer is asserted exact, and is empty.
-- `XssSweepTest` puts an XSS payload into every string prop of every fixture, one at a time: the component
+  a renderer (`NOT_YET`) is asserted exact, both ways.
+- `XssSweepTest` puts an XSS payload into every string prop of every fixture that has a renderer, one at a time: the component
   refuses it (a validated id, signal, path or variant) or the output has no script or image element and no event
   handler beyond the fixture's own.
 - `EscapingTest` and `ViewsTest` cover URL schemes, `attrs`, the policy, the full-page or patch switch, assets and

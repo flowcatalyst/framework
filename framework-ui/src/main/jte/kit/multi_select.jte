@@ -10,4 +10,5 @@
 @template.kit.multi_select_options(p = p)
 </div>@else<div class="fc-multiselect-panel">@template.kit.multi_select_options(p = p)</div>@endif
 </details>
+@if(p.chips())<div id="${id(p.id()) + "-chips"}" class="fc-multiselect-chips" data-on:click="${Props.MultiSelect.REMOVE_CHIP_EXPR}">@for(var o : p.chosen())<span class="fc-multiselect-chip" data-value="${o.value()}"><span>${o.label()}</span><button type="button" class="fc-multiselect-chip-remove" aria-label="${"Remove " + o.label()}">&times;</button></span>@endfor</div>@endif
 </div>

@@ -29,7 +29,15 @@ import tools.jackson.databind.node.ObjectNode;
 class FixtureConformanceTest {
 
   /** Fixture directories this module does not render yet. Shrinks to empty as the kit grows. */
-  static final Set<String> NOT_YET = Set.of();
+  static final Set<String> NOT_YET =
+      Set.of(
+          "code-editor",
+          "diagram",
+          "markdown",
+          "password-input",
+          "permission-denied-dialog",
+          "secret-ref-input",
+          "tab-list");
 
   static final ObjectMapper MAPPER =
       JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();

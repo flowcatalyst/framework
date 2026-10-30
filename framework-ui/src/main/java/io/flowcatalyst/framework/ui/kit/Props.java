@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.ui.kit;
 
+import io.flowcatalyst.framework.http.Json;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -1211,7 +1212,9 @@ public final class Props {
       if (open) {
         a.put("open", true);
         // A dialog rendered open is non-modal; reopen it as a modal once Datastar processes it.
-        a.put("data-init", "el.open && el.close(); el.showModal()");
+        // Not close(): that fires the close event, and a dialog that removes itself on close would
+        // destroy itself at start-up.
+        a.put("data-init", "el.removeAttribute('open'); el.showModal()");
       }
       return a;
     }
@@ -1347,18 +1350,109 @@ public final class Props {
   /**
    * One entry of a pick list.
    *
-   * @param value submitted; id-safe, never enters an expression
+   * @param value submitted; any text when there is a key, otherwise also the id token and id-safe
    * @param name the text
    * @param code the code line
    * @param note a small caption
    * @param checked picked
+   * @param key the id-safe token of the checkbox id, for a value that is not; unique in the list
+   * @param group the heading over a run of items; give the items sorted so each group is contiguous
+   * @param description one truncated line under the code, also matched by the filter
+   * @param locked always picked, cannot be changed, still submitted
    */
   public record PickItem(
       String value,
       @Nullable String name,
       @Nullable String code,
       @Nullable String note,
-      boolean checked) {}
+      boolean checked,
+      @Nullable String key,
+      @Nullable String group,
+      @Nullable String description,
+      boolean locked) {
+
+    /**
+     * An entry without the long-list parts.
+     *
+     * @param value submitted and the id token, so id-safe
+     * @param name the text
+     * @param code the code line
+     * @param note a small caption
+     * @param checked picked
+     */
+    public PickItem(
+        String value,
+        @Nullable String name,
+        @Nullable String code,
+        @Nullable String note,
+        boolean checked) {
+      this(value, name, code, note, checked, null, null, null, false);
+    }
+
+    /**
+     * The token of the checkbox id.
+     *
+     * @return the key, or the value when there is none
+     */
+    public String token() {
+      return Markup.or(key, value);
+    }
+
+    /**
+     * Whether the entry shows as picked when rendered.
+     *
+     * @return checked or locked
+     */
+    public boolean picked() {
+      return checked || locked;
+    }
+  }
+
+  /**
+   * A run of pick list items under one heading.
+   *
+   * @param group the heading, null for items without a group
+   * @param items the run, in list order
+   */
+  public record PickRun(@Nullable String group, List<PickItem> items) {
+
+    /**
+     * What the filter matches the heading against, so it shows while any of its rows does.
+     *
+     * @return every row's filter text
+     */
+    public String filterText() {
+      return String.join(" ", items.stream().map(PickList::filterText).toList());
+    }
+
+    /**
+     * Whether a locked row keeps the heading in the right pane always shown.
+     *
+     * @return true when the run holds a locked item
+     */
+    public boolean hasLocked() {
+      return items.stream().anyMatch(PickItem::locked);
+    }
+
+    /**
+     * Whether the heading in the right pane shows when rendered.
+     *
+     * @return true when an item is picked
+     */
+    public boolean hasPick() {
+      return items.stream().anyMatch(PickItem::picked);
+    }
+
+    /**
+     * The unlocked values for {@code data-members}: JSON, so a value may hold any text.
+     *
+     * @return a JSON array
+     */
+    public String members() {
+      return Json.mapper().writeValueAsString(
+          items.stream().filter(it -> !it.locked()).map(PickItem::value).toList());
+    }
+  }
 
   /**
    * pick-list.md: the dual-pane picker that posts the picked values under one name.
@@ -1376,6 +1470,9 @@ public final class Props {
    * @param saveLabel the save button's text
    * @param action the form's POST target
    * @param formAttrs extra attributes for the form
+   * @param bulk adds Select shown and Clear under the filter
+   * @param embedded the panes only, for a picker inside a form that already submits: no form, no
+   *     snapshot and no Save, so saveLabel, action and formAttrs do not apply
    */
   public record PickList(
       String id,
@@ -1390,35 +1487,130 @@ public final class Props {
       @Nullable String emptyText,
       @Nullable String saveLabel,
       @Nullable String action,
-      @Nullable Map<String, Object> formAttrs) {
+      @Nullable Map<String, Object> formAttrs,
+      boolean bulk,
+      boolean embedded) {
+
+    /** Tells the surrounding form, once Datastar has updated the checkboxes (pick-list.md). */
+    private static final String NOTIFY_INPUT =
+        "; const f = el.closest('form'); queueMicrotask(() => f && f.dispatchEvent(new Event('input', {bubbles: true})))";
+
+    /**
+     * A picker with its own form and Save button and without the bulk buttons.
+     *
+     * @param id the form id
+     * @param signal the picked signal
+     * @param filterSignal the filter text signal
+     * @param name the submitted name
+     * @param itemIdPrefix prefix of the checkbox ids
+     * @param items the entries
+     * @param availableTitle the left pane's heading
+     * @param selectedTitle the right pane's heading, default Selected
+     * @param filterPlaceholder the filter box's placeholder
+     * @param emptyText the text when nothing is picked
+     * @param saveLabel the save button's text
+     * @param action the form's POST target
+     * @param formAttrs extra attributes for the form
+     */
+    public PickList(
+        String id,
+        String signal,
+        String filterSignal,
+        @Nullable String name,
+        @Nullable String itemIdPrefix,
+        @Nullable List<PickItem> items,
+        @Nullable String availableTitle,
+        @Nullable String selectedTitle,
+        @Nullable String filterPlaceholder,
+        @Nullable String emptyText,
+        @Nullable String saveLabel,
+        @Nullable String action,
+        @Nullable Map<String, Object> formAttrs) {
+      this(
+          id,
+          signal,
+          filterSignal,
+          name,
+          itemIdPrefix,
+          items,
+          availableTitle,
+          selectedTitle,
+          filterPlaceholder,
+          emptyText,
+          saveLabel,
+          action,
+          formAttrs,
+          false,
+          false);
+    }
 
     List<PickItem> list() {
       return items == null ? List.of() : items;
     }
 
     /**
-     * A checkbox id.
+     * The items as runs: a new run wherever the group changes.
      *
-     * @param v the item value
-     * @return the id
+     * @return the runs, in list order
      */
-    public String itemId(String v) {
-      return Markup.id((itemIdPrefix == null ? "" : itemIdPrefix) + v);
+    public List<PickRun> runs() {
+      List<PickRun> runs = new java.util.ArrayList<>();
+      for (PickItem it : list()) {
+        String group = Markup.nz(it.group());
+        if (runs.isEmpty() || !java.util.Objects.equals(runs.getLast().group(), group)) {
+          runs.add(new PickRun(group, new java.util.ArrayList<>()));
+        }
+        runs.getLast().items().add(it);
+      }
+      return runs;
     }
 
     /**
-     * Declares the positional initial value of the picked signal: one slot per checkbox in DOM
-     * order, the value when picked, the empty string when not.
+     * A checkbox id.
+     *
+     * @param token the item's {@link PickItem#token()}
+     * @return the id
+     */
+    public String itemId(String token) {
+      return Markup.id((itemIdPrefix == null ? "" : itemIdPrefix) + token);
+    }
+
+    /**
+     * The bind of an unlocked checkbox. A locked one is not bound.
+     *
+     * @param it the entry
+     * @return the attributes
+     */
+    public Map<String, Object> bindAttrs(PickItem it) {
+      return it.locked() ? Map.of() : Map.of("data-bind:" + Markup.signalAttr(signal), true);
+    }
+
+    /**
+     * Declares the positional initial value of the picked signal: one slot per bound checkbox in
+     * DOM order, the value when picked, the empty string when not. A locked item has no slot.
      *
      * @return the expression
      */
     public String signals() {
       List<String> slots = new java.util.ArrayList<>();
       for (PickItem it : list()) {
-        slots.add(it.checked() ? "'" + Markup.id(it.value()) + "'" : "''");
+        if (!it.locked()) {
+          slots.add(it.checked() ? quote(it.value()) : "''");
+        }
       }
       String arr = slots.isEmpty() ? "[]" : "[" + String.join(", ", slots) + "]";
       return "{" + Markup.signal(signal) + ": " + arr + ", " + Markup.signal(filterSignal) + ": ''}";
+    }
+
+    /** A value as a single-quoted literal; {@code <} never reads as markup (pick-list.md, Quoting). */
+    private static String quote(String v) {
+      return "'"
+          + v.replace("\\", "\\\\")
+              .replace("'", "\\'")
+              .replace("\r", "\\r")
+              .replace("\n", "\\n")
+              .replace("<", "\\x3c")
+          + "'";
     }
 
     /**
@@ -1449,14 +1641,14 @@ public final class Props {
     }
 
     /**
-     * How many entries start picked.
+     * How many entries start picked, locked ones included.
      *
      * @return the count
      */
     public int picked() {
       int n = 0;
       for (PickItem it : list()) {
-        if (it.checked()) {
+        if (it.picked()) {
           n++;
         }
       }
@@ -1464,14 +1656,67 @@ public final class Props {
     }
 
     /**
+     * The picked count's expression: the signal's picks plus the locked items, which have no slot.
+     *
+     * @return the expression
+     */
+    public String countExpr() {
+      long locked = list().stream().filter(PickItem::locked).count();
+      String n = "$" + Markup.signal(signal) + ".filter(Boolean).length";
+      return locked == 0 ? n : n + " + " + locked;
+    }
+
+    /**
+     * Shows a right-pane heading while one of its members is picked.
+     *
+     * @return the expression
+     */
+    public String groupPickedExpr() {
+      return "JSON.parse(el.dataset.members).some(v => $" + Markup.signal(signal) + ".includes(v))";
+    }
+
+    /**
+     * Ticks every row the filter shows and keeps the others: the enabled checkboxes of this picker,
+     * in DOM order, are the signal's slots.
+     *
+     * @return the expression
+     */
+    public String selectShownExpr() {
+      String s = "$" + Markup.signal(signal);
+      return "const c = [...document.getElementById('"
+          + Markup.id(id)
+          + "').querySelectorAll('input[type=checkbox]:not(:disabled)')]; "
+          + s
+          + " = c.map((x, i) => x.closest('label').style.display === 'none' ? "
+          + s
+          + "[i] : x.value)"
+          + NOTIFY_INPUT;
+    }
+
+    /**
+     * Unticks every unlocked row, shown or not.
+     *
+     * @return the expression
+     */
+    public String clearExpr() {
+      String s = "$" + Markup.signal(signal);
+      return s + " = " + s + ".map(() => '')" + NOTIFY_INPUT;
+    }
+
+    /**
      * The lower-cased text a row is filtered by.
      *
      * @param it the entry
-     * @return name and code
+     * @return name, code and description
      */
     public static String filterText(PickItem it) {
-      return ((it.name() == null ? "" : it.name()) + " " + (it.code() == null ? "" : it.code()))
-          .toLowerCase(java.util.Locale.ROOT);
+      String text =
+          Markup.or(it.name(), "")
+              + " "
+              + Markup.or(it.code(), "")
+              + " "
+              + Markup.or(it.description(), "");
+      return text.strip().toLowerCase(java.util.Locale.ROOT);
     }
   }
 
@@ -1493,6 +1738,7 @@ public final class Props {
    * @param optionAttrs attributes for every checkbox
    * @param describedBy the id of the help text
    * @param cls extra classes
+   * @param chips lists the chosen options as removable chips under the trigger
    */
   public record MultiSelect(
       String id,
@@ -1509,11 +1755,74 @@ public final class Props {
       boolean open,
       @Nullable Map<String, Object> optionAttrs,
       @Nullable String describedBy,
-      @Nullable String cls) {
+      @Nullable String cls,
+      boolean chips) {
 
     /** Recomputes the summary in the browser after any change. */
     public static final String SUMMARY_EXPR =
         "const c = [...el.querySelectorAll('.fc-multiselect-option input:checked')].map(i => i.nextElementSibling.textContent); el.querySelector('.fc-multiselect-summary').textContent = c.length === 0 ? el.dataset.placeholder : c.length <= +el.dataset.maxLabels ? c.join(', ') : el.dataset.manyLabel.replace('{0}', c.length)";
+
+    /** Rebuilds the chips from the checked options; the labels are text, never markup. */
+    public static final String CHIPS_EXPR =
+        "; const ch = el.closest('.fc-form-field').querySelector('.fc-multiselect-chips'); ch.replaceChildren(...[...el.querySelectorAll('.fc-multiselect-option input:checked')].map(i => { const s = document.createElement('span'); s.className = 'fc-multiselect-chip'; s.dataset.value = i.value; const t = document.createElement('span'); t.textContent = i.nextElementSibling.textContent; const b = document.createElement('button'); b.type = 'button'; b.className = 'fc-multiselect-chip-remove'; b.setAttribute('aria-label', 'Remove ' + t.textContent); b.textContent = '\u00d7'; s.append(t, b); return s }))";
+
+    /** Unchecks a removed chip's option and fires its change, so the summary and chips update. */
+    public static final String REMOVE_CHIP_EXPR =
+        "const b = evt.target.closest('button'); if (b) { const d = el.closest('.fc-form-field').querySelector('details'); const i = [...d.querySelectorAll('input')].find(i => i.value === b.parentElement.dataset.value); i.checked = false; i.dispatchEvent(new Event('change', {bubbles: true})) }";
+
+    /**
+     * A multi-select without chips.
+     *
+     * @param id derives the parts: -field, -label, -summary, -options
+     * @param name the shared checkbox name
+     * @param label the label text
+     * @param options the options
+     * @param selected the chosen values
+     * @param placeholder the summary when nothing is chosen
+     * @param maxLabels how many chosen labels are listed, default 2
+     * @param manyLabel the summary above that, {0} is the count, default {0} selected
+     * @param search adds a search box bound to the signal
+     * @param signal the search signal
+     * @param emptyText shown without options
+     * @param open starts open
+     * @param optionAttrs attributes for every checkbox
+     * @param describedBy the id of the help text
+     * @param cls extra classes
+     */
+    public MultiSelect(
+        String id,
+        @Nullable String name,
+        @Nullable String label,
+        @Nullable List<Option> options,
+        @Nullable List<String> selected,
+        @Nullable String placeholder,
+        int maxLabels,
+        @Nullable String manyLabel,
+        boolean search,
+        @Nullable String signal,
+        @Nullable String emptyText,
+        boolean open,
+        @Nullable Map<String, Object> optionAttrs,
+        @Nullable String describedBy,
+        @Nullable String cls) {
+      this(
+          id,
+          name,
+          label,
+          options,
+          selected,
+          placeholder,
+          maxLabels,
+          manyLabel,
+          search,
+          signal,
+          emptyText,
+          open,
+          optionAttrs,
+          describedBy,
+          cls,
+          false);
+    }
 
     /**
      * The id of the summary part.
@@ -1543,6 +1852,15 @@ public final class Props {
       return selected != null && selected.contains(value);
     }
 
+    /**
+     * The chosen options, in option order.
+     *
+     * @return the options
+     */
+    public List<Option> chosen() {
+      return list().stream().filter(o -> checked(o.value())).toList();
+    }
+
     int labelLimit() {
       return maxLabels <= 0 ? 2 : maxLabels;
     }
@@ -1553,12 +1871,7 @@ public final class Props {
      * @return the summary
      */
     public String summary() {
-      List<String> labels = new java.util.ArrayList<>();
-      for (Option o : list()) {
-        if (checked(o.value())) {
-          labels.add(o.label());
-        }
-      }
+      List<String> labels = chosen().stream().map(Option::label).toList();
       if (labels.isEmpty()) {
         return placeholder == null ? "" : placeholder;
       }
@@ -1578,7 +1891,7 @@ public final class Props {
       a.put("data-placeholder", placeholder == null ? "" : placeholder);
       a.put("data-max-labels", Integer.toString(labelLimit()));
       a.put("data-many-label", Markup.or(manyLabel, "{0} selected"));
-      a.put("data-on:change", SUMMARY_EXPR);
+      a.put("data-on:change", chips ? SUMMARY_EXPR + CHIPS_EXPR : SUMMARY_EXPR);
       if (open) {
         a.put("open", true);
       }

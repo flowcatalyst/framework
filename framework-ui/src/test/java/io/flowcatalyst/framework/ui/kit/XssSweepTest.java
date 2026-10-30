@@ -83,6 +83,9 @@ class XssSweepTest {
     try (Stream<Path> dirs = Files.list(FixtureConformanceTest.fixtures())) {
       for (Path dir : dirs.filter(Files::isDirectory).sorted().toList()) {
         String component = dir.getFileName().toString();
+        if (FixtureConformanceTest.NOT_YET.contains(component)) {
+          continue;
+        }
         try (Stream<Path> files = Files.list(dir)) {
           for (Path json : files.filter(f -> f.toString().endsWith(".json")).sorted().toList()) {
             JsonNode original = FixtureConformanceTest.MAPPER.readTree(Files.readString(json));

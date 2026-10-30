@@ -42,6 +42,68 @@ class EscapingTest {
     assertThat(doc.text()).contains(XSS);
   }
 
+  private static Props.PickList pickList(Props.PickItem... items) {
+    return new Props.PickList(
+        "pick", "picked", "pickQ", "roles", "pk-", java.util.List.of(items), null, null, null, null,
+        null, null, null);
+  }
+
+  @Test
+  void aPickValueWithAKeyIsAQuotedLiteralInTheSignalAndJsonInTheMembers() {
+    String value = "it's a\\b\r\n<c> \"d\"";
+    String out =
+        html(
+            Kit.pickList(
+                pickList(
+                    new Props.PickItem(value, "N", "c", null, true, "k0", "g", null, false))));
+    assertNoLiveMarkup(out);
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(out);
+    assertThat(doc.select("form").attr("data-signals"))
+        .isEqualTo("{picked: ['it\\'s a\\\\b\\r\\n\\x3cc> \"d\"'], pickQ: ''}");
+    assertThat(doc.select("[data-members]").attr("data-members"))
+        .isEqualTo(io.flowcatalyst.framework.http.Json.mapper().writeValueAsString(java.util.List.of(value)));
+    assertThat(doc.select("input[type=checkbox]").attr("id")).isEqualTo("pk-k0");
+    assertThat(doc.select("[data-value]").attr("data-value")).isEqualTo(value);
+  }
+
+  @Test
+  void aPickValueWithoutAKeyMustBeIdSafe() {
+    assertThatThrownBy(
+            () -> html(Kit.pickList(pickList(new Props.PickItem("a:b", "N", "c", null, false)))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void aLockedPickIsSubmittedAndCountedEvenWhenNotMarkedChecked() {
+    String out =
+        html(
+            Kit.pickList(
+                pickList(
+                    new Props.PickItem("r", "N", "c", null, false, null, null, null, true),
+                    new Props.PickItem("s", "M", "d", null, false))));
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(out);
+    org.jsoup.nodes.Element locked = doc.select("input#pk-r").first();
+    assertThat(locked.hasAttr("checked")).isTrue();
+    assertThat(locked.hasAttr("disabled")).isTrue();
+    assertThat(locked.hasAttr("name")).isFalse();
+    assertThat(doc.select("input[type=hidden]").attr("value")).isEqualTo("r");
+    assertThat(doc.select("form").attr("data-signals")).isEqualTo("{picked: [''], pickQ: ''}");
+    assertThat(doc.select("[data-text]").text()).isEqualTo("1");
+    assertThat(doc.select("[data-text]").attr("data-text"))
+        .isEqualTo("$picked.filter(Boolean).length + 1");
+  }
+
+  @Test
+  void aMultiSelectWithoutChipsHasNoChipListAndNoChipHandler() {
+    Props.MultiSelect p =
+        new Props.MultiSelect(
+            "m", "n", "L", java.util.List.of(new Props.Option("a", "A")), java.util.List.of("a"), null,
+            0, null, false, null, null, false, null, null, null);
+    String out = html(Kit.multiSelect(p));
+    assertThat(out).doesNotContain("fc-multiselect-chip");
+    assertThat(p.detailsAttrs().get("data-on:change")).isEqualTo(Props.MultiSelect.SUMMARY_EXPR);
+  }
+
   @Test
   void attributeValuesAreEscapedAndCannotBreakOut() {
     String out = html(Kit.input(new Props.Input("a", "n", null, XSS, XSS, false, false, false, null, XSS, null)));
