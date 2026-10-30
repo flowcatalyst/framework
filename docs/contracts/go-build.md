@@ -38,7 +38,7 @@ and Rust builds ignore it. It shares with them the contracts and the conformance
 
 ## 3. Toolchain
 
-- `go 1.27` in every `go.mod`; CI and development use Go 1.27.2. The directive changes deliberately,
+- `go 1.27` in every `go.mod`; CI and development use Go 1.27.3. The directive changes deliberately,
   with the platform, in one commit.
 - Tools are pinned in `go/tools/go.mod` and built by the local toolchain (golangci-lint releases
   built with an older Go cannot load Go 1.27 export data). NilAway has no releases; it is pinned by
