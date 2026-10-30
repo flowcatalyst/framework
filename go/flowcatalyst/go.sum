@@ -5,8 +5,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 h1:NMZiJj8QnKe1LgsbDayM4UoHwbvw
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
 github.com/fergusstrange/embedded-postgres v1.34.0 h1:c6RKhPKFsLVU+Tdxsx8q0UxCHsvZZ/iShAnljRBXs6s=
 github.com/fergusstrange/embedded-postgres v1.34.0/go.mod h1:w0YvnCgf19o6tskInrOOACtnqfVlOvluz3hlNLY7tRk=
-github.com/flowcatalyst/flowcatalyst/pkg/fcsdk v0.0.2 h1:Zd+kvRN0meULhUMrssF6rf73BHxIG0mAlVpJOD//89E=
-github.com/flowcatalyst/flowcatalyst/pkg/fcsdk v0.0.2/go.mod h1:l1pbb0d1qFQrk4x8TDquVSSgXMm2sVnLvJzga8CHYNU=
+github.com/flowcatalyst/go-sdk v0.0.9 h1:nM+lHTOPRYJJhy1tRpv3pb03k8I1EJLnpl5irF+fFg8=
+github.com/flowcatalyst/go-sdk v0.0.9/go.mod h1:9teFe9yXkynzaTtHt+4HXVZ+jsRGI461PHCWecsj6tg=
 github.com/go-jet/jet/v2 v2.16.1 h1:gbU2gGVv/Nn0eiUsnSxO8ABIQLjx4oUzMb1uO/3sUtg=
 github.com/go-jet/jet/v2 v2.16.1/go.mod h1:MILY2HK89zo7ODycULCCWLnwNklbMJkw4L5notrLpIA=
 github.com/goccy/go-json v0.10.6 h1:p8HrPJzOakx/mn/bQtjgNjdTcN+/S6FcG2CTtQOrHVU=

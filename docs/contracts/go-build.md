@@ -17,10 +17,12 @@ and Rust builds ignore it. It shares with them the contracts and the conformance
 | `github.com/flowcatalyst/framework/go/flowcatalyst` | `go/flowcatalyst/` | the core module and the platform SDK (`pkg/fcsdk`); the only module that imports fcsdk |
 | `github.com/flowcatalyst/framework/go/tools` | `go/tools/` | the pinned tools (`tool` directives): golangci-lint, NilAway, gofumpt; never imported |
 
-- **How `go/flowcatalyst` resolves fcsdk (G4, 2026-10-15; released 2026-10-15).** fcsdk is the module
-  `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk` in the platform repository, released as the tag
-  `pkg/fcsdk/v0.0.2`; `go/flowcatalyst/go.mod` requires that version, with no replace, and the checks
-  and CI resolve it from the module proxy (no platform checkout needed). To develop against unreleased
+- **How `go/flowcatalyst` resolves fcsdk (G4, 2026-10-15; own repository since 2026-10-30).** fcsdk is
+  the module `github.com/flowcatalyst/go-sdk`, developed in the platform repository's `pkg/fcsdk` and
+  published to its own repository `github.com/flowcatalyst/go-sdk` (tags `vX.Y.Z`, one commit per
+  release; up to v0.0.8 it was `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk`). `go/flowcatalyst/go.mod`
+  requires a released version (v0.0.9), with no replace, and the checks and CI resolve it from the module
+  proxy (no platform checkout needed). To develop against unreleased
   fcsdk, set `FCSDK=<path to pkg/fcsdk>` (for example `make -C go go-check FCSDK=../flowcatalyst-go/pkg/fcsdk`):
   `make -C go fc-modfile` then writes `go/flowcatalyst/go.local.work` (not committed; a `replace` of
   fcsdk by that checkout) and every flowcatalyst target runs with `GOWORK` set to it. Never commit a

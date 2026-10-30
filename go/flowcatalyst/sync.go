@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"strings"
 
-	fcsync "github.com/flowcatalyst/flowcatalyst/pkg/fcsdk/sync"
+	fcsync "github.com/flowcatalyst/go-sdk/sync"
 
 	"github.com/flowcatalyst/framework/go/internal/javafmt"
 )

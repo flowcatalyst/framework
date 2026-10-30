@@ -58,7 +58,7 @@ fc-modfile:
 	@rm -f flowcatalyst/go.local.mod flowcatalyst/go.local.sum flowcatalyst/go.local.work
 	@if [ -n "$(FCSDK)" ]; then \
 	  test -d "$(FCSDK)" || { echo "FCSDK=$(FCSDK) is not a directory"; exit 1; }; \
-	  printf 'go 1.27\n\nuse .\n\nreplace github.com/flowcatalyst/flowcatalyst/pkg/fcsdk => %s\n' "$(abspath $(FCSDK))" > flowcatalyst/go.local.work; \
+	  printf 'go 1.27\n\nuse .\n\nreplace github.com/flowcatalyst/go-sdk => %s\n' "$(abspath $(FCSDK))" > flowcatalyst/go.local.work; \
 	  echo "note: flowcatalyst builds against the fcsdk checkout $(abspath $(FCSDK))"; \
 	fi
 

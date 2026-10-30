@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/flowcatalyst/flowcatalyst/pkg/fcsdk/auth"
-	"github.com/flowcatalyst/flowcatalyst/pkg/fcsdk/client"
+	"github.com/flowcatalyst/go-sdk/auth"
+	"github.com/flowcatalyst/go-sdk/client"
 
 	"github.com/flowcatalyst/framework/go/config"
 	"github.com/flowcatalyst/framework/go/fw"
