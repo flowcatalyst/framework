@@ -176,6 +176,11 @@ http-clients:
 - A `RESPONSE_TOO_LARGE` failure is never retried (a larger answer will not get smaller).
 - The repeat after a `401` does not count as a retry attempt.
 
+- Capture (2026-10-30): `HttpCapture.CURRENT` (a `ScopedValue<Sink>`) bound around work makes
+  `ServiceClient` hand every attempt to the sink as an `HttpCapture.Exchange` (URL with query, headers
+  as sent, bodies, status or failure kind, attempt number). Sensitive header values are
+  `[redacted]`; a throwing sink is logged and ignored; unbound costs one `isBound()` check.
+
 ## 6. Tests
 
 Against a real local HTTP server (the JDK's `com.sun.net.httpserver`): every method, JSON both ways,

@@ -231,6 +231,7 @@ public final class ServiceClient {
       } catch (Transport.Failure f) {
         long took = nanos.getAsLong() - start;
         observe(r, 0, f.kind, took, attempt);
+        capture(r, target, headers, 0, Map.of(), null, f.kind, took, attempt);
         if (retryEligible && attempt < retry.maxAttempts() && f.kind != HttpClientException.Kind.RESPONSE_TOO_LARGE) {
           pause(backoff(retry, attempt), description);
           continue;
@@ -240,7 +241,9 @@ public final class ServiceClient {
         Thread.currentThread().interrupt();
         throw new HttpClientException(HttpClientException.Kind.INTERRUPTED, description + ": interrupted", e);
       }
-      observe(r, in.status(), null, nanos.getAsLong() - start, attempt);
+      long took = nanos.getAsLong() - start;
+      observe(r, in.status(), null, took, attempt);
+      capture(r, target, headers, in.status(), in.headers(), in.body(), null, took, attempt);
       ClientResponse response = new ClientResponse(in.status(), in.headers(), in.body(), options.mapper(), description);
 
       if (in.status() == 401 && !authRepeated && refreshAfterUnauthorized(usedToken)) {
@@ -357,6 +360,44 @@ public final class ServiceClient {
       options.observer().attempted(options.name(), r.method, r.path.text(), status, failure, took, attempt);
     } catch (RuntimeException e) {
       LOG.warn("the client observer of {} failed", options.name(), e);
+    }
+  }
+
+  /**
+   * Hands the attempt to the bound {@link HttpCapture} sink, if any. A sink that throws is logged and
+   * ignored so that capturing can never change the request, its retries or its response.
+   */
+  private void capture(
+      RequestBuilder r,
+      URI target,
+      Map<String, List<String>> sentHeaders,
+      int status,
+      Map<String, List<String>> responseHeaders,
+      byte @Nullable [] responseBody,
+      HttpClientException.@Nullable Kind failure,
+      long took,
+      int attempt) {
+    if (!HttpCapture.CURRENT.isBound()) {
+      return;
+    }
+    try {
+      HttpCapture.CURRENT
+          .get()
+          .captured(
+              new HttpCapture.Exchange(
+                  options.name(),
+                  r.method,
+                  target,
+                  HttpCapture.redactHeaders(sentHeaders),
+                  r.body == null ? null : r.body.clone(),
+                  status,
+                  HttpCapture.redactHeaders(responseHeaders),
+                  responseBody == null ? null : responseBody.clone(),
+                  failure,
+                  took,
+                  attempt));
+    } catch (RuntimeException e) {
+      LOG.warn("the HTTP capture sink failed for {} {}", options.name(), r.method, e);
     }
   }
 

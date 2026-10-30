@@ -1,4 +1,4 @@
-<!-- types: HttpClients, ServiceClient, ServiceOptions, RequestBuilder, ClientResponse, RequestMethod, RetryPolicy, Auth, ClientCredentials, HttpClientException, UnexpectedStatusException, ClientObserver, HttpClientModule, HttpClientOptions, ClientAuth, ServiceClients -->
+<!-- types: HttpClients, ServiceClient, ServiceOptions, RequestBuilder, ClientResponse, RequestMethod, RetryPolicy, Auth, ClientCredentials, HttpClientException, UnexpectedStatusException, ClientObserver, HttpCapture, HttpClientModule, HttpClientOptions, ClientAuth, ServiceClients -->
 # Calling other services: the HTTP client
 
 A blocking client for virtual threads, built on Vert.x: one `ServiceClient` per service you call,
@@ -192,6 +192,27 @@ Every attempt is counted in `fw_http_client_requests_total{service, method, outc
 or the failure kind in lower case) and timed in `fw_http_client_request_duration_seconds{service,
 method}` ([metrics](background-and-metrics.md#built-in-metrics)). Without the module, pass a
 `ClientObserver` to `ServiceOptions.builder(...).observer(...)`.
+
+## Capturing calls (HttpCapture)
+
+To see what a piece of work's outbound calls sent and received (a trace, a diagnostic), bind a sink
+around it. Every attempt a `ServiceClient` makes while it is bound, a retry included, is handed to
+the sink as an `HttpCapture.Exchange`:
+
+```java
+ScopedValue.where(HttpCapture.CURRENT, exchange -> record(exchange))
+    .run(() -> client.get("/x").send());
+```
+
+An `Exchange` holds the service name, method, the full URL with its query, the request headers as
+sent, the request body, the status, the response headers and body as received, the `attempt`
+(1 for the first) and the duration. A transport failure has status 0, empty response headers, no
+response body and the failure `Kind`. Header values of a sensitive name (containing, in any case,
+`auth`, `key`, `token`, `secret`, `password`, `signature`, `cookie` or `session`) are already
+`[redacted]`; `HttpCapture.redactHeaders(map)` applies the same rule to other headers. Bodies are
+not redacted: they are yours to filter. The sink runs on the calling thread after the attempt, so
+keep it quick; anything it throws is logged (WARN) and ignored, so capturing never changes a
+request, its retries or its response. Unbound, a call pays one `isBound()` check.
 
 ## Without the framework
 
