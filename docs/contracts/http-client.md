@@ -50,7 +50,7 @@ try (HttpClients clients = HttpClients.create()) {
   - Header names are tokens; header values may not contain CR, LF or NUL (`IllegalArgumentException`:
     no header injection). `Host`, `Content-Length`, `Transfer-Encoding` and `Connection` are set by
     the client and refused.
-- **`ClientResponse`**: `status()`, `header(name)`, `headers(name)`, `bodyBytes()`, `bodyText()`
+- **`ClientResponse`**: `status()`, `header(name)`, `headers(name)`, `headers()` (every header by lower-case name, unmodifiable), `bodyBytes()`, `bodyText()`
   (UTF-8), `json(Class<T>)` / `json(TypeReference)`, `isSuccess()` (2xx). `send()` never throws for
   an HTTP status; a non-2xx answer is a response.
 - **Convenience:** `sendJson(Class<T>)` returns the decoded body of a 2xx response and throws

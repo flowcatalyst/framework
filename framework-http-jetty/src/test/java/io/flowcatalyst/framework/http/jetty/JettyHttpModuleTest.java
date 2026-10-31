@@ -48,6 +48,33 @@ class JettyHttpModuleTest {
   }
 
   @Test
+  void aRequestHandsOverEveryHeaderByLowerCaseName() throws Exception {
+    try (App app =
+        Apps.start(dir, Apps.env(), r -> r.get("/h", req -> Response.ok(Map.of(
+            "trace", req.headers().get("x-request-trace"),
+            "accept", req.headers().get("accept"),
+            "readOnly", isReadOnly(req.headers())))))) {
+      HttpResponse<String> r =
+          client.send(
+              HttpRequest.newBuilder(URI.create(Apps.url(app, "/h"))).header("X-Request-Trace", "t-1").header("Accept", "application/json").build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertThat(r.statusCode()).isEqualTo(200);
+      assertThat(json(r).get("trace").get(0).asString()).isEqualTo("t-1");
+      assertThat(json(r).get("accept").get(0).asString()).isEqualTo("application/json");
+      assertThat(json(r).get("readOnly").asBoolean()).isTrue();
+    }
+  }
+
+  private static boolean isReadOnly(Map<String, List<String>> headers) {
+    try {
+      headers.put("x-new", List.of("v"));
+      return false;
+    } catch (UnsupportedOperationException e) {
+      return true;
+    }
+  }
+
+  @Test
   void answersARealRequestThroughTheFullPipeline() throws Exception {
     try (App app =
         Apps.start(dir, Apps.env(), r -> r.get("/orders/{id}", req -> Response.ok(Map.of("id", req.pathParam("id"), "q", String.valueOf(req.query("q"))))))) {
@@ -508,14 +535,14 @@ class JettyHttpModuleTest {
   }
 
   @Test
-  void theDefaultBodyLimitIsOneMebibyte() throws Exception {
+  void theDefaultBodyLimitIsFiveMebibytes() throws Exception {
     try (App app = Apps.start(dir, Apps.env(), r -> r.post("/in", req -> Response.ok(Map.of("n", req.bodyBytes().length))))) {
-      for (int size : new int[] {1_048_576, 1_048_577}) {
+      for (int size : new int[] {5_242_880, 5_242_881}) {
         HttpResponse<String> r =
             client.send(
                 HttpRequest.newBuilder(URI.create(Apps.url(app, "/in"))).POST(HttpRequest.BodyPublishers.ofString("z".repeat(size))).build(),
                 HttpResponse.BodyHandlers.ofString());
-        assertThat(r.statusCode()).as("body of %d bytes", size).isEqualTo(size == 1_048_576 ? 200 : 413);
+        assertThat(r.statusCode()).as("body of %d bytes", size).isEqualTo(size == 5_242_880 ? 200 : 413);
       }
     }
   }

@@ -113,6 +113,7 @@ There are `get`, `post`, `put`, `patch`, `delete` and `add(Method, ...)`, each w
 | `query(name)`, `queries(name)` | first value or `null`; all values |
 | `queryRequired(name)`, `queryInt(name, default)`, `queryLong`, `queryBool`, `queryEnum(name, Class, default)` | typed query parameters; a bad value is a `ValidationException` naming the parameter |
 | `header(name)`, `headers(name)` | case-insensitive |
+| `headers()` | every header by lower-case name (unmodifiable), for code that passes headers on |
 | `body()`, `bodyBytes()`, `bodyText()` | the raw body (stream once, or bytes cached); limited by `http.max-body-bytes` |
 | `json(Validator<T>)` | decode and validate a JSON body (below) |
 | `context()` | the resolved `Context`; `IllegalStateException` on a route without `requiresContext` |
@@ -309,7 +310,7 @@ The server's settings are configuration (they are service settings,
 |---|---|---|
 | `http.host` | string | `0.0.0.0` |
 | `http.port` | integer | `8080` (`0` = any free port) |
-| `http.max-body-bytes` | long | `1048576` (not negative) |
+| `http.max-body-bytes` | long | `5242880` (5 MiB; not negative) |
 | `http.request-timeout` | duration | `30s` (idle timeout of reads and writes) |
 | `http.shutdown-grace` | duration | falls back to `app.shutdown.drain` |
 | `http.metrics.enabled` | boolean | `false`; mounts the [Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) |
