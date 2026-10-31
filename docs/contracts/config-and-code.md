@@ -137,7 +137,7 @@ range-checked (as in 3.2).
 |---|---|---|
 | `http.host` | `0.0.0.0` | |
 | `http.port` | `8080` | 0 to 65 535 |
-| `http.max-body-bytes` | `1048576` | not negative |
+| `http.max-body-bytes` | `5242880` (5 MiB) | not negative |
 | `http.request-timeout` | `30s` | a duration |
 | `http.shutdown-grace` | `app.shutdown.drain` | a duration |
 | `http.metrics.enabled` | `false` | a boolean |

@@ -62,7 +62,7 @@ public final class JettyHttpModule implements Module {
   /** {@code http.max-body-bytes}: the largest request body accepted. */
   public static final Setting<Long> MAX_BODY_BYTES =
       Setting.longValue("http.max-body-bytes")
-          .withDefault(1_048_576L)
+          .withDefault(5_242_880L)
           .describedAs("Largest request body accepted, in bytes; larger requests get 413.");
 
   /** {@code http.request-timeout}: idle timeout for reads. */

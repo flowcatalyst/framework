@@ -214,7 +214,7 @@ that register routes. `ContextResolver` is optional and found with `App.find`. S
 |---|---|---|
 | `http.host` | string | `0.0.0.0` |
 | `http.port` | integer | `8080` (`0` = any free port; `HttpServer.port()` returns the bound one) |
-| `http.max-body-bytes` | long | `1048576` |
+| `http.max-body-bytes` | long | `5242880` (5 MiB) |
 | `http.request-timeout` | duration | `30s` (idle and total read) |
 | `http.shutdown-grace` | duration | falls back to `app.shutdown.drain` |
 

@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.httpclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.flowcatalyst.framework.httpclient.FakeServer.Answer;
@@ -82,6 +83,18 @@ class ServiceClientTest {
     assertThat(r.method()).isEqualTo("POST");
     assertThat(r.body()).isEqualTo("{\"id\":\"o1\",\"lines\":1}");
     assertThat(r.header("Content-Type")).isEqualTo("application/json");
+  }
+
+  @Test
+  void aResponseHandsOverEveryHeaderByLowerCaseName() {
+    server.on("/v1/orders", Answer.of(200, "{}").with("X-Request-Trace", "t-1").with("Cache-Control", "no-store"));
+    ClientResponse r = client().get("/orders").send();
+
+    Map<String, List<String>> headers = r.headers();
+    assertThat(headers).containsEntry("x-request-trace", List.of("t-1")).containsEntry("cache-control", List.of("no-store"));
+    assertThat(headers).containsKey("content-type");
+    assertThatThrownBy(() -> headers.put("x-new", List.of("v"))).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> headers.get("x-request-trace").add("v")).isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test

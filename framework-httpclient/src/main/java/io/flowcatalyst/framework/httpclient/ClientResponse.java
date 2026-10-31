@@ -1,6 +1,8 @@
 package io.flowcatalyst.framework.httpclient;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,6 +60,18 @@ public final class ClientResponse {
   public @Nullable String header(String name) {
     List<String> values = headers.get(name.toLowerCase(Locale.ROOT));
     return values == null || values.isEmpty() ? null : values.get(0);
+  }
+
+  /**
+   * Every header of the response, for code that passes them on (a host handing a call's answer to the code
+   * that made it) rather than reading a known one with {@link #header(String)}.
+   *
+   * @return the headers by lower-case name, each with its values as received; an unmodifiable copy
+   */
+  public Map<String, List<String>> headers() {
+    Map<String, List<String>> copy = new LinkedHashMap<>();
+    headers.forEach((name, values) -> copy.put(name, List.copyOf(values)));
+    return Collections.unmodifiableMap(copy);
   }
 
   /**

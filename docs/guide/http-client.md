@@ -135,7 +135,7 @@ Order order =
 `timeout(duration)`.
 
 - `send()` returns a `ClientResponse` **whatever the status**: `status()`, `isSuccess()`,
-  `header(name)`, `bodyText()`, `bodyBytes()`, `json(Class)` and `json(TypeReference)`.
+  `header(name)`, `headers()` (every header, by lower-case name), `bodyText()`, `bodyBytes()`, `json(Class)` and `json(TypeReference)`.
 - `sendJson(type)` decodes a 2xx body and throws `UnexpectedStatusException` otherwise, with the
   status and, when the answer is the platform's error envelope, its `error` code; never the body.
 - `getJson(path, type, pathParams...)` and `postJson(path, body, type)` are shorthands.

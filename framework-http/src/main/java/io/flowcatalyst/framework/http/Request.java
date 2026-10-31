@@ -156,6 +156,17 @@ public final class Request {
   }
 
   /**
+   * Every header the request carries, for code that passes headers on (a proxy, a host handing a request
+   * to code it runs) rather than reading a known one with {@link #header(String)}.
+   *
+   * @return the headers by lower-case name, each with its values in the order received; unmodifiable, in no
+   *     particular name order, empty when there are none
+   */
+  public Map<String, List<String>> headers() {
+    return raw.headers();
+  }
+
+  /**
    * Every value of a header.
    *
    * @param name the name, case-insensitive
