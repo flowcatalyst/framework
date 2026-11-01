@@ -8,17 +8,16 @@
 // click outside) asks "Discard changes?" first; Keep editing is the focused answer. Edit forms
 // (`requireChange`) enable Save only once a value changed (a value typed back counts as unchanged).
 // A field that commits to the state on blur (UInputNumber) counts as changed while it is typed in:
-// the dialog also compares the fields' own drafts with the ones it opened with (friction F21).
+// the dialog also compares the fields' own drafts with the ones it opened with (friction F21). The
+// form's behaviour is lib/schemaForm.ts, shared with FwFormPage.
 import type { ServiceError } from "@flowcatalyst/api-runtime";
-import { applyServiceError } from "@flowcatalyst/api-runtime";
-import type { FormSubmitEvent } from "@nuxt/ui";
 import UButton from "@nuxt/ui/components/Button.vue";
 import UForm from "@nuxt/ui/components/Form.vue";
 import UModal from "@nuxt/ui/components/Modal.vue";
-import { computed, nextTick, shallowRef, useId, useTemplateRef, watch } from "vue";
+import { shallowRef, useId, useTemplateRef, watch } from "vue";
 import type { z } from "zod";
 import FwAlertDialog from "../components/FwAlertDialog.vue";
-import { useDirtyForm } from "../composables/useDirtyForm.ts";
+import { FIRST_FIELD, useSchemaForm, type FormApi } from "../lib/schemaForm.ts";
 
 const {
   schema,
@@ -55,72 +54,38 @@ defineSlots<{
 }>();
 
 const id = useId();
-/** What this dialog uses of UForm's exposed API. */
-interface FormApi {
-  submit(): Promise<void>;
-  setErrors(errors: { name?: string; message: string }[]): void;
-  getErrors(): readonly { readonly name?: string | undefined }[];
-}
-
 const form = useTemplateRef<FormApi>("form");
 const fields = useTemplateRef<HTMLElement>("fields");
-const busy = shallowRef(false);
-const formError = shallowRef<string | undefined>(undefined);
 const askDiscard = shallowRef(false);
-const dirtyForm = useDirtyForm(() => state);
-// The fields' drafts: what the inputs show, which runs ahead of `state` for a field that commits on blur.
-const draftBaseline = shallowRef<string | undefined>(undefined);
-const draftTick = shallowRef(0);
-const draftChanged = computed(() => {
-  const tick = draftTick.value; // re-evaluate after every input event
-  return tick >= 0 && draftBaseline.value !== undefined && drafts() !== draftBaseline.value;
+const { busy, formError, changed, start, stop, focusFirst, onFieldInput, onSubmit, onError, submitForm, keepFocus } = useSchemaForm<O>({
+  state: () => state,
+  submit: (data) => submit(data),
+  form,
+  fields,
+  shown: () => open.value,
+  saved: (data) => {
+    open.value = false;
+    emit("saved", data);
+  },
 });
-const changed = computed(() => dirtyForm.dirty.value || draftChanged.value);
-
-function drafts(): string {
-  const inputs = fields.value?.querySelectorAll<HTMLInputElement>("input:not([type=hidden]), textarea") ?? [];
-  return JSON.stringify(Array.from(inputs, (input) => (input.type === "checkbox" || input.type === "radio" ? input.checked : input.value)));
-}
-
-function onFieldInput(): void {
-  draftTick.value += 1;
-}
 
 watch(
   open,
   (isOpen) => {
     if (isOpen) {
-      formError.value = undefined;
-      busy.value = false;
-      dirtyForm.markClean();
-      draftBaseline.value = undefined;
-      // The fields are in the DOM once the modal rendered: a macrotask, as focusFirst.
-      setTimeout(() => {
-        if (open.value) {
-          draftBaseline.value = drafts();
-        }
-      }, 0);
+      start();
     } else {
-      dirtyForm.reset();
-      draftBaseline.value = undefined;
+      stop();
     }
   },
   { immediate: true },
 );
 
-// After the render and after UForm re-enables its fields (it disables them while submitting and
-// only lets go once the submit handler returned): a macrotask, not just the next tick.
-function focusFirst(selector: string): void {
-  setTimeout(() => {
-    fields.value?.querySelector<HTMLElement>(selector)?.focus();
-  }, 0);
-}
-
 const content = {
   // Initial focus: the first field, not the header's close button (form-dialog.md).
   onOpenAutoFocus: (event: Event) => {
     event.preventDefault();
-    focusFirst("input:not([type=hidden]), textarea, select, button[role=combobox], [role=radio], [role=checkbox]");
+    focusFirst(FIRST_FIELD);
   },
 };
 
@@ -138,49 +103,6 @@ function requestClose(): void {
 function discard(): void {
   askDiscard.value = false;
   open.value = false;
-}
-
-async function onSubmit(event: FormSubmitEvent<O>): Promise<void> {
-  busy.value = true;
-  formError.value = undefined;
-  try {
-    const error = await submit(event.data);
-    if (error === undefined) {
-      dirtyForm.markClean();
-      draftBaseline.value = drafts();
-      open.value = false;
-      emit("saved", event.data);
-      return;
-    }
-    const applied = applyServiceError(form.value, error);
-    formError.value = applied.message;
-    focusFirst("[aria-invalid=true]");
-  } finally {
-    busy.value = false;
-  }
-}
-
-function onError(): void {
-  focusFirst("[aria-invalid=true]");
-}
-
-// UButton declares no mousedown event, so the listener goes through v-bind as an attribute.
-const keepFocus = {
-  onMousedown: (event: MouseEvent) => {
-    event.preventDefault();
-  },
-};
-
-async function submitForm(): Promise<void> {
-  // The field keeps focus through the click (keepFocus); blur it now so a field that commits on
-  // blur (UInputNumber: Reka's NumberField parses the typed text on blur or Enter) has its value
-  // in the state before UForm reads it. The click itself has already landed.
-  const active = document.activeElement;
-  if (active instanceof HTMLElement && fields.value?.contains(active) === true) {
-    active.blur();
-    await nextTick();
-  }
-  await form.value?.submit();
 }
 </script>
 

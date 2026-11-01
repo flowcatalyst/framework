@@ -105,7 +105,7 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
   <FwListPage
     v-model:search="search"
     title="Orders"
-    subtitle="FwListPage, FwTableToolbar, FwCursorPager, FwRecordDrawer and FwFormDialog on the generated client"
+    subtitle="FwListPage, FwTableToolbar, FwCursorPager, FwRecordDrawer, FwFormDialog and FwFormPage on the generated client"
     :data="pager.items.value"
     :columns="columns"
     :loading="pager.loading.value"
@@ -121,6 +121,7 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
     @clear="list.clearFilters"
   >
     <template #actions>
+      <UButton label="New order (page)" icon="i-lucide-file-plus" color="neutral" variant="outline" to="/orders/new" data-testid="new-order-page" />
       <UButton label="New order" icon="i-lucide-plus" data-testid="new-order" @click="startCreate" />
     </template>
     <template #filters>
@@ -142,9 +143,9 @@ async function create(body: PlaceOrderBody): Promise<ServiceError | undefined> {
     <template #drawer>
       <p
         class="mt-2 text-sm text-muted"
-        data-behaviour="drawer-child-route drawer-non-modal drawer-push drawer-focus drawer-discard form-schema form-server-errors form-busy form-discard form-number-commit form-int64 record-create"
+        data-behaviour="drawer-child-route drawer-non-modal drawer-push drawer-focus drawer-discard form-schema form-server-errors form-busy form-discard form-number-commit form-int64 record-create form-page form-page-validation form-page-discard"
       >
-        Open an order for its record drawer (a child route: Back closes it); New order and Add line are form dialogs.
+        Open an order for its record drawer (a child route: Back closes it); New order and Add line are form dialogs; New order (page) is the same form as a page.
       </p>
       <RouterView />
     </template>

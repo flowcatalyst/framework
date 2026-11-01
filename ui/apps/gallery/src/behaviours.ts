@@ -73,6 +73,11 @@ export const behaviours = [
   { id: "form-int64", behaviour: "int64 fields reach the server as JSON numbers", by: "fwOpenApiConfig + FwFormDialog", page: "/orders" },
   { id: "record-create", behaviour: "After a create, the new record's drawer opens in place of the form", by: "FwFormDialog + useDrawerRoute", page: "/orders" },
 
+  // Form pages.
+  { id: "form-page", behaviour: "A form too long for a dialog is a page of its own: a link opens it, the back link and Cancel return, the actions stay in view at the bottom and an aside sits beside the fields on a wide screen", by: "FwFormPage (UPageHeader, UForm)", page: "/orders" },
+  { id: "form-page-validation", behaviour: "On a form page the first field is focused; the schema's and the server's errors land on their fields, focus moves to the first, and the form is busy while it submits", by: "FwFormPage + applyServiceError", page: "/orders" },
+  { id: "form-page-discard", behaviour: "Leaving a changed form page (Cancel, a link, Back) asks 'Discard changes?' with Keep editing focused; an unchanged one, or one just saved, leaves at once", by: "FwFormPage + onBeforeRouteLeave + useConfirm", page: "/orders" },
+
   // Confirmations.
   { id: "alert-dialog", behaviour: "Confirmations are alert dialogs: Cancel focused, focus trapped, the mask does not dismiss, Escape cancels, focus returns", by: "FwAlertDialog (UModal)", page: "/overlays" },
   { id: "alert-busy", behaviour: "A confirmed action can keep the confirmation open while it runs", by: "FwAlertDialog", page: "/overlays" },

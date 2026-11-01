@@ -155,6 +155,9 @@ async function answer(request: Request): Promise<Response> {
     if (typeof customer !== "string" || customer.trim() === "") {
       return failure(400, "VALIDATION", "request is invalid", { customer: "NOT_BLANK: must not be blank" });
     }
+    if (customer.trim() === "Blocked Ltd") {
+      return failure(400, "VALIDATION", "request is invalid", { customer: "ON_HOLD: the customer is on hold" });
+    }
     const order: OrderView = { id: `ord_${String(2000 + orders.length)}`, customer, status: "OPEN", version: 1, lines: [], totalCents: 0 };
     orders.unshift(order);
     return json(201, order);

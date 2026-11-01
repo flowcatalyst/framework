@@ -30,6 +30,8 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "Orders (partials)" },
     children: [{ path: ":id", component: () => import("./pages/orders/OrderDrawer.vue"), meta: { title: "Orders (partials)" } }],
   },
+  // The create form as a page (FwFormPage); its static path outranks the drawer's /orders/:id.
+  { path: "/orders/new", component: () => import("./pages/orders/NewOrderPage.vue"), meta: { title: "Orders (partials)" } },
   // The kit's pages outside the shell (U4): public routes, rendered without FwAppShell (App.vue).
   { path: "/standalone/signed-out", component: FwSignedOutPage, props: { appName: "Gallery", returnTo: "/standalone" }, meta: { title: "Signed out", public: true } },
   { path: "/standalone/sign-in-failed", component: FwSignInFailedPage, props: { appName: "Gallery", returnTo: "/standalone" }, meta: { title: "Sign-in failed", public: true } },

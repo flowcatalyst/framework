@@ -26,6 +26,7 @@ export type { AlertColor, DrawerSize, FwListColumn, FwNavItem, PickItem, RowActi
 
 // Partials and the layout (U2).
 export { default as FwFormDialog } from "./partials/FwFormDialog.vue";
+export { default as FwFormPage } from "./partials/FwFormPage.vue";
 export { default as FwListPage } from "./partials/FwListPage.vue";
 export { default as FwRecordDrawer } from "./partials/FwRecordDrawer.vue";
 export { default as FwAppShell } from "./layouts/FwAppShell.vue";

@@ -17,7 +17,7 @@ for (const scheme of ["light", "dark"] as const) {
     });
   }
 
-  test(`axe: overlays open in ${scheme} (drawer, form dialog, alert dialog, filters, menus, toasts)`, covers("axe-aa", "strict-csp"), async ({ page, csp }) => {
+  test(`axe: overlays open in ${scheme} (drawer, form dialog, form page, alert dialog, filters, menus, toasts)`, covers("axe-aa", "strict-csp"), async ({ page, csp }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await openPage(page, "/orders/ord_1042", "Orders");
     await expect(page.getByTestId("fw-drawer-title")).toHaveText("ord_1042");
@@ -31,6 +31,16 @@ for (const scheme of ["light", "dark"] as const) {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("alertdialog", { name: "Discard changes?" })).toBeVisible();
     expect(await axeViolations(page), "discard question over the form dialog").toEqual([]);
+    await page.getByRole("button", { name: "Discard" }).click();
+
+    await openPage(page, "/orders/new", "New order");
+    await page.getByTestId("fw-form-submit").click();
+    await expect(page.getByTestId("page-customer")).toHaveAttribute("aria-invalid", "true");
+    expect(await axeViolations(page), "form page with an error").toEqual([]);
+    await page.getByTestId("page-customer").fill("Wayne");
+    await page.getByTestId("fw-form-cancel").click();
+    await expect(page.getByRole("alertdialog", { name: "Discard changes?" })).toBeVisible();
+    expect(await axeViolations(page), "discard question over the form page").toEqual([]);
     await page.getByRole("button", { name: "Discard" }).click();
 
     await openPage(page, "/overlays", "Overlays");
