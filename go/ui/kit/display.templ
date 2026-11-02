@@ -1,0 +1,400 @@
+package kit
+
+// BadgeVariant is badge.md's `variant` option.
+type BadgeVariant string
+
+// Badge variants (badge.md).
+const (
+	BadgePrimary     BadgeVariant = "primary"
+	BadgeSecondary   BadgeVariant = "secondary"
+	BadgeOutline     BadgeVariant = "outline"
+	BadgeDestructive BadgeVariant = "destructive"
+	BadgeSuccess     BadgeVariant = "success"
+	BadgeInfo        BadgeVariant = "info"
+	BadgeWarn        BadgeVariant = "warn"
+)
+
+const badgeBase = "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap"
+
+var badgeVariants = map[BadgeVariant]string{
+	BadgePrimary:     "border-transparent bg-primary text-primary-foreground",
+	BadgeSecondary:   "border-transparent bg-foreground/5 text-foreground",
+	BadgeOutline:     "border-border text-foreground",
+	BadgeDestructive: "border-transparent bg-destructive text-destructive-foreground",
+	BadgeSuccess:     "border-transparent bg-success text-success-foreground",
+	BadgeInfo:        "border-transparent bg-info text-info-foreground",
+	BadgeWarn:        "border-transparent bg-warning text-warning-foreground",
+}
+
+// BadgeProps mirrors badge.md's Props table.
+type BadgeProps struct {
+	Variant BadgeVariant `json:"variant"`
+	// Href renders the badge as a link.
+	Href  string           `json:"href"`
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// Badge is badge.md (the PrimeVue Tag equivalent). Slot: the label.
+templ Badge(p BadgeProps) {
+	if p.Href != "" {
+		<a href={ SafeURL(p.Href) } class={ cx(badgeBase, pick("badge variant", badgeVariants, p.Variant, BadgePrimary), p.Class) } { Attrs(p.Attrs)... }>
+			{ children... }
+		</a>
+	} else {
+		<span class={ cx(badgeBase, pick("badge variant", badgeVariants, p.Variant, BadgePrimary), p.Class) } { Attrs(p.Attrs)... }>
+			{ children... }
+		</span>
+	}
+}
+
+// TagSeverity is tag.md's `severity` option.
+type TagSeverity string
+
+// Tag severities (tag.md).
+const (
+	TagSuccess   TagSeverity = "success"
+	TagInfo      TagSeverity = "info"
+	TagWarn      TagSeverity = "warn"
+	TagDanger    TagSeverity = "danger"
+	TagSecondary TagSeverity = "secondary"
+	TagPrimary   TagSeverity = "primary"
+)
+
+// TagProps mirrors tag.md's Props table.
+type TagProps struct {
+	// Severity defaults to secondary (tag.md lists no default; PrimeVue's
+	// Tag without a severity is the neutral fill).
+	Severity TagSeverity `json:"severity"`
+	Label    string      `json:"label"`
+}
+
+// Tag is tag.md (hand-built `.fc-tag`).
+templ Tag(p TagProps) {
+	<span class={ "fc-tag fc-tag-" + string(oneOf("tag severity", p.Severity, TagSecondary, TagSuccess, TagInfo, TagWarn, TagDanger, TagSecondary, TagPrimary)) }>{ p.Label }</span>
+}
+
+// AlertVariant is alert.md's `variant` option.
+type AlertVariant string
+
+// Alert variants (alert.md).
+const (
+	AlertNeutral     AlertVariant = "neutral"
+	AlertDestructive AlertVariant = "destructive"
+	AlertWarn        AlertVariant = "warn"
+)
+
+const alertBase = "grid w-full grid-cols-[0_1fr] items-start gap-y-1 rounded-lg border bg-background px-4 py-3 text-sm has-[>svg]:grid-cols-[1rem_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-0.5"
+
+var alertVariants = map[AlertVariant]string{
+	AlertNeutral:     "border-border text-foreground",
+	AlertDestructive: "border-destructive/50 text-destructive",
+	AlertWarn:        "border-warning/50 text-warning",
+}
+
+// AlertProps mirrors alert.md's Props table.
+type AlertProps struct {
+	Variant AlertVariant `json:"variant"`
+	// Role is "", "alert" or "status": only for messages inserted during the visit.
+	Role        string `json:"role"`
+	Icon        string `json:"icon"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	ID          string `json:"id"`
+	Class       string `json:"class"`
+}
+
+// role is the validated role: "", "alert" or "status" (alert.md).
+func (p AlertProps) role() string { return oneOf("alert role", p.Role, "", "", "alert", "status") }
+
+// Alert is alert.md: an inline notice with optional icon, title and description.
+// Slot: extra content after the description.
+templ Alert(p AlertProps) {
+	<div
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ cx(alertBase, pick("alert variant", alertVariants, p.Variant, AlertNeutral), p.Class) }
+		if p.role() != "" {
+			role={ p.role() }
+		}
+	>
+		if p.Icon != "" {
+			@Icon(IconProps{Name: p.Icon})
+		}
+		if p.Title != "" {
+			<p class="col-start-2 font-medium tracking-tight">{ p.Title }</p>
+		}
+		if p.Description != "" {
+			<div class="col-start-2 text-sm text-muted-foreground">{ p.Description }</div>
+		}
+		{ children... }
+	</div>
+}
+
+// FlashKind is the `kind` option of flash-banner.md (success, error) and of
+// flash-stack.md's flash message (all four).
+type FlashKind string
+
+// Flash kinds. FlashBanner supports success and error only.
+const (
+	FlashSuccess FlashKind = "success"
+	FlashInfo    FlashKind = "info"
+	FlashWarn    FlashKind = "warn"
+	FlashError   FlashKind = "error"
+)
+
+// FlashBannerProps mirrors flash-banner.md's Props table.
+type FlashBannerProps struct {
+	Kind    FlashKind `json:"kind"`
+	Message string    `json:"message"`
+	// Role defaults to "status"; use "alert" for errors needing attention.
+	Role string `json:"role"`
+	// AutoDismiss removes the banner after 5s (data-init__delay.5s).
+	AutoDismiss bool `json:"autoDismiss"`
+}
+
+// FlashBanner is flash-banner.md.
+templ FlashBanner(p FlashBannerProps) {
+	<div
+		role={ oneOf("flash banner role", p.Role, "status", "status", "alert") }
+		class={ "fc-banner fc-banner-" + string(oneOf("flash banner kind", p.Kind, FlashSuccess, FlashSuccess, FlashError)) + " mb-4" }
+		if p.AutoDismiss {
+			data-init__delay.5s="el.remove()"
+		}
+	>{ p.Message }</div>
+}
+
+// FlashMessageProps mirrors flash-stack.md's flash-message Props table.
+type FlashMessageProps struct {
+	Kind    FlashKind `json:"kind"`
+	Summary string    `json:"summary"`
+	Detail  string    `json:"detail"`
+	// Persistent keeps a success or info message (warn and error always stay).
+	Persistent bool             `json:"persistent"`
+	Attrs      templ.Attributes `json:"attrs"`
+}
+
+func (p FlashMessageProps) kind() FlashKind {
+	return oneOf("flash kind", p.Kind, FlashSuccess, FlashSuccess, FlashInfo, FlashWarn, FlashError)
+}
+
+func (p FlashMessageProps) icon() string {
+	switch p.kind() {
+	case FlashInfo:
+		return "info"
+	case FlashWarn:
+		return "triangle-alert"
+	case FlashError:
+		return "circle-x"
+	case FlashSuccess:
+	}
+	return "circle-check"
+}
+
+// lifetime is the auto-dismiss delay ("" = stays): the SPA's 3s for
+// success and 5s for info.
+func (p FlashMessageProps) lifetime() string {
+	switch {
+	case p.alert() || p.Persistent:
+		return ""
+	case p.kind() == FlashInfo:
+		return "5s"
+	}
+	return "3s"
+}
+
+// alert reports whether the message is role="alert" (warn and error).
+func (p FlashMessageProps) alert() bool { return p.kind() == FlashWarn || p.kind() == FlashError }
+
+// FlashMessage is one banner of flash-stack.md (the SPA's notification
+// banner): success and info remove themselves after 3s and 5s unless
+// persistent; warn and error stay until dismissed and are role="alert".
+templ FlashMessage(p FlashMessageProps) {
+	<div
+		class={ "fc-flash fc-flash-" + string(p.kind()) }
+		if p.alert() {
+			role="alert"
+		}
+		if p.lifetime() == "3s" {
+			data-init__delay.3s="el.remove()"
+		}
+		if p.lifetime() == "5s" {
+			data-init__delay.5s="el.remove()"
+		}
+		{ Attrs(p.Attrs)... }
+	>
+		@Icon(IconProps{Name: p.icon(), Class: "fc-flash-icon"})
+		<div class="fc-flash-body">
+			<span class="fc-flash-summary">{ p.Summary }</span>
+			if p.Detail != "" {
+				<span class="fc-flash-detail">{ p.Detail }</span>
+			}
+		</div>
+		<button type="button" class="fc-flash-dismiss" aria-label="Dismiss notification" data-on:click="el.parentElement.remove()">
+			@Icon(IconProps{Name: "x", Class: "size-[0.9rem]"})
+		</button>
+	</div>
+}
+
+// flashFallbackExpr is flash-stack.md's datastar-fetch listener: a non-2xx
+// answer (except 401, which the application handles) or a network failure
+// appends one generic message from the stack's templates.
+const flashFallbackExpr = "const t = evt.detail.type, s = evt.detail.argsRaw.status; " +
+	"const k = t === 'retrying' || t === 'retries-failed' ? 'offline' : t === 'error' && s !== '401' ? (s === '403' ? 'refused' : 'failed') : ''; " +
+	"k && !el.querySelector(':scope > [data-flash-fallback=' + k + ']') && el.append(el.querySelector(':scope > template[data-flash-template=' + k + ']').content.cloneNode(true))"
+
+// flashFallback is one of the stack's generic messages for failed requests.
+type flashFallback struct {
+	key string
+	msg FlashMessageProps
+}
+
+var flashFallbacks = []flashFallback{
+	{"refused", FlashMessageProps{Kind: FlashError, Summary: "The request was refused.", Detail: "Reload the page and try again."}},
+	{"failed", FlashMessageProps{Kind: FlashError, Summary: "Something went wrong.", Detail: "The request failed. Try again, or reload the page."}},
+	{"offline", FlashMessageProps{Kind: FlashWarn, Summary: "The server could not be reached.", Detail: "Check your connection and try again. A change you just made may not have been saved."}},
+}
+
+func (f flashFallback) props() FlashMessageProps {
+	p := f.msg
+	p.Attrs = templ.Attributes{"data-flash-fallback": f.key}
+	return p
+}
+
+// FlashStackProps mirrors flash-stack.md's flash-stack Props table.
+type FlashStackProps struct {
+	ID string `json:"id"`
+}
+
+// FlashStack is flash-stack.md: the sticky, polite live region server
+// patches append FlashMessages to (mode append, selector "#{id}"), with the
+// fallback listener and its templates for requests that fail outside a
+// handler (guard refusals, crashes, network). Slot: messages rendered with
+// the page (the flash after a post/redirect/get), after the templates.
+templ FlashStack(p FlashStackProps) {
+	<div id={ ID(p.ID) } class="fc-flash-stack" aria-live="polite" data-on:datastar-fetch={ flashFallbackExpr }>
+		for _, f := range flashFallbacks {
+			<template data-flash-template={ f.key }>
+				@FlashMessage(f.props())
+			</template>
+		}
+		{ children... }
+	</div>
+}
+
+// SpinnerProps mirrors spinner.md's Props table.
+type SpinnerProps struct {
+	// Size is the size class; default "size-6".
+	Size string `json:"size"`
+	// Label is the accessible name (default "Loading"); Decorative makes it
+	// aria-hidden instead (inside a labelled button).
+	Label      string `json:"label"`
+	Decorative bool   `json:"decorative"`
+}
+
+// Spinner is spinner.md (Lucide loader-circle, animate-spin).
+templ Spinner(p SpinnerProps) {
+	if p.Decorative {
+		@Icon(IconProps{Name: "loader-circle", Class: cx("animate-spin", p.Size)})
+	} else {
+		@Icon(IconProps{Name: "loader-circle", Class: cx("animate-spin", orDefault(p.Size, "size-6")), Label: orDefault(p.Label, "Loading")})
+	}
+}
+
+// SkeletonProps mirrors skeleton.md's Props table.
+type SkeletonProps struct {
+	// Class is the size/shape classes, e.g. "h-4 w-3/4".
+	Class string `json:"class"`
+}
+
+// Skeleton is skeleton.md: a pulsing, decorative placeholder.
+templ Skeleton(p SkeletonProps) {
+	<div class={ cx("animate-pulse rounded-md bg-foreground/10", p.Class) } aria-hidden="true"></div>
+}
+
+// Crumb is one breadcrumb item; the last one (or one without Href) is the
+// current page.
+type Crumb struct {
+	Label string `json:"label"`
+	Href  string `json:"href"`
+}
+
+// BreadcrumbProps mirrors breadcrumb.md's Props table.
+type BreadcrumbProps struct {
+	Items []Crumb `json:"items"`
+}
+
+// Breadcrumb is breadcrumb.md.
+templ Breadcrumb(p BreadcrumbProps) {
+	<nav aria-label="breadcrumb">
+		<ol class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+			for i, it := range p.Items {
+				if i > 0 {
+					<li aria-hidden="true">
+						@Icon(IconProps{Name: "chevron-right", Class: "size-3.5"})
+					</li>
+				}
+				<li class="inline-flex items-center gap-2">
+					if it.Href != "" && i < len(p.Items)-1 {
+						<a href={ SafeURL(it.Href) } class="transition-colors hover:text-foreground">{ it.Label }</a>
+					} else {
+						<span aria-current="page" class="font-medium text-foreground">{ it.Label }</span>
+					}
+				</li>
+			}
+		</ol>
+	</nav>
+}
+
+// EmptyStateProps mirrors empty-state.md's Props table.
+type EmptyStateProps struct {
+	Message string `json:"message"`
+	// Icon defaults to "inbox".
+	Icon string `json:"icon"`
+	// ClearHref renders "Clear filters" (only when a filter is active).
+	ClearHref string `json:"clearHref"`
+	// Status adds role="status" (when it appears after a filter change).
+	Status bool `json:"status"`
+}
+
+// EmptyState is empty-state.md.
+templ EmptyState(p EmptyStateProps) {
+	<div
+		class="fc-empty"
+		if p.Status {
+			role="status"
+		}
+	>
+		@Icon(IconProps{Name: orDefault(p.Icon, "inbox"), Class: "size-12"})
+		<span>{ p.Message }</span>
+		if p.ClearHref != "" {
+			<a href={ SafeURL(p.ClearHref) } class="fc-btn fc-btn-text-primary">Clear filters</a>
+		}
+	</div>
+}
+
+// PageHeaderProps mirrors page-header.md's Props table.
+type PageHeaderProps struct {
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle"`
+	// Actions is the right-aligned slot (the wrapper is always rendered).
+	Actions templ.Component `json:"-"`
+}
+
+// PageHeader is page-header.md: title, subtitle and actions.
+templ PageHeader(p PageHeaderProps) {
+	<header class="fc-page-header">
+		<div>
+			<h1 class="fc-page-title">{ p.Title }</h1>
+			if p.Subtitle != "" {
+				<p class="fc-page-subtitle">{ p.Subtitle }</p>
+			}
+		</div>
+		<div class="flex items-center gap-2">
+			if p.Actions != nil {
+				@p.Actions
+			}
+		</div>
+	</header>
+}

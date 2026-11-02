@@ -1,0 +1,347 @@
+package kit
+
+// Class lists from dialog.md and sheet.md.
+const (
+	dialogOverlay     = "fixed inset-0 z-50 size-full max-h-none max-w-none items-start justify-center overflow-y-auto bg-background/80 p-4 text-foreground backdrop-blur-sm open:flex opacity-0 open:opacity-100 starting:open:opacity-0 [transition:opacity_200ms_ease-out,display_200ms_allow-discrete]"
+	dialogDarkMask    = "[&]:w-screen [&]:bg-[rgb(15_23_42/0.4)] [&]:backdrop-blur-none backdrop:bg-transparent"
+	dialogContent     = "relative my-auto flex w-full max-w-lg flex-col gap-4 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-sm scale-95 opacity-0 in-[[open]]:scale-100 in-[[open]]:opacity-100 starting:in-[[open]]:scale-95 starting:in-[[open]]:opacity-0 [transition:scale_200ms_ease-out,opacity_200ms_ease-out]"
+	dialogHeader      = "flex flex-col gap-1.5"
+	dialogTitle       = "text-lg leading-none font-semibold"
+	dialogDescription = "text-sm text-muted-foreground"
+	dialogFooter      = "flex flex-wrap items-center justify-end gap-2"
+	dialogCloseExtra  = "absolute top-3 right-3 [&]:size-8 [&]:rounded-full text-muted-foreground"
+	sheetOverlay      = "fixed inset-0 z-50 size-full max-h-none max-w-none overflow-hidden bg-background/80 text-foreground backdrop-blur-sm open:flex opacity-0 open:opacity-100 starting:open:opacity-0 [transition:opacity_200ms_ease-out,display_200ms_allow-discrete]"
+	sheetContent      = "flex flex-col gap-4 overflow-y-auto border-border bg-card p-6 text-card-foreground shadow-sm [transition:translate_200ms_ease-out]"
+)
+
+// DialogMask is dialog.md's `mask` option.
+type DialogMask string
+
+// Dialog masks (dialog.md).
+const (
+	MaskFrosted DialogMask = "frosted"
+	MaskDark    DialogMask = "dark"
+)
+
+// DialogWidth is dialog.md's `width` option.
+type DialogWidth string
+
+// Dialog widths (dialog.md).
+const (
+	WidthDefault DialogWidth = "default"
+	WidthNarrow  DialogWidth = "narrow"
+	WidthWide    DialogWidth = "wide"
+)
+
+var dialogWidths = map[DialogWidth]string{
+	WidthDefault: "",
+	WidthNarrow:  "[&]:max-w-[450px]",
+	WidthWide:    "[&]:max-w-[700px]",
+}
+
+// DialogProps mirrors dialog.md's Props table.
+type DialogProps struct {
+	// ID is required: the trigger (OpenModal(id)) and the aria ids use it.
+	ID          string      `json:"id"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	Mask        DialogMask  `json:"mask"`
+	Width       DialogWidth `json:"width"`
+	// Persistent turns light dismiss (mask click closes) off.
+	Persistent bool `json:"persistent"`
+	// Closable renders the X button.
+	Closable bool `json:"closable"`
+	// Role "alertdialog" for alert-dialog.md (which is also Persistent).
+	Role string `json:"role"`
+	// Footer is the actions slot; the body is the default slot.
+	Footer templ.Component  `json:"-"`
+	Attrs  templ.Attributes `json:"attrs"`
+}
+
+func (p DialogProps) overlayClasses() string {
+	if oneOf("dialog mask", p.Mask, MaskFrosted, MaskFrosted, MaskDark) == MaskDark {
+		return cx(dialogOverlay, dialogDarkMask)
+	}
+	return dialogOverlay
+}
+
+// Dialog is dialog.md: a full-viewport modal <dialog> opened with
+// showModal() from a Datastar handler (OpenModal(id) on the trigger).
+templ Dialog(p DialogProps) {
+	<dialog
+		id={ ID(p.ID) }
+		if p.Role != "" {
+			role={ p.Role }
+		}
+		aria-labelledby={ p.ID + "-title" }
+		if p.Description != "" {
+			aria-describedby={ p.ID + "-desc" }
+		}
+		if !p.Persistent {
+			data-on:click={ LightDismiss }
+		}
+		class={ p.overlayClasses() }
+		{ Attrs(p.Attrs)... }
+	>
+		<div class={ cx(dialogContent, pick("dialog width", dialogWidths, p.Width, WidthDefault)) }>
+			<div class={ dialogHeader }>
+				<h2 id={ p.ID + "-title" } class={ dialogTitle }>{ p.Title }</h2>
+				if p.Description != "" {
+					<p id={ p.ID + "-desc" } class={ dialogDescription }>{ p.Description }</p>
+				}
+			</div>
+			if p.Closable {
+				<button type="button" class={ cx(ButtonClasses(ButtonGhost, ButtonIcon), dialogCloseExtra) } aria-label="Close" data-on:click={ CloseDialog }>
+					@Icon(IconProps{Name: "x", Class: "size-[1.1rem]"})
+				</button>
+			}
+			{ children... }
+			if p.Footer != nil {
+				<div class={ dialogFooter }>
+					@p.Footer
+				</div>
+			}
+		</div>
+	</dialog>
+}
+
+// ConfirmTone is confirm-dialog.md's `tone` option.
+type ConfirmTone string
+
+// Confirm tones (confirm-dialog.md).
+const (
+	ToneDefault ConfirmTone = "default"
+	ToneDanger  ConfirmTone = "danger"
+	ToneWarn    ConfirmTone = "warn"
+)
+
+// ConfirmDialogProps mirrors confirm-dialog.md's Props table.
+type ConfirmDialogProps struct {
+	ID      string `json:"id"`
+	Action  string `json:"action"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
+	// ConfirmLabel is the submit button's text.
+	ConfirmLabel string      `json:"confirmLabel"`
+	Tone         ConfirmTone `json:"tone"`
+	// Hidden fields posted with the form (record id, CSRF token if any).
+	Hidden []HiddenField `json:"hidden"`
+	// FormAttrs go on the <form>, e.g. data-on:submit for a Datastar @post (c).
+	FormAttrs templ.Attributes `json:"formAttrs"`
+}
+
+func (p ConfirmDialogProps) confirmClass() string {
+	switch oneOf("confirm tone", p.Tone, ToneDefault, ToneDefault, ToneDanger, ToneWarn) {
+	case ToneDanger:
+		return "fc-btn fc-btn-danger"
+	case ToneWarn:
+		return "fc-btn fc-btn-warn"
+	case ToneDefault:
+	}
+	return "fc-btn fc-btn-primary"
+}
+
+func (p ConfirmDialogProps) iconClass() string {
+	if oneOf("confirm tone", p.Tone, ToneDefault, ToneDefault, ToneDanger, ToneWarn) == ToneDanger {
+		return "size-6 mt-0.5 shrink-0 text-red-600"
+	}
+	return "size-6 mt-0.5 shrink-0 text-amber-600"
+}
+
+// ConfirmDialog is confirm-dialog.md: confirm-then-POST in a native modal.
+templ ConfirmDialog(p ConfirmDialogProps) {
+	<dialog id={ ID(p.ID) } class="fc-dialog w-[28rem] max-w-[calc(100vw-2rem)]" closedby="any" aria-labelledby={ p.ID + "-title" } data-on:click={ LightDismiss }>
+		<form method="post" action={ SafeURL(p.Action) } { Attrs(p.FormAttrs)... }>
+			<div class="fc-dialog-header"><span id={ p.ID + "-title" }>{ p.Title }</span></div>
+			<div class="fc-dialog-body flex items-start gap-3 text-subtle-foreground">
+				@Icon(IconProps{Name: "triangle-alert", Class: p.iconClass()})
+				<p>{ p.Message }</p>
+			</div>
+			for _, h := range p.Hidden {
+				<input type="hidden" name={ h.Name } value={ h.Value } { Attrs(h.Attrs)... }/>
+			}
+			<div class="fc-dialog-footer">
+				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click={ CloseDialog }>Cancel</button>
+				<button type="submit" class={ p.confirmClass() }>{ p.ConfirmLabel }</button>
+			</div>
+		</form>
+	</dialog>
+}
+
+// SheetSide is sheet.md's `side` option.
+type SheetSide string
+
+// Sheet sides (sheet.md).
+const (
+	SideRight  SheetSide = "right"
+	SideLeft   SheetSide = "left"
+	SideTop    SheetSide = "top"
+	SideBottom SheetSide = "bottom"
+)
+
+var sheetSides = map[SheetSide]string{
+	SideLeft:   "mr-auto h-full w-full max-w-sm border-r -translate-x-full in-[[open]]:translate-x-0 starting:in-[[open]]:-translate-x-full",
+	SideRight:  "ml-auto h-full w-full max-w-sm border-l translate-x-full in-[[open]]:translate-x-0 starting:in-[[open]]:translate-x-full",
+	SideTop:    "mb-auto max-h-full w-full border-b -translate-y-full in-[[open]]:translate-y-0 starting:in-[[open]]:-translate-y-full",
+	SideBottom: "mt-auto max-h-full w-full border-t translate-y-full in-[[open]]:translate-y-0 starting:in-[[open]]:translate-y-full",
+}
+
+// SheetProps mirrors sheet.md's Props table.
+type SheetProps struct {
+	ID          string    `json:"id"`
+	Side        SheetSide `json:"side"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	// Class is added to the panel (the width overrides in sheet.md).
+	Class  string          `json:"class"`
+	Footer templ.Component `json:"-"`
+}
+
+// Sheet is sheet.md: a modal <dialog> with an edge panel.
+templ Sheet(p SheetProps) {
+	<dialog id={ ID(p.ID) } aria-labelledby={ p.ID + "-title" } data-on:click={ LightDismiss } class={ sheetOverlay }>
+		<div class={ cx(sheetContent, pick("sheet side", sheetSides, p.Side, SideRight), p.Class) }>
+			<div class={ dialogHeader }>
+				<h2 id={ p.ID + "-title" } class={ dialogTitle }>{ p.Title }</h2>
+				if p.Description != "" {
+					<p class={ dialogDescription }>{ p.Description }</p>
+				}
+			</div>
+			<div class="flex-1">
+				{ children... }
+			</div>
+			if p.Footer != nil {
+				<div class={ dialogFooter }>
+					@p.Footer
+				</div>
+			}
+		</div>
+	</dialog>
+}
+
+// DrawerSize is drawer.md's `size` option.
+type DrawerSize string
+
+// Drawer sizes (drawer.md).
+const (
+	DrawerDefault   DrawerSize = "default"
+	DrawerWide      DrawerSize = "wide"
+	DrawerTwoThirds DrawerSize = "two-thirds"
+)
+
+var drawerSizes = map[DrawerSize]string{
+	DrawerDefault:   "",
+	DrawerWide:      "fc-drawer-wide",
+	DrawerTwoThirds: "fc-drawer-two-thirds",
+}
+
+// DrawerProps mirrors drawer.md's Props table.
+type DrawerProps struct {
+	// ID goes on the frame: a server-loaded drawer patches the frame's
+	// children (DrawerContent, mode inner, selector "#{id}"); with an ID the
+	// title is focusable ({id}-title, tabindex -1) so a handler can move focus
+	// to it after loading a record.
+	ID string `json:"id"`
+	// Signal holds the selected record id; empty = closed. Required, unique per drawer.
+	Signal string     `json:"signal"`
+	Label  string     `json:"label"`
+	Size   DrawerSize `json:"size"`
+	// Title/Subtitle are static text; TitleSignal/SubtitleSignal bind them to
+	// a signal instead (data-text).
+	Title          string `json:"title"`
+	Subtitle       string `json:"subtitle"`
+	TitleSignal    string `json:"titleSignal"`
+	SubtitleSignal string `json:"subtitleSignal"`
+	// BodyID is the body's patch target for server-loaded content (c).
+	BodyID string `json:"bodyId"`
+	// Extras (status tags beside the titles) and Footer (actions) slots; the
+	// body is the default slot.
+	Extras templ.Component `json:"-"`
+	Footer templ.Component `json:"-"`
+}
+
+func (p DrawerProps) showExpr() string { return "$" + Signal(p.Signal) + " !== ''" }
+
+func (p DrawerProps) escapeExpr() string {
+	s := "$" + Signal(p.Signal)
+	return "evt.key === 'Escape' && " + s + " !== '' && !document.querySelector('dialog[open]:not([data-drawer]), [popover]:popover-open') && (" + s + " = '')"
+}
+
+func (p DrawerProps) closeExpr() string { return "$" + Signal(p.Signal) + " = ''" }
+
+// Drawer is drawer.md: the non-modal record drawer over a list.
+templ Drawer(p DrawerProps) {
+	<aside
+		if p.ID != "" {
+			id={ ID(p.ID) }
+		}
+		class={ cx("fc-drawer", pick("drawer size", drawerSizes, p.Size, DrawerDefault)) }
+		role="complementary"
+		aria-label={ p.Label }
+		data-drawer
+		style="display: none"
+		data-show={ p.showExpr() }
+		data-on:keydown__window={ p.escapeExpr() }
+	>
+		@DrawerContent(p) {
+			{ children... }
+		}
+	</aside>
+}
+
+// DrawerContent is everything inside the drawer frame (drawer.md, part
+// drawer-content): the close button, header, body and footer. A server-loaded
+// drawer patches it into the frame with mode inner, so the frame keeps its
+// data-show binding and inline style.
+templ DrawerContent(p DrawerProps) {
+	<button type="button" class="fc-icon-btn absolute top-[1.1rem] right-[1.1rem] z-10" aria-label="Close" data-on:click={ p.closeExpr() }>
+		@Icon(IconProps{Name: "x", Class: "size-[1.2rem]"})
+	</button>
+	<header class="fc-drawer-header pr-14">
+		<div class="fc-drawer-titles">
+			<div class="min-w-0">
+				if p.TitleSignal != "" {
+					<h2
+						if p.ID != "" {
+							id={ ID(p.ID) + "-title" }
+							tabindex="-1"
+						}
+						class="fc-drawer-title"
+						data-text={ "$" + Signal(p.TitleSignal) }
+					></h2>
+				} else {
+					<h2
+						if p.ID != "" {
+							id={ ID(p.ID) + "-title" }
+							tabindex="-1"
+						}
+						class="fc-drawer-title"
+					>{ p.Title }</h2>
+				}
+				if p.SubtitleSignal != "" {
+					<p class="fc-drawer-subtitle" data-text={ "$" + Signal(p.SubtitleSignal) }></p>
+				} else if p.Subtitle != "" {
+					<p class="fc-drawer-subtitle">{ p.Subtitle }</p>
+				}
+			</div>
+			if p.Extras != nil {
+				<div class="flex shrink-0 items-center gap-2">
+					@p.Extras
+				</div>
+			}
+		</div>
+	</header>
+	<div
+		if p.BodyID != "" {
+			id={ p.BodyID }
+		}
+		class="fc-drawer-body"
+	>
+		{ children... }
+	</div>
+	if p.Footer != nil {
+		<div class="fc-drawer-footer">
+			@p.Footer
+		</div>
+	}
+}

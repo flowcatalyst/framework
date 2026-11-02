@@ -1,0 +1,29 @@
+package kit
+
+// IconProps: a Lucide icon from the kit's sprite (_conventions.md, Icons).
+type IconProps struct {
+	// Name is the Lucide icon name without the "i-" prefix ("x", "search").
+	Name string `json:"name"`
+	// Class is added to the <svg> (size utilities, colours).
+	Class string `json:"class"`
+	// Label makes the icon meaningful: role="img" + aria-label instead of
+	// aria-hidden="true". Leave empty for decorative icons (the default).
+	Label string `json:"label"`
+}
+
+// Icon renders <svg width="1em" height="1em"><use href="sprite#i-name"/></svg>.
+templ Icon(p IconProps) {
+	<svg
+		width="1em"
+		height="1em"
+		if p.Class != "" {
+			class={ p.Class }
+		}
+		if p.Label != "" {
+			role="img"
+			aria-label={ p.Label }
+		} else {
+			aria-hidden="true"
+		}
+	><use href={ SafeURL(IconHref(ctx, p.Name)) }></use></svg>
+}

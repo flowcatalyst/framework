@@ -1,0 +1,443 @@
+package kit
+
+import "strconv"
+
+// Class lists from table.md (parts and the users-list per-use overrides).
+const (
+	tableContainerClasses = "w-full overflow-x-auto"
+	tableClasses          = "w-full caption-bottom border-collapse text-sm"
+	tableDense            = "[&_td]:py-[0.4rem] [&_td]:px-3 [&_th]:px-3"
+	theadClasses          = "[&_tr]:border-b"
+	theadCaps             = "bg-subtle [&_th]:h-9 [&_th]:text-[12px] [&_th]:font-semibold [&_th]:tracking-wider [&_th]:text-subtle-foreground [&_th]:uppercase"
+	tbodyClasses          = "[&_tr:last-child]:border-0"
+	tbodyStriped          = "[&_tr:nth-child(even)]:bg-subtle"
+	tfootClasses          = "border-t border-border bg-foreground/5 font-medium [&>tr]:last:border-b-0"
+	trClasses             = "border-b border-border transition-colors hover:bg-foreground/5"
+	thClasses             = "h-10 px-3 text-left align-middle font-medium whitespace-nowrap text-muted-foreground"
+	tdClasses             = "p-3 align-middle whitespace-nowrap"
+	captionClasses        = "mt-4 text-sm text-muted-foreground"
+	sortLinkClasses       = "inline-flex items-center gap-1 text-inherit no-underline hover:text-foreground"
+)
+
+// TableProps mirrors table.md's Props table (the container + <table>).
+type TableProps struct {
+	// ID goes on the scrolling container (a patch target for the whole table).
+	ID      string `json:"id"`
+	Caption string `json:"caption"`
+	// Dense is the users-list cell padding override.
+	Dense bool             `json:"dense"`
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// Table is table.md's container + <table>. Slot: caption-less content
+// (THead, TBody, TFoot).
+templ Table(p TableProps) {
+	<div
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ tableContainerClasses }
+	>
+		<table
+			if p.Dense {
+				class={ cx(tableClasses, tableDense, p.Class) }
+			} else {
+				class={ cx(tableClasses, p.Class) }
+			}
+			{ Attrs(p.Attrs)... }
+		>
+			if p.Caption != "" {
+				<caption class={ captionClasses }>{ p.Caption }</caption>
+			}
+			{ children... }
+		</table>
+	</div>
+}
+
+// THeadProps mirrors table.md's table_header.
+type THeadProps struct {
+	// Caps is the users-list uppercase header on a subtle fill.
+	Caps bool `json:"caps"`
+}
+
+// THead is table.md's <thead>. Slot: one TR.
+templ THead(p THeadProps) {
+	<thead
+		if p.Caps {
+			class={ cx(theadClasses, theadCaps) }
+		} else {
+			class={ theadClasses }
+		}
+	>
+		{ children... }
+	</thead>
+}
+
+// TBodyProps mirrors table.md's table_body.
+type TBodyProps struct {
+	// ID is the rows' patch target (e.g. "pools-rows").
+	ID      string           `json:"id"`
+	Striped bool             `json:"striped"`
+	Attrs   templ.Attributes `json:"attrs"`
+}
+
+// TBody is table.md's <tbody>. Slot: rows.
+templ TBody(p TBodyProps) {
+	<tbody
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		if p.Striped {
+			class={ cx(tbodyClasses, tbodyStriped) }
+		} else {
+			class={ tbodyClasses }
+		}
+		{ Attrs(p.Attrs)... }
+	>
+		{ children... }
+	</tbody>
+}
+
+// TFoot is table.md's <tfoot>. Slot: rows.
+templ TFoot() {
+	<tfoot class={ tfootClasses }>
+		{ children... }
+	</tfoot>
+}
+
+// TRProps mirrors table.md's table_row.
+type TRProps struct {
+	// Static is the header row override (no hover tint).
+	Static bool `json:"static"`
+	// Clickable adds cursor-pointer (the name cell must still hold a real link).
+	Clickable bool             `json:"clickable"`
+	ID        string           `json:"id"`
+	Class     string           `json:"class"`
+	Attrs     templ.Attributes `json:"attrs"`
+}
+
+func (p TRProps) classes() string {
+	c := trClasses
+	if p.Static {
+		c += " hover:bg-transparent"
+	}
+	if p.Clickable {
+		c += " cursor-pointer"
+	}
+	return cx(c, p.Class)
+}
+
+// TR is table.md's <tr>. Slot: cells.
+templ TR(p TRProps) {
+	<tr
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ p.classes() }
+		{ Attrs(p.Attrs)... }
+	>
+		{ children... }
+	</tr>
+}
+
+// THProps mirrors table.md's table_head.
+type THProps struct {
+	// Class adds e.g. a fixed width ("w-[20%]").
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// TH is table.md's <th scope="col">. Slot: heading text.
+templ TH(p THProps) {
+	<th class={ cx(thClasses, p.Class) } scope="col" { Attrs(p.Attrs)... }>
+		{ children... }
+	</th>
+}
+
+// TDProps mirrors table.md's table_cell.
+type TDProps struct {
+	Colspan int              `json:"colspan"`
+	Class   string           `json:"class"`
+	Attrs   templ.Attributes `json:"attrs"`
+}
+
+// TD is table.md's <td>. Slot: cell content.
+templ TD(p TDProps) {
+	<td
+		class={ cx(tdClasses, p.Class) }
+		if p.Colspan > 0 {
+			colspan={ strconv.Itoa(p.Colspan) }
+		}
+		{ Attrs(p.Attrs)... }
+	>
+		{ children... }
+	</td>
+}
+
+// SortDirection is a sortable column's state.
+type SortDirection string
+
+// Sort directions; "" means the column is not the active sort.
+const (
+	SortNone SortDirection = ""
+	SortAsc  SortDirection = "asc"
+	SortDesc SortDirection = "desc"
+)
+
+// SortableHeaderProps mirrors data-table.md's server-side sort heading (c):
+// a real link (works without script) inside <th aria-sort>.
+type SortableHeaderProps struct {
+	Label string `json:"label"`
+	// Href is the URL that sorts by this column (the next direction).
+	Href string `json:"href"`
+	// Direction is this column's current sort ("" when another column sorts).
+	Direction SortDirection `json:"direction"`
+	Class     string        `json:"class"`
+	// LinkAttrs go on the <a> (the Datastar `@get` enhancement).
+	LinkAttrs templ.Attributes `json:"linkAttrs"`
+}
+
+func (p SortableHeaderProps) direction() SortDirection {
+	return oneOf("sort direction", p.Direction, SortNone, SortNone, SortAsc, SortDesc)
+}
+
+func (p SortableHeaderProps) ariaSort() string {
+	switch p.direction() {
+	case SortAsc:
+		return "ascending"
+	case SortDesc:
+		return "descending"
+	case SortNone:
+	}
+	return ""
+}
+
+// SortableHeader is data-table.md's server-sorted heading: aria-sort on the
+// active column, an arrow-up/arrow-down icon, a faded arrow-up-down otherwise.
+templ SortableHeader(p SortableHeaderProps) {
+	<th
+		class={ cx(thClasses, p.Class) }
+		scope="col"
+		if s := p.ariaSort(); s != "" {
+			aria-sort={ s }
+		}
+	>
+		<a href={ SafeURL(p.Href) } class={ sortLinkClasses } { Attrs(p.LinkAttrs)... }>
+			{ p.Label }
+			switch p.direction() {
+				case SortAsc:
+					@Icon(IconProps{Name: "arrow-up", Class: "size-[0.85rem]"})
+				case SortDesc:
+					@Icon(IconProps{Name: "arrow-down", Class: "size-[0.85rem]"})
+				case SortNone:
+					@Icon(IconProps{Name: "arrow-up-down", Class: "size-[0.85rem] opacity-40"})
+			}
+		</a>
+	</th>
+}
+
+// EmptyRowProps: the one row a table shows instead of rows (table.md,
+// "Empty tables"): a colspan cell holding the empty state.
+type EmptyRowProps struct {
+	Colspan int             `json:"colspan"`
+	Empty   EmptyStateProps `json:"empty"`
+}
+
+// EmptyRow is table.md's empty-table row.
+templ EmptyRow(p EmptyRowProps) {
+	<tr>
+		<td colspan={ strconv.Itoa(p.Colspan) }>
+			@EmptyState(p.Empty)
+		</td>
+	</tr>
+}
+
+// RowAction is one action of a row (row-actions.md, "action").
+type RowAction struct {
+	// Icon is the Lucide icon name; Label the visible menu text and the
+	// inline button's tooltip.
+	Icon  string `json:"icon"`
+	Label string `json:"label"`
+	// Href makes the action a link; without it the action is a button and
+	// Attrs carry its handler (a Datastar action or a dialog opener).
+	Href  string           `json:"href"`
+	Attrs templ.Attributes `json:"attrs"`
+	// Destructive puts a menu item in red after a separator (and an inline
+	// icon in red on hover). Destructive actions must ask for confirmation.
+	Destructive bool `json:"destructive"`
+	// DisabledReason, when set, renders the action disabled (aria-disabled,
+	// focusable, no href or handlers) with this reason as its description.
+	DisabledReason string `json:"disabledReason"`
+}
+
+// RowActionsProps mirrors row-actions.md's Props table: the trailing cell of
+// a data-table row, with up to two inline icon actions and an overflow menu.
+type RowActionsProps struct {
+	// ID prefixes the generated ids ({id}-menu, {id}-a{i}, {id}-m{i}); it is
+	// required when there is a menu or a disabled action.
+	ID string `json:"id"`
+	// RowLabel is the row's name, appended to accessible names.
+	RowLabel string      `json:"rowLabel"`
+	Actions  []RowAction `json:"actions"`
+	Menu     []RowAction `json:"menu"`
+	// Attrs go on the <td> (e.g. data-on:click__stop in a clickable row).
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// CloseMenu closes the popover menu containing the element; row-action menu
+// items run it in a capture listener before their own handler.
+const CloseMenu = "el.closest('[popover]').hidePopover()"
+
+func (p RowActionsProps) withRow(label string) string {
+	if p.RowLabel == "" {
+		return label
+	}
+	return label + " " + p.RowLabel
+}
+
+func (p RowActionsProps) moreLabel() string {
+	if p.RowLabel == "" {
+		return "More actions"
+	}
+	return "More actions for " + p.RowLabel
+}
+
+func (p RowActionsProps) partID(kind string, i int) string {
+	return ID(p.ID) + "-" + kind + strconv.Itoa(i)
+}
+
+func (p RowActionsProps) menuID() string { return ID(p.ID) + "-menu" }
+
+// separatorBefore reports whether menu item i is the first destructive item
+// with a non-destructive item before it.
+func (p RowActionsProps) separatorBefore(i int) bool {
+	if !p.Menu[i].Destructive {
+		return false
+	}
+	plain := false
+	for _, m := range p.Menu[:i] {
+		if m.Destructive {
+			return false
+		}
+		plain = true
+	}
+	return plain
+}
+
+func inlineClasses(a RowAction) string {
+	if a.Destructive {
+		return "fc-icon-btn fc-icon-btn-danger"
+	}
+	return "fc-icon-btn"
+}
+
+func menuItemClasses(a RowAction) string {
+	if a.Destructive {
+		return "fc-menu-item danger"
+	}
+	return "fc-menu-item"
+}
+
+// RowActions is row-actions.md: inline .fc-icon-btn actions, then a
+// "More actions" button with a native popover menu (a disclosure, not an
+// ARIA menu: Tab moves through the items, Escape closes it).
+templ RowActions(p RowActionsProps) {
+	<td class={ cx(tdClasses, "w-px text-right") } { Attrs(p.Attrs)... }>
+		<div class="flex items-center justify-end gap-1">
+			for i, a := range p.Actions {
+				if a.DisabledReason != "" {
+					<button type="button" class={ inlineClasses(a) } title={ a.Label + ": " + a.DisabledReason } aria-label={ p.withRow(a.Label) } aria-disabled="true" aria-describedby={ p.partID("a", i) }>
+						@Icon(IconProps{Name: a.Icon, Class: "size-[1rem]"})
+					</button>
+					<span id={ p.partID("a", i) } hidden>{ a.DisabledReason }</span>
+				} else if a.Href != "" {
+					<a href={ SafeURL(a.Href) } class={ inlineClasses(a) } title={ a.Label } aria-label={ p.withRow(a.Label) } { Attrs(a.Attrs)... }>
+						@Icon(IconProps{Name: a.Icon, Class: "size-[1rem]"})
+					</a>
+				} else {
+					<button type="button" class={ inlineClasses(a) } title={ a.Label } aria-label={ p.withRow(a.Label) } { Attrs(a.Attrs)... }>
+						@Icon(IconProps{Name: a.Icon, Class: "size-[1rem]"})
+					</button>
+				}
+			}
+			if len(p.Menu) > 0 {
+				<button type="button" class="fc-icon-btn" title="More actions" aria-label={ p.moreLabel() } popovertarget={ p.menuID() }>
+					@Icon(IconProps{Name: "ellipsis", Class: "size-[1rem]"})
+				</button>
+				<div id={ p.menuID() } popover class="fc-row-menu" data-on:toggle__capture={ popoverAnchorExpr }>
+					for i, a := range p.Menu {
+						if p.separatorBefore(i) {
+							<div role="separator" class="fc-menu-separator"></div>
+						}
+						if a.DisabledReason != "" {
+							<button type="button" class={ menuItemClasses(a) } aria-disabled="true" aria-label={ a.Label } aria-describedby={ p.partID("m", i) }>
+								@Icon(IconProps{Name: a.Icon, Class: "size-[1rem]"})
+								<span>{ a.Label }<span id={ p.partID("m", i) } class="fc-menu-hint">{ a.DisabledReason }</span></span>
+							</button>
+						} else if a.Href != "" {
+							<a href={ SafeURL(a.Href) } class={ menuItemClasses(a) } data-on:click__capture={ CloseMenu } { Attrs(a.Attrs)... }>
+								@Icon(IconProps{Name: a.Icon, Class: "size-[1rem]"})
+								<span>{ a.Label }</span>
+							</a>
+						} else {
+							<button type="button" class={ menuItemClasses(a) } data-on:click__capture={ CloseMenu } { Attrs(a.Attrs)... }>
+								@Icon(IconProps{Name: a.Icon, Class: "size-[1rem]"})
+								<span>{ a.Label }</span>
+							</button>
+						}
+					}
+				</div>
+			}
+		</div>
+	</td>
+}
+
+// DataColumn is one column of a DataTable. A column with an Href is
+// sortable (server-side, data-table.md mechanism c).
+type DataColumn struct {
+	Label     string           `json:"label"`
+	Href      string           `json:"href"`
+	Direction SortDirection    `json:"direction"`
+	Class     string           `json:"class"`
+	LinkAttrs templ.Attributes `json:"linkAttrs"`
+}
+
+// DataTableProps mirrors data-table.md's Props table: the list-page table
+// (dense, caps header, striped rows: the users-list look) with server-sorted
+// headings and an empty state.
+type DataTableProps struct {
+	// ID goes on the scrolling container; BodyID on the <tbody> (the rows'
+	// patch target).
+	ID      string       `json:"id"`
+	BodyID  string       `json:"bodyId"`
+	Columns []DataColumn `json:"columns"`
+	// Empty, when set, replaces the rows with one EmptyRow spanning all columns.
+	Empty *EmptyStateProps `json:"empty"`
+}
+
+// DataTable is data-table.md's table part. Slot: the rows (TR + TD/RowActions).
+templ DataTable(p DataTableProps) {
+	@Table(TableProps{ID: p.ID, Dense: true}) {
+		@THead(THeadProps{Caps: true}) {
+			@TR(TRProps{Static: true}) {
+				for _, c := range p.Columns {
+					if c.Href != "" {
+						@SortableHeader(SortableHeaderProps{Label: c.Label, Href: c.Href, Direction: c.Direction, Class: c.Class, LinkAttrs: c.LinkAttrs})
+					} else {
+						@TH(THProps{Class: c.Class}) {
+							{ c.Label }
+						}
+					}
+				}
+			}
+		}
+		@TBody(TBodyProps{ID: p.BodyID, Striped: true}) {
+			if p.Empty != nil {
+				@EmptyRow(EmptyRowProps{Colspan: len(p.Columns), Empty: *p.Empty})
+			} else {
+				{ children... }
+			}
+		}
+	}
+}

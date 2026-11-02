@@ -1,0 +1,80 @@
+package kit
+
+// TabItem is one trigger of a Tabs.
+type TabItem struct {
+	// Value is an id fragment ([A-Za-z][A-Za-z0-9_-]*): it is part of the
+	// panel id and of the trigger's expression.
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
+// TabsProps mirrors tabs.md's Props table: client tabs (one signal holds the
+// selected value). Panels are the slots, one per tab value.
+type TabsProps struct {
+	Signal string    `json:"signal"`
+	Tabs   []TabItem `json:"tabs"`
+	// Selected is the initial tab (default: the first).
+	Selected  string `json:"selected"`
+	ListClass string `json:"listClass"`
+	Class     string `json:"class"`
+	// Panels holds each tab's content by value.
+	Panels map[string]templ.Component `json:"-"`
+}
+
+const tabTriggerClasses = "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background text-muted-foreground hover:bg-foreground/5 hover:text-foreground aria-[current=page]:bg-foreground/10 aria-[current=page]:text-foreground aria-[current=page]:hover:bg-foreground/10"
+
+func (p TabsProps) selected() string {
+	if p.Selected != "" {
+		return ID(p.Selected)
+	}
+	if len(p.Tabs) > 0 {
+		return ID(p.Tabs[0].Value)
+	}
+	return ""
+}
+
+func (p TabsProps) rootAttrs() templ.Attributes {
+	return templ.Attributes{"data-signals:" + SignalAttr(p.Signal): "'" + p.selected() + "'"}
+}
+
+func (p TabsProps) panelID(value string) string { return Signal(p.Signal) + "-" + ID(value) }
+
+func (p TabsProps) is(value string) string {
+	return "$" + Signal(p.Signal) + " === '" + ID(value) + "'"
+}
+
+func (p TabsProps) triggerAttrs(value string) templ.Attributes {
+	return templ.Attributes{
+		"data-attr:aria-current": p.is(value) + " && 'page'",
+		"data-on:click__prevent": "$" + Signal(p.Signal) + " = '" + ID(value) + "'",
+	}
+}
+
+func (p TabsProps) panel(value string) templ.Component {
+	if c, ok := p.Panels[value]; ok && c != nil {
+		return c
+	}
+	return templ.NopComponent
+}
+
+// Tabs is tabs.md (client tabs): a trigger row and one panel per tab.
+templ Tabs(p TabsProps) {
+	<div class={ cx("flex flex-col gap-4", p.Class) } { Attrs(p.rootAttrs())... }>
+		<div class={ cx("inline-flex w-fit items-center gap-1 rounded-lg border border-border p-1", p.ListClass) }>
+			for _, t := range p.Tabs {
+				<a href={ "#" + p.panelID(t.Value) } class={ tabTriggerClasses } { Attrs(p.triggerAttrs(t.Value))... }>{ t.Label }</a>
+			}
+		</div>
+		for _, t := range p.Tabs {
+			if t.Value == p.selected() {
+				<div id={ p.panelID(t.Value) } data-show={ p.is(t.Value) }>
+					@p.panel(t.Value)
+				</div>
+			} else {
+				<div id={ p.panelID(t.Value) } data-show={ p.is(t.Value) } style="display: none">
+					@p.panel(t.Value)
+				</div>
+			}
+		}
+	</div>
+}

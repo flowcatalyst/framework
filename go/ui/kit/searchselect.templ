@@ -1,0 +1,98 @@
+package kit
+
+import (
+	"slices"
+	"strconv"
+	"strings"
+)
+
+// SearchSelectProps is a single-choice select with a search box: a
+// disclosure like MultiSelect's whose options are links, so choosing one
+// navigates (or, with OptionAttrs, fetches the link live) and the list works
+// as plain links without script. Options are shown in the order given; the
+// caller sorts them.
+type SearchSelectProps struct {
+	// ID derives the parts: {id}-field, {id}-label, {id}-summary, {id}-options.
+	ID       string   `json:"id"`
+	Label    string   `json:"label"`
+	Options  []Option `json:"options"`
+	Selected string   `json:"selected"`
+	// Href is the address an option links to, from its value.
+	Href func(value string) string `json:"-"`
+	// Placeholder is the trigger's text when nothing is chosen.
+	Placeholder string `json:"placeholder"`
+	// Signal holds the search text.
+	Signal    string `json:"signal"`
+	EmptyText string `json:"emptyText"`
+	// OptionAttrs go on every option link (a live link's @get on click).
+	OptionAttrs templ.Attributes `json:"-"`
+	Class       string           `json:"class"`
+}
+
+// SearchSelectSummaryID is the id of a search select's trigger text.
+func SearchSelectSummaryID(id string) string { return ID(id) + "-summary" }
+
+// Summary is the trigger's text: the chosen option's label, else the
+// placeholder.
+func (p SearchSelectProps) Summary() string {
+	if i := slices.IndexFunc(p.Options, func(o Option) bool { return o.Value == p.Selected }); i >= 0 {
+		return p.Options[i].Label
+	}
+	return p.Placeholder
+}
+
+func (p SearchSelectProps) filterExpr() string {
+	s := "$" + Signal(p.Signal)
+	return "!" + s + ".trim() || el.dataset.filterText.includes(" + s + ".trim().toLowerCase())"
+}
+
+// chooseExpr runs when an option is clicked: the trigger shows the choice and
+// the list closes, since a live fetch leaves this part of the page in place.
+const chooseExpr = "const d = el.closest('details'); d.querySelector('.fc-multiselect-summary').textContent = el.textContent; d.querySelectorAll('[role=option]').forEach(o => o.setAttribute('aria-selected', o === el)); d.open = false"
+
+func (p SearchSelectProps) optionAttrs(o Option) templ.Attributes {
+	attrs := templ.Attributes{
+		"data-filter-text": strings.ToLower(o.Label + " " + o.Value),
+		"data-show":        p.filterExpr(),
+		"data-on:click":    chooseExpr,
+	}
+	for k, v := range p.OptionAttrs {
+		if k == "data-on:click__prevent" {
+			// A live link must not navigate; the choice is made first.
+			attrs[k] = chooseExpr + "; " + v.(string)
+			delete(attrs, "data-on:click")
+			continue
+		}
+		attrs[k] = v
+	}
+	return attrs
+}
+
+// SearchSelect is a searchable single-choice select (see SearchSelectProps).
+templ SearchSelect(p SearchSelectProps) {
+	<div id={ ID(p.ID) + "-field" } class={ cx("fc-form-field", p.Class) }>
+		<span id={ p.ID + "-label" } class="fc-field-label">{ p.Label }</span>
+		<details class="fc-multiselect">
+			<summary class="fc-select fc-multiselect-trigger" aria-labelledby={ p.ID + "-label " + p.ID + "-summary" }>
+				<span id={ SearchSelectSummaryID(p.ID) } class="fc-multiselect-summary">{ p.Summary() }</span>
+			</summary>
+			<div class="fc-multiselect-panel" { templ.Attributes{"data-signals:" + SignalAttr(p.Signal): "''"}... }>
+				<input type="search" class="fc-input fc-multiselect-search" placeholder="Search" aria-label={ "Search " + p.Label } autocomplete="off" { templ.Attributes{"data-bind:" + SignalAttr(p.Signal): true}... }/>
+				<div id={ ID(p.ID) + "-options" } class="fc-multiselect-options" role="listbox" aria-labelledby={ p.ID + "-label" }>
+					if len(p.Options) == 0 {
+						<p class="fc-multiselect-empty">{ orDefault(p.EmptyText, "No options") }</p>
+					}
+					for _, o := range p.Options {
+						<a
+							class="fc-multiselect-option"
+							role="option"
+							href={ SafeURL(p.Href(o.Value)) }
+							aria-selected={ strconv.FormatBool(o.Value == p.Selected) }
+							{ Attrs(p.optionAttrs(o))... }
+						>{ o.Label }</a>
+					}
+				</div>
+			</div>
+		</details>
+	</div>
+}

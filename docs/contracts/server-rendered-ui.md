@@ -187,7 +187,8 @@ contract ruling 6 is amended: the SPA handler still does not compress.
 
 Fixture conformance (section 2), an escaping suite (section 3, each rule), an **XSS sweep** (every string prop of
 every fixture case replaced, one at a time, by a payload set; the render must refuse it or produce no `script` or
-`img` element and no `on*` attribute), the pages suite (section 5: document vs patch, headers, no inline script,
+`img` element and no `on*` attribute; `markdown` may keep a sanitised `<img>`, as its spec allows, but never a
+`script` or an `on*` attribute), the pages suite (section 5: document vs patch, headers, no inline script,
 same fragment, escaping both ways, theme cookies, flash), the helpers (section 6: one event each, bytes per http
 contract 10), assets (section 4: caching, 304, 404, alias, pins, every icon exists), the CSP builder, the local-path
 check, the flash cookie and, for Go, compression.

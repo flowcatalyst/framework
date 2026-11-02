@@ -1,0 +1,180 @@
+package kit
+
+import (
+	"slices"
+	"strconv"
+	"strings"
+)
+
+// MultiSelectProps mirrors multi-select.md's Props table: a checklist in a
+// <details> whose checkboxes share one name, so a GET form puts every chosen
+// value in the URL and a POST form sends them all.
+type MultiSelectProps struct {
+	// ID derives the parts: {id}-field, {id}-label, {id}-summary, {id}-options.
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Label    string   `json:"label"`
+	Options  []Option `json:"options"`
+	Selected []string `json:"selected"`
+	// Placeholder is the summary when nothing is chosen.
+	Placeholder string `json:"placeholder"`
+	// MaxLabels chosen labels are listed (default 2); above it, ManyLabel
+	// with {0} replaced by the count (default "{0} selected").
+	MaxLabels int    `json:"maxLabels"`
+	ManyLabel string `json:"manyLabel"`
+	// Chips lists the chosen options as removable chips under the trigger.
+	Chips bool `json:"chips"`
+	// Search adds a search box bound to Signal.
+	Search    bool   `json:"search"`
+	Signal    string `json:"signal"`
+	EmptyText string `json:"emptyText"`
+	Open      bool   `json:"open"`
+	// OptionAttrs go on every checkbox (a live filter's @get on change).
+	OptionAttrs templ.Attributes `json:"optionAttrs"`
+	DescribedBy string           `json:"describedBy"`
+	Class       string           `json:"class"`
+}
+
+// MultiSelectSummaryID is the id of a multi-select's summary part.
+func MultiSelectSummaryID(id string) string { return ID(id) + "-summary" }
+
+// MultiSelectOptionsID is the id of a multi-select's options part.
+func MultiSelectOptionsID(id string) string { return ID(id) + "-options" }
+
+func (p MultiSelectProps) checked(value string) bool { return slices.Contains(p.Selected, value) }
+
+// Summary is the trigger's text: the placeholder, the chosen labels in
+// option order (up to MaxLabels), or ManyLabel with the count.
+func (p MultiSelectProps) Summary() string {
+	var labels []string
+	for _, o := range p.Options {
+		if p.checked(o.Value) {
+			labels = append(labels, o.Label)
+		}
+	}
+	maxLabels := p.maxLabels()
+	switch {
+	case len(labels) == 0:
+		return p.Placeholder
+	case len(labels) <= maxLabels:
+		return strings.Join(labels, ", ")
+	default:
+		return strings.ReplaceAll(orDefault(p.ManyLabel, "{0} selected"), "{0}", strconv.Itoa(len(labels)))
+	}
+}
+
+// summaryExpr recomputes the summary in the browser after any change
+// (multi-select.md, Behaviour): the same rule as Summary, reading the
+// labels of the checked options and the rule's data attributes.
+const summaryExpr = "const c = [...el.querySelectorAll('.fc-multiselect-option input:checked')].map(i => i.nextElementSibling.textContent); el.querySelector('.fc-multiselect-summary').textContent = c.length === 0 ? el.dataset.placeholder : c.length <= +el.dataset.maxLabels ? c.join(', ') : el.dataset.manyLabel.replace('{0}', c.length)"
+
+func (p MultiSelectProps) maxLabels() int {
+	if p.MaxLabels <= 0 {
+		return 2
+	}
+	return p.MaxLabels
+}
+
+// chipsExpr rebuilds the chips from the checked options after any change
+// (text through textContent, never markup).
+const chipsExpr = "; const ch = el.closest('.fc-form-field').querySelector('.fc-multiselect-chips'); ch.replaceChildren(...[...el.querySelectorAll('.fc-multiselect-option input:checked')].map(i => { const s = document.createElement('span'); s.className = 'fc-multiselect-chip'; s.dataset.value = i.value; const t = document.createElement('span'); t.textContent = i.nextElementSibling.textContent; const b = document.createElement('button'); b.type = 'button'; b.className = 'fc-multiselect-chip-remove'; b.setAttribute('aria-label', 'Remove ' + t.textContent); b.textContent = '\u00d7'; s.append(t, b); return s }))"
+
+// removeChipExpr unchecks the option behind the clicked chip's button and
+// lets the disclosure's change handler refresh the summary and the chips.
+const removeChipExpr = "const b = evt.target.closest('button'); if (b) { const d = el.closest('.fc-form-field').querySelector('details'); const i = [...d.querySelectorAll('input')].find(i => i.value === b.parentElement.dataset.value); i.checked = false; i.dispatchEvent(new Event('change', {bubbles: true})) }"
+
+func (p MultiSelectProps) detailsAttrs() templ.Attributes {
+	change := summaryExpr
+	if p.Chips {
+		change += chipsExpr
+	}
+	return templ.Attributes{
+		"data-placeholder": p.Placeholder,
+		"data-max-labels":  strconv.Itoa(p.maxLabels()),
+		"data-many-label":  orDefault(p.ManyLabel, "{0} selected"),
+		"data-on:change":   change,
+	}
+}
+
+func (p MultiSelectProps) selectedOptions() []Option {
+	var out []Option
+	for _, o := range p.Options {
+		if p.checked(o.Value) {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+func (p MultiSelectProps) filterExpr() string {
+	s := "$" + Signal(p.Signal)
+	return "!" + s + ".trim() || el.dataset.filterText.includes(" + s + ".trim().toLowerCase())"
+}
+
+func multiSelectFilterText(o Option) string {
+	if o.Label == o.Value {
+		return strings.ToLower(o.Label)
+	}
+	return strings.ToLower(o.Label + " " + o.Value)
+}
+
+func (p MultiSelectProps) optionAttrs(o Option) templ.Attributes {
+	if !p.Search {
+		return nil
+	}
+	return templ.Attributes{"data-filter-text": multiSelectFilterText(o), "data-show": p.filterExpr()}
+}
+
+// MultiSelect is multi-select.md.
+templ MultiSelect(p MultiSelectProps) {
+	<div id={ ID(p.ID) + "-field" } class={ cx("fc-form-field", p.Class) }>
+		<span id={ p.ID + "-label" } class="fc-field-label">{ p.Label }</span>
+		<details class="fc-multiselect" open?={ p.Open } { Attrs(p.detailsAttrs())... }>
+			<summary class="fc-select fc-multiselect-trigger" aria-labelledby={ p.ID + "-label " + p.ID + "-summary" }>
+				@MultiSelectSummary(p)
+			</summary>
+			if p.Search {
+				<div class="fc-multiselect-panel" { templ.Attributes{"data-signals:" + SignalAttr(p.Signal): "''"}... }>
+					<input type="search" class="fc-input fc-multiselect-search" placeholder="Search" aria-label={ "Search " + p.Label } autocomplete="off" { templ.Attributes{"data-bind:" + SignalAttr(p.Signal): true}... }/>
+					@MultiSelectOptions(p)
+				</div>
+			} else {
+				<div class="fc-multiselect-panel">
+					@MultiSelectOptions(p)
+				</div>
+			}
+		</details>
+		if p.Chips {
+			<div id={ p.ID + "-chips" } class="fc-multiselect-chips" data-on:click={ removeChipExpr }>
+				for _, o := range p.selectedOptions() {
+					<span class="fc-multiselect-chip" data-value={ o.Value }><span>{ o.Label }</span><button type="button" class="fc-multiselect-chip-remove" aria-label={ "Remove " + o.Label }>&times;</button></span>
+				}
+			</div>
+		}
+	</div>
+}
+
+// MultiSelectSummary is the summary part (a live list patches it by id).
+templ MultiSelectSummary(p MultiSelectProps) {
+	<span id={ MultiSelectSummaryID(p.ID) } class="fc-multiselect-summary">{ p.Summary() }</span>
+}
+
+// MultiSelectOptions is the options part (a dependent list is patched by id).
+templ MultiSelectOptions(p MultiSelectProps) {
+	<div
+		id={ MultiSelectOptionsID(p.ID) }
+		class="fc-multiselect-options"
+		role="group"
+		aria-labelledby={ p.ID + "-label" }
+		if p.DescribedBy != "" {
+			aria-describedby={ p.DescribedBy }
+		}
+	>
+		if len(p.Options) == 0 {
+			<p class="fc-multiselect-empty">{ orDefault(p.EmptyText, "No options") }</p>
+		}
+		for _, o := range p.Options {
+			<label class="fc-multiselect-option" { Attrs(p.optionAttrs(o))... }><input type="checkbox" name={ p.Name } value={ o.Value } checked?={ p.checked(o.Value) } { Attrs(p.OptionAttrs)... }/><span>{ o.Label }</span></label>
+		}
+	</div>
+}

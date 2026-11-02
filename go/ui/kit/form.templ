@@ -1,0 +1,327 @@
+package kit
+
+import (
+	"context"
+	"io"
+	"strings"
+)
+
+// FormDialogProps mirrors form-dialog.md's Props table: a create/edit form in
+// a modal dialog that posts through Datastar (and natively without it), with
+// server validation answered as patches, a dirty state, busy/disabled
+// submit, and a discard confirmation when a changed form is closed.
+type FormDialogProps struct {
+	// ID is the dialog id; the parts derive from it: {id}-title, {id}-desc,
+	// {id}-form, {id}-error (the form-level error region), {id}-discard.
+	ID          string      `json:"id"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	Width       DialogWidth `json:"width"`
+	// Action is the form's POST target (native and Datastar: the submit
+	// handler reads el.action).
+	Action      string `json:"action"`
+	SubmitLabel string `json:"submitLabel"`
+	// Signal prefixes the form's two signals: {signal}Dirty and {signal}Busy.
+	Signal string `json:"signal"`
+	// RequireChange keeps Submit disabled until a value differs from the
+	// rendered one (edit forms); otherwise only the busy state disables it.
+	RequireChange bool `json:"requireChange"`
+	// Open renders the dialog open and makes it modal on insert (a dialog
+	// patched in by the server, or a page that loads with it).
+	Open bool `json:"open"`
+	// Error is the form-level error (a rule that belongs to no field, a
+	// refusal, an unexpected failure); field errors go on the fields.
+	Error  string        `json:"error"`
+	Hidden []HiddenField `json:"hidden"`
+}
+
+func (p FormDialogProps) dirty() string { return "$" + Signal(p.Signal) + "Dirty" }
+func (p FormDialogProps) busy() string  { return "$" + Signal(p.Signal) + "Busy" }
+
+// FormDialogErrorID is the id of a form dialog's form-level error region.
+func FormDialogErrorID(dialogID string) string { return ID(dialogID) + "-error" }
+
+// FormDialogFormID is the id of a form dialog's <form>.
+func FormDialogFormID(dialogID string) string { return ID(dialogID) + "-form" }
+
+// dismissExpr closes the dialog, or asks first when the form has changes.
+func (p FormDialogProps) dismissExpr() string {
+	return p.dirty() + " ? document.getElementById('" + ID(p.ID) + "-discard').showModal() : document.getElementById('" + ID(p.ID) + "').close()"
+}
+
+func (p FormDialogProps) dialogAttrs() templ.Attributes {
+	a := templ.Attributes{
+		"data-on:click":  "evt.target === el && (" + p.dismissExpr() + ")",
+		"data-on:cancel": p.dirty() + " && (evt.preventDefault(), document.getElementById('" + ID(p.ID) + "-discard').showModal())",
+	}
+	if p.Open {
+		a["open"] = true
+		// A dialog rendered open is non-modal; reopen it as a modal (focus
+		// trap, Escape, inert page) once Datastar processes it. Removing the
+		// attribute rather than calling close() fires no close event, so a
+		// dialog that removes itself on close survives start-up.
+		a["data-init"] = "el.removeAttribute('open'); el.showModal()"
+	}
+	return a
+}
+
+const snapshotExpr = "new URLSearchParams(new FormData(el)).toString()"
+
+// signalsExpr declares the form's two signals (data-signals, object form, so
+// the attribute name is static and comes before the expressions using them).
+func (p FormDialogProps) signalsExpr() string {
+	return "{" + Signal(p.Signal) + "Dirty: false, " + Signal(p.Signal) + "Busy: false}"
+}
+
+func (p FormDialogProps) busyName() string { return Signal(p.Signal) + "Busy" }
+
+func (p FormDialogProps) dirtyExpr() string {
+	return p.dirty() + " = " + snapshotExpr + " !== el.dataset.snapshot"
+}
+
+func (p FormDialogProps) ariaBusyExpr() string { return p.busy() + " ? 'true' : 'false'" }
+
+func (p FormDialogProps) submitDisabledExpr() string {
+	if p.RequireChange {
+		return p.busy() + " || !" + p.dirty()
+	}
+	return p.busy()
+}
+
+// FormDialog is form-dialog.md. Slot: the fields (Field components whose
+// root carries a stable id, so a failed submit can patch each one).
+templ FormDialog(p FormDialogProps) {
+	@Dialog(DialogProps{ID: p.ID, Title: p.Title, Description: p.Description, Width: p.Width, Persistent: true, Attrs: p.dialogAttrs(), Footer: formDialogFooter(p)}) {
+		<form
+			id={ FormDialogFormID(p.ID) }
+			method="post"
+			action={ SafeURL(p.Action) }
+			class="flex flex-col gap-4"
+			data-signals={ p.signalsExpr() }
+			data-indicator={ p.busyName() }
+			data-init={ "el.dataset.snapshot = " + snapshotExpr }
+			data-on:input={ p.dirtyExpr() }
+			data-on:submit={ SubmitForm }
+			data-attr:aria-busy={ p.ariaBusyExpr() }
+		>
+			@FormDialogError(p.ID, p.Error)
+			for _, h := range p.Hidden {
+				<input type="hidden" name={ h.Name } value={ h.Value } { Attrs(h.Attrs)... }/>
+			}
+			{ children... }
+		</form>
+		<dialog id={ p.ID + "-discard" } role="alertdialog" class="fc-dialog w-[28rem] max-w-[calc(100vw-2rem)]" aria-labelledby={ p.ID + "-discard-title" } aria-describedby={ p.ID + "-discard-desc" } data-on:click={ LightDismiss }>
+			<div class="fc-dialog-header"><span id={ p.ID + "-discard-title" }>Discard Changes</span></div>
+			<div class="fc-dialog-body flex items-start gap-3 text-subtle-foreground">
+				@Icon(IconProps{Name: "triangle-alert", Class: "size-6 mt-0.5 shrink-0 text-red-600"})
+				<p id={ p.ID + "-discard-desc" }>You have unsaved changes. Discard them?</p>
+			</div>
+			<div class="fc-dialog-footer">
+				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click={ CloseDialog }>Keep Editing</button>
+				<button type="button" class="fc-btn fc-btn-danger" data-on:click={ "el.closest('dialog').close(); document.getElementById('" + ID(p.ID) + "').close()" }>Discard</button>
+			</div>
+		</dialog>
+	}
+}
+
+templ formDialogFooter(p FormDialogProps) {
+	<button type="button" class={ ButtonClasses(ButtonGhost, ButtonMd) } data-attr:disabled={ p.busy() } data-on:click={ p.dismissExpr() }>Cancel</button>
+	<button
+		type="submit"
+		form={ FormDialogFormID(p.ID) }
+		class={ ButtonClasses(ButtonPrimary, ButtonMd) }
+		if p.RequireChange {
+			disabled
+		}
+		data-attr:disabled={ p.submitDisabledExpr() }
+	>{ p.SubmitLabel }</button>
+}
+
+// FormDialogError is a form dialog's form-level error region (form-dialog.md,
+// part form-dialog-error): always present, so a failed submit patches it by
+// id; empty when there is no error.
+templ FormDialogError(dialogID, message string) {
+	<div id={ FormDialogErrorID(dialogID) }>
+		if message != "" {
+			@Alert(AlertProps{Variant: AlertDestructive, Role: "alert", Icon: "circle-x", Title: message})
+		}
+	</div>
+}
+
+// FormSectionProps mirrors form-section.md's Props table.
+type FormSectionProps struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	// Danger colours the title red (fc-danger-zone).
+	Danger bool `json:"danger"`
+	// Card draws the section as a bordered panel (fc-card).
+	Card bool `json:"card"`
+	// Actions is the header's right-hand slot; the body is the default slot.
+	Actions templ.Component `json:"-"`
+}
+
+func (p FormSectionProps) classes() string {
+	c := "fc-form-section"
+	if p.Danger {
+		c += " fc-danger-zone"
+	}
+	if p.Card {
+		c += " fc-card"
+	}
+	return c
+}
+
+// FormSection is form-section.md: a titled block of a drawer or page.
+templ FormSection(p FormSectionProps) {
+	<section class={ p.classes() }>
+		<header class="fc-section-header">
+			<div>
+				<h3 class="fc-section-title">{ p.Title }</h3>
+				if p.Description != "" {
+					<p class="fc-section-description">{ p.Description }</p>
+				}
+			</div>
+			if p.Actions != nil {
+				@p.Actions
+			}
+		</header>
+		<div class="fc-section-body">
+			{ children... }
+		</div>
+	</section>
+}
+
+// DetailFieldProps mirrors detail-field.md's Props table.
+type DetailFieldProps struct {
+	Label string `json:"label"`
+	// Value is escaped text; without it the default slot is the value
+	// (markup: a tag, code, a link); with neither the value is "—".
+	Value string `json:"value"`
+	// Span makes the field span both columns of .fc-detail-grid.
+	Span bool `json:"span"`
+}
+
+// DetailField is detail-field.md: a read-only labelled value in .fc-detail-grid.
+// Slot: markup for the value (used when Value is empty).
+func DetailField(p DetailFieldProps) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		// The slot is rendered here, before templ clears the children from
+		// the context, to tell "no slot" (an em dash) from markup.
+		return detailField(p, renderedChildren(ctx)).Render(templ.ClearChildren(ctx), w)
+	})
+}
+
+templ detailField(p DetailFieldProps, slot string) {
+	<div
+		if p.Span {
+			class="fc-detail-field fc-span-2"
+		} else {
+			class="fc-detail-field"
+		}
+	>
+		<span class="fc-field-label">{ p.Label }</span>
+		<div class="fc-detail-value">
+			if p.Value != "" {
+				{ p.Value }
+			} else if slot != "" {
+				@Raw(slot)
+			} else {
+				—
+			}
+		</div>
+	</div>
+}
+
+// renderedChildren renders the default slot to a string ("" when there is
+// none or it renders nothing but whitespace).
+func renderedChildren(ctx context.Context) string {
+	var b strings.Builder
+	if err := templ.GetChildren(ctx).Render(templ.ClearChildren(ctx), &b); err != nil {
+		return ""
+	}
+	if strings.TrimSpace(b.String()) == "" {
+		return ""
+	}
+	return b.String()
+}
+
+// AutocompleteProps mirrors autocomplete.md's Props table: a text input with
+// suggestions the server searches as the user types (the SPA's AutoComplete;
+// a client select).
+type AutocompleteProps struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Value       string `json:"value"`
+	Placeholder string `json:"placeholder"`
+	// Source is the search endpoint, a local path without a query. The input
+	// asks {source}?list={id}-options&q={typed} (debounced 300ms); the answer
+	// patches the datalist (AutocompleteOptions).
+	Source string `json:"source"`
+	// Options are the suggestions rendered with the page (value is what the
+	// input receives, label is shown beside it).
+	Options     []Option         `json:"options"`
+	Required    bool             `json:"required"`
+	Disabled    bool             `json:"disabled"`
+	Invalid     bool             `json:"invalid"`
+	DescribedBy string           `json:"describedBy"`
+	Class       string           `json:"class"`
+	Attrs       templ.Attributes `json:"attrs"`
+}
+
+// AutocompleteListID is the datalist id of the autocomplete with this id.
+func AutocompleteListID(id string) string { return ID(id) + "-options" }
+
+func (p AutocompleteProps) searchExpr() string {
+	return "@get('" + Path(p.Source) + "?list=" + AutocompleteListID(p.ID) + "&q=' + encodeURIComponent(el.value))"
+}
+
+// Autocomplete is autocomplete.md: <input list> + <datalist>; the browser
+// filters and shows the suggestions, the server refreshes them.
+templ Autocomplete(p AutocompleteProps) {
+	<input
+		type="text"
+		class={ cx(inputClasses, p.Class) }
+		id={ ID(p.ID) }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		if p.Value != "" {
+			value={ p.Value }
+		}
+		if p.Placeholder != "" {
+			placeholder={ p.Placeholder }
+		}
+		list={ AutocompleteListID(p.ID) }
+		autocomplete="off"
+		required?={ p.Required }
+		disabled?={ p.Disabled }
+		if p.Invalid {
+			aria-invalid="true"
+		}
+		if p.DescribedBy != "" {
+			aria-describedby={ p.DescribedBy }
+		}
+		if !p.Disabled && p.Source != "" {
+			data-on:input__debounce.300ms={ p.searchExpr() }
+		}
+		{ Attrs(p.Attrs)... }
+	/>
+	@AutocompleteOptions(AutocompleteOptionsProps{ID: AutocompleteListID(p.ID), Options: p.Options})
+}
+
+// AutocompleteOptionsProps mirrors autocomplete.md's autocomplete-options part.
+type AutocompleteOptionsProps struct {
+	// ID is the datalist id ({input id}-options).
+	ID      string   `json:"id"`
+	Options []Option `json:"options"`
+}
+
+// AutocompleteOptions is the datalist; the search endpoint answers with it
+// (patched by id).
+templ AutocompleteOptions(p AutocompleteOptionsProps) {
+	<datalist id={ ID(p.ID) }>
+		for _, o := range p.Options {
+			<option value={ o.Value }>{ o.Label }</option>
+		}
+	</datalist>
+}

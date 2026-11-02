@@ -13,3 +13,14 @@ examples/orders-demo/src/main/resources/db/migration/orders/V0001__create_orders
 framework-flowcatalyst/src/main/resources/db/migration/flowcatalyst/V0001__create_dispatch_once.sql flowcatalyst/migrations/V0001__create_dispatch_once.sql
 framework-auth-database/src/main/resources/db/migration/auth/V0001__create_session_table.sql auth/authdb/migrations/V0001__create_session_table.sql
 framework-client-settings/src/main/resources/db/migration/client-settings/V0001__create_client_settings.sql clientsettings/migrations/V0001__create_client_settings.sql
+framework-ui/src/main/resources/fw-ui/kit.css ui/assets/files/kit.css
+framework-ui/src/main/resources/fw-ui/datastar.js ui/assets/files/datastar.js
+framework-ui/src/main/resources/fw-ui/lucide-sprite.svg ui/assets/files/lucide-sprite.svg
+framework-ui/src/main/resources/fw-ui/fc-code-editor.js ui/assets/files/fc-code-editor.js
+framework-ui/src/main/resources/fw-ui/fc-diagram.js ui/assets/files/fc-diagram.js
+framework-ui/src/main/resources/fw-ui/mermaid.min.js ui/assets/files/mermaid.min.js
+framework-ui/src/main/resources/fw-ui/LICENSE-datastar.md ui/assets/files/LICENSE-datastar.md
+framework-ui/src/main/resources/fw-ui/LICENSE-lucide.txt ui/assets/files/LICENSE-lucide.txt
+framework-ui/src/main/resources/fw-ui/LICENSE-mermaid.md ui/assets/files/LICENSE-mermaid.md
+framework-ui/src/main/resources/fw-ui/LICENSE-codemirror.md ui/assets/files/LICENSE-codemirror.md
+framework-ui/src/main/resources/fw-ui/KIT-THIRD-PARTY-NOTICES.md ui/assets/files/KIT-THIRD-PARTY-NOTICES.md

@@ -1,0 +1,406 @@
+package kit
+
+import (
+	"strconv"
+	"strings"
+)
+
+// popoverAnchorExpr is table-toolbar.md's positioning expression: the popover
+// opens 6px under its trigger (the element right before it), right-aligned.
+const popoverAnchorExpr = "evt.newState === 'open' && (el.style.top = (el.previousElementSibling.getBoundingClientRect().bottom + 6) + 'px'); evt.newState === 'open' && (el.style.left = Math.max(16, el.previousElementSibling.getBoundingClientRect().right - el.offsetWidth) + 'px')"
+
+// HiddenField is a hidden <input> carried by a form.
+type HiddenField struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	// Attrs go on the <input> (e.g. data-attr:value bound to a signal).
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// ResultSize is the table toolbar's optional result-size select.
+type ResultSize struct {
+	Options  []int `json:"options"`
+	Selected int   `json:"selected"`
+}
+
+// TableToolbarProps mirrors table-toolbar.md's Props table.
+type TableToolbarProps struct {
+	// ID is the form id; the state part is "{id}-state", the filters
+	// popover "{id}-filters".
+	ID     string `json:"id"`
+	Action string `json:"action"`
+	// Search box (name "q"); HideSearch omits it.
+	SearchPlaceholder string `json:"searchPlaceholder"`
+	SearchValue       string `json:"searchValue"`
+	HideSearch        bool   `json:"hideSearch"`
+	// Size renders the result-size select (firehose lists only).
+	Size        *ResultSize `json:"size"`
+	HideRefresh bool        `json:"hideRefresh"`
+	// ClearHref renders "Clear All" (only while a search or filter is active):
+	// the list's URL without them.
+	ClearHref string `json:"clearHref"`
+	// ClearAttrs go on Clear All; a live toolbar passes
+	// {"data-on:click__prevent": ClearFilters}.
+	ClearAttrs templ.Attributes `json:"clearAttrs"`
+	// ActiveFilterCount > 0 renders the count badge in the Filters button.
+	ActiveFilterCount int `json:"activeFilterCount"`
+	// Hidden are hidden inputs (the sort), rendered in the state part.
+	Hidden []HiddenField `json:"hidden"`
+	// SearchAttrs go on the search <input> (live search), FormAttrs on the <form>.
+	SearchAttrs templ.Attributes `json:"searchAttrs"`
+	FormAttrs   templ.Attributes `json:"formAttrs"`
+	// Filters is the popover's slot (FilterSelects); nil omits the Filters button.
+	Filters templ.Component `json:"-"`
+}
+
+// TableToolbar is table-toolbar.md: the list's GET form.
+templ TableToolbar(p TableToolbarProps) {
+	<form id={ ID(p.ID) } method="get" action={ SafeURL(p.Action) } class="fc-table-toolbar" { Attrs(p.FormAttrs)... }>
+		<div class="fc-toolbar-start">
+			if !p.HideSearch {
+				<div class="fc-input-icon fc-toolbar-search">
+					@Icon(IconProps{Name: "search", Class: "size-[1rem]"})
+					<input
+						type="search"
+						name="q"
+						class="fc-input"
+						placeholder={ p.SearchPlaceholder }
+						aria-label={ p.SearchPlaceholder }
+						if p.SearchValue != "" {
+							value={ p.SearchValue }
+						}
+						{ Attrs(p.SearchAttrs)... }
+					/>
+				</div>
+			}
+		</div>
+		<div class="fc-toolbar-end">
+			if p.Size != nil {
+				<select name="size" class="fc-select w-24" title="Result size" aria-label="Result size" data-on:change={ submitOnChangeExpr }>
+					for _, n := range p.Size.Options {
+						<option value={ strconv.Itoa(n) } selected?={ n == p.Size.Selected }>{ strconv.Itoa(n) }</option>
+					}
+				</select>
+			}
+			if !p.HideRefresh {
+				<button type="submit" class="fc-icon-btn" title="Refresh" aria-label="Refresh">
+					@Icon(IconProps{Name: "refresh-cw", Class: "size-[1rem]"})
+				</button>
+			}
+			@TableToolbarState(p.State())
+			if p.Filters != nil {
+				<div id={ p.ID + "-filters" } popover class="fc-filter-popover" data-on:toggle__capture={ popoverAnchorExpr }>
+					<div class="fc-filter-popover-body">
+						@p.Filters
+					</div>
+				</div>
+			}
+		</div>
+	</form>
+}
+
+// State is the toolbar's state part for these props: render it alone (and
+// patch it by ToolbarStateID) after a live update.
+func (p TableToolbarProps) State() TableToolbarStateProps {
+	return TableToolbarStateProps{
+		FormID:            p.ID,
+		Hidden:            p.Hidden,
+		ClearHref:         p.ClearHref,
+		ClearAttrs:        p.ClearAttrs,
+		ActiveFilterCount: p.ActiveFilterCount,
+		Filters:           p.Filters != nil,
+	}
+}
+
+// ToolbarStateID is the id of a toolbar's state part ("{formId}-state").
+func ToolbarStateID(formID string) string { return ID(formID) + "-state" }
+
+// ClearFilters is table-toolbar.md's live Clear All handler (clearAttrs
+// "data-on:click__prevent"): it empties the search box and the fields in the
+// filters popover (by class, not id), focuses the search box and submits
+// the form, whose own handler makes the live request.
+const ClearFilters = "const f = el.closest('form'); f.querySelectorAll('.fc-toolbar-search [name], .fc-filter-popover [name]').forEach(c => c.type === 'checkbox' || c.type === 'radio' ? c.checked = false : c.value = ''); f.querySelector('.fc-toolbar-search input')?.focus(); f.requestSubmit()"
+
+// TableToolbarStateProps mirrors table-toolbar.md's state part
+// (table-toolbar-state): everything the server renders from the list state.
+type TableToolbarStateProps struct {
+	FormID            string           `json:"formId"`
+	Hidden            []HiddenField    `json:"hidden"`
+	ClearHref         string           `json:"clearHref"`
+	ClearAttrs        templ.Attributes `json:"clearAttrs"`
+	ActiveFilterCount int              `json:"activeFilterCount"`
+	// Filters renders the Filters button (the toolbar has a filters popover).
+	Filters bool `json:"filters"`
+}
+
+// TableToolbarState is the toolbar's state part, <div id="{formId}-state">:
+// hidden fields, Clear All and the Filters button. A live (c) answer patches
+// it by id; it never touches the search box or the open popover.
+templ TableToolbarState(p TableToolbarStateProps) {
+	<div id={ ToolbarStateID(p.FormID) } class="fc-toolbar-state">
+		for _, h := range p.Hidden {
+			<input type="hidden" name={ h.Name } value={ h.Value } { Attrs(h.Attrs)... }/>
+		}
+		if p.ClearHref != "" {
+			<a href={ SafeURL(p.ClearHref) } class="fc-btn fc-btn-text" { Attrs(p.ClearAttrs)... }>
+				@Icon(IconProps{Name: "funnel-x", Class: "size-[1rem]"})
+				Clear All
+			</a>
+		}
+		if p.Filters {
+			<button type="button" class="fc-btn fc-btn-primary-outline" popovertarget={ ID(p.FormID) + "-filters" }>
+				@Icon(IconProps{Name: "funnel", Class: "size-[1rem]"})
+				Filters
+				if p.ActiveFilterCount > 0 {
+					<span class="fc-badge">{ strconv.Itoa(p.ActiveFilterCount) }</span>
+				}
+			</button>
+		}
+	</div>
+}
+
+// PageItem is one entry of a Pagination: a page link or an ellipsis.
+type PageItem struct {
+	Page     int    `json:"page"`
+	Href     string `json:"href"`
+	Ellipsis bool   `json:"ellipsis"`
+}
+
+// PaginationProps mirrors pagination.md's Props table.
+type PaginationProps struct {
+	Items   []PageItem `json:"items"`
+	Current int        `json:"current"`
+	// PrevHref/NextHref: empty renders the disabled form (no href).
+	PrevHref string `json:"prevHref"`
+	NextHref string `json:"nextHref"`
+	// PrimaryCurrent fills the current page with the primary colour (the
+	// users-list override for PrimeVue's look).
+	PrimaryCurrent bool `json:"primaryCurrent"`
+	// LinkAttrs go on every page link (e.g. a Datastar @get enhancement).
+	LinkAttrs templ.Attributes `json:"linkAttrs"`
+}
+
+const (
+	pagerDisabled    = "pointer-events-none opacity-50"
+	pagerCurrentFill = "[&]:border-primary [&]:bg-primary [&]:text-primary-foreground"
+)
+
+func (p PaginationProps) currentClasses() string {
+	c := ButtonClasses(ButtonOutline, ButtonIcon)
+	if p.PrimaryCurrent {
+		c = cx(c, pagerCurrentFill)
+	}
+	return c
+}
+
+// Pagination is pagination.md: previous, numbered pages, ellipsis, next.
+templ Pagination(p PaginationProps) {
+	<nav aria-label="pagination" class="@container mx-auto flex w-full justify-center">
+		<ul class="flex flex-row flex-wrap items-center justify-center gap-1">
+			<li>
+				if p.PrevHref != "" {
+					<a href={ SafeURL(p.PrevHref) } class={ ButtonClasses(ButtonGhost, ButtonMd) } { Attrs(p.LinkAttrs)... }>
+						@Icon(IconProps{Name: "chevron-left"})
+						<span class="sr-only @xs:not-sr-only">Previous</span>
+					</a>
+				} else {
+					<a aria-disabled="true" class={ cx(ButtonClasses(ButtonGhost, ButtonMd), pagerDisabled) }>
+						@Icon(IconProps{Name: "chevron-left"})
+						<span class="sr-only @xs:not-sr-only">Previous</span>
+					</a>
+				}
+			</li>
+			for _, it := range p.Items {
+				<li>
+					if it.Ellipsis {
+						<span class="flex size-9 items-center justify-center text-muted-foreground">
+							@Icon(IconProps{Name: "ellipsis", Class: "size-4"})
+							<span class="sr-only">More pages</span>
+						</span>
+					} else if it.Page == p.Current {
+						<a href={ SafeURL(it.Href) } aria-current="page" class={ p.currentClasses() } { Attrs(p.LinkAttrs)... }>{ strconv.Itoa(it.Page) }</a>
+					} else {
+						<a href={ SafeURL(it.Href) } class={ ButtonClasses(ButtonGhost, ButtonIcon) } { Attrs(p.LinkAttrs)... }>{ strconv.Itoa(it.Page) }</a>
+					}
+				</li>
+			}
+			<li>
+				if p.NextHref != "" {
+					<a href={ SafeURL(p.NextHref) } class={ ButtonClasses(ButtonGhost, ButtonMd) } { Attrs(p.LinkAttrs)... }>
+						<span class="sr-only @xs:not-sr-only">Next</span>
+						@Icon(IconProps{Name: "chevron-right"})
+					</a>
+				} else {
+					<a aria-disabled="true" class={ cx(ButtonClasses(ButtonGhost, ButtonMd), pagerDisabled) }>
+						<span class="sr-only @xs:not-sr-only">Next</span>
+						@Icon(IconProps{Name: "chevron-right"})
+					</a>
+				}
+			</li>
+		</ul>
+	</nav>
+}
+
+// CursorPagerProps mirrors cursor-pager.md's Props table.
+type CursorPagerProps struct {
+	// ID goes on the footer (a patch target).
+	ID      string `json:"id"`
+	Summary string `json:"summary"`
+	// NewestHref/OlderHref: empty renders the disabled <span>.
+	NewestHref string           `json:"newestHref"`
+	OlderHref  string           `json:"olderHref"`
+	LinkAttrs  templ.Attributes `json:"linkAttrs"`
+}
+
+// CursorPager is cursor-pager.md: "Newest / Older" keyset paging.
+templ CursorPager(p CursorPagerProps) {
+	<div
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class="fc-table-footer"
+	>
+		<span>{ p.Summary }</span>
+		<nav class="flex items-center gap-2" aria-label="Pagination">
+			if p.NewestHref != "" {
+				<a class="fc-btn fc-btn-outline fc-btn-sm" href={ SafeURL(p.NewestHref) } { Attrs(p.LinkAttrs)... }>
+					@Icon(IconProps{Name: "chevrons-left"})
+					Newest
+				</a>
+			} else {
+				<span class="fc-btn fc-btn-outline fc-btn-sm" aria-disabled="true">
+					@Icon(IconProps{Name: "chevrons-left"})
+					Newest
+				</span>
+			}
+			if p.OlderHref != "" {
+				<a class="fc-btn fc-btn-outline fc-btn-sm" href={ SafeURL(p.OlderHref) } { Attrs(p.LinkAttrs)... }>
+					@Icon(IconProps{Name: "chevron-right"})
+					Older
+				</a>
+			} else {
+				<span class="fc-btn fc-btn-outline fc-btn-sm" aria-disabled="true">
+					@Icon(IconProps{Name: "chevron-right"})
+					Older
+				</span>
+			}
+		</nav>
+	</div>
+}
+
+// PaginatorProps mirrors paginator.md's Props table (PrimeVue's paginator:
+// first/previous, a five-page window, next/last, rows per page, report).
+type PaginatorProps struct {
+	// ID goes on the <nav> (the patch target of a live list).
+	ID    string `json:"id"`
+	Page  int    `json:"page"`
+	Pages int    `json:"pages"`
+	Total int    `json:"total"`
+	Rows  int    `json:"rows"`
+	// RowsOptions default to 50, 100, 250, 500.
+	RowsOptions []int  `json:"rowsOptions"`
+	Noun        string `json:"noun"`
+	// HrefPattern is a page link's URL with the literal placeholder {page}.
+	HrefPattern string `json:"hrefPattern"`
+	// FormID associates the rows select with the list's GET form; empty
+	// renders no rows select.
+	FormID    string           `json:"formId"`
+	LinkAttrs templ.Attributes `json:"linkAttrs"`
+}
+
+var defaultRowsOptions = []int{50, 100, 250, 500}
+
+func (p PaginatorProps) pages() int { return max(p.Pages, 1) }
+func (p PaginatorProps) page() int  { return min(max(p.Page, 1), p.pages()) }
+func (p PaginatorProps) rows() int {
+	if p.Rows <= 0 {
+		return defaultRowsOptions[0]
+	}
+	return p.Rows
+}
+
+func (p PaginatorProps) rowsOptions() []int {
+	if len(p.RowsOptions) == 0 {
+		return defaultRowsOptions
+	}
+	return p.RowsOptions
+}
+
+func (p PaginatorProps) href(page int) string {
+	return strings.ReplaceAll(p.HrefPattern, "{page}", strconv.Itoa(page))
+}
+
+// window is the five page numbers around the current page (paginator.md,
+// Behaviour).
+func (p PaginatorProps) window() []int {
+	pages, page := p.pages(), p.page()
+	start := max(1, min(max(page-2, 1), max(pages-4, 1)))
+	end := min(start+4, pages)
+	out := make([]int, 0, end-start+1)
+	for n := start; n <= end; n++ {
+		out = append(out, n)
+	}
+	return out
+}
+
+func (p PaginatorProps) report() string {
+	first, last := 0, 0
+	if p.Total > 0 {
+		first = (p.page()-1)*p.rows() + 1
+		last = min(p.page()*p.rows(), p.Total)
+	}
+	return "Showing " + strconv.Itoa(first) + " to " + strconv.Itoa(last) + " of " + strconv.Itoa(p.Total) + " " + p.Noun
+}
+
+// Paginator is paginator.md.
+templ Paginator(p PaginatorProps) {
+	<nav
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class="fc-paginator"
+		aria-label="Pagination"
+	>
+		if p.page() > 1 {
+			@paginatorLink(p, 1, "First", "chevrons-left")
+			@paginatorLink(p, p.page()-1, "Previous", "chevron-left")
+		} else {
+			@paginatorDisabled("First", "chevrons-left")
+			@paginatorDisabled("Previous", "chevron-left")
+		}
+		for _, n := range p.window() {
+			if n == p.page() {
+				<span class="fc-page-link" aria-current="page">{ strconv.Itoa(n) }</span>
+			} else {
+				<a class="fc-page-link" href={ SafeURL(p.href(n)) } { Attrs(p.LinkAttrs)... }>{ strconv.Itoa(n) }</a>
+			}
+		}
+		if p.page() < p.pages() {
+			@paginatorLink(p, p.page()+1, "Next", "chevron-right")
+			@paginatorLink(p, p.pages(), "Last", "chevrons-right")
+		} else {
+			@paginatorDisabled("Next", "chevron-right")
+			@paginatorDisabled("Last", "chevrons-right")
+		}
+		if p.FormID != "" {
+			<select name="rows" form={ p.FormID } class="fc-select ml-2" aria-label="Rows per page" data-on:change="el.form.requestSubmit()">
+				for _, n := range p.rowsOptions() {
+					<option value={ strconv.Itoa(n) } selected?={ n == p.rows() }>{ strconv.Itoa(n) }</option>
+				}
+			</select>
+		}
+		<span class="fc-page-report">{ p.report() }</span>
+	</nav>
+}
+
+templ paginatorLink(p PaginatorProps, page int, label, icon string) {
+	<a class="fc-page-link" href={ SafeURL(p.href(page)) } aria-label={ label } { Attrs(p.LinkAttrs)... }>
+		@Icon(IconProps{Name: icon, Class: "size-[1rem]"})
+	</a>
+}
+
+templ paginatorDisabled(label, icon string) {
+	<span class="fc-page-link" aria-disabled="true" aria-label={ label }>
+		@Icon(IconProps{Name: icon, Class: "size-[1rem]"})
+	</span>
+}

@@ -6,10 +6,13 @@
 #   go-check         everything below, in order
 #   fmt              rewrite the sources with gofumpt
 #   fmt-check        fail when a file is not gofumpt-formatted
-#   lint             golangci-lint (.golangci.yml) on both modules
+#   lint             golangci-lint (.golangci.yml) on all three modules (core, flowcatalyst, ui)
 #   vet              go vet with the framework's analyzers (cmd/fwvet)
 #   nilaway          NilAway over the framework's packages
-#   test             go test -race on both modules (PostgreSQL and Redis come from fwtest)
+#   test             go test -race on all three modules (PostgreSQL and Redis come from fwtest)
+#   ui-generate      templ generate in the ui module (the generated *_templ.go files are committed)
+#   ui-verify        ui-generate, then fail when a generated file changed or appeared: the committed
+#                    *_templ.go files are the templates' output (templ v0.3.1020, pinned by ui/go.mod)
 #   sql-check        the examples' checked SQL (orders-demo, and the tickets-trial of the flowcatalyst module): schema
 #                    dir, sqlc vet (db-prepare) and diff, jet code
 #                    (needs sqlc v1.31.1 on PATH: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1)
@@ -42,12 +45,15 @@ FCSDK ?=
 # (a workspace file, not -modfile: golangci-lint and NilAway fail under GOFLAGS=-modfile, and go tool -modfile
 # cannot run in a workspace, so they are built into bin/ first.)
 FC = cd flowcatalyst && if [ -f go.local.work ]; then export GOWORK=$(CURDIR)/flowcatalyst/go.local.work; fi;
+# Run a command in the ui module (go/ui: templ + Datastar server-rendered UI; its own go.mod, so templ,
+# goldmark, bluemonday and brotli stay out of the core module).
+UI = cd ui &&
 LINT := $(CURDIR)/bin/golangci-lint
 NILAWAY := $(CURDIR)/bin/nilaway
 
-.PHONY: e2e-orders e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools
+.PHONY: e2e-orders e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
 
-go-check: fc-modfile fmt-check lint vet nilaway test sql-check
+go-check: fc-modfile fmt-check lint vet nilaway test sql-check ui-verify
 
 # The pinned tools (tools/go.mod), built by the local Go into bin/.
 tools:
@@ -66,28 +72,32 @@ fc-tidy:
 	cd flowcatalyst && GOWORK=off go mod tidy
 
 fmt:
-	$(TOOL) gofumpt -w $$(find . -name '*.go' -not -path './tools/*' -not -path '*/testdata/*' -not -path '*/internal/jet/*')
+	$(TOOL) gofumpt -w $$(find . -name '*.go' -not -name '*_templ.go' -not -path './tools/*' -not -path '*/testdata/*' -not -path '*/internal/jet/*')
 
 fmt-check:
-	@out=$$($(TOOL) gofumpt -l $$(find . -name '*.go' -not -path './tools/*' -not -path '*/testdata/*' -not -path '*/internal/jet/*')); \
+	@out=$$($(TOOL) gofumpt -l $$(find . -name '*.go' -not -name '*_templ.go' -not -path './tools/*' -not -path '*/testdata/*' -not -path '*/internal/jet/*')); \
 	if [ -n "$$out" ]; then echo "not gofumpt-formatted (run make -C go fmt):"; echo "$$out"; exit 1; fi
 
 lint: fc-modfile tools
 	$(LINT) run ./...
 	$(FC) $(LINT) run --config ../.golangci.yml ./...
+	$(UI) $(LINT) run --config ../.golangci.yml ./...
 
 vet: fc-modfile
 	$(GO) build -o bin/fwvet ./cmd/fwvet
 	$(GO) vet -vettool=$(CURDIR)/bin/fwvet ./...
 	$(FC) $(GO) vet -vettool=$(CURDIR)/bin/fwvet ./...
+	$(UI) $(GO) vet -vettool=$(CURDIR)/bin/fwvet ./...
 
 nilaway: fc-modfile tools
 	$(NILAWAY) -include-pkgs=$(MODULE) ./...
 	$(FC) $(NILAWAY) -include-pkgs=$(MODULE)/flowcatalyst ./...
+	$(UI) $(NILAWAY) -include-pkgs=$(MODULE)/ui ./...
 
 test: fc-modfile
 	$(GO) test -race -count=1 ./...
 	$(FC) $(GO) test -race -count=1 ./...
+	$(UI) $(GO) test -race -count=1 ./...
 
 sql-check:
 	cd examples/orders-demo && $(GO) run ./tools/fwsql check
@@ -95,6 +105,18 @@ sql-check:
 
 go-sync-shared:
 	@sh internal/conformance/sync-shared.sh
+
+ui-generate:
+	$(UI) $(GO) tool templ generate
+
+# The committed *_templ.go files must be exactly what templ generates from the .templ files.
+ui-verify:
+	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; mkdir "$$tmp/old" "$$tmp/new"; \
+	(cd ui && find . -name '*_templ.go' | sort | tar -cf - -T -) | (cd "$$tmp/old" && tar -xf -); \
+	($(UI) $(GO) tool templ generate >/dev/null); \
+	(cd ui && find . -name '*_templ.go' | sort | tar -cf - -T -) | (cd "$$tmp/new" && tar -xf -); \
+	if ! diff -rq "$$tmp/old" "$$tmp/new"; then echo "generated templ files are stale (run make -C go ui-generate and commit them)"; exit 1; fi; \
+	echo "ui-verify: the generated templ files are current"
 
 e2e-orders:
 	cd ../ui/apps/orders && npx --no-install vite build

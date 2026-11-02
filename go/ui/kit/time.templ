@@ -1,0 +1,102 @@
+package kit
+
+import "time"
+
+// LocalTimeProps mirrors local-time.md's Props table.
+type LocalTimeProps struct {
+	// At is the instant; the zero time renders Empty.
+	At       time.Time `json:"at"`
+	DateOnly bool      `json:"dateOnly"`
+	// Empty is the text for a zero At (default "-").
+	Empty string `json:"empty"`
+}
+
+const (
+	localDateTimeExpr = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleString()"
+	localDateExpr     = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString()"
+)
+
+func (p LocalTimeProps) expr() string {
+	if p.DateOnly {
+		return localDateExpr
+	}
+	return localDateTimeExpr
+}
+
+// fallback is the UTC text shown before (or without) the localisation.
+func (p LocalTimeProps) fallback() string {
+	if p.DateOnly {
+		return p.At.UTC().Format(time.DateOnly)
+	}
+	return p.At.UTC().Format(time.DateTime) + " UTC"
+}
+
+// LocalTime is local-time.md: a UTC instant the browser rewrites in the
+// viewer's locale and time zone.
+templ LocalTime(p LocalTimeProps) {
+	if p.At.IsZero() {
+		{ orDefault(p.Empty, "-") }
+	} else {
+		<time datetime={ p.At.UTC().Truncate(time.Second).Format(time.RFC3339) } data-init={ p.expr() }>{ p.fallback() }</time>
+	}
+}
+
+// DateRangeProps mirrors date-range.md's Props table.
+type DateRangeProps struct {
+	// ID derives the parts: {id}-label, {id}-from, {id}-to.
+	ID        string           `json:"id"`
+	Label     string           `json:"label"`
+	FromName  string           `json:"fromName"`
+	ToName    string           `json:"toName"`
+	From      string           `json:"from"`
+	To        string           `json:"to"`
+	FromLabel string           `json:"fromLabel"`
+	ToLabel   string           `json:"toLabel"`
+	Attrs     templ.Attributes `json:"attrs"`
+}
+
+// boundExpr re-reads the other input's value into this one's bound on focus
+// (date-range.md, Behaviour b).
+func boundExpr(bound, otherID string) string {
+	return "el." + bound + " = document.getElementById('" + ID(otherID) + "').value"
+}
+
+// DateRange is date-range.md: a whole-day range as two native date inputs.
+templ DateRange(p DateRangeProps) {
+	<div id={ ID(p.ID) } class="fc-form-field" role="group" aria-labelledby={ p.ID + "-label" }>
+		<span id={ p.ID + "-label" } class="fc-field-label">{ p.Label }</span>
+		<div class="flex items-center gap-2">
+			<input
+				type="date"
+				id={ p.ID + "-from" }
+				name={ orDefault(p.FromName, "from") }
+				class="fc-input min-w-0 flex-1"
+				aria-label={ orDefault(p.FromLabel, "From") }
+				if p.From != "" {
+					value={ p.From }
+				}
+				if p.To != "" {
+					max={ p.To }
+				}
+				data-on:focus={ boundExpr("max", p.ID+"-to") }
+				{ Attrs(p.Attrs)... }
+			/>
+			<span class="text-muted-foreground" aria-hidden="true">–</span>
+			<input
+				type="date"
+				id={ p.ID + "-to" }
+				name={ orDefault(p.ToName, "to") }
+				class="fc-input min-w-0 flex-1"
+				aria-label={ orDefault(p.ToLabel, "To") }
+				if p.To != "" {
+					value={ p.To }
+				}
+				if p.From != "" {
+					min={ p.From }
+				}
+				data-on:focus={ boundExpr("min", p.ID+"-from") }
+				{ Attrs(p.Attrs)... }
+			/>
+		</div>
+	</div>
+}

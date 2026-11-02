@@ -71,6 +71,7 @@
     - { title: "Go: sessions and login", path: guide/go/sessions-and-login.md }
     - { title: "Go: the application admin", path: guide/go/admin.md }
     - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
+    - { title: "Go: server-rendered pages (templ)", path: guide/go/ui-templ.md }
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }

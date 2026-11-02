@@ -1,0 +1,509 @@
+package kit
+
+import "slices"
+
+// Class lists from the specs (input.md, textarea.md, select.md, checkbox.md,
+// switch.md, label.md, field.md).
+const (
+	inputClasses       = "h-9 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors outline-none placeholder:text-muted-foreground file:mr-3 file:h-full file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
+	textareaClasses    = "field-sizing-content min-h-16 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
+	selectWrapClasses  = "relative block has-[:disabled]:opacity-50 [&>select]:[appearance:base-select] [&:has(select:open)>svg]:rotate-180"
+	selectClasses      = "h-9 w-full appearance-none items-center rounded-lg border border-input bg-card pr-8 pl-3 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none [&::picker(select)]:[appearance:base-select] [&::picker(select)]:mt-1 [&::picker(select)]:rounded-lg [&::picker(select)]:border [&::picker(select)]:border-border [&::picker(select)]:bg-popover [&::picker(select)]:p-1 [&::picker(select)]:text-popover-foreground [&::picker(select)]:shadow-sm [&::picker-icon]:hidden [&_optgroup>legend]:px-2 [&_optgroup>legend]:py-1.5 [&_optgroup>legend]:text-xs [&_optgroup>legend]:font-medium [&_optgroup>legend]:text-muted-foreground [&_optgroup>legend]:cursor-default [&_optgroup>legend]:select-none [&_option]:flex [&_option]:items-center [&_option]:gap-2 [&_option]:rounded-md [&_option]:px-2 [&_option]:py-1.5 [&_option]:text-sm [&_option]:outline-none [&_option:hover]:bg-foreground/5 [&_option:focus]:bg-foreground/5 [&_option:checked]:font-medium [&_option::checkmark]:order-1 [&_option::checkmark]:ml-auto [&_option::checkmark]:size-4 [&_option::checkmark]:shrink-0 [&_option::checkmark]:content-[''] [&_option::checkmark]:bg-muted-foreground [&_option::checkmark]:[mask-size:100%_100%] [&_option::checkmark]:[mask-image:var(--select-checkmark)]"
+	selectChevronClass = "pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground transition-transform"
+	controlWrapClasses = "peer relative inline-flex shrink-0 has-[:disabled]:opacity-50"
+	checkboxClasses    = "peer size-4 shrink-0 appearance-none rounded-[4px] border border-input bg-background transition-colors outline-none checked:border-primary checked:bg-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none"
+	checkboxMarkClass  = "pointer-events-none absolute inset-0 m-auto size-3.5 text-primary-foreground opacity-0 peer-checked:opacity-100"
+	switchClasses      = "peer h-4.5 w-8 shrink-0 appearance-none rounded-full bg-foreground/20 shadow-xs transition-colors outline-none checked:bg-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none"
+	switchThumbClasses = "pointer-events-none absolute top-1/2 left-0.5 size-3.5 -translate-y-1/2 rounded-full bg-background shadow-xs transition-transform peer-checked:translate-x-3.5"
+	labelClasses       = "flex items-center gap-2 text-sm leading-none font-medium select-none peer-disabled:pointer-events-none peer-disabled:opacity-50 peer-has-[:disabled]:pointer-events-none peer-has-[:disabled]:opacity-50 has-[+:disabled]:pointer-events-none has-[+:disabled]:opacity-50 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50"
+	fieldLabelExtra    = "leading-snug group-has-[:disabled]/field:opacity-50 group-has-[[aria-invalid=true]]/field:text-destructive group-data-[invalid=true]/field:text-destructive"
+	fieldDescClasses   = "text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_a]:underline-offset-4"
+	fieldErrorClasses  = "text-sm text-destructive"
+	fieldGroupClasses  = "@container/field-group flex flex-col gap-5"
+	fieldBaseClasses   = "group/field flex min-w-0"
+	fieldVertical      = "flex-col gap-2"
+	fieldHorizontal    = "flex-row items-center gap-3 [&>[data-slot=field-label]]:flex-1"
+	fieldResponsive    = "flex-col gap-2 @md/field-group:flex-row @md/field-group:items-start @md/field-group:gap-4 @md/field-group:[&>[data-slot=field-label]]:w-1/3 @md/field-group:[&>[data-slot=field-label]]:shrink-0"
+	searchInputClasses = "fc-input-icon w-80 max-w-full"
+	submitOnChangeExpr = "el.form.requestSubmit()"
+)
+
+// InputProps mirrors input.md's Props table.
+type InputProps struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"` // default "text"
+	Value       string `json:"value"`
+	Placeholder string `json:"placeholder"`
+	Required    bool   `json:"required"`
+	Disabled    bool   `json:"disabled"`
+	// Invalid sets aria-invalid="true" (the field label turns red).
+	Invalid bool `json:"invalid"`
+	// DescribedBy is the id of the error/help text (aria-describedby).
+	DescribedBy string           `json:"describedBy"`
+	Class       string           `json:"class"`
+	Attrs       templ.Attributes `json:"attrs"`
+}
+
+// Input is input.md.
+templ Input(p InputProps) {
+	<input
+		type={ orDefault(p.Type, "text") }
+		class={ cx(inputClasses, p.Class) }
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		if p.Value != "" {
+			value={ p.Value }
+		}
+		if p.Placeholder != "" {
+			placeholder={ p.Placeholder }
+		}
+		required?={ p.Required }
+		disabled?={ p.Disabled }
+		if p.Invalid {
+			aria-invalid="true"
+		}
+		if p.DescribedBy != "" {
+			aria-describedby={ p.DescribedBy }
+		}
+		{ Attrs(p.Attrs)... }
+	/>
+}
+
+// TextareaProps mirrors textarea.md's Props table.
+type TextareaProps struct {
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Value       string           `json:"value"`
+	Placeholder string           `json:"placeholder"`
+	Rows        int              `json:"rows"`
+	Required    bool             `json:"required"`
+	Disabled    bool             `json:"disabled"`
+	Invalid     bool             `json:"invalid"`
+	DescribedBy string           `json:"describedBy"`
+	Class       string           `json:"class"`
+	Attrs       templ.Attributes `json:"attrs"`
+}
+
+// Textarea is textarea.md.
+templ Textarea(p TextareaProps) {
+	<textarea
+		class={ cx(textareaClasses, p.Class) }
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		if p.Placeholder != "" {
+			placeholder={ p.Placeholder }
+		}
+		if p.Rows > 0 {
+			rows={ p.Rows }
+		}
+		required?={ p.Required }
+		disabled?={ p.Disabled }
+		if p.Invalid {
+			aria-invalid="true"
+		}
+		if p.DescribedBy != "" {
+			aria-describedby={ p.DescribedBy }
+		}
+		{ Attrs(p.Attrs)... }
+	>{ p.Value }</textarea>
+}
+
+// Option is one (value, label) pair of a select.
+type Option struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
+// SelectProps mirrors select.md's Props table.
+type SelectProps struct {
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Options  []Option `json:"options"`
+	Selected string   `json:"selected"`
+	// Placeholder adds a first option with an empty value.
+	Placeholder string `json:"placeholder"`
+	Required    bool   `json:"required"`
+	Disabled    bool   `json:"disabled"`
+	Invalid     bool   `json:"invalid"`
+	DescribedBy string `json:"describedBy"`
+	// Class goes on the wrapper <span> (width, layout); Attrs on the <select>.
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// Select is select.md: a native <select> with the base-select picker styling.
+templ Select(p SelectProps) {
+	<span class={ cx(selectWrapClasses, p.Class) } style="--select-checkmark: url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M20 6L9 17l-5-5'/></svg>&quot;)">
+		<select
+			class={ selectClasses }
+			if p.ID != "" {
+				id={ p.ID }
+			}
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			required?={ p.Required }
+			disabled?={ p.Disabled }
+			if p.Invalid {
+				aria-invalid="true"
+			}
+			if p.DescribedBy != "" {
+				aria-describedby={ p.DescribedBy }
+			}
+			{ Attrs(p.Attrs)... }
+		>
+			if p.Placeholder != "" {
+				<option value="">{ p.Placeholder }</option>
+			}
+			for _, o := range p.Options {
+				<option value={ o.Value } selected?={ o.Value == p.Selected }>{ o.Label }</option>
+			}
+		</select>
+		@Icon(IconProps{Name: "chevron-down", Class: selectChevronClass})
+	</span>
+}
+
+// CheckboxProps mirrors checkbox.md's Props table.
+type CheckboxProps struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Checked  bool   `json:"checked"`
+	Disabled bool   `json:"disabled"`
+	// Label renders the sibling <label for={ID}> the spec shows.
+	Label string `json:"label"`
+	// Class goes on the wrapper <span>; Attrs on the <input>.
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// Checkbox is checkbox.md: wrapper span (peer) + native checkbox + check icon,
+// then the label.
+templ Checkbox(p CheckboxProps) {
+	<span class={ cx(controlWrapClasses, p.Class) }>
+		<input
+			type="checkbox"
+			class={ checkboxClasses }
+			if p.ID != "" {
+				id={ p.ID }
+			}
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			if p.Value != "" {
+				value={ p.Value }
+			}
+			checked?={ p.Checked }
+			disabled?={ p.Disabled }
+			{ Attrs(p.Attrs)... }
+		/>
+		@Icon(IconProps{Name: "check", Class: checkboxMarkClass})
+	</span>
+	if p.Label != "" {
+		<label class={ labelClasses } for={ p.ID }>{ p.Label }</label>
+	}
+}
+
+// SwitchProps mirrors switch.md's Props table.
+type SwitchProps struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Checked  bool   `json:"checked"`
+	Disabled bool   `json:"disabled"`
+	// Label renders a sibling <label for={ID}>; without one, give the input
+	// an aria-label in Attrs.
+	Label string           `json:"label"`
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// Switch is switch.md: a native checkbox with role="switch".
+templ Switch(p SwitchProps) {
+	<span class={ cx(controlWrapClasses, p.Class) }>
+		<input
+			type="checkbox"
+			role="switch"
+			class={ switchClasses }
+			if p.ID != "" {
+				id={ p.ID }
+			}
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			if p.Value != "" {
+				value={ p.Value }
+			}
+			checked?={ p.Checked }
+			disabled?={ p.Disabled }
+			{ Attrs(p.Attrs)... }
+		/>
+		<span class={ switchThumbClasses }></span>
+	</span>
+	if p.Label != "" {
+		<label class={ labelClasses } for={ p.ID }>{ p.Label }</label>
+	}
+}
+
+// LabelProps mirrors label.md.
+type LabelProps struct {
+	For   string           `json:"for"`
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// Label is label.md. Slot: the label text.
+templ Label(p LabelProps) {
+	<label class={ cx(labelClasses, p.Class) } for={ p.For } { Attrs(p.Attrs)... }>
+		{ children... }
+	</label>
+}
+
+// FieldOrientation is field.md's `orientation` option.
+type FieldOrientation string
+
+// Field orientations (field.md).
+const (
+	FieldVertical   FieldOrientation = "vertical"
+	FieldHorizontal FieldOrientation = "horizontal"
+	FieldResponsive FieldOrientation = "responsive"
+)
+
+var fieldOrientations = map[FieldOrientation]string{
+	FieldVertical:   fieldVertical,
+	FieldHorizontal: fieldHorizontal,
+	FieldResponsive: fieldResponsive,
+}
+
+// FieldProps mirrors field.md's Props table (the `field` part with its label,
+// description and error; the control is the default slot).
+type FieldProps struct {
+	// Label is the field_label text; For is the control's id.
+	Label       string           `json:"label"`
+	For         string           `json:"for"`
+	Orientation FieldOrientation `json:"orientation"`
+	// Description is help text under the control.
+	Description string `json:"description"`
+	// Error is rendered as field_error (role="alert") only when non-empty.
+	Error string `json:"error"`
+	// ErrorID is the error element id the control's aria-describedby points
+	// at; default For + "-err".
+	ErrorID string `json:"errorId"`
+	// Required adds the visual marker (a red "*", aria-hidden) to the label;
+	// the control itself carries the required attribute.
+	Required bool             `json:"required"`
+	Class    string           `json:"class"`
+	Attrs    templ.Attributes `json:"attrs"`
+}
+
+func (p FieldProps) errorID() string {
+	if p.ErrorID != "" {
+		return p.ErrorID
+	}
+	return p.For + "-err"
+}
+
+// Field is field.md's `field`: label, control (children), description, error.
+templ Field(p FieldProps) {
+	<div role="group" data-slot="field" class={ cx(fieldBaseClasses, pick("field orientation", fieldOrientations, p.Orientation, FieldVertical), p.Class) } { Attrs(p.Attrs)... }>
+		if p.Label != "" {
+			<label class={ cx(labelClasses, fieldLabelExtra) } for={ p.For } data-slot="field-label">
+				{ p.Label }
+				if p.Required {
+					<span class="text-destructive" aria-hidden="true">*</span>
+				}
+			</label>
+		}
+		{ children... }
+		if p.Description != "" {
+			<p class={ fieldDescClasses }>{ p.Description }</p>
+		}
+		if p.Error != "" {
+			<div id={ p.errorID() } role="alert" class={ fieldErrorClasses }>{ p.Error }</div>
+		}
+	</div>
+}
+
+// FieldGroupProps mirrors field.md's field_group.
+type FieldGroupProps struct {
+	Class string `json:"class"`
+}
+
+// FieldGroup is field.md's field_group (container for responsive fields).
+templ FieldGroup(p FieldGroupProps) {
+	<div class={ cx(fieldGroupClasses, p.Class) }>
+		{ children... }
+	</div>
+}
+
+// FormFieldProps mirrors form-field.md's Props table (hand-built FcFormField).
+type FormFieldProps struct {
+	Label    string `json:"label"`
+	For      string `json:"for"`
+	Required bool   `json:"required"`
+	// Span makes the field span both columns of .fc-form-grid (fc-span-2).
+	Span bool   `json:"span"`
+	Help string `json:"help"`
+	// Error replaces Help; it is <small id="{for}-msg" class="fc-field-error">.
+	Error string `json:"error"`
+}
+
+// FormField is form-field.md. Slot: the control (an `.fc-input`/`.fc-select`
+// carrying aria-invalid/aria-describedby="{for}-msg" when Error is set).
+templ FormField(p FormFieldProps) {
+	<div
+		if p.Span {
+			class="fc-form-field fc-span-2"
+		} else {
+			class="fc-form-field"
+		}
+	>
+		<label for={ p.For } class="fc-field-label">
+			{ p.Label }
+			if p.Required {
+				<span class="fc-required">*</span>
+			}
+		</label>
+		{ children... }
+		if p.Error != "" {
+			<small id={ p.For + "-msg" } class="fc-field-error">{ p.Error }</small>
+		} else if p.Help != "" {
+			<small class="fc-field-help">{ p.Help }</small>
+		}
+	</div>
+}
+
+// SearchInputProps mirrors search-input.md's Props table.
+type SearchInputProps struct {
+	Name        string `json:"name"` // default "q"
+	Placeholder string `json:"placeholder"`
+	Value       string `json:"value"`
+	// Class replaces the wrapper's width classes (default "w-80 max-w-full").
+	Class string `json:"class"`
+	// Attrs go on the <input> (data-bind, live-search handlers).
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// SearchInput is search-input.md: a search box with a leading icon.
+templ SearchInput(p SearchInputProps) {
+	<div
+		if p.Class != "" {
+			class={ "fc-input-icon " + p.Class }
+		} else {
+			class={ searchInputClasses }
+		}
+	>
+		@Icon(IconProps{Name: "search", Class: "size-[1rem]"})
+		<input
+			type="search"
+			name={ orDefault(p.Name, "q") }
+			class="fc-input"
+			placeholder={ p.Placeholder }
+			aria-label={ p.Placeholder }
+			if p.Value != "" {
+				value={ p.Value }
+			}
+			{ Attrs(p.Attrs)... }
+		/>
+	</div>
+}
+
+// FilterSelectProps mirrors filter-select.md's Props table.
+type FilterSelectProps struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
+	// Placeholder is the empty option ("All statuses"): choosing it clears the filter.
+	Placeholder string   `json:"placeholder"`
+	Options     []Option `json:"options"`
+	Selected    string   `json:"selected"`
+	// AutoSubmit adds data-on:change="el.form.requestSubmit()" (native GET form).
+	AutoSubmit bool `json:"autoSubmit"`
+	// Attrs go on the <select> (e.g. a Datastar live-filter handler instead of AutoSubmit).
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// FilterSelect is filter-select.md: a labelled .fc-select for a filter row or
+// the toolbar's Filters popover. Its id is "filter-{name}".
+templ FilterSelect(p FilterSelectProps) {
+	<div class="fc-form-field">
+		<label class="fc-field-label" for={ "filter-" + p.Name }>{ p.Label }</label>
+		<select
+			id={ "filter-" + p.Name }
+			name={ p.Name }
+			class="fc-select"
+			if p.AutoSubmit {
+				data-on:change={ submitOnChangeExpr }
+			}
+			{ Attrs(p.Attrs)... }
+		>
+			<option value="">{ p.Placeholder }</option>
+			for _, o := range p.Options {
+				<option value={ o.Value } selected?={ o.Value == p.Selected }>{ o.Label }</option>
+			}
+		</select>
+	</div>
+}
+
+// ToggleKind is toggle.md's `kind`.
+type ToggleKind string
+
+// Toggle kinds (toggle.md).
+const (
+	ToggleIndependent ToggleKind = "independent"
+	ToggleExclusive   ToggleKind = "exclusive"
+)
+
+// ToggleSize is toggle.md's `size`.
+type ToggleSize string
+
+// Toggle sizes (toggle.md).
+const (
+	ToggleSm ToggleSize = "sm"
+	ToggleMd ToggleSize = "md"
+	ToggleLg ToggleSize = "lg"
+)
+
+const toggleBase = "inline-flex shrink-0 cursor-pointer items-center justify-center border border-transparent text-sm font-medium whitespace-nowrap transition-colors select-none text-muted-foreground hover:bg-foreground/5 hover:text-foreground has-[:checked]:bg-foreground/10 has-[:checked]:text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50"
+
+var toggleSizes = map[ToggleSize]string{
+	ToggleSm: "h-8 gap-1.5 rounded-md px-2",
+	ToggleMd: "h-9 gap-2 rounded-lg px-3",
+	ToggleLg: "h-10 gap-2 rounded-lg px-4",
+}
+
+// ToggleGroupProps mirrors toggle.md's Props table (the SPA's SelectButton
+// is the exclusive group).
+type ToggleGroupProps struct {
+	Kind       ToggleKind       `json:"kind"`
+	Size       ToggleSize       `json:"size"`
+	Name       string           `json:"name"`
+	Options    []Option         `json:"options"`
+	Selected   []string         `json:"selected"`
+	Attrs      templ.Attributes `json:"attrs"`
+	InputAttrs templ.Attributes `json:"inputAttrs"`
+}
+
+func (p ToggleGroupProps) inputType() string {
+	if oneOf("toggle kind", p.Kind, ToggleIndependent, ToggleIndependent, ToggleExclusive) == ToggleExclusive {
+		return "radio"
+	}
+	return "checkbox"
+}
+
+// ToggleGroup is toggle.md's group of toggles.
+templ ToggleGroup(p ToggleGroupProps) {
+	<div class="inline-flex w-fit items-center gap-1 rounded-lg border border-border p-1" { Attrs(p.Attrs)... }>
+		for _, o := range p.Options {
+			<label class={ cx(toggleBase, pick("toggle size", toggleSizes, p.Size, ToggleMd)) }><input type={ p.inputType() } name={ p.Name } value={ o.Value } class="sr-only" checked?={ slices.Contains(p.Selected, o.Value) } { Attrs(p.InputAttrs)... }/>{ o.Label }</label>
+		}
+	</div>
+}

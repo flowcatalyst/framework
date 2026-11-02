@@ -1,0 +1,380 @@
+package kit
+
+import (
+	"encoding/json"
+	"strconv"
+	"strings"
+)
+
+// PickItem is one entry of a PickList.
+type PickItem struct {
+	// Value is submitted, and is data everywhere else (a quoted literal in
+	// the signal, a JSON array element in data-members, an attribute value):
+	// any text is safe. Only when Key is empty is it also the checkbox id's
+	// token, and must then be id-safe ([A-Za-z][A-Za-z0-9_-]*).
+	Value string `json:"value"`
+	// Key is the id-safe token of the checkbox id, for a Value that is not
+	// (a role name such as "yard:dispatcher"). Unique within the list. With
+	// Key set, Value need not be id-safe.
+	Key     string `json:"key"`
+	Name    string `json:"name"`
+	Code    string `json:"code"`
+	Note    string `json:"note"`
+	Checked bool   `json:"checked"`
+	// Group is a heading over a run of items; give the items sorted so each
+	// group is contiguous. Empty for an ungrouped list.
+	Group string `json:"group"`
+	// Description is a one-line explanation under the code (truncated, the
+	// full text in its title); it is part of what the filter matches.
+	Description string `json:"description"`
+	// Locked is a pick the user may see but not change: always selected,
+	// not removable, and still submitted under the list's name.
+	Locked bool `json:"locked"`
+}
+
+// PickListProps mirrors pick-list.md's Props table: the dual-pane picker
+// (checkboxes on the left, filtered as you type; the picked ones mirrored
+// on the right with a count) that posts the picked values under one name.
+type PickListProps struct {
+	ID                string     `json:"id"`
+	Signal            string     `json:"signal"`
+	FilterSignal      string     `json:"filterSignal"`
+	Name              string     `json:"name"`
+	ItemIDPrefix      string     `json:"itemIdPrefix"`
+	Items             []PickItem `json:"items"`
+	AvailableTitle    string     `json:"availableTitle"`
+	SelectedTitle     string     `json:"selectedTitle"`
+	FilterPlaceholder string     `json:"filterPlaceholder"`
+	// Bulk adds "Select shown" (ticks every row the filter shows) and
+	// "Clear" (unticks every unlocked pick) to the left pane.
+	Bulk bool `json:"bulk"`
+	// Embedded renders the panes only (PickListFields): no form, no Save,
+	// for a picker inside a form that already submits (a dialog's). Action,
+	// FormAttrs and SaveLabel do not apply.
+	Embedded  bool             `json:"embedded"`
+	EmptyText string           `json:"emptyText"`
+	SaveLabel string           `json:"saveLabel"`
+	Action    string           `json:"action"`
+	FormAttrs templ.Attributes `json:"formAttrs"`
+}
+
+const (
+	pickPane      = "flex min-w-0 flex-col overflow-hidden rounded-lg border border-border"
+	pickHeading   = "text-[12px] font-semibold tracking-wider text-subtle-foreground uppercase"
+	pickRowLeft   = "flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-foreground/5 has-[:checked]:bg-primary/10"
+	pickRowRight  = "flex items-center justify-between gap-3 rounded-md px-2 py-1.5"
+	pickRemoveExt = "[&]:size-7 [&]:rounded-full cursor-pointer text-destructive"
+	pickGroup     = "px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-subtle-foreground uppercase"
+)
+
+func (p PickListProps) itemID(it PickItem) string {
+	if it.Key != "" {
+		return ID(p.ItemIDPrefix + it.Key)
+	}
+	return ID(p.ItemIDPrefix + it.Value)
+}
+
+// jsQuote writes v as a single-quoted JavaScript string literal: backslash,
+// quote, CR and LF are escaped, and < is written \x3c so it can never be
+// read as markup in whatever HTML context the literal is copied into
+// (pick-list.md, Behaviour).
+func jsQuote(v string) string {
+	r := strings.NewReplacer(`\`, `\\`, `'`, `\'`, "\n", `\n`, "\r", `\r`, "<", `\x3c`)
+	return "'" + r.Replace(v) + "'"
+}
+
+// signals declares the positional initial value of the picked signal: one
+// slot per checkbox in DOM order, the value when picked, ” when not
+// (pick-list.md, Behaviour), JSON-encoded.
+func (p PickListProps) signals() string {
+	var slots []string
+	for _, it := range p.Items {
+		if it.Locked {
+			continue // not bound, so it has no slot
+		}
+		if it.Checked {
+			slots = append(slots, jsQuote(it.Value))
+		} else {
+			slots = append(slots, "''")
+		}
+	}
+	arr := "[" + strings.Join(slots, ", ") + "]"
+	return "{" + Signal(p.Signal) + ": " + arr + ", " + Signal(p.FilterSignal) + ": ''}"
+}
+
+// formAttrs are the form's other attributes. data-signals and data-init are
+// written before them, in that order: Datastar applies attributes in
+// document order, and the snapshot must see the declared array (a spread
+// map would be written in sorted order, data-init first).
+func (p PickListProps) formAttrs() templ.Attributes {
+	a := templ.Attributes{}
+	if p.Action != "" {
+		a["method"] = "post"
+		a["action"] = p.Action
+	}
+	for k, v := range p.FormAttrs {
+		a[k] = v
+	}
+	return a
+}
+
+func (p PickListProps) filterExpr() string {
+	q := "$" + Signal(p.FilterSignal)
+	return "!" + q + ".trim() || el.dataset.filterText.includes(" + q + ".trim().toLowerCase())"
+}
+
+// locked counts the locked items: always selected, outside the signal.
+func (p PickListProps) locked() int {
+	n := 0
+	for _, it := range p.Items {
+		if it.Locked {
+			n++
+		}
+	}
+	return n
+}
+
+// picked counts what is selected at render time, locked items included.
+func (p PickListProps) picked() int {
+	n := 0
+	for _, it := range p.Items {
+		if it.Checked || it.Locked {
+			n++
+		}
+	}
+	return n
+}
+
+// count is the selected count's expression: the signal's picks plus the
+// locked ones.
+func (p PickListProps) count() string {
+	n := "$" + Signal(p.Signal) + ".filter(Boolean).length"
+	if l := p.locked(); l > 0 {
+		n += " + " + strconv.Itoa(l)
+	}
+	return n
+}
+
+func pickFilterText(it PickItem) string {
+	return strings.ToLower(it.Name + " " + it.Code + " " + it.Description)
+}
+
+// startsGroup reports whether item i opens a new group heading.
+func (p PickListProps) startsGroup(i int) bool {
+	g := p.Items[i].Group
+	return g != "" && (i == 0 || p.Items[i-1].Group != g)
+}
+
+// groupMembers is the unlocked values of the group that item i opens, as a
+// JSON array (values are any text: with a Key they need not be id-safe, so
+// a separator-joined list could split one). Locked members are left out: a
+// group holding one is always shown (groupHasLocked).
+func (p PickListProps) groupMembers(i int) string {
+	vs := []string{}
+	for _, it := range p.Items[i:] {
+		if it.Group != p.Items[i].Group {
+			break
+		}
+		if !it.Locked {
+			vs = append(vs, it.Value)
+		}
+	}
+	b, _ := json.Marshal(vs) // a []string always marshals
+	return string(b)
+}
+
+// groupHasLocked reports whether the group opened by item i holds a locked
+// item: always picked, so its right-pane heading always shows.
+func (p PickListProps) groupHasLocked(i int) bool {
+	for _, it := range p.Items[i:] {
+		if it.Group != p.Items[i].Group {
+			break
+		}
+		if it.Locked {
+			return true
+		}
+	}
+	return false
+}
+
+// groupFilterText is what the filter matches a heading against: the text of
+// every item in its group, so a heading shows while any of its rows does.
+func (p PickListProps) groupFilterText(i int) string {
+	var ts []string
+	for _, it := range p.Items[i:] {
+		if it.Group != p.Items[i].Group {
+			break
+		}
+		ts = append(ts, pickFilterText(it))
+	}
+	return strings.Join(ts, " ")
+}
+
+// groupHasPick reports whether the group opened by item i has a pick at
+// render time (a locked item always counts).
+func (p PickListProps) groupHasPick(i int) bool {
+	for _, it := range p.Items[i:] {
+		if it.Group != p.Items[i].Group {
+			break
+		}
+		if it.Checked || it.Locked {
+			return true
+		}
+	}
+	return false
+}
+
+// groupPickedExpr shows a right-pane heading while a member is picked.
+func (p PickListProps) groupPickedExpr() string {
+	return "JSON.parse(el.dataset.members).some(v => $" + Signal(p.Signal) + ".includes(v))"
+}
+
+// notifyInput tells the surrounding form that its fields changed, so a
+// FormDialog's dirty state (data-on:input) sees a bulk change. Datastar runs
+// a handler in a batch and updates the bound checkboxes when it ends, so the
+// event is queued as a microtask: it fires after the checkboxes are set.
+const pickNotifyInput = "; const f = el.closest('form'); queueMicrotask(() => f && f.dispatchEvent(new Event('input', {bubbles: true})))"
+
+// selectShownExpr ticks every row the filter shows, keeping the others as
+// they are (the signal is positional, one slot per unlocked checkbox).
+func (p PickListProps) selectShownExpr() string {
+	s := "$" + Signal(p.Signal)
+	return "const c = [...document.getElementById('" + ID(p.ID) + "').querySelectorAll('input[type=checkbox]:not(:disabled)')]; " +
+		s + " = c.map((x, i) => x.closest('label').style.display === 'none' ? " + s + "[i] : x.value)" + pickNotifyInput
+}
+
+func (p PickListProps) clearExpr() string {
+	s := "$" + Signal(p.Signal)
+	return s + " = " + s + ".map(() => '')" + pickNotifyInput
+}
+
+// PickList is pick-list.md; with Embedded it is PickListFields.
+templ PickList(p PickListProps) {
+	if p.Embedded {
+		@PickListFields(p)
+	} else {
+		@pickListForm(p)
+	}
+}
+
+templ pickListForm(p PickListProps) {
+	<form id={ ID(p.ID) } class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-signals={ p.signals() } data-init={ "el.dataset.snapshot = JSON.stringify($" + Signal(p.Signal) + ")" } { Attrs(p.formAttrs())... }>
+		@pickPanes(p)
+		<div class="sm:col-span-2 flex justify-end gap-2">
+			<button type="submit" disabled data-attr:disabled={ "JSON.stringify($" + Signal(p.Signal) + ") === el.form.dataset.snapshot" } class={ ButtonClasses(ButtonPrimary, ButtonMd) }>
+				@Icon(IconProps{Name: "check"})
+				{ p.SaveLabel }
+			</button>
+		</div>
+	</form>
+}
+
+// PickListFields is the picker inside a form that already has its own
+// submit (a dialog's): the two panes and nothing else, no form element and
+// no Save button. The checkboxes post under Name with the surrounding form.
+templ PickListFields(p PickListProps) {
+	<div id={ ID(p.ID) } class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-signals={ p.signals() }>
+		@pickPanes(p)
+	</div>
+}
+
+templ pickPanes(p PickListProps) {
+	<div class={ pickPane }>
+		<div class="flex flex-col gap-2 border-b border-border bg-subtle p-3">
+			<h4 class={ pickHeading }>{ p.AvailableTitle }</h4>
+			<input class={ inputClasses } type="search" placeholder={ p.FilterPlaceholder } aria-label={ p.FilterPlaceholder } { templ.Attributes{"data-bind:" + SignalAttr(p.FilterSignal): true}... }/>
+			if p.Bulk {
+				<div class="flex gap-2">
+					<button type="button" class={ ButtonClasses(ButtonOutline, ButtonSm) } data-on:click={ p.selectShownExpr() }>Select shown</button>
+					<button type="button" class={ ButtonClasses(ButtonGhost, ButtonSm) } data-on:click={ p.clearExpr() }>Clear</button>
+				</div>
+			}
+		</div>
+		<div class="h-[200px] overflow-y-auto p-1">
+			for i, it := range p.Items {
+				if p.startsGroup(i) {
+					<div data-show={ p.filterExpr() } data-filter-text={ p.groupFilterText(i) } class={ pickGroup }>{ it.Group }</div>
+				}
+				if it.Locked {
+					<label for={ p.itemID(it) } data-show={ p.filterExpr() } data-filter-text={ pickFilterText(it) } class={ pickRowLeft + " cursor-default opacity-70" }>
+						@pickText(it)
+						<span class={ controlWrapClasses }>
+							<input type="checkbox" class={ checkboxClasses } id={ p.itemID(it) } checked disabled/>
+							@Icon(IconProps{Name: "check", Class: checkboxMarkClass})
+							<input type="hidden" name={ p.Name } value={ it.Value }/>
+						</span>
+					</label>
+				} else {
+					<label for={ p.itemID(it) } data-show={ p.filterExpr() } data-filter-text={ pickFilterText(it) } class={ pickRowLeft }>
+						@pickText(it)
+						<span class={ controlWrapClasses }>
+							<input type="checkbox" class={ checkboxClasses } id={ p.itemID(it) } name={ p.Name } value={ it.Value } checked?={ it.Checked } { templ.Attributes{"data-bind:" + SignalAttr(p.Signal): true}... }/>
+							@Icon(IconProps{Name: "check", Class: checkboxMarkClass})
+						</span>
+					</label>
+				}
+			}
+		</div>
+	</div>
+	<div class={ pickPane }>
+		<div class="border-b border-border bg-subtle p-3"><h4 class={ pickHeading }>{ orDefault(p.SelectedTitle, "Selected") } (<span data-text={ p.count() }>{ strconv.Itoa(p.picked()) }</span>)</h4></div>
+		<div class="h-[200px] overflow-y-auto p-1">
+			for i, it := range p.Items {
+				if p.startsGroup(i) && p.groupHasLocked(i) {
+					<div class={ pickGroup }>{ it.Group }</div>
+				} else if p.startsGroup(i) {
+					<div
+						data-members={ p.groupMembers(i) }
+						data-show={ p.groupPickedExpr() }
+						if !p.groupHasPick(i) {
+							style="display: none"
+						}
+						class={ pickGroup }
+					>{ it.Group }</div>
+				}
+				if it.Locked {
+					<div class={ pickRowRight }>
+						@pickText(it)
+						<span class="inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground" role="img" title="Cannot be changed" aria-label={ it.Name + " cannot be changed" }>
+							@Icon(IconProps{Name: "lock", Class: "size-[0.9rem]"})
+						</span>
+					</div>
+				} else {
+					<div
+						data-value={ it.Value }
+						data-show={ "$" + Signal(p.Signal) + ".includes(el.dataset.value)" }
+						if !it.Checked {
+							style="display: none"
+						}
+						class={ pickRowRight }
+					>
+						@pickText(it)
+						<label for={ p.itemID(it) } title="Remove" aria-label={ "Remove " + it.Name } class={ cx(ButtonClasses(ButtonGhost, ButtonIcon), pickRemoveExt) }>
+							@Icon(IconProps{Name: "x", Class: "size-[0.9rem]"})
+						</label>
+					</div>
+				}
+			}
+			<p
+				data-show={ p.count() + " === 0" }
+				if p.picked() > 0 {
+					style="display: none"
+				}
+				class="p-3 text-center text-muted-foreground"
+			>{ p.EmptyText }</p>
+		</div>
+	</div>
+}
+
+templ pickText(it PickItem) {
+	<span class="flex min-w-0 flex-col">
+		<span class="truncate font-medium">{ it.Name }</span>
+		<span class="truncate font-mono text-[12px] text-muted-foreground">{ it.Code }</span>
+		if it.Description != "" {
+			<span class="truncate text-[12px] text-muted-foreground" title={ it.Description }>{ it.Description }</span>
+		}
+		if it.Note != "" {
+			<span class="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{ it.Note }</span>
+		}
+	</span>
+}

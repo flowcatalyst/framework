@@ -1,7 +1,9 @@
 # The Go framework (go/): format, lints, the framework's analyzers, NilAway, tests with -race, and
-# govulncheck. The Java build is separate (publish.yml runs it on tags); this workflow runs only when
-# the Go tree, the shared conformance vectors or this file change. The toolchain is Go 1.27.3 (the
-# go directive in go/go.mod); the lint tools are pinned in go/tools/go.mod and built by it.
+# govulncheck, over the three modules (core, go/flowcatalyst, go/ui) and the templ check (ui-verify).
+# The Java build is separate (publish.yml runs it on tags); this workflow runs only when the Go tree,
+# the shared conformance vectors, the UI kit or its static files, or this file change. The toolchain
+# is Go 1.27.3 (the go directive in go/go.mod); the lint tools are pinned in go/tools/go.mod and
+# built by it.
 # Written in G0; every job's command was run locally on 2026-10-18 (docs/go/milestones.md); a first run
 # on GitHub is still to happen.
 name: go
@@ -9,9 +11,9 @@ name: go
 on:
   push:
     branches: [main]
-    paths: ["go/**", "conformance/**", ".github/workflows/go.yml"]
+    paths: ["go/**", "conformance/**", "ui-kit/**", "framework-ui/src/main/resources/fw-ui/**", ".github/workflows/go.yml"]
   pull_request:
-    paths: ["go/**", "conformance/**", ".github/workflows/go.yml"]
+    paths: ["go/**", "conformance/**", "ui-kit/**", "framework-ui/src/main/resources/fw-ui/**", ".github/workflows/go.yml"]
 
 permissions:
   contents: read
@@ -30,11 +32,13 @@ jobs:
           go-version: "1.27.3"
           cache-dependency-path: |
             go/go.sum
+            go/ui/go.sum
             go/tools/go.sum
       - run: make fmt-check
       - run: make lint
       - run: make vet
       - run: make nilaway
+      - run: make ui-verify # the committed *_templ.go files are templ's output
 
   test:
     runs-on: ubuntu-latest
@@ -62,9 +66,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.27.3"
-          cache-dependency-path: go/go.sum
+          cache-dependency-path: |
+            go/go.sum
+            go/ui/go.sum
       - run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 # the sqlfw tests run sqlc
-      - run: make test
+      - run: make test # core, flowcatalyst and ui (the ui tests read ui-kit/fixtures in place)
 
   # The checked SQL of the examples: sqlc vet (prepare every query against a PostgreSQL migrated
   # by the framework's runner) and diff, and the jet table code. The tool starts its own embedded
@@ -91,3 +97,5 @@ jobs:
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./... # the flowcatalyst module is its own go.mod
         working-directory: go/flowcatalyst
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./... # go/ui is its own go.mod too
+        working-directory: go/ui

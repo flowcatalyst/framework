@@ -1,0 +1,114 @@
+package kit
+
+import "strings"
+
+// PermissionDeniedKind is which of the two cases the dialog shows.
+type PermissionDeniedKind string
+
+// The dialog's cases (permission-denied-dialog.md).
+const (
+	PermissionDenied PermissionDeniedKind = "denied"
+	SessionExpired   PermissionDeniedKind = "session"
+)
+
+// PermissionDeniedKindOf picks the case from the server's message, as the
+// SPA does: a message that mentions the session, expiry or authentication is
+// a session problem, anything else a missing permission.
+func PermissionDeniedKindOf(message string) PermissionDeniedKind {
+	m := strings.ToLower(message)
+	for _, w := range []string{"session", "expired", "authenticated"} {
+		if strings.Contains(m, w) {
+			return SessionExpired
+		}
+	}
+	return PermissionDenied
+}
+
+// PermissionDeniedDialogProps mirrors permission-denied-dialog.md's Props table.
+type PermissionDeniedDialogProps struct {
+	ID      string               `json:"id"`
+	Kind    PermissionDeniedKind `json:"kind"`
+	Message string               `json:"message"`
+	// RequiredPermission is shown for the denied case when known.
+	RequiredPermission string `json:"requiredPermission"`
+	// HomeURL is the "Go to Dashboard" target. Required for the denied case:
+	// the kit names no application path, so an empty one panics.
+	HomeURL string `json:"homeUrl"`
+	// LoginURL is the "Log In Again" target. Required for the session case,
+	// likewise.
+	LoginURL string `json:"loginUrl"`
+	// Open shows the dialog when the markup arrives (a patch from the server).
+	Open bool `json:"open"`
+}
+
+func (p PermissionDeniedDialogProps) kind() PermissionDeniedKind {
+	return oneOf("permission-denied kind", p.Kind, PermissionDenied, PermissionDenied, SessionExpired)
+}
+
+func (p PermissionDeniedDialogProps) expired() bool { return p.kind() == SessionExpired }
+
+// required returns an application path the caller must supply: the kit has
+// no defaults of its own (contract section 7: nothing in the module names an
+// application path).
+func required(what, value string) string {
+	if value == "" {
+		panic("kit: " + what + " is required (the kit names no application path; contract section 7)")
+	}
+	return value
+}
+
+func (p PermissionDeniedDialogProps) title() string {
+	if p.expired() {
+		return "Session Expired"
+	}
+	return "Permission Denied"
+}
+
+func (p PermissionDeniedDialogProps) dialogAttrs() templ.Attributes {
+	a := templ.Attributes{}
+	if p.expired() {
+		a["closedby"] = "none"
+		a["data-on:cancel"] = "evt.preventDefault()"
+	} else {
+		a["closedby"] = "any"
+		a["data-on:click"] = LightDismiss
+	}
+	if p.Open {
+		a["data-init"] = "el.showModal()"
+	}
+	return a
+}
+
+// PermissionDeniedDialog is permission-denied-dialog.md: the modal the SPA
+// shows on a 403 or an expired session.
+templ PermissionDeniedDialog(p PermissionDeniedDialogProps) {
+	<dialog id={ ID(p.ID) } class="fc-dialog w-[26rem] max-w-[calc(100vw-2rem)]" role="alertdialog" aria-labelledby={ p.ID + "-title" } aria-describedby={ p.ID + "-desc" } { Attrs(p.dialogAttrs())... }>
+		<div class="fc-dialog-header"><span id={ p.ID + "-title" }>{ p.title() }</span></div>
+		<div class="fc-dialog-body flex flex-col items-center gap-3 text-center">
+			if p.expired() {
+				<span class="flex size-16 items-center justify-center rounded-full bg-yellow-500/15 text-yellow-600">
+					@Icon(IconProps{Name: "clock", Class: "size-7"})
+				</span>
+			} else {
+				<span class="flex size-16 items-center justify-center rounded-full bg-red-500/15 text-red-600">
+					@Icon(IconProps{Name: "lock", Class: "size-7"})
+				</span>
+			}
+			<p id={ p.ID + "-desc" } class="text-[15px] leading-normal">{ p.Message }</p>
+			if !p.expired() && p.RequiredPermission != "" {
+				<p class="text-[13px] text-muted-foreground">Required permission: <code class="rounded bg-foreground/10 px-1.5 py-0.5 text-xs">{ p.RequiredPermission }</code></p>
+			}
+			if !p.expired() {
+				<p class="text-[13px] text-muted-foreground">Contact your administrator if you believe you should have access to this resource.</p>
+			}
+		</div>
+		<div class="fc-dialog-footer">
+			if p.expired() {
+				<a class="fc-btn fc-btn-primary" autofocus href={ SafeURL(required("PermissionDeniedDialogProps.LoginURL", p.LoginURL)) }>Log In Again</a>
+			} else {
+				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="history.back()">Go Back</button>
+				<a class="fc-btn fc-btn-primary" href={ SafeURL(required("PermissionDeniedDialogProps.HomeURL", p.HomeURL)) }>Go to Dashboard</a>
+			}
+		</div>
+	</dialog>
+}

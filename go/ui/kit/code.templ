@@ -1,0 +1,73 @@
+package kit
+
+import "strings"
+
+// CodeChipsProps mirrors code-chips.md's Props table.
+type CodeChipsProps struct {
+	// Code is split on ":"; each segment is escaped.
+	Code string `json:"code"`
+	// SegmentAttrs go on the segment at the same position (a live preview
+	// binds data-text to a signal).
+	SegmentAttrs []templ.Attributes `json:"segmentAttrs"`
+	Class        string             `json:"class"`
+}
+
+var codeKinds = [...]string{"app", "subdomain", "aggregate", "event"}
+
+// codeKind is the colour class of segment i (the fourth and later are "event").
+func codeKind(i int) string {
+	if i < len(codeKinds) {
+		return codeKinds[i]
+	}
+	return codeKinds[len(codeKinds)-1]
+}
+
+func (p CodeChipsProps) segmentAttrs(i int) templ.Attributes {
+	if i < len(p.SegmentAttrs) {
+		return p.SegmentAttrs[i]
+	}
+	return nil
+}
+
+// CodeChips is code-chips.md: an event-type code as coloured segments.
+templ CodeChips(p CodeChipsProps) {
+	<span class={ cx("fc-code", p.Class) }>
+		for i, seg := range strings.Split(p.Code, ":") {
+			if i > 0 {
+				<span class="fc-code-sep">:</span>
+			}
+			<span class={ "fc-code-seg " + codeKind(i) } { Attrs(p.segmentAttrs(i))... }>{ seg }</span>
+		}
+	</span>
+}
+
+// CodeBlockProps mirrors code-block.md's Props table. The default slot is
+// the code: plain text (escaped by templ) or highlighter output passed as
+// templ.Raw, which must be escaped text plus <span class="hl-*"> only.
+type CodeBlockProps struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Class string `json:"class"`
+}
+
+// CodeBlock is code-block.md: code on a dark, scrollable, focusable panel.
+templ CodeBlock(p CodeBlockProps) {
+	<pre
+		if p.ID != "" {
+			id={ ID(p.ID) }
+		}
+		class={ cx("fc-code-block", p.Class) }
+		tabindex="0"
+		aria-label={ p.Label }
+	>
+		<code>
+			{ children... }
+		</code>
+	</pre>
+}
+
+// CopyText is code-block.md's copy action: the Datastar expression that
+// copies the text of the element with this id to the clipboard.
+func CopyText(id string) string {
+	return "navigator.clipboard.writeText(document.getElementById('" + ID(id) + "').textContent)"
+}

@@ -1,0 +1,94 @@
+package kit
+
+// ThemeChoice is the user's theme: follow the system, or always light/dark
+// (app-shell.md, Theme).
+type ThemeChoice string
+
+// Theme choices.
+const (
+	ThemeSystem ThemeChoice = "system"
+	ThemeLight  ThemeChoice = "light"
+	ThemeDark   ThemeChoice = "dark"
+)
+
+// ThemeCookie holds an explicit choice ("light" or "dark"; absent = system),
+// SchemeCookie the system scheme the page last observed ("light" or "dark").
+// The server renders <html class="dark"> from them, so a dark page does not
+// flash light before Datastar runs.
+const (
+	ThemeCookie  = "fc_theme"
+	SchemeCookie = "fc_scheme"
+)
+
+const cookieTail = ";path=/;max-age=31536000;samesite=lax"
+
+// themeWatchExpr runs on <html>: in system mode it follows the OS scheme
+// (now and when it changes) and records it in fc_scheme for the next load.
+const themeWatchExpr = "const m = window.matchMedia('(prefers-color-scheme: dark)'); " +
+	"const sync = () => { if ($theme !== 'system') return; $dark = m.matches; document.cookie = 'fc_scheme=' + (m.matches ? 'dark' : 'light') + '" + cookieTail + "' }; " +
+	"sync(); m.addEventListener('change', sync)"
+
+// ThemeHTMLAttrs are the theme attributes app-shell.md puts on <html>: the
+// class rendered by the server (dark resolved from the cookies), the two
+// signals (theme = the choice, dark = what is shown), the class binding and
+// the system-scheme watcher.
+func ThemeHTMLAttrs(choice ThemeChoice, dark bool) templ.Attributes {
+	a := templ.Attributes{
+		"data-signals:theme": "'" + string(validTheme(choice)) + "'",
+		"data-signals:dark":  "false",
+		"data-class:dark":    "$dark",
+		"data-init":          themeWatchExpr,
+	}
+	if dark {
+		a["class"] = "dark"
+		a["data-signals:dark"] = "true"
+	}
+	return a
+}
+
+func validTheme(c ThemeChoice) ThemeChoice {
+	switch c {
+	case ThemeLight, ThemeDark:
+		return c
+	case ThemeSystem:
+	}
+	return ThemeSystem
+}
+
+// themeOption is one button of the theme picker.
+type themeOption struct {
+	choice ThemeChoice
+	label  string
+	icon   string
+	click  string
+}
+
+var themeOptions = []themeOption{
+	{ThemeSystem, "System", "monitor", "$theme = 'system'; $dark = window.matchMedia('(prefers-color-scheme: dark)').matches; document.cookie = 'fc_theme=;path=/;max-age=0;samesite=lax'; document.cookie = 'fc_scheme=' + ($dark ? 'dark' : 'light') + '" + cookieTail + "'"},
+	{ThemeLight, "Light", "sun", "$theme = 'light'; $dark = false; document.cookie = 'fc_theme=light" + cookieTail + "'"},
+	{ThemeDark, "Dark", "moon", "$theme = 'dark'; $dark = true; document.cookie = 'fc_theme=dark" + cookieTail + "'"},
+}
+
+func (o themeOption) pressed(current ThemeChoice) string {
+	if validTheme(current) == o.choice {
+		return "true"
+	}
+	return "false"
+}
+
+func (o themeOption) pressedExpr() string {
+	return "$theme === '" + string(o.choice) + "' ? 'true' : 'false'"
+}
+
+// ThemeChoices is the user menu's theme picker (app-shell.md, Theme): three
+// toggle buttons; the pressed state starts from the server's value.
+templ ThemeChoices(current ThemeChoice) {
+	<div class="fc-theme-choice" role="group" aria-label="Theme">
+		for _, o := range themeOptions {
+			<button type="button" class="fc-theme-option" aria-pressed={ o.pressed(current) } data-attr:aria-pressed={ o.pressedExpr() } data-on:click={ o.click }>
+				@Icon(IconProps{Name: o.icon, Class: "size-[0.95rem]"})
+				{ o.label }
+			</button>
+		}
+	</div>
+}

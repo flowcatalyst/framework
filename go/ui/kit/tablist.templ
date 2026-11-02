@@ -1,0 +1,118 @@
+package kit
+
+// TabListProps mirrors tab-list.md's Props table: the ARIA tab pattern
+// (tablist, tab, tabpanel, arrow keys) with the selected tab kept in the URL.
+// Tabs.md is the plain link-style variant; this one is for drawers and pages
+// where the keyboard and screen readers must get real tabs.
+type TabListProps struct {
+	// ID derives the tab and panel ids: {id}-tab-{value}, {id}-panel-{value}.
+	ID string `json:"id"`
+	// Signal holds the selected value (camelCase, unique per page).
+	Signal string `json:"signal"`
+	// Label names the tablist (aria-label).
+	Label string    `json:"label"`
+	Tabs  []TabItem `json:"tabs"`
+	// Selected is the initial tab (default: the first); the server reads it
+	// from the query parameter.
+	Selected string `json:"selected"`
+	// Param is the query parameter the active tab is written to (default "tab").
+	Param     string `json:"param"`
+	ListClass string `json:"listClass"`
+	Class     string `json:"class"`
+	// Panels holds each tab's content by value.
+	Panels map[string]templ.Component `json:"-"`
+}
+
+// tabListTriggerClasses are tabTriggerClasses with the selected look on
+// aria-selected (the ARIA pattern) instead of aria-current.
+const tabListTriggerClasses = "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background text-muted-foreground hover:bg-foreground/5 hover:text-foreground aria-selected:bg-foreground/10 aria-selected:text-foreground aria-selected:hover:bg-foreground/10"
+
+// tabListKeysExpr moves focus and selection with the arrow keys, Home and End
+// (automatic activation: focusing a tab selects it).
+const tabListKeysExpr = "const t = [...el.querySelectorAll('[role=tab]')]; const i = t.indexOf(document.activeElement); const k = evt.key; const n = k === 'ArrowRight' ? (i + 1) % t.length : k === 'ArrowLeft' ? (i - 1 + t.length) % t.length : k === 'Home' ? 0 : k === 'End' ? t.length - 1 : -1; if (i >= 0 && n >= 0) { evt.preventDefault(); t[n].focus(); t[n].click() }"
+
+func (p TabListProps) selected() string {
+	if p.Selected != "" {
+		return ID(p.Selected)
+	}
+	if len(p.Tabs) > 0 {
+		return ID(p.Tabs[0].Value)
+	}
+	return ""
+}
+
+func (p TabListProps) param() string { return ID(orDefault(p.Param, "tab")) }
+
+func (p TabListProps) tabID(value string) string   { return ID(p.ID) + "-tab-" + ID(value) }
+func (p TabListProps) panelID(value string) string { return ID(p.ID) + "-panel-" + ID(value) }
+
+func (p TabListProps) is(value string) string {
+	return "$" + Signal(p.Signal) + " === '" + ID(value) + "'"
+}
+
+func (p TabListProps) rootAttrs() templ.Attributes {
+	return templ.Attributes{"data-signals:" + SignalAttr(p.Signal): "'" + p.selected() + "'"}
+}
+
+// selectExpr selects the tab and writes it to the address bar without a
+// navigation, so a reload or a shared link lands on the same tab.
+func (p TabListProps) selectExpr(value string) string {
+	return "$" + Signal(p.Signal) + " = '" + ID(value) + "'; const u = new URL(location.href); u.searchParams.set('" + p.param() + "', '" + ID(value) + "'); history.replaceState(null, '', u)"
+}
+
+func (p TabListProps) tabAttrs(value string) templ.Attributes {
+	return templ.Attributes{
+		"data-attr:aria-selected": p.is(value) + " ? 'true' : 'false'",
+		"data-attr:tabindex":      p.is(value) + " ? 0 : -1",
+		"data-on:click__prevent":  p.selectExpr(value),
+	}
+}
+
+func (p TabListProps) panel(value string) templ.Component {
+	if c, ok := p.Panels[value]; ok && c != nil {
+		return c
+	}
+	return templ.NopComponent
+}
+
+func ariaBool(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+// TabList is tab-list.md.
+templ TabList(p TabListProps) {
+	<div class={ cx("flex flex-col gap-4", p.Class) } { Attrs(p.rootAttrs())... }>
+		<div role="tablist" aria-label={ p.Label } class={ cx("inline-flex w-fit items-center gap-1 rounded-lg border border-border p-1", p.ListClass) } data-on:keydown={ tabListKeysExpr }>
+			for _, t := range p.Tabs {
+				<a
+					role="tab"
+					id={ p.tabID(t.Value) }
+					href={ SafeURL("?" + p.param() + "=" + ID(t.Value)) }
+					aria-controls={ p.panelID(t.Value) }
+					aria-selected={ ariaBool(t.Value == p.selected()) }
+					if t.Value == p.selected() {
+						tabindex="0"
+					} else {
+						tabindex="-1"
+					}
+					class={ tabListTriggerClasses }
+					{ Attrs(p.tabAttrs(t.Value))... }
+				>{ t.Label }</a>
+			}
+		</div>
+		for _, t := range p.Tabs {
+			if t.Value == p.selected() {
+				<div role="tabpanel" id={ p.panelID(t.Value) } aria-labelledby={ p.tabID(t.Value) } tabindex="0" data-show={ p.is(t.Value) }>
+					@p.panel(t.Value)
+				</div>
+			} else {
+				<div role="tabpanel" id={ p.panelID(t.Value) } aria-labelledby={ p.tabID(t.Value) } tabindex="0" data-show={ p.is(t.Value) } style="display: none">
+					@p.panel(t.Value)
+				</div>
+			}
+		}
+	</div>
+}

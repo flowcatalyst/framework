@@ -1,0 +1,190 @@
+package kit
+
+// ButtonVariant is button.md's `variant` option.
+type ButtonVariant string
+
+// Button variants (button.md).
+const (
+	ButtonPrimary            ButtonVariant = "primary"
+	ButtonSecondary          ButtonVariant = "secondary"
+	ButtonOutline            ButtonVariant = "outline"
+	ButtonGhost              ButtonVariant = "ghost"
+	ButtonDestructive        ButtonVariant = "destructive"
+	ButtonText               ButtonVariant = "text"
+	ButtonDestructiveOutline ButtonVariant = "destructive-outline"
+	ButtonSuccessOutline     ButtonVariant = "success-outline"
+)
+
+// ButtonSize is button.md's `size` option.
+type ButtonSize string
+
+// Button sizes (button.md).
+const (
+	ButtonSm   ButtonSize = "sm"
+	ButtonMd   ButtonSize = "md"
+	ButtonLg   ButtonSize = "lg"
+	ButtonIcon ButtonSize = "icon"
+)
+
+// ButtonBase is button.md's BASE class list (also used by pagination links).
+const ButtonBase = "inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
+
+var buttonVariants = map[ButtonVariant]string{
+	ButtonPrimary:            "border-transparent bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80",
+	ButtonSecondary:          "border-transparent bg-foreground/5 text-foreground shadow-xs hover:bg-foreground/10 active:bg-foreground/15",
+	ButtonOutline:            "border-border text-foreground hover:bg-foreground/5 active:bg-foreground/10",
+	ButtonGhost:              "border-transparent text-foreground hover:bg-foreground/5 active:bg-foreground/10",
+	ButtonDestructive:        "border-transparent bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 active:bg-destructive/80",
+	ButtonText:               "border-transparent text-primary hover:bg-primary/10 active:bg-primary/15",
+	ButtonDestructiveOutline: "border-destructive text-destructive hover:bg-destructive/5 active:bg-destructive/10",
+	ButtonSuccessOutline:     "border-success text-success hover:bg-success/5 active:bg-success/10",
+}
+
+var buttonSizes = map[ButtonSize]string{
+	ButtonSm:   "h-8 gap-1.5 rounded-md px-3",
+	ButtonMd:   "h-9 gap-2 rounded-lg px-4",
+	ButtonLg:   "h-10 gap-2 rounded-lg px-5",
+	ButtonIcon: "size-9 rounded-lg",
+}
+
+// ButtonClasses is BASE + variant + size (button.md), for the few places a
+// spec styles another element as a button (pagination links).
+func ButtonClasses(v ButtonVariant, s ButtonSize) string {
+	return cx(ButtonBase, pick("button variant", buttonVariants, v, ButtonPrimary), pick("button size", buttonSizes, s, ButtonMd))
+}
+
+// ButtonProps mirrors button.md's Props table.
+type ButtonProps struct {
+	Variant ButtonVariant `json:"variant"`
+	Size    ButtonSize    `json:"size"`
+	// Type is the <button> type; default "button" (never the implicit submit).
+	Type string `json:"type"`
+	// Href renders an <a> with the same classes instead of a <button>.
+	Href     string `json:"href"`
+	Disabled bool   `json:"disabled"`
+	// Icon is a leading Lucide icon name (an icon-only button sets Size icon
+	// and an aria-label in Attrs).
+	Icon  string           `json:"icon"`
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// Button is button.md. Slot: the label (children).
+templ Button(p ButtonProps) {
+	if p.Href != "" {
+		if p.Disabled {
+			<a class={ cx(ButtonClasses(p.Variant, p.Size), "pointer-events-none opacity-50", p.Class) } aria-disabled="true" tabindex="-1" { Attrs(p.Attrs)... }>
+				@buttonContent(p.Icon) {
+					{ children... }
+				}
+			</a>
+		} else {
+			<a href={ SafeURL(p.Href) } class={ cx(ButtonClasses(p.Variant, p.Size), p.Class) } { Attrs(p.Attrs)... }>
+				@buttonContent(p.Icon) {
+					{ children... }
+				}
+			</a>
+		}
+	} else {
+		<button class={ cx(ButtonClasses(p.Variant, p.Size), p.Class) } type={ orDefault(p.Type, "button") } disabled?={ p.Disabled } { Attrs(p.Attrs)... }>
+			@buttonContent(p.Icon) {
+				{ children... }
+			}
+		</button>
+	}
+}
+
+templ buttonContent(icon string) {
+	if icon != "" {
+		@Icon(IconProps{Name: icon})
+	}
+	{ children... }
+}
+
+// LegacyVariant is legacy-fc-btn.md's variant (the hand-built `.fc-btn`).
+type LegacyVariant string
+
+// Legacy button variants (legacy-fc-btn.md).
+const (
+	LegacyPrimary        LegacyVariant = "primary"
+	LegacyPrimaryOutline LegacyVariant = "primary-outline"
+	LegacySecondary      LegacyVariant = "secondary"
+	LegacyOutline        LegacyVariant = "outline"
+	LegacyWarnOutline    LegacyVariant = "warn-outline"
+	LegacyDangerOutline  LegacyVariant = "danger-outline"
+	LegacyDanger         LegacyVariant = "danger"
+	LegacyWarn           LegacyVariant = "warn"
+	LegacyText           LegacyVariant = "text"
+	LegacyTextPrimary    LegacyVariant = "text-primary"
+	LegacyLink           LegacyVariant = "link"
+)
+
+// LegacyButtonProps mirrors legacy-fc-btn.md's Props table.
+type LegacyButtonProps struct {
+	Variant  LegacyVariant `json:"variant"`
+	Small    bool          `json:"small"`
+	Block    bool          `json:"block"`
+	Type     string        `json:"type"`
+	Href     string        `json:"href"`
+	Disabled bool          `json:"disabled"`
+	// Icon is a leading icon (class size-[1rem], as the hand-built parts use).
+	Icon  string           `json:"icon"`
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+func (p LegacyButtonProps) classes() string {
+	c := "fc-btn fc-btn-" + string(oneOf("legacy button variant", p.Variant, LegacyPrimary, LegacyPrimary, LegacyPrimaryOutline, LegacySecondary, LegacyOutline, LegacyWarnOutline, LegacyDangerOutline, LegacyDanger, LegacyWarn, LegacyText, LegacyTextPrimary, LegacyLink))
+	if p.Small {
+		c += " fc-btn-sm"
+	}
+	if p.Block {
+		c += " fc-btn-block"
+	}
+	return cx(c, p.Class)
+}
+
+// LegacyButton is legacy-fc-btn.md (`.fc-btn`), the button the hand-built
+// components (page header, toolbar, confirm dialog, drawer) use.
+templ LegacyButton(p LegacyButtonProps) {
+	if p.Href != "" {
+		<a
+			if p.Disabled {
+				aria-disabled="true"
+			} else {
+				href={ SafeURL(p.Href) }
+			}
+			class={ p.classes() }
+			{ Attrs(p.Attrs)... }
+		>
+			if p.Icon != "" {
+				@Icon(IconProps{Name: p.Icon, Class: "size-[1rem]"})
+			}
+			{ children... }
+		</a>
+	} else {
+		<button type={ orDefault(p.Type, "button") } class={ p.classes() } disabled?={ p.Disabled } { Attrs(p.Attrs)... }>
+			if p.Icon != "" {
+				@Icon(IconProps{Name: p.Icon, Class: "size-[1rem]"})
+			}
+			{ children... }
+		</button>
+	}
+}
+
+// IconButtonProps is legacy-fc-btn.md's `.fc-icon-btn` (round ghost icon button).
+type IconButtonProps struct {
+	Icon string `json:"icon"`
+	// Label is the required accessible name (aria-label; also the title).
+	Label string           `json:"label"`
+	Type  string           `json:"type"`
+	Class string           `json:"class"`
+	Attrs templ.Attributes `json:"attrs"`
+}
+
+// IconButton is `.fc-icon-btn` (drawer close, toolbar refresh).
+templ IconButton(p IconButtonProps) {
+	<button type={ orDefault(p.Type, "button") } class={ cx("fc-icon-btn", p.Class) } aria-label={ p.Label } { Attrs(p.Attrs)... }>
+		@Icon(IconProps{Name: p.Icon, Class: "size-[1rem]"})
+	</button>
+}

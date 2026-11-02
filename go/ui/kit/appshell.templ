@@ -1,0 +1,270 @@
+package kit
+
+// NavItem is one sidebar entry: a link, or (with Children) an expandable
+// <details> group.
+type NavItem struct {
+	Label string `json:"label"`
+	Href  string `json:"href"`
+	Icon  string `json:"icon"`
+	// Current marks the page's own entry (aria-current="page").
+	Current bool `json:"current"`
+	// Open starts an expandable group expanded.
+	Open     bool      `json:"open"`
+	Children []NavItem `json:"children"`
+}
+
+// NavGroup is a labelled group of sidebar entries.
+type NavGroup struct {
+	Label string `json:"label"`
+	// Key, when non-empty, makes the group collapsible (a short slug, unique
+	// among the groups); empty renders the plain static label.
+	Key   string    `json:"key"`
+	Items []NavItem `json:"items"`
+}
+
+// ShellUser is the signed-in user shown in the sidebar footer and user menu.
+type ShellUser struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Initials string `json:"initials"`
+}
+
+// AppShellProps mirrors app-shell.md's Props table.
+type AppShellProps struct {
+	LogoHref string     `json:"logoHref"`
+	Nav      []NavGroup `json:"nav"`
+	User     ShellUser  `json:"user"`
+	Version  string     `json:"version"`
+	// User-menu targets. ResetPasswordHref empty hides that item (IdP-managed
+	// users); SignOutAction is the POST target of the Sign Out form.
+	ProfileHref       string `json:"profileHref"`
+	ResetPasswordHref string `json:"resetPasswordHref"`
+	SignOutAction     string `json:"signOutAction"`
+	// SignOutAttrs go on the Sign Out <form>.
+	SignOutAttrs templ.Attributes `json:"signOutAttrs"`
+	// Theme is the user's theme choice (ThemeSystem, ThemeLight, ThemeDark);
+	// non-empty renders the theme picker in the user menu.
+	Theme ThemeChoice `json:"theme"`
+}
+
+// SidebarCollapsedSignal is the app shell's collapse signal (on <html>).
+const SidebarCollapsedSignal = "sidebarCollapsed"
+
+// SidebarCookie is the cookie the collapse button writes, so the server can
+// render the next page already collapsed.
+const SidebarCookie = "fc_sidebar"
+
+const collapseClickExpr = "$sidebarCollapsed = !$sidebarCollapsed; document.cookie = 'fc_sidebar=' + ($sidebarCollapsed ? 'collapsed' : '') + ';path=/;max-age=31536000;samesite=lax'"
+
+// SidebarMobileOpenSignal is the narrow-screen sidebar's open state (on <html>).
+const SidebarMobileOpenSignal = "sidebarMobileOpen"
+
+// ShellHTMLAttrs are the attributes app-shell.md puts on <html>: the collapse
+// signal (initial value rendered from the fc_sidebar cookie) and the class it
+// drives, and the narrow-screen sidebar's signal and class (closed on load).
+func ShellHTMLAttrs(collapsed bool) templ.Attributes {
+	v := "false"
+	if collapsed {
+		v = "true"
+	}
+	return templ.Attributes{
+		"data-signals:sidebar-collapsed":   v,
+		"data-class:fc-collapsed":          "$sidebarCollapsed",
+		"data-signals:sidebar-mobile-open": "false",
+		"data-class:fc-mobile-open":        "$sidebarMobileOpen",
+	}
+}
+
+// Narrow-screen sidebar: the top bar's menu button opens it and moves focus
+// to its close button; the close button, the backdrop and Escape close it and
+// return focus to the menu button.
+const (
+	mobileOpenExpr   = "$sidebarMobileOpen = true; setTimeout(() => document.getElementById('fc-sidebar-close').focus())"
+	mobileCloseExpr  = "$sidebarMobileOpen = false; document.getElementById('fc-topbar-menu').focus()"
+	mobileEscapeExpr = "evt.key === 'Escape' && $sidebarMobileOpen && !document.querySelector('dialog[open], [popover]:popover-open') && ($sidebarMobileOpen = false, document.getElementById('fc-topbar-menu').focus())"
+)
+
+// logoSVG is the FlowCatalyst bolt (app-shell.md).
+templ logoSVG() {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="100%" height="100%" aria-label="FlowCatalyst"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+}
+
+// AppShell is app-shell.md: the navy sidebar, the user-menu popover and the
+// main region. Slot: the page content inside <main>.
+templ AppShell(p AppShellProps) {
+	@AppSidebar(p)
+	@UserMenu(p)
+	<div class="fc-sidebar-backdrop" aria-hidden="true" data-on:click={ mobileCloseExpr } data-on:keydown__window={ mobileEscapeExpr }></div>
+	<div class="fc-main">
+		<header class="fc-topbar">
+			<button type="button" id="fc-topbar-menu" class="fc-topbar-menu" aria-label="Open navigation" aria-controls="fc-sidebar" aria-expanded="false" data-attr:aria-expanded="$sidebarMobileOpen ? 'true' : 'false'" data-on:click={ mobileOpenExpr }>
+				@Icon(IconProps{Name: "menu", Class: "size-[1.25rem]"})
+			</button>
+			<a href={ SafeURL(p.LogoHref) } class="fc-topbar-logo">
+				@logoSVG()
+			</a>
+		</header>
+		<main class="p-[24px]">
+			{ children... }
+		</main>
+	</div>
+}
+
+// AppSidebar is app-shell.md's <aside class="fc-sidebar">.
+templ AppSidebar(p AppShellProps) {
+	<aside id="fc-sidebar" class="fc-sidebar">
+		<div class="fc-sidebar-header">
+			<a href={ SafeURL(p.LogoHref) } class="fc-sidebar-logo" style="height: 32px">
+				<span style="width: 32px; height: 32px">
+					@logoSVG()
+				</span>
+			</a>
+			<button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label="Close navigation" data-on:click={ mobileCloseExpr }>
+				@Icon(IconProps{Name: "x", Class: "size-[1.25rem]"})
+			</button>
+			<button
+				type="button"
+				class="fc-collapse-btn"
+				aria-label="Collapse sidebar"
+				aria-expanded="true"
+				data-attr:aria-expanded="$sidebarCollapsed ? 'false' : 'true'"
+				data-on:click={ collapseClickExpr }
+			>
+				@Icon(IconProps{Name: "chevron-left", Class: "size-[1rem]"})
+			</button>
+		</div>
+		<nav
+			class="fc-sidebar-nav"
+			aria-label="Main"
+			if len(collapsibleGroups(p.Nav)) > 0 {
+				data-signals={ NavSignalsJSON(p.Nav) }
+			}
+			if NavInitExpr(p.Nav) != "" {
+				data-init={ NavInitExpr(p.Nav) }
+			}
+		>
+			for _, g := range p.Nav {
+				<div class="fc-nav-group">
+					if g.Key != "" {
+						<button
+							type="button"
+							class="fc-nav-group-label"
+							style="width:100%;text-align:left;cursor:pointer"
+							aria-controls={ NavSectionID(g.Key) }
+							if NavGroupHasCurrent(g) {
+								aria-expanded="true"
+								aria-disabled="true"
+								title="Contains the current page"
+							} else {
+								aria-expanded="true"
+								data-attr:aria-expanded={ "$" + NavSignal(g.Key) + " ? 'false' : 'true'" }
+								data-on:click={ NavToggleExpr(g.Key) }
+							}
+						>
+							{ g.Label }
+							<span style="float:right" data-show={ "!$" + NavSignal(g.Key) }>
+								@Icon(IconProps{Name: "chevron-down", Class: "size-[11px]"})
+							</span>
+							<span style="float:right;display:none" data-show={ NavClosedExpr(g.Key) }>
+								@Icon(IconProps{Name: "chevron-right", Class: "size-[11px]"})
+							</span>
+						</button>
+					} else {
+						<span class="fc-nav-group-label">{ g.Label }</span>
+					}
+					if g.Key != "" {
+						<div id={ NavSectionID(g.Key) } data-show={ NavOpenExpr(g.Key) }>
+							@navItems(g.Items)
+						</div>
+					} else {
+						@navItems(g.Items)
+					}
+				</div>
+			}
+		</nav>
+		<div class="fc-sidebar-footer">
+			<button type="button" class="fc-user-trigger" popovertarget="fc-user-menu" aria-label="Account menu">
+				<span class="fc-avatar">{ p.User.Initials }</span>
+				<span class="fc-user-text min-w-0 flex-1"><span class="fc-user-name">{ p.User.Name }</span><span class="fc-user-email">{ p.User.Email }</span></span>
+				@Icon(IconProps{Name: "chevron-up", Class: "shrink-0 text-white/50 fc-user-text size-[11px]"})
+			</button>
+		</div>
+	</aside>
+}
+
+// UserMenu is app-shell.md's user-menu popover.
+templ UserMenu(p AppShellProps) {
+	<div id="fc-user-menu" popover class="fc-user-menu">
+		<div class="flex items-center gap-3 p-4">
+			<span class="fc-avatar fc-avatar-lg">{ p.User.Initials }</span>
+			<div class="min-w-0"><p class="truncate text-[15px] font-semibold">{ p.User.Name }</p><p class="truncate text-[13px] text-muted-foreground">{ p.User.Email }</p></div>
+		</div>
+		<div class="border-t border-border p-2">
+			<a href={ SafeURL(p.ProfileHref) } class="fc-menu-item">
+				@Icon(IconProps{Name: "user", Class: "size-[1.1rem]"})
+				Profile
+			</a>
+			if p.ResetPasswordHref != "" {
+				<a href={ SafeURL(p.ResetPasswordHref) } class="fc-menu-item">
+					@Icon(IconProps{Name: "key-round", Class: "size-[1.1rem]"})
+					Reset Password
+				</a>
+			}
+		</div>
+		if p.Theme != "" {
+			<div class="border-t border-border p-2">
+				@ThemeChoices(p.Theme)
+			</div>
+		}
+		<div class="border-t border-border p-2">
+			<form method="post" action={ SafeURL(p.SignOutAction) } { Attrs(p.SignOutAttrs)... }>
+				<button type="submit" class="fc-menu-item danger">
+					@Icon(IconProps{Name: "log-out", Class: "size-[1.1rem]"})
+					Sign Out
+				</button>
+			</form>
+		</div>
+		<div class="flex justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground"><span>Version</span><span>{ p.Version }</span></div>
+	</div>
+}
+
+// navItems is a group's entries: plain links and expandable <details> groups.
+templ navItems(items []NavItem) {
+	for _, it := range items {
+		if len(it.Children) > 0 {
+			<details open?={ it.Open }>
+				<summary class="fc-nav-item" title={ it.Label }>
+					@Icon(IconProps{Name: it.Icon})
+					<span class="fc-nav-label">{ it.Label }</span>
+					@Icon(IconProps{Name: "chevron-right", Class: "fc-nav-chevron"})
+				</summary>
+				<div class="fc-nav-children">
+					for _, c := range it.Children {
+						<a
+							href={ SafeURL(c.Href) }
+							class="fc-nav-child"
+							if c.Current {
+								aria-current="page"
+							}
+						>
+							@Icon(IconProps{Name: c.Icon})
+							<span class="fc-nav-label">{ c.Label }</span>
+						</a>
+					}
+				</div>
+			</details>
+		} else {
+			<a
+				href={ SafeURL(it.Href) }
+				class="fc-nav-item"
+				title={ it.Label }
+				if it.Current {
+					aria-current="page"
+				}
+			>
+				@Icon(IconProps{Name: it.Icon})
+				<span class="fc-nav-label">{ it.Label }</span>
+			</a>
+		}
+	}
+}

@@ -1,0 +1,23 @@
+package kit
+
+import "github.com/flowcatalyst/framework/go/ui/md"
+
+// MarkdownProps mirrors markdown.md's Props table.
+type MarkdownProps struct {
+	// Source is Markdown; it is sanitised (package md), so it may come
+	// from user or app data.
+	Source string `json:"source"`
+	Class  string `json:"class"`
+}
+
+// Markdown is markdown.md: server-rendered, sanitised Markdown. A render
+// failure shows the source as text rather than nothing.
+templ Markdown(p MarkdownProps) {
+	<div class={ cx("fc-markdown", p.Class) }>
+		if out, err := md.HTML(p.Source); err == nil {
+			@Raw(out)
+		} else {
+			<pre>{ p.Source }</pre>
+		}
+	</div>
+}
