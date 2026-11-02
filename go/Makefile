@@ -30,6 +30,9 @@
 #                    browser check (examples/orders-demo-jte/e2e/browser-check.mjs, run unchanged). Builds the
 #                    binary into bin/, starts it on a free 127.0.0.1 port (never 8080 or 15432), runs the check
 #                    (Playwright and Chromium from the ui workspace) and stops the server by its PID.
+#   release-go-ui    tag and push a release of the go/ui module: BUMP=patch|minor|major|X.Y.Z (tag go/ui/vX.Y.Z;
+#                    checks a clean main, no replace and no framework require in ui/go.mod, ui-verify and the
+#                    module's tests, then asks before tagging and pushing; RELEASE_DRY_RUN=1 checks only)
 #   tools            build golangci-lint and NilAway (pinned in tools/go.mod) into bin/
 #   fc-modfile       with FCSDK=<path> set, write flowcatalyst/go.local.work and go.local.mod (not committed):
 #                    a replace of the fcsdk module by that checkout, to develop against unreleased fcsdk
@@ -58,7 +61,7 @@ FWUI = cd ui/fwui &&
 LINT := $(CURDIR)/bin/golangci-lint
 NILAWAY := $(CURDIR)/bin/nilaway
 
-.PHONY: e2e-orders e2e-orders-templ e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
+.PHONY: release-go-ui e2e-orders e2e-orders-templ e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
 
 go-check: fc-modfile fmt-check lint vet nilaway test sql-check ui-verify
 
@@ -151,3 +154,7 @@ e2e-orders-templ:
 	BASE_URL=http://127.0.0.1:$$port node ../examples/orders-demo-jte/e2e/browser-check.mjs; status=$$?; \
 	kill $$pid 2>/dev/null; wait $$pid 2>/dev/null; \
 	exit $$status
+
+release-go-ui:
+	@[ -n "$(BUMP)" ] || { echo "usage: make -C go release-go-ui BUMP=patch|minor|major|X.Y.Z"; exit 2; }
+	@../scripts/release-go-ui.sh "$(BUMP)"

@@ -380,6 +380,23 @@ files are committed. `make -C go ui-generate` regenerates them; `make -C go ui-v
 any generated file changed or appeared, and is part of `make -C go go-check` and the CI workflow. `go-check`
 also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go test -race` on both modules (`go/ui` and `go/ui/fwui`).
 
+## Releasing, and developing against an unreleased kit
+
+`go/ui` is published by its tag: `github.com/flowcatalyst/framework/go/ui` at `vX.Y.Z` is the tag `go/ui/vX.Y.Z` of
+this repository (v0.1.0 is the first, 2026-11-02). `make -C go release-go-ui BUMP=patch|minor|major|X.Y.Z` cuts one
+(`scripts/release-go-ui.sh`): it refuses a dirty tree, a branch other than `main`, a `main` behind `origin/main`, a
+`replace` in `go/ui/go.mod` (a consumer ignores it), a require of a framework module (`go/ui` stands alone; `fwui` is
+not released) and an unchanged module; it runs `ui-verify` and the module's tests, shows the commits since the last
+tag, and asks before it tags and pushes `main` and the tag. `RELEASE_DRY_RUN=1` stops after the checks. A consumer
+then runs `go get github.com/flowcatalyst/framework/go/ui@vX.Y.Z`.
+
+To work on the kit and a consumer together before a release, the consumer adds an **uncommitted** `go.work` that
+points at this checkout, so it builds against the working copy and CI keeps using the tag:
+
+```sh
+go work init . ../flowcatalyst-framework/go/ui   # in the consumer's repository; go.work is git-ignored there
+```
+
 ## Known gaps
 
 - **`kit.css`** is the Tailwind build of Java's templates **and** the Go kit's templ sources (`framework-ui/assets/kit.css`
