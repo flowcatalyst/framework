@@ -1,0 +1,11 @@
+{
+  "props": {
+    "title": "Tom & \"Jerry\" <b>'x'</b>",
+    "description": "Tom & \"Jerry\" <b>'x'</b>",
+    "headingLevel": 4
+  },
+  "slots": {
+    "default": "<p>Caller markup, verbatim.</p>"
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 1"
+}

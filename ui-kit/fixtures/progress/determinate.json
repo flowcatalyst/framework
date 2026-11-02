@@ -1,0 +1,8 @@
+{
+  "props": {
+    "value": 62,
+    "label": "Upload progress"
+  },
+  "source": "progress.md Structure; gallery/index.html: 'Progress' (first element)",
+  "notes": "max defaults to 100 and is always rendered"
+}

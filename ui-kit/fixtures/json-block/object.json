@@ -1,0 +1,10 @@
+{
+  "props": {
+    "value": {
+      "id": "evt_01",
+      "ok": true
+    }
+  },
+  "source": "json-block.md Structure",
+  "notes": "pretty-print rules: 2-space indent, `\"key\": value`, one member per line, empty `{}`/`[]`, keys in the order given (fixture keys are alphabetical so a language that sorts keys agrees), no \\u escapes for < > & (the output is HTML-escaped afterwards), ASCII only"
+}

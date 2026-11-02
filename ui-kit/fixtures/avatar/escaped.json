@@ -1,0 +1,9 @@
+{
+  "props": {
+    "size": "sm",
+    "src": "/u/a&b.png?x=\"1\"",
+    "alt": "Tom & \"Jerry\" <b>'x'</b>",
+    "initials": "<&>"
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 1"
+}

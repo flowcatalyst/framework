@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "job-7",
+    "value": 30,
+    "max": 200,
+    "label": "Import job 7"
+  },
+  "source": "progress.md Notes (value, max, label; an id so the server can patch it)"
+}

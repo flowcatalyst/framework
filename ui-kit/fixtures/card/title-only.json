@@ -1,0 +1,10 @@
+{
+  "props": {
+    "title": "Just a title"
+  },
+  "slots": {
+    "default": "Body text."
+  },
+  "source": "card.md Structure/Parts Parts (Header optional); reading: no description paragraph, no footer region",
+  "notes": "an absent title/description/footer renders no element for it"
+}

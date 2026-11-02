@@ -1,0 +1,8 @@
+{
+  "props": {
+    "src": "/u/ada.png",
+    "initials": "AL"
+  },
+  "source": "avatar.md Notes (alt optional); reading: the img always carries an alt attribute, empty when none is given",
+  "notes": "see Questions in the report"
+}

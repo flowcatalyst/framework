@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "tt-cls",
+    "text": "Tip",
+    "class": "align-middle"
+  },
+  "slots": {
+    "trigger": "<a href=\"/x\" aria-describedby=\"tt-cls\">Link</a>"
+  },
+  "source": "tooltip.md Props (class appended to the wrapper span)"
+}

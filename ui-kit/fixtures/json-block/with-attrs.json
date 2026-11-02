@@ -1,0 +1,13 @@
+{
+  "props": {
+    "value": {
+      "a": 1
+    },
+    "attrs": {
+      "tabindex": "0",
+      "aria-label": "Event payload"
+    }
+  },
+  "source": "json-block.md Accessibility (tabindex and aria-label for a scrollable region)",
+  "notes": "attrs go on the <pre>"
+}

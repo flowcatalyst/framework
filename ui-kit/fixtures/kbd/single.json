@@ -1,0 +1,9 @@
+{
+  "props": {
+    "keys": [
+      "Esc"
+    ]
+  },
+  "source": "kbd.md Structure; gallery/index.html: 'Kbd' (first element)",
+  "notes": "one key renders a bare <kbd>"
+}

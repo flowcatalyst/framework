@@ -20,6 +20,18 @@ A short text label shown above its trigger on hover or keyboard focus.
 | tooltip | `<span>` | `group relative inline-flex` | Wrapper; the `group` for hover/focus |
 | tooltip_content | `<span role="tooltip" id>` | `pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md bg-foreground px-2.5 py-1 text-xs font-medium text-background opacity-0 shadow-sm whitespace-nowrap [transition:opacity_150ms_ease-out,visibility_150ms_allow-discrete] group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100` | The bubble; hidden by default, shown by `group-hover` / `group-focus-within` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/tooltip`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | required; the bubble's id |
+| `text` | string | - | text (escaped) |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged); on the wrapper `<span>` |
+
+Slot: `trigger` (the caller's trigger markup, which must carry `aria-describedby="{id}"`).
+
 ## Accessibility
 
 - The bubble has `role="tooltip"`; **the trigger must reference it with `aria-describedby`** (added in this port; the Topcoat original omits the link, so screen readers do not announce the text).

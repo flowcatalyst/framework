@@ -28,6 +28,19 @@ A bordered surface with header, content and footer regions.
 | Content | `<div>` | `px-6` |  |
 | Footer | `<div>` | `flex items-center gap-2 px-6` |  |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/card`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `title` | string | - | text (escaped); not a slot |
+| `description` | string | - | text (escaped); not a slot |
+| `headingLevel` | number | 3 | 1-6; the title element is `<h{headingLevel}>` |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged) |
+
+Slots: `default` (content) and `footer`. The header `<div>` renders only when `title` or `description` is given (and each of the two elements only when its prop is given); the content `<div>` and the footer `<div>` render only when their slot is non-empty.
+
 ## Accessibility
 
 Use a real heading element in the title at the right level. A card is not a landmark; add `role="region"` + `aria-labelledby` only if it is a navigation target.
@@ -38,4 +51,4 @@ None.
 
 ## Notes for a template author
 
-Slots: header, title, description, content, footer. Parameter: heading level. Dark mode: `bg-card`/`border-border` swap automatically.
+Title and description are text props (not slots); slots are `default` and `footer`; the header, content and footer `<div>`s render only when there is something to put in them (see Props). Parameter: heading level. Dark mode: `bg-card`/`border-border` swap automatically.

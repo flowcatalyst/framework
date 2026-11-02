@@ -1,0 +1,15 @@
+{
+  "props": {
+    "id": "esc-form",
+    "signal": "dirtyEsc",
+    "saveLabel": "Tom & \"Jerry\" <b>'x'</b>",
+    "discardLabel": "<Undo> & \"back\"",
+    "attrs": {
+      "data-note": "Tom & \"Jerry\" <b>'x'</b>"
+    }
+  },
+  "slots": {
+    "default": "<input type=\"text\" name=\"name\" value=\"Ada\" id=\"f-name\">"
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 1"
+}

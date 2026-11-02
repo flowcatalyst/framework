@@ -22,6 +22,22 @@ A dialog that interrupts to ask for a decision (confirmations). Same structure a
 </dialog>
 ```
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/alert-dialog`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | required; the dialog id, `{id}-title` and `{id}-desc` derive from it |
+| `title` | string | - | text (escaped) |
+| `message` | string | - | text (escaped) |
+| `cancelLabel` | string | `Cancel` | label of the Cancel button (ghost, `autofocus`, closes the dialog) |
+| `confirmLabel` | string | `Confirm` | label of the Confirm button (`type="submit"`) |
+| `confirmVariant` | enum(destructive\|primary) | destructive | the Confirm button's variant (`button.md`) |
+| `action` | string | - | URL; when set, the footer is wrapped in `<form method="post" action>` (URL-checked) with the `hiddenFields` inputs before the footer `<div>`; absent = no form |
+| `hiddenFields` | list<{name, value}> | [] | `<input type="hidden">` per entry; only rendered with `action` |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged); on the `<dialog>` |
+
 ## Accessibility
 
 `role="alertdialog"`, `aria-labelledby` (title) and `aria-describedby` (the message) are required. The safe action (Cancel) gets `autofocus`. A mask click must not dismiss it; Escape does (native). Everything else as `dialog.md`.

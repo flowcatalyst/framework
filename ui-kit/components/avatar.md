@@ -36,6 +36,18 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | md | `size-10 text-sm` |
 | lg | `size-12 text-base` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/avatar`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `size` | enum(sm\|md\|lg) | md |  |
+| `src` | string | - | image URL (URL-checked); absent = no `<img>`, initials only |
+| `alt` | string | empty | the `<img>` always carries `alt`; empty = decorative (use next to the person's name) |
+| `initials` | string | - | fallback text (escaped) |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged) |
+
 ## Accessibility
 
 Give the image meaningful `alt` (the person's name). If the avatar sits next to the name in text, use `alt=""`.

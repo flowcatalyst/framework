@@ -1,0 +1,21 @@
+{
+  "props": {
+    "name": "plan",
+    "label": "Plan",
+    "value": "pro",
+    "class": "[&]:gap-2",
+    "options": [
+      {
+        "id": "c1",
+        "value": "free",
+        "label": "Free"
+      },
+      {
+        "id": "c2",
+        "value": "pro",
+        "label": "Pro"
+      }
+    ]
+  },
+  "source": "radio-group.md Props (class appended to the radiogroup div)"
+}

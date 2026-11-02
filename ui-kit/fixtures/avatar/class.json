@@ -1,0 +1,7 @@
+{
+  "props": {
+    "initials": "AL",
+    "class": "ring-2 ring-primary"
+  },
+  "source": "avatar.md Props (class appended to the root span)"
+}

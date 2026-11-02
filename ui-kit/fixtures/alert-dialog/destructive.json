@@ -1,0 +1,10 @@
+{
+  "props": {
+    "id": "dlg-del",
+    "title": "Delete this workspace?",
+    "message": "Its projects and deploys go with it.",
+    "cancelLabel": "Keep it",
+    "confirmLabel": "Delete"
+  },
+  "source": "alert-dialog.md Structure/Accessibility/Notes; the spec's Structure example (confirmVariant defaults to destructive; no action: the footer is not in a form)"
+}

@@ -1,0 +1,9 @@
+{
+  "props": {
+    "size": "lg",
+    "src": "/u/ada.png",
+    "alt": "",
+    "initials": "AL"
+  },
+  "source": "avatar.md Accessibility (alt=\"\" next to the name)"
+}

@@ -1,0 +1,6 @@
+{
+  "props": {
+    "value": 40
+  },
+  "source": "progress.md Props (label absent renders no aria-label)"
+}

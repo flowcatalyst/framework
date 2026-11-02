@@ -1,0 +1,12 @@
+{
+  "props": {
+    "value": {
+      "a": 1
+    },
+    "class": "[&]:max-h-40",
+    "attrs": {
+      "tabindex": "0"
+    }
+  },
+  "source": "json-block.md Props (class appended after fc-json; attrs on the pre)"
+}

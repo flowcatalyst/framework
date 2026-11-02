@@ -31,6 +31,19 @@ Collapsible sections using `<details>`/`<summary>` with an animated height. Item
 | accordion_trigger | `<summary>` | `flex w-full cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-sm font-medium outline-none transition-colors hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden` + chevron `size-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out group-open:rotate-180` |  |
 | accordion_content | `<div>` | `pb-4 text-sm text-muted-foreground` |  |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/accordion`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `name` | string | - | optional; when set, the items share it and are exclusive (native `name` on each `<details>`); absent = independent items, no `name` attribute |
+| `items` | list<{value, title}> | [] | `value` names the item's slot (`[A-Za-z][A-Za-z0-9_-]*`); `title` is text (escaped) |
+| `open` | string | - | the `value` of the initially open item (one only); absent = all closed |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged); on the root `<div>` |
+
+Slots: one per item, named by its `value` (the content of the item's `pb-4` div).
+
 ## Accessibility
 
 `<summary>` is a native disclosure button (Enter/Space), exposed as expanded/collapsed. Keep trigger text meaningful.

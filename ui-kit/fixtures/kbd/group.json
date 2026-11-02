@@ -1,0 +1,10 @@
+{
+  "props": {
+    "keys": [
+      "Ctrl",
+      "K"
+    ]
+  },
+  "source": "kbd.md Structure; gallery/index.html: 'Kbd' (second element)",
+  "notes": "two or more keys render inside the group <span>"
+}

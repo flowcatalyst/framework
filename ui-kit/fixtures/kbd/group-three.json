@@ -1,0 +1,10 @@
+{
+  "props": {
+    "keys": [
+      "Ctrl",
+      "Shift",
+      "P"
+    ]
+  },
+  "source": "kbd.md Notes (group wrapper classes)"
+}

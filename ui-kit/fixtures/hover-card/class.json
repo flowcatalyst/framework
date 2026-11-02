@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "hc-cls",
+    "class": "align-middle"
+  },
+  "slots": {
+    "trigger": "<a href=\"/u/ada\" aria-describedby=\"hc-cls\">@ada</a>",
+    "default": "<strong>Ada</strong>"
+  },
+  "source": "hover-card.md Props (class appended to the wrapper span)"
+}

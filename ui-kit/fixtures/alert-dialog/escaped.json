@@ -1,0 +1,18 @@
+{
+  "props": {
+    "id": "dlg-esc",
+    "title": "Tom & \"Jerry\" <b>'x'</b>",
+    "message": "Tom & \"Jerry\" <b>'x'</b>",
+    "cancelLabel": "No & <b>",
+    "confirmLabel": "Yes \"really\"",
+    "confirmVariant": "primary",
+    "action": "/x?a=1&b=2",
+    "hiddenFields": [
+      {
+        "name": "n\"ame",
+        "value": "Tom & \"Jerry\" <b>'x'</b>"
+      }
+    ]
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 1"
+}

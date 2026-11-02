@@ -1,0 +1,27 @@
+{
+  "props": {
+    "name": "tier",
+    "label": "Tier",
+    "value": "gold",
+    "options": [
+      {
+        "id": "t-1",
+        "value": "bronze",
+        "label": "Bronze"
+      },
+      {
+        "id": "t-2",
+        "value": "silver",
+        "label": "Silver",
+        "disabled": true
+      },
+      {
+        "id": "t-3",
+        "value": "gold",
+        "label": "Gold"
+      }
+    ]
+  },
+  "source": "radio-group.md Structure/Parts (item wrapper has-[:disabled]:opacity-50)",
+  "notes": "a disabled option and a checked option that is not the first"
+}

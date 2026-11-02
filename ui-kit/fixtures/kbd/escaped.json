@@ -1,0 +1,12 @@
+{
+  "props": {
+    "keys": [
+      "<",
+      "&",
+      ">",
+      "\"",
+      "'"
+    ]
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 1"
+}

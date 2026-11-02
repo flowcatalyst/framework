@@ -201,6 +201,27 @@ var renderers = map[string]renderer{
 	},
 }
 
+// notYet names fixture directories that have no templ renderer yet: GU4 step 1
+// wrote the thirteen spec-only components' fixtures before their renderers
+// (contract server-rendered-ui.md section 2 rules 3 and 4). It is checked both
+// ways, like Java's NOT_YET: an entry must have a fixture directory and no
+// renderer, so the list cannot rot. It must be empty again when GU4 is closed.
+var notYet = map[string]bool{
+	"accordion":     true,
+	"alert-dialog":  true,
+	"avatar":        true,
+	"card":          true,
+	"dirty-form":    true,
+	"dropdown-menu": true,
+	"hover-card":    true,
+	"json-block":    true,
+	"kbd":           true,
+	"progress":      true,
+	"radio-group":   true,
+	"separator":     true,
+	"tooltip":       true,
+}
+
 // fixturesDir is ui-kit/fixtures of the repository that holds this module
 // (go/ui is two levels below the repository root), or UI_KIT_FIXTURES.
 func fixturesDir(t testing.TB) string {
@@ -273,7 +294,9 @@ func TestConformance(t *testing.T) {
 		seen[component] = true
 		render, ok := renderers[component]
 		if !ok {
-			t.Errorf("fixture component %q has no templ renderer: implement it and add it to renderers", component)
+			if !notYet[component] {
+				t.Errorf("fixture component %q has no templ renderer: implement it and add it to renderers", component)
+			}
 			continue
 		}
 		cases, _ := filepath.Glob(filepath.Join(root, component, "*.json"))
@@ -286,6 +309,14 @@ func TestConformance(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				checkFixture(t, render, jsonPath)
 			})
+		}
+	}
+	for name := range notYet {
+		switch _, hasRenderer := renderers[name]; {
+		case !seen[name]:
+			t.Errorf("notYet lists %q, which has no fixture directory: remove it", name)
+		case hasRenderer:
+			t.Errorf("notYet lists %q, which has a renderer: remove it from notYet", name)
 		}
 	}
 	var missing []string

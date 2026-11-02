@@ -1,0 +1,5 @@
+{
+  "props": {},
+  "source": "separator.md Structure/Options (orientation default horizontal); gallery/index.html: 'Separator' (first)",
+  "notes": "the gallery adds my-3 to the class list (see the report); the spec's class list wins"
+}

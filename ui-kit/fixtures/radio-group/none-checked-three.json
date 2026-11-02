@@ -1,0 +1,24 @@
+{
+  "props": {
+    "name": "size",
+    "label": "Size",
+    "options": [
+      {
+        "id": "sz-s",
+        "value": "s",
+        "label": "Small"
+      },
+      {
+        "id": "sz-m",
+        "value": "m",
+        "label": "Medium"
+      },
+      {
+        "id": "sz-l",
+        "value": "l",
+        "label": "Large"
+      }
+    ]
+  },
+  "source": "radio-group.md Structure/Parts; no value: no radio is checked"
+}

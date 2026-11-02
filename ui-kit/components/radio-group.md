@@ -25,6 +25,21 @@ A group of native radio buttons.
 | Input | `<input type=radio>` | `peer size-4 shrink-0 appearance-none rounded-full border border-input bg-background transition-colors outline-none checked:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none` | same `name` for the group |
 | Dot | `<span>` | `pointer-events-none absolute inset-0 m-auto size-2 rounded-full bg-primary opacity-0 transition-opacity peer-checked:opacity-100` |  |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/radio-group`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `name` | string | - | required; shared by all radios |
+| `label` | string | - | `aria-label` of the group |
+| `labelledBy` | string | - | `aria-labelledby` of the group; give `label` or `labelledBy` |
+| `value` | string | - | the selected value; absent = nothing checked |
+| `options` | list<{id, value, label, disabled}> | [] | `id` ties the radio to its `<label for>`; `disabled` is a boolean per option |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged); on the `role=radiogroup` div |
+
+A group-wide disabled is not modelled (disable the options).
+
 ## Accessibility
 
 Native radios give arrow-key navigation within a `name` group. Name the group (`aria-label`/`aria-labelledby`, or `<fieldset><legend>`). Label each radio.

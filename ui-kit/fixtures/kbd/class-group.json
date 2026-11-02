@@ -1,0 +1,10 @@
+{
+  "props": {
+    "keys": [
+      "Ctrl",
+      "K"
+    ],
+    "class": "ml-1"
+  },
+  "source": "kbd.md Props (class on the group span for two or more keys)"
+}

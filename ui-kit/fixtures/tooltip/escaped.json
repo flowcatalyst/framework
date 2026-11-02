@@ -1,0 +1,10 @@
+{
+  "props": {
+    "id": "tt-esc",
+    "text": "Tom & \"Jerry\" <b>'x'</b>"
+  },
+  "slots": {
+    "trigger": "<a href=\"/x\" aria-describedby=\"tt-esc\">Link</a>"
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 1"
+}

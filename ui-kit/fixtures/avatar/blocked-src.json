@@ -1,0 +1,8 @@
+{
+  "props": {
+    "src": "javascript:alert(1)",
+    "alt": "x",
+    "initials": "X"
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 3 (src goes through the URL check)"
+}

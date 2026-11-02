@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "dlg-bad",
+    "title": "Delete?",
+    "message": "No.",
+    "cancelLabel": "Cancel",
+    "confirmLabel": "Delete",
+    "action": "javascript:alert(1)"
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 3 (action goes through the URL check)"
+}

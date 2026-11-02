@@ -1,0 +1,20 @@
+{
+  "props": {
+    "name": "q\"&<>'",
+    "label": "Tom & \"Jerry\" <b>'x'</b>",
+    "value": "Tom & \"Jerry\" <b>'x'</b>",
+    "options": [
+      {
+        "id": "e-1",
+        "value": "Tom & \"Jerry\" <b>'x'</b>",
+        "label": "Tom & \"Jerry\" <b>'x'</b>"
+      },
+      {
+        "id": "e-2",
+        "value": "<b>",
+        "label": "<b> & co"
+      }
+    ]
+  },
+  "source": "contract server-rendered-ui.md section 3 rule 1"
+}

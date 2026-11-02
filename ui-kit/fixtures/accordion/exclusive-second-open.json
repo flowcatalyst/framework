@@ -1,0 +1,26 @@
+{
+  "props": {
+    "name": "faq",
+    "items": [
+      {
+        "value": "what",
+        "title": "What is this?"
+      },
+      {
+        "value": "js",
+        "title": "Does it need JavaScript?"
+      },
+      {
+        "value": "theme",
+        "title": "Can I theme it?"
+      }
+    ],
+    "open": "js"
+  },
+  "slots": {
+    "what": "A themed copy of Topcoat UI components.",
+    "js": "No: <code>details</code> is native.",
+    "theme": "<p>Yes, through the tokens.</p>"
+  },
+  "source": "accordion.md Structure/Parts; gallery/index.html: 'Accordion (exclusive via name)'; the open item is not the first, three items"
+}

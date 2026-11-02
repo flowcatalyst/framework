@@ -31,6 +31,15 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 |---|
 | `shrink-0 border-0 bg-border` |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/separator`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `orientation` | enum(horizontal\|vertical) | horizontal |  |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged) |
+
 ## Accessibility
 
 `<hr>` has the implicit `separator` role. For purely decorative rules prefer `role="none"`.

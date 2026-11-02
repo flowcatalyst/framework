@@ -1,0 +1,20 @@
+{
+  "props": {
+    "name": "plan",
+    "label": "Plan",
+    "value": "free",
+    "options": [
+      {
+        "id": "r1",
+        "value": "free",
+        "label": "Free"
+      },
+      {
+        "id": "r2",
+        "value": "pro",
+        "label": "Pro"
+      }
+    ]
+  },
+  "source": "radio-group.md Structure/Parts; gallery/index.html: element starting with '<div role=\"radiogroup\" aria-label=\"Plan\"'"
+}

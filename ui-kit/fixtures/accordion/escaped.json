@@ -1,0 +1,22 @@
+{
+  "props": {
+    "name": "q&a\"'",
+    "items": [
+      {
+        "value": "x",
+        "title": "Tom & \"Jerry\" <b>'x'</b>"
+      },
+      {
+        "value": "y",
+        "title": "<script>alert(1)</script>"
+      }
+    ],
+    "open": "x"
+  },
+  "slots": {
+    "x": "<p>Caller markup, inserted verbatim.</p>",
+    "y": "Body."
+  },
+  "source": "accordion.md; contract server-rendered-ui.md section 3 rule 1 (text and attribute values are escaped)",
+  "notes": "the group name is an attribute value, the titles are text; slot content is raw"
+}

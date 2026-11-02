@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "dlg-publish",
+    "title": "Publish the draft?",
+    "message": "Everyone with access sees it.",
+    "cancelLabel": "Not yet",
+    "confirmLabel": "Publish",
+    "confirmVariant": "primary"
+  },
+  "source": "alert-dialog.md Structure/Accessibility/Notes; confirmVariant primary"
+}

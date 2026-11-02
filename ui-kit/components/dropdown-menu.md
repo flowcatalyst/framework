@@ -62,6 +62,18 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 | Escape (focus returns to the trigger) | `data-on:keydown__window="evt.key === 'Escape' && el.open && (el.open = false, el.querySelector('summary').focus())"` |
 | close after choosing an item | `data-on:click="el.closest('details').open = false"` on each item |
 
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/dropdown-menu`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | required; the `<details>` id |
+| `align` | enum(left\|right) | left | panel position (Options) |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged); on the root `<details>` |
+
+Slots: `trigger` (the whole `<summary>` content) and `items` (the whole panel content: items, labels, separators, submenus).
+
 ## Accessibility
 
 - `<summary>` is focusable and toggles with Enter/Space.

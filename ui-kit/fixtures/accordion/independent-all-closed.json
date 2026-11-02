@@ -1,0 +1,20 @@
+{
+  "props": {
+    "items": [
+      {
+        "value": "a",
+        "title": "First"
+      },
+      {
+        "value": "b",
+        "title": "Second"
+      }
+    ]
+  },
+  "slots": {
+    "a": "One.",
+    "b": "Two."
+  },
+  "source": "accordion.md Parts (accordion_item: name only for exclusive behaviour, open only for initially open)",
+  "notes": "no name and no open item: the details elements carry neither attribute"
+}

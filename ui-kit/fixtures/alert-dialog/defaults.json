@@ -1,0 +1,8 @@
+{
+  "props": {
+    "id": "dlg-def",
+    "title": "Sure?",
+    "message": "This cannot be undone."
+  },
+  "source": "alert-dialog.md Structure/Accessibility/Notes Props (cancelLabel Cancel, confirmLabel Confirm, confirmVariant destructive by default)"
+}

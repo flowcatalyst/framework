@@ -1,0 +1,7 @@
+{
+  "props": {
+    "value": 0,
+    "label": "Not started"
+  },
+  "source": "progress.md Notes; reading: value 0 is a value, not absent"
+}

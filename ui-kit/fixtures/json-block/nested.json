@@ -1,0 +1,30 @@
+{
+  "props": {
+    "value": {
+      "data": {
+        "currency": "ZAR",
+        "total": 1250.5
+      },
+      "id": "evt_01",
+      "items": [
+        {
+          "sku": "a-1"
+        },
+        {
+          "sku": "b-2"
+        }
+      ],
+      "meta": {},
+      "n": null,
+      "tags": [],
+      "type": "orders:billing:invoice:created",
+      "weights": [
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  "source": "json-block.md Notes (server pretty-prints). The gallery writes the nested data object on one line, which is not the spec's pretty-print",
+  "notes": "pretty-print rules: 2-space indent, `\"key\": value`, one member per line, empty `{}`/`[]`, keys in the order given (fixture keys are alphabetical so a language that sorts keys agrees), no \\u escapes for < > & (the output is HTML-escaped afterwards), ASCII only"
+}

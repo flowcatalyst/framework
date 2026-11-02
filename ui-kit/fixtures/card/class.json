@@ -1,0 +1,10 @@
+{
+  "props": {
+    "title": "Classed",
+    "class": "[&]:max-w-sm"
+  },
+  "slots": {
+    "default": "Body."
+  },
+  "source": "card.md Props (class appended to the root div)"
+}

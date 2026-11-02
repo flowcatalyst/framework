@@ -1,0 +1,14 @@
+{
+  "props": {
+    "id": "cls-form",
+    "signal": "dirtyCls",
+    "class": "[&]:max-w-md",
+    "attrs": {
+      "novalidate": true
+    }
+  },
+  "slots": {
+    "default": "<input type=\"text\" name=\"name\" value=\"Ada\" id=\"f-name\">"
+  },
+  "source": "dirty-form.md Props (class appended to the form's class list; attrs on the form)"
+}

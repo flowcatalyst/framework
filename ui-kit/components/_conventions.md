@@ -97,7 +97,7 @@ Rules:
 Every spec has a **Props** table: the component's parameters with language-neutral names, so every template implementation (templ in the Go platform, JTE in the framework) exposes the same signature and the fixtures in `fixtures/` can drive all of them.
 
 - Names are camelCase. Each implementation maps them to its own idiom (Go: an exported field `Variant` with the JSON tag `variant`).
-- Types: `string`, `boolean`, `number`, `enum(a|b)` (first value or the listed default applies when absent), `list<T>`, `{...}` (an object), `attrs` (extra attributes passed through to the part the row names), `slot` (caller markup; `default` is the unnamed slot).
+- Types: `string`, `boolean`, `number`, `enum(a|b)` (first value or the listed default applies when absent), `list<T>`, `{...}` (an object), `any` (any JSON value: string, number, boolean, null, list or object), `attrs` (extra attributes passed through to the part the row names), `slot` (caller markup; `default` is the unnamed slot).
 - Absent = the default. Booleans default to false, so a prop that is on by default is named for its opposite (`persistent` turns light dismiss *off*).
 - Values that end up in a Datastar expression (ids, signal names) must be validated by the implementation (`[A-Za-z][A-Za-z0-9_-]*` for ids, camelCase for signals); they never carry user data.
 

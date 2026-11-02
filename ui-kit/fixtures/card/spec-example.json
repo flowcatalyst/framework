@@ -1,0 +1,11 @@
+{
+  "props": {
+    "title": "Title",
+    "description": "Description"
+  },
+  "slots": {
+    "default": "Content",
+    "footer": "Footer actions"
+  },
+  "source": "card.md Structure/Parts Structure example"
+}

@@ -1,0 +1,8 @@
+{
+  "props": {
+    "src": "/u/ada.png",
+    "alt": "Ada Lovelace",
+    "initials": "AL"
+  },
+  "source": "avatar.md Structure example (image over the initials fallback; the gallery has no image example)"
+}

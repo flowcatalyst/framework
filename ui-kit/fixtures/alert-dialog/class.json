@@ -1,0 +1,9 @@
+{
+  "props": {
+    "id": "dlg-cls",
+    "title": "Sure?",
+    "message": "Really.",
+    "class": "[&]:max-w-md"
+  },
+  "source": "alert-dialog.md Props (class appended to the dialog's class list)"
+}

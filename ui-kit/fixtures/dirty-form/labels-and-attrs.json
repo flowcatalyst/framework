@@ -1,0 +1,17 @@
+{
+  "props": {
+    "id": "user-edit",
+    "signal": "dirtyUserEdit",
+    "saveLabel": "Save changes",
+    "discardLabel": "Undo",
+    "attrs": {
+      "action": "/users/42",
+      "method": "post"
+    }
+  },
+  "slots": {
+    "default": "<input type=\"text\" name=\"name\" value=\"Ada\" id=\"f-name\">"
+  },
+  "source": "dirty-form.md Structure/Parts/Behaviour; saveLabel/discardLabel, attrs on the <form>, a multi-word signal",
+  "notes": "signal dirtyUserEdit: attribute form data-signals:dirty-user-edit, expression $dirtyUserEdit"
+}

@@ -1,0 +1,13 @@
+{
+  "props": {
+    "value": {
+      "a&b<c>": "Tom & \"Jerry\" <b>'x'</b>",
+      "html": "<script>alert(1)</script>"
+    },
+    "attrs": {
+      "aria-label": "Tom & \"Jerry\" <b>'x'</b>"
+    }
+  },
+  "source": "json-block.md Notes (HTML-escaped); contract section 3 rule 1",
+  "notes": "pretty-print rules: 2-space indent, `\"key\": value`, one member per line, empty `{}`/`[]`, keys in the order given (fixture keys are alphabetical so a language that sorts keys agrees), no \\u escapes for < > & (the output is HTML-escaped afterwards), ASCII only; the JSON string escape (backslash before a double quote) comes first, the HTML escape second, so a double quote inside a value shows as backslash + &quot;"
+}

@@ -1,0 +1,12 @@
+{
+  "props": {
+    "title": "Billing",
+    "description": "Plan and invoices",
+    "headingLevel": 2
+  },
+  "slots": {
+    "default": "<p>Pro plan.</p>",
+    "footer": "<a href=\"/billing\">Manage</a>"
+  },
+  "source": "card.md Structure/Parts Accessibility/Notes (heading level parameter)"
+}

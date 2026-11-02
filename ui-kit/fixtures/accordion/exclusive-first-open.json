@@ -1,0 +1,21 @@
+{
+  "props": {
+    "name": "faq",
+    "items": [
+      {
+        "value": "what",
+        "title": "What is this?"
+      },
+      {
+        "value": "another",
+        "title": "Another?"
+      }
+    ],
+    "open": "what"
+  },
+  "slots": {
+    "what": "Content.",
+    "another": "Content."
+  },
+  "source": "accordion.md Structure/Parts; gallery/index.html: 'Accordion (exclusive via name)'; the spec's Structure example"
+}

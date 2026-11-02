@@ -1,0 +1,7 @@
+{
+  "props": {
+    "size": "sm",
+    "initials": "AL"
+  },
+  "source": "avatar.md Options size sm; gallery/index.html: 'Avatar' (first)"
+}

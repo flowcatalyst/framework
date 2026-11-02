@@ -28,8 +28,26 @@ import tools.jackson.databind.node.ObjectNode;
  */
 class FixtureConformanceTest {
 
-  /** Fixture directories this module does not render yet. Empty since GU3; a new one must be added here first. */
-  static final Set<String> NOT_YET = Set.of();
+  /**
+   * Fixture directories this module does not render yet. Empty since GU3; GU4 step 1 added the thirteen
+   * spec-only components' fixtures before their renderers (contract section 2 rule 4). Must be empty again when
+   * GU4 is closed.
+   */
+  static final Set<String> NOT_YET =
+      Set.of(
+          "accordion",
+          "alert-dialog",
+          "avatar",
+          "card",
+          "dirty-form",
+          "dropdown-menu",
+          "hover-card",
+          "json-block",
+          "kbd",
+          "progress",
+          "radio-group",
+          "separator",
+          "tooltip");
 
   static final ObjectMapper MAPPER =
       JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();

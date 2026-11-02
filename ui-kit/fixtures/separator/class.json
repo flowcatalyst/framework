@@ -1,0 +1,7 @@
+{
+  "props": {
+    "orientation": "vertical",
+    "class": "mx-2"
+  },
+  "source": "separator.md Props (class appended)"
+}

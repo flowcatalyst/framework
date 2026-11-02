@@ -1,0 +1,22 @@
+{
+  "props": {
+    "id": "dlg-del-42",
+    "title": "Delete this workspace?",
+    "message": "Its projects and deploys go with it.",
+    "cancelLabel": "Keep it",
+    "confirmLabel": "Delete",
+    "action": "/workspaces/42/delete",
+    "hiddenFields": [
+      {
+        "name": "csrf",
+        "value": "tok-123"
+      },
+      {
+        "name": "id",
+        "value": "42"
+      }
+    ]
+  },
+  "source": "alert-dialog.md Structure/Accessibility/Notes Behaviour/Notes: footer buttons inside <form method=post>, hidden fields (action URL, hidden fields)",
+  "notes": "with an action the footer div sits in a form, the hidden inputs come before it"
+}

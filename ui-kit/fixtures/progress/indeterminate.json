@@ -1,0 +1,7 @@
+{
+  "props": {
+    "label": "Loading"
+  },
+  "source": "progress.md Accessibility (omit value for indeterminate); gallery/index.html: 'Progress' (second element)",
+  "notes": "the gallery's second bar omits transition-all and adds mt-3 (see the report); the spec's class list wins"
+}

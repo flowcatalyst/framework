@@ -1,0 +1,9 @@
+{
+  "props": {
+    "keys": [
+      "Esc"
+    ],
+    "class": "ml-1"
+  },
+  "source": "kbd.md Props (class on the lone kbd for one key)"
+}

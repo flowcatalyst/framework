@@ -1,0 +1,15 @@
+{
+  "props": {
+    "items": [
+      {
+        "value": "a",
+        "title": "First"
+      }
+    ],
+    "class": "[&]:max-w-md mt-4"
+  },
+  "slots": {
+    "a": "One."
+  },
+  "source": "accordion.md Props (class appended to the root div's class list)"
+}

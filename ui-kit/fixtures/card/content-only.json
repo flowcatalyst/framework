@@ -1,0 +1,7 @@
+{
+  "props": {},
+  "slots": {
+    "default": "<p>Only content.</p>"
+  },
+  "source": "card.md Structure/Parts Parts (Header optional); reading: no header, no footer"
+}

@@ -27,9 +27,24 @@ An edit form whose Save button stays disabled and Discard button hidden until a 
 
 | Part | Element | Classes / attributes | Role |
 |---|---|---|---|
-| Form | `<form id data-signals:dirty-{id}="false" data-init data-on:input data-on:reset>` |  | Holds the snapshot in `el.dataset.snapshot` |
+| Form | `<form id data-signals:{kebab-signal}="false" data-init data-on:input data-on:reset>` |  | Holds the snapshot in `el.dataset.snapshot` |
 | Save | `button[type=submit]` | button `primary` | `data-attr:disabled="!$dirtyX"` (+ static `disabled` so it is disabled before Datastar loads) |
 | Discard | `button[type=reset]` | button `ghost` | `data-show="$dirtyX"` (+ `style="display: none"`) |
+
+## Props
+
+Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the ui-kit root: `fixtures/dirty-form`.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `id` | string | - | required; the form id |
+| `signal` | string | - | required; camelCase signal name, unique per page (explicit, not derived from `id`); the attribute form is kebab-case (`data-signals:dirty-user-edit`), expressions use `$dirtyUserEdit` |
+| `saveLabel` | string | `Save` | text (escaped) |
+| `discardLabel` | string | `Discard` | text (escaped) |
+| `attrs` | attrs | - | extra attributes on the `<form>` (e.g. `action`, `method`) |
+| `class` | string | - | appended to the root element's class list (concatenated, not merged); on the `<form>` |
+
+Slot: `default` (the fields, placed before the button row). The variant with Save/Discard outside the form (`form="id"`) is not modelled.
 
 ## Accessibility
 
@@ -47,4 +62,4 @@ When the server patches a **new record into the same form** (a drawer re-renderi
 
 ## Notes for a template author
 
-Parameter: a unique signal name per form (`dirtyUserEdit`). Save/Discard may live outside the form (`form="id"`): then bind `data-attr:disabled` on them as usual since the signal is global.
+Parameters: `id` and a unique signal name per form (`dirtyUserEdit`; passed explicitly, not derived from the id). Save/Discard may live outside the form (`form="id"`): then bind `data-attr:disabled` on them as usual since the signal is global. That variant is not modelled by the template (Save/Discard are always inside the form).

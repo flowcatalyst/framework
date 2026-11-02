@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "hc1"
+  },
+  "slots": {
+    "trigger": "<a href=\"/u/ada\" aria-describedby=\"hc1\" class=\"underline underline-offset-4\">@ada</a>",
+    "default": "<strong>Ada Lovelace</strong><span class=\"text-sm text-muted-foreground\">Anchor user since 2024.</span>"
+  },
+  "source": "hover-card.md Structure; gallery/index.html: element starting with '<span class=\"group relative inline-flex\"><a href=\"#\"'",
+  "notes": "the caller writes aria-describedby on the trigger (it is slot markup); the gallery's href is '#', the spec's '/u/ada'"
+}

@@ -1,0 +1,20 @@
+{
+  "props": {
+    "name": "notify",
+    "labelledBy": "notify-legend",
+    "value": "email",
+    "options": [
+      {
+        "id": "n-e",
+        "value": "email",
+        "label": "Email"
+      },
+      {
+        "id": "n-s",
+        "value": "sms",
+        "label": "SMS"
+      }
+    ]
+  },
+  "source": "radio-group.md Accessibility (aria-labelledby as an alternative to aria-label)"
+}
