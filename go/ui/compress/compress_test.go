@@ -14,6 +14,7 @@ import (
 
 	"github.com/andybalholm/brotli"
 
+	"github.com/flowcatalyst/framework/go/ui/assets"
 	"github.com/flowcatalyst/framework/go/ui/compress"
 	"github.com/flowcatalyst/framework/go/ui/ds"
 )
@@ -215,5 +216,112 @@ func readEvent(t *testing.T, r *bufio.Reader) string {
 			return b.String()
 		}
 		b.WriteString(line)
+	}
+}
+
+// The static assets through Handler (contract section 12): each coding has its own ETag, a
+// conditional request matches only its own variant, and every answer varies on Accept-Encoding.
+func TestAssetsGetAnETagPerEncodingAndConditionalRequestsMatchPerVariant(t *testing.T) {
+	a, err := assets.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := compress.Handler(a.Handler())
+	url := a.URL("kit.css")
+	send := func(method, acceptEncoding string, headers ...string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, url, http.NoBody)
+		if acceptEncoding != "" {
+			r.Header.Set("Accept-Encoding", acceptEncoding)
+		}
+		for i := 0; i+1 < len(headers); i += 2 {
+			r.Header.Set(headers[i], headers[i+1])
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec
+	}
+	plain := send("GET", "")
+	base := plain.Header().Get("ETag")
+	if plain.Code != 200 || len(base) < 4 || plain.Header().Get("Content-Encoding") != "" || plain.Header().Get("Vary") != "Accept-Encoding" {
+		t.Fatalf("identity: %d %v", plain.Code, plain.Header())
+	}
+	tag := map[string]string{compress.Brotli: strings.TrimSuffix(base, `"`) + `-br"`, compress.Gzip: strings.TrimSuffix(base, `"`) + `-gz"`}
+	for _, coding := range []string{compress.Brotli, compress.Gzip} {
+		rec := send("GET", coding)
+		if rec.Code != 200 || rec.Header().Get("Content-Encoding") != coding || rec.Header().Get("ETag") != tag[coding] ||
+			rec.Header().Get("Vary") != "Accept-Encoding" || rec.Header().Get("Content-Length") != "" {
+			t.Fatalf("%s: %d %v", coding, rec.Code, rec.Header())
+		}
+		if rec.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
+			t.Errorf("%s: Cache-Control %q", coding, rec.Header().Get("Cache-Control"))
+		}
+		got, err := io.ReadAll(decode(t, coding, rec.Body))
+		if err != nil || !bytes.Equal(got, plain.Body.Bytes()) {
+			t.Errorf("%s: decoded %d bytes (want %d), err %v", coding, len(got), plain.Body.Len(), err)
+		}
+		// its own tag: 304, with the variant's tag and Vary, and no body
+		nm := send("GET", coding, "If-None-Match", tag[coding])
+		if nm.Code != 304 || nm.Header().Get("ETag") != tag[coding] || nm.Header().Get("Vary") != "Accept-Encoding" || nm.Body.Len() != 0 ||
+			nm.Header().Get("Content-Encoding") != "" {
+			t.Errorf("%s own tag: %d %v body %d", coding, nm.Code, nm.Header(), nm.Body.Len())
+		}
+		// weak form and a list
+		if rec := send("GET", coding, "If-None-Match", `"zzz", W/`+tag[coding]); rec.Code != 304 {
+			t.Errorf("%s weak/list: %d", coding, rec.Code)
+		}
+	}
+	// the other coding's tag does not match
+	if rec := send("GET", compress.Brotli, "If-None-Match", tag[compress.Gzip]); rec.Code != 200 || rec.Header().Get("ETag") != tag[compress.Brotli] {
+		t.Errorf("br request with the gzip tag: %d %v", rec.Code, rec.Header())
+	}
+	if rec := send("GET", compress.Gzip, "If-None-Match", tag[compress.Brotli]); rec.Code != 200 {
+		t.Errorf("gzip request with the br tag: %d", rec.Code)
+	}
+	// an unrelated tag, and a variant tag of another file, never match
+	if rec := send("GET", compress.Brotli, "If-None-Match", `"other-br"`); rec.Code != 200 {
+		t.Errorf("other file's tag: %d", rec.Code)
+	}
+	// without an acceptable coding the plain tag is the validator
+	if rec := send("GET", "gzip;q=0", "If-None-Match", base); rec.Code != 304 || rec.Header().Get("ETag") != base {
+		t.Errorf("identity conditional: %d %v", rec.Code, rec.Header())
+	}
+	if rec := send("GET", "", "If-None-Match", tag[compress.Brotli]); rec.Code != 200 {
+		t.Errorf("a variant tag does not match the plain body: %d", rec.Code)
+	}
+	// `*` still matches
+	if rec := send("GET", compress.Brotli, "If-None-Match", "*"); rec.Code != 304 {
+		t.Errorf("*: %d", rec.Code)
+	}
+	// HEAD carries the headers of the GET answer
+	head := send("HEAD", compress.Brotli)
+	if head.Code != 200 || head.Header().Get("ETag") != tag[compress.Brotli] || head.Header().Get("Content-Encoding") != compress.Brotli ||
+		head.Header().Get("Vary") != "Accept-Encoding" {
+		t.Errorf("HEAD: %d %v", head.Code, head.Header())
+	}
+	// the sprite is image/svg+xml and the islands text/javascript: all compressed
+	for _, name := range []string{"lucide-sprite.svg", "datastar.js"} {
+		r := httptest.NewRequest("GET", a.URL(name), http.NoBody)
+		r.Header.Set("Accept-Encoding", "br")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		if rec.Header().Get("Content-Encoding") != compress.Brotli || !strings.HasSuffix(rec.Header().Get("ETag"), `-br"`) {
+			t.Errorf("%s: %v", name, rec.Header())
+		}
+	}
+}
+
+// A caller's request is not changed by the tag rewriting.
+func TestHandlerDoesNotMutateTheCallersRequest(t *testing.T) {
+	r := httptest.NewRequest("GET", "/x", http.NoBody)
+	r.Header.Set("Accept-Encoding", "br")
+	r.Header.Set("If-None-Match", `"abc-br"`)
+	compress.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("If-None-Match"); got != `"abc"` {
+			t.Errorf("the handler sees %q", got)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})).ServeHTTP(httptest.NewRecorder(), r)
+	if got := r.Header.Get("If-None-Match"); got != `"abc-br"` {
+		t.Errorf("the caller's request was changed: %q", got)
 	}
 }

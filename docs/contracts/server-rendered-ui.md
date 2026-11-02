@@ -50,7 +50,8 @@ The Go module's packages that are plain `net/http` (`kit`, `ds`, `assets`, `view
    (`javascript:`, `data:`, `vbscript:`, ...) becomes `about:invalid#blocked`.
 4. Datastar attribute values are code. An id, a signal name or a path that enters an expression is validated and
    refused: id `[A-Za-z][A-Za-z0-9_-]*`, signal `[A-Za-z][A-Za-z0-9]*` (its attribute form is kebab-case, a `-`
-   before each capital that follows a lower-case letter or digit, then lower-cased), path `/[A-Za-z0-9/_-]*`.
+   before each capital that follows a lower-case letter or digit, then lower-cased), path `/[A-Za-z0-9/_-]*` not starting with `//` (*amended 2026-11-02:* `//host` would fetch from another host; Java's
+   `Markup.path` accepted it).
    User data goes into plain attributes (`data-id`) and is read with `el.dataset`, never written into an
    expression.
 5. An unknown variant or size is refused, never replaced by a default.
@@ -148,13 +149,15 @@ application path; every link in the shell comes from those props.
 3. A local path (for `returnTo`, `redirect` and `replaceURL`, which carry user-visible paths with queries) starts
    with a single `/`, does not start with `//` or `/\`, and has no control characters or `\`.
 4. Native form posts: a re-rendered form answers `422` with the page; success answers `303` to a local path with
-   the flash cookie (section 9).
+   the flash cookie (section 9). Go: `Views.SeeOther(w, r, path, flashKey)`; a Datastar request cannot follow a
+   `303`, so it gets the flash cookie and a `redirect` patch (`200`) instead. Java: the same helper (GU3).
 5. Login pages are not part of the module.
 
 ## 9. Flash after a redirect
 
 1. The cookie `fw_flash` holds a **key**, never message text: the application maps keys to messages
-   (kind, summary, detail) in code. An unknown key renders nothing.
+   (kind, summary, detail) in code. Setting a key that is not registered is refused (an error, no cookie); an
+   unknown key read from a cookie renders nothing.
 2. Set on the `303`: `Path=/`, `HttpOnly`, `SameSite=Lax`, `Max-Age=60`, `Secure` unless the request is plain
    HTTP in `local` or `test`. The value is the key, `[a-z0-9-]{1,64}`, otherwise refused.
 3. Read and cleared (`Max-Age=0`, same attributes) by the next document answer; the message renders in the flash

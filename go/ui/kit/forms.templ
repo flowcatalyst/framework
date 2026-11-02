@@ -499,11 +499,18 @@ func (p ToggleGroupProps) inputType() string {
 	return "checkbox"
 }
 
-// ToggleGroup is toggle.md's group of toggles.
+func (p ToggleGroupProps) sizeClass() string {
+	return pick("toggle size", toggleSizes, p.Size, ToggleMd)
+}
+
+// ToggleGroup is toggle.md's group of toggles. The kind and the size are
+// validated before anything renders, so a bad one is refused for a group with
+// no options too (contract section 3 rule 5).
 templ ToggleGroup(p ToggleGroupProps) {
+	{{ inputType, sizeClass := p.inputType(), p.sizeClass() }}
 	<div class="inline-flex w-fit items-center gap-1 rounded-lg border border-border p-1" { Attrs(p.Attrs)... }>
 		for _, o := range p.Options {
-			<label class={ cx(toggleBase, pick("toggle size", toggleSizes, p.Size, ToggleMd)) }><input type={ p.inputType() } name={ p.Name } value={ o.Value } class="sr-only" checked?={ slices.Contains(p.Selected, o.Value) } { Attrs(p.InputAttrs)... }/>{ o.Label }</label>
+			<label class={ cx(toggleBase, sizeClass) }><input type={ inputType } name={ p.Name } value={ o.Value } class="sr-only" checked?={ slices.Contains(p.Selected, o.Value) } { Attrs(p.InputAttrs)... }/>{ o.Label }</label>
 		}
 	</div>
 }

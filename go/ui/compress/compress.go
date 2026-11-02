@@ -3,7 +3,7 @@
 // from Accept-Encoding, for the server-rendered pages (text/html) and the
 // Datastar streams (text/event-stream).
 //
-// Handler wraps the page group. It decides when the response's header is
+// Handler wraps the page group (and may wrap the static assets). It decides when the response's header is
 // committed (WriteHeader, the first Write or the first Flush, which is how
 // the Datastar SDK starts a stream), compresses only the types above, never
 // a response that already has a Content-Encoding, and adds
@@ -18,9 +18,21 @@
 // Brotli block (a strict decoder reports an unexpected EOF), it sets no Vary,
 // and it builds its encoders on every request.
 //
-// The static assets are not served through Handler: a server that wants them
-// compressed encodes each text asset once (Encode) and picks a variant with
-// Negotiate.
+// An ETag is a validator of one representation, and a compressed body is
+// another one (contract section 12): a compressed response's ETag gets the
+// coding as a suffix inside the quotes ("abc" becomes "abc-br" or "abc-gz";
+// a weak tag keeps its W/), and an If-None-Match entry that carries the
+// suffix of the coding this request negotiated is read as the handler's own
+// tag, so the handler's conditional-request logic (the assets' 304) works
+// unchanged and each variant matches only its own tag. An entry of the other
+// coding ("abc-gz" for a Brotli response) stays as it is and matches nothing.
+// An entry with no suffix still reaches the handler as sent, so it matches the
+// uncompressed tag: the 304 then answers with the plain tag, and the browser
+// that stored the uncompressed body keeps it.
+//
+// Pages, streams and the static assets (text/css, text/javascript,
+// image/svg+xml) go through Handler; the SPA handler still does not compress.
+// For content compressed ahead of time there are Encode and Negotiate.
 package compress
 
 import (
@@ -92,8 +104,11 @@ func Negotiate(acceptEncoding string) string {
 	return ""
 }
 
-// streamed are the media types Handler compresses.
-var streamed = map[string]bool{"text/html": true, "text/event-stream": true}
+// streamed are the media types Handler compresses (contract section 12).
+var streamed = map[string]bool{
+	"text/html": true, "text/event-stream": true,
+	"text/css": true, "text/javascript": true, "image/svg+xml": true,
+}
 
 func mediaType(contentType string) string {
 	t, _, _ := strings.Cut(contentType, ";")
@@ -157,13 +172,57 @@ func Encode(coding string, body []byte) []byte {
 	return buf.Bytes()
 }
 
-// Handler compresses the text/html and text/event-stream responses of next.
+// suffix is the ETag suffix of a coding.
+func suffix(coding string) string {
+	if coding == Brotli {
+		return "-br"
+	}
+	return "-gz"
+}
+
+// Handler compresses the text/html, text/event-stream, text/css, text/javascript and image/svg+xml
+// responses of next, and gives a compressed response's ETag the coding's suffix (see the package
+// comment).
 func Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cw := &writer{ResponseWriter: w, coding: Negotiate(r.Header.Get("Accept-Encoding"))}
+		cw := &writer{ResponseWriter: w, coding: Negotiate(r.Header.Get("Accept-Encoding")), head: r.Method == http.MethodHead}
+		if cw.coding != "" && len(r.Header.Values("If-None-Match")) > 0 {
+			var stripped bool
+			r = r.Clone(r.Context())
+			stripped, r.Header["If-None-Match"] = stripVariant(r.Header.Values("If-None-Match"), suffix(cw.coding))
+			cw.matchedVariant = stripped
+		}
 		defer cw.finish()
 		next.ServeHTTP(cw, r)
 	})
+}
+
+// stripVariant removes the suffix from every entity-tag of the If-None-Match values that carries
+// it, and reports whether one did.
+func stripVariant(values []string, sfx string) (bool, []string) {
+	var stripped bool
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		parts := strings.Split(v, ",")
+		for i, part := range parts {
+			t := strings.TrimSpace(part)
+			if tag, ok := strings.CutSuffix(t, sfx+`"`); ok && (strings.HasPrefix(tag, `"`) || strings.HasPrefix(tag, `W/"`)) {
+				parts[i] = tag + `"`
+				stripped = true
+			}
+		}
+		out = append(out, strings.Join(parts, ","))
+	}
+	return stripped, out
+}
+
+// variantTag adds the suffix to a quoted entity-tag, W/ prefix kept; anything else is returned as
+// it is.
+func variantTag(etag, sfx string) string {
+	if tag, ok := strings.CutSuffix(etag, `"`); ok && (strings.HasPrefix(tag, `"`) || strings.HasPrefix(tag, `W/"`)) && len(tag) > 1 {
+		return tag + sfx + `"`
+	}
+	return etag
 }
 
 type writer struct {
@@ -171,6 +230,10 @@ type writer struct {
 	coding  string
 	decided bool
 	enc     encoder
+	head    bool // a HEAD request: no body is written, so the header is decided when the handler returns
+	// matchedVariant: the request's If-None-Match named this response's variant (a suffixed tag), so
+	// a 304 validates the compressed representation
+	matchedVariant bool
 }
 
 // decide runs once, when the header is committed.
@@ -180,12 +243,22 @@ func (w *writer) decide(status int) {
 	}
 	w.decided = true
 	h := w.Header()
+	if status == http.StatusNotModified && w.matchedVariant && h.Get("ETag") != "" {
+		// the 304 of a conditional request that named the compressed variant (it has no Content-Type
+		// to look at): the same tag the 200 carries
+		h.Set("ETag", variantTag(h.Get("ETag"), suffix(w.coding)))
+		AddVary(h)
+		return
+	}
 	if !streamed[mediaType(h.Get("Content-Type"))] || h.Get("Content-Encoding") != "" {
 		return
 	}
 	AddVary(h)
 	if w.coding == "" || status == http.StatusNoContent || status == http.StatusNotModified {
 		return
+	}
+	if etag := h.Get("ETag"); etag != "" {
+		h.Set("ETag", variantTag(etag, suffix(w.coding)))
 	}
 	h.Set("Content-Encoding", w.coding)
 	h.Del("Content-Length")
@@ -235,6 +308,9 @@ func (w *writer) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // finish ends the compressed stream and returns the encoder to its pool.
 func (w *writer) finish() {
+	if !w.decided && w.head {
+		w.decide(http.StatusOK) // a HEAD answer carries the headers of the GET answer
+	}
 	if w.enc == nil {
 		return
 	}

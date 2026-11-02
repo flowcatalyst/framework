@@ -10,6 +10,7 @@ type compiled struct {
 	pattern         routePattern
 	registrant      string
 	requiresContext bool
+	acceptForms     bool
 	handler         HandlerFunc
 }
 

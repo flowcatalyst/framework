@@ -58,9 +58,9 @@ func (p PermissionDeniedDialogProps) expired() bool { return p.kind() == Session
 // required returns an application path the caller must supply: the kit has
 // no defaults of its own (contract section 7: nothing in the module names an
 // application path).
-func required(what, value string) string {
+func required(rule, value string) string {
 	if value == "" {
-		panic("kit: " + what + " is required (the kit names no application path; contract section 7)")
+		panic("kit: " + rule + " (the kit names no application path; contract section 7)")
 	}
 	return value
 }
@@ -279,9 +279,9 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 templ.SafeURL
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(required("PermissionDeniedDialogProps.LoginURL", p.LoginURL)))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(required("PermissionDeniedDialogProps.LoginURL (loginUrl) is required when kind is session", p.LoginURL)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 107, Col: 123}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 107, Col: 167}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -297,9 +297,9 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 templ.SafeURL
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(required("PermissionDeniedDialogProps.HomeURL", p.HomeURL)))
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(required("PermissionDeniedDialogProps.HomeURL (homeUrl) is required when kind is denied", p.HomeURL)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 110, Col: 111}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 110, Col: 153}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {

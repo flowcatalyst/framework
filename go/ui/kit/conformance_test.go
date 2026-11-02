@@ -224,23 +224,8 @@ func fixturesDir(t testing.TB) string {
 	}
 }
 
-// specDefaults are the two application paths that permission-denied-dialog.md
-// still lists as defaults (/ui and /ui/login). The kit has none of its own
-// (contract section 7), so the harness supplies them where a fixture leaves
-// the prop out; the spec and the fixture should carry them (see the GU1 report).
-const (
-	specHomeURL  = "/ui"
-	specLoginURL = "/ui/login"
-)
-
 func permissionDenied(f *fixture) (templ.Component, error) {
 	p, err := decode[PermissionDeniedDialogProps](f)
-	if p.HomeURL == "" {
-		p.HomeURL = specHomeURL
-	}
-	if p.LoginURL == "" {
-		p.LoginURL = specLoginURL
-	}
 	return PermissionDeniedDialog(p), err
 }
 

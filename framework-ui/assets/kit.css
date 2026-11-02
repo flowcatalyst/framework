@@ -1,8 +1,8 @@
 /* Tailwind input for framework-ui's stylesheet (src/main/resources/fw-ui/kit.css).
 
    Build with ./build.sh (Tailwind standalone CLI, no Node). Tailwind emits only the utility classes
-   it finds in the files named by @source: every template and Java file of this module, and the
-   demo's templates. An application with its own templates writes its own input that imports
+   it finds in the files named by @source: every template and Java file of this module, the
+   demo's templates and the Go kit's templ sources. An application with its own templates writes its own input that imports
    ui-kit/theme the same way and adds its @source lines. */
 
 @import "tailwindcss";
@@ -11,6 +11,10 @@
 @source "../src/main/java";
 @source "../../examples/orders-demo-jte/src/main/jte";
 @source "../../examples/orders-demo-jte/src/main/java";
+/* The Go kit (go/ui): the same classes in templ sources, so one stylesheet serves both. */
+@source "../../go/ui/kit/*.templ";
+@source "../../go/ui/kit/kit.go";
+@source "../../go/ui/views/*.templ";
 
 @import "../../ui-kit/theme/tokens.css";
 @import "../../ui-kit/theme/fc-components.css";

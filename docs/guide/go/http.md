@@ -106,6 +106,19 @@ header passes, and the body must still be JSON. Both are `*CSRFGuard`; use `Chec
 rt.Handle("POST /signup", signup, httpfw.With(httpfw.PublicFormGuard(base).Middleware()))
 ```
 
+**Form routes.** A server-rendered page ([Go: server-rendered pages](ui-templ.md)) posts native forms, whose
+bodies are `application/x-www-form-urlencoded` or `multipart/form-data`. A route registered with the route option
+`httpfw.AcceptForms()` takes those bodies from a cookie-authenticated request, after the provenance rules above,
+which are unchanged and still run first (a form post without `Sec-Fetch-Site: same-origin`/`none` or a matching
+`Origin` is `403`). Only `SessionsGuard` honours it, and only on the routes registered that way: every other route
+keeps the JSON-only `415`, `PublicFormGuard` stays JSON-only for every caller, `text/plain` or a missing content
+type is still `415` on a form route, and bearer requests are unaffected. The router records the flag on the matched
+route before the context resolver and the middleware run; the guard reads it from the request's state.
+
+```go
+rt.HandleContext("POST /orders", createOrder, httpfw.AcceptForms())
+```
+
 The session module applies `SessionsGuard` itself (see [sessions and login](../sessions-and-login.md)).
 `httpfw.SecurityHeaders()` is middleware that adds `Referrer-Policy: same-origin`, `X-Frame-Options:
 DENY` and the baseline `Content-Security-Policy` to responses that lack them (pass an `spa.CSP` to

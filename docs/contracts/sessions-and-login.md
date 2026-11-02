@@ -703,6 +703,18 @@ permission matching with wildcards; `Auth.require`; rate limit on the public rou
 refused outside test mode. Security-relevant assertions are mutation-checked (a deliberately
 broken check must fail a test).
 
+*Amended 2026-11-02 (owner ruling R2, section 7.2 rule 5; Go built in GU2, Java in GU3).* Form routes add these CSRF
+cases, each with the route registered as a form route (Go `httpfw.AcceptForms()`) unless it says otherwise: an
+`application/x-www-form-urlencoded` body and a `multipart/form-data` body pass with `Sec-Fetch-Site: same-origin`
+and with a matching `Origin`; both are refused `403 CROSS_ORIGIN_REQUEST` with `Sec-Fetch-Site: cross-site`, with a
+foreign `Origin`, and with neither header (the provenance rules run first and are unchanged); `text/plain`, a body
+without a content type and an unparseable content type are still `415` on a form route; a form body on a route that
+is **not** a form route is `415` (and so is one on a public-form guard); a bearer request is unaffected (exempt, as
+before); a JSON body still passes on a form route. The Go tests are `TestCSRFFormRoutes` (`httpfw/csrf_test.go`),
+`TestFormRoutesAcceptFormBodiesAfterProvenance` (`auth/request_test.go`, through the real resolver and store) and
+`TestFormRoutePostsPassTheSessionsGuardOnlyWithProvenance` (`go/ui/fwui`); the mutation check is a form-route
+test that fails when the route flag is ignored.
+
 Conformance vectors: `conformance/auth/login-failure.json` (4.1.1: per request headers and
 condition, the redirect or the envelope; written by `LoginFailureNavigationTest`; Go passes all 20 cases since G5b, 2026-10-18). The others (id_token cases, sealed cookies, the session
 JSON) are not written; they are listed for when Go implements this contract.

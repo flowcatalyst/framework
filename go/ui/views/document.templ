@@ -1,0 +1,64 @@
+package views
+
+import "github.com/flowcatalyst/framework/go/ui/kit"
+
+// documentProps is everything the document needs; Views builds it for one request.
+type documentProps struct {
+	title string
+	// htmlAttrs are the theme attributes of <html> and, with a shell, the shell's.
+	htmlAttrs templ.Attributes
+	cssURL    string
+	jsURL     string
+	// scripts are the page's island scripts (URLs, each a module).
+	scripts []string
+	// sessionExpired is the body's datastar-fetch listener; empty without a login.
+	sessionExpired string
+	// shell is the app shell's props; nil renders the bare <main>.
+	shell   *kit.AppShellProps
+	flashes []kit.FlashMessageProps
+}
+
+// document is the full HTML document (contract section 5 rule 3; Java's document.jte): no inline
+// script, no style element and no on* attribute. page is the wrapped page content.
+templ document(p documentProps, page templ.Component) {
+	@templ.Raw("<!DOCTYPE html>")
+	<html lang="en" { kit.Attrs(p.htmlAttrs)... }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ p.title }</title>
+			<link rel="icon" href="data:,"/>
+			<link rel="stylesheet" href={ kit.SafeURL(p.cssURL) }/>
+			<script type="module" src={ kit.SafeURL(p.jsURL) }></script>
+			for _, s := range p.scripts {
+				<script type="module" src={ kit.SafeURL(s) }></script>
+			}
+		</head>
+		<body
+			if p.sessionExpired != "" {
+				data-on:datastar-fetch={ p.sessionExpired }
+			}
+		>
+			if p.shell != nil {
+				@kit.AppShell(*p.shell) {
+					@flashStack(p.flashes)
+					@page
+				}
+			} else {
+				<main class="mx-auto max-w-xl p-[24px]">
+					@flashStack(p.flashes)
+					@page
+				</main>
+			}
+		</body>
+	</html>
+}
+
+// flashStack is the document's flash stack with the messages that came with the page.
+templ flashStack(flashes []kit.FlashMessageProps) {
+	@kit.FlashStack(kit.FlashStackProps{ID: FlashStackID}) {
+		for _, f := range flashes {
+			@kit.FlashMessage(f)
+		}
+	}
+}

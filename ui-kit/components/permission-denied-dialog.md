@@ -36,9 +36,11 @@ Fixtures, from the ui-kit root: `fixtures/permission-denied-dialog`.
 | `kind` | `denied` \| `session` | `denied` | |
 | `message` | string | - | the server's text |
 | `requiredPermission` | string | - | denied case only |
-| `homeUrl` | string | `/ui` | |
-| `loginUrl` | string | `/ui/login` | |
+| `homeUrl` | string | - | the "Go to Dashboard" target; **required when `kind` is `denied`** (an implementation refuses a missing one) |
+| `loginUrl` | string | - | the "Log In Again" target; **required when `kind` is `session`** (an implementation refuses a missing one) |
 | `open` | boolean | false | adds `data-init="el.showModal()"`: the dialog opens when the markup arrives (a Datastar patch) |
+
+The kit names no application path, so neither URL has a default: the application says where its dashboard and its sign-in page are. The dialog for the other case does not need the other URL.
 
 ## Accessibility
 

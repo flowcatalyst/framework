@@ -26,6 +26,7 @@ type reqState struct {
 	logger      *slog.Logger
 	cx          fw.Context
 	hasCx       bool
+	acceptForms bool // the matched route was registered with AcceptForms
 }
 
 type stateKey struct{}

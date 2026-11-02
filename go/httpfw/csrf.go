@@ -20,13 +20,16 @@ import (
 type CSRFGuard struct {
 	origin                  string
 	refuseWithoutProvenance bool
+	honourFormRoutes        bool // only SessionsGuard: a route registered with AcceptForms may carry a form body
 }
 
 // SessionsGuard returns the guard for cookie-authenticated requests: Sec-Fetch-Site must be
 // same-origin or none, else Origin must be the origin of publicBaseURL, and a request with neither
-// header is refused (403 CROSS_ORIGIN_REQUEST); then a body must be JSON (415).
+// header is refused (403 CROSS_ORIGIN_REQUEST); then a body must be JSON (415), or, on a route
+// registered with [AcceptForms], JSON or a form (application/x-www-form-urlencoded,
+// multipart/form-data).
 func SessionsGuard(publicBaseURL *url.URL) *CSRFGuard {
-	return &CSRFGuard{origin: OriginOf(publicBaseURL), refuseWithoutProvenance: true}
+	return &CSRFGuard{origin: OriginOf(publicBaseURL), refuseWithoutProvenance: true, honourFormRoutes: true}
 }
 
 // PublicFormGuard returns the guard for an application's public unsafe routes (the platform's
@@ -63,7 +66,7 @@ func (g *CSRFGuard) Check(r *http.Request) error {
 		}
 		return NewError(http.StatusForbidden, "CROSS_ORIGIN_REQUEST", "cross-origin requests are not allowed here")
 	}
-	if hasBody(r) && !isJSON(r.Header.Get("Content-Type")) {
+	if hasBody(r) && !g.bodyAllowed(r) {
 		return NewError(http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "content type must be application/json")
 	}
 	return nil
@@ -112,6 +115,27 @@ func isJSON(contentType string) bool {
 		media = strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
 	}
 	return media == "application/json" || (strings.HasPrefix(media, "application/") && strings.HasSuffix(media, "+json"))
+}
+
+// bodyAllowed reports whether the request's media type may carry a body: JSON always; a form
+// (application/x-www-form-urlencoded, multipart/form-data) only for the sessions guard, and only on a
+// route registered with [AcceptForms].
+func (g *CSRFGuard) bodyAllowed(r *http.Request) bool {
+	contentType := r.Header.Get("Content-Type")
+	return isJSON(contentType) || (g.honourFormRoutes && onFormRoute(r) && isForm(contentType))
+}
+
+// onFormRoute reports whether the dispatcher matched a route registered with [AcceptForms].
+func onFormRoute(r *http.Request) bool {
+	st, ok := r.Context().Value(stateKey{}).(*reqState)
+	return ok && st.acceptForms
+}
+
+// isForm accepts application/x-www-form-urlencoded and multipart/form-data, and nothing else (an
+// unparseable value is not a form).
+func isForm(contentType string) bool {
+	media, _, err := mime.ParseMediaType(contentType)
+	return err == nil && (media == "application/x-www-form-urlencoded" || media == "multipart/form-data")
 }
 
 // OriginOf is the origin of a URL as browsers compare it: scheme and host in lower case, and the

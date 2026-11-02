@@ -143,6 +143,9 @@ func testRoutes() *httpfw.Routes {
 	rt.HandleContext("POST /api/things", func(w http.ResponseWriter, _ *http.Request, _ fw.Context) error {
 		return httpfw.JSON(w, 201, map[string]any{"created": true})
 	}, httpfw.With(auth.Require("orders:thing:create")))
+	rt.HandleContext("POST /ui/things", func(w http.ResponseWriter, _ *http.Request, _ fw.Context) error {
+		return httpfw.JSON(w, 201, map[string]any{"created": true})
+	}, httpfw.AcceptForms(), httpfw.With(auth.Require("orders:thing:create")))
 	rt.HandleContext("POST /api/echo", func(w http.ResponseWriter, _ *http.Request, _ fw.Context) error {
 		return httpfw.JSON(w, 200, map[string]any{"ok": true})
 	})

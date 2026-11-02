@@ -140,10 +140,12 @@ func OpenConfirm(id string) string {
 var pathPattern = regexp.MustCompile(`^/[A-Za-z0-9/_-]*$`)
 
 // Path validates a local path that a Datastar expression will contain (an
-// autocomplete's source). It panics on anything else (programming error).
+// autocomplete's source). It panics on anything else (programming error),
+// including a path starting with "//", which a fetch would send to another
+// host.
 func Path(p string) string {
-	if !pathPattern.MatchString(p) {
-		panic(fmt.Sprintf("kit: invalid path %q (want /[A-Za-z0-9/_-]*)", p))
+	if !pathPattern.MatchString(p) || strings.HasPrefix(p, "//") {
+		panic(fmt.Sprintf("kit: invalid path %q (want /[A-Za-z0-9/_-]*, not starting with //)", p))
 	}
 	return p
 }

@@ -2081,7 +2081,13 @@ func (p ToggleGroupProps) inputType() string {
 	return "checkbox"
 }
 
-// ToggleGroup is toggle.md's group of toggles.
+func (p ToggleGroupProps) sizeClass() string {
+	return pick("toggle size", toggleSizes, p.Size, ToggleMd)
+}
+
+// ToggleGroup is toggle.md's group of toggles. The kind and the size are
+// validated before anything renders, so a bad one is refused for a group with
+// no options too (contract section 3 rule 5).
 func ToggleGroup(p ToggleGroupProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -2103,6 +2109,7 @@ func ToggleGroup(p ToggleGroupProps) templ.Component {
 			templ_7745c5c3_Var101 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		inputType, sizeClass := p.inputType(), p.sizeClass()
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 162, "<div class=\"inline-flex w-fit items-center gap-1 rounded-lg border border-border p-1\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -2116,7 +2123,7 @@ func ToggleGroup(p ToggleGroupProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, o := range p.Options {
-			var templ_7745c5c3_Var102 = []any{cx(toggleBase, pick("toggle size", toggleSizes, p.Size, ToggleMd))}
+			var templ_7745c5c3_Var102 = []any{cx(toggleBase, sizeClass)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var102...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -2139,9 +2146,9 @@ func ToggleGroup(p ToggleGroupProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var104 string
-			templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.inputType())
+			templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.ResolveAttributeValue(inputType)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 506, Col: 114}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 513, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var104)
 			if templ_7745c5c3_Err != nil {
@@ -2154,7 +2161,7 @@ func ToggleGroup(p ToggleGroupProps) templ.Component {
 			var templ_7745c5c3_Var105 string
 			templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 506, Col: 130}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 513, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var105)
 			if templ_7745c5c3_Err != nil {
@@ -2167,7 +2174,7 @@ func ToggleGroup(p ToggleGroupProps) templ.Component {
 			var templ_7745c5c3_Var106 string
 			templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 506, Col: 148}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 513, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var106)
 			if templ_7745c5c3_Err != nil {
@@ -2194,7 +2201,7 @@ func ToggleGroup(p ToggleGroupProps) templ.Component {
 			var templ_7745c5c3_Var107 string
 			templ_7745c5c3_Var107, templ_7745c5c3_Err = templ.JoinStringErrs(o.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 506, Col: 254}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms.templ`, Line: 513, Col: 209}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var107))
 			if templ_7745c5c3_Err != nil {

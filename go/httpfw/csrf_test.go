@@ -19,6 +19,7 @@ func guardApp(t *testing.T, g *httpfw.CSRFGuard, mw ...httpfw.Middleware) *httpf
 	rt.Handle("GET /thing", h, httpfw.With(g.Middleware()))
 	rt.Handle("POST /thing", h, httpfw.With(g.Middleware()))
 	rt.Handle("DELETE /thing", h, httpfw.With(g.Middleware()))
+	rt.Handle("POST /form", h, httpfw.With(g.Middleware()), httpfw.AcceptForms())
 	for _, m := range mw {
 		rt.Use(m)
 	}
@@ -84,6 +85,48 @@ func TestCSRFSessionsGuardRules(t *testing.T) {
 		if r.status != c.status || code(r) != c.code {
 			t.Errorf("%s: got %d %q, want %d %q (%s)", c.name, r.status, code(r), c.status, c.code, r.body)
 		}
+	}
+}
+
+// A form route (AcceptForms) takes form bodies after the provenance rules, which run first and are
+// unchanged; every other route, a public guard and the other media types keep the JSON-only rule.
+func TestCSRFFormRoutes(t *testing.T) {
+	d := guardApp(t, httpfw.SessionsGuard(baseURL(t, "https://app.example.com")))
+	const (
+		urlencoded = "application/x-www-form-urlencoded"
+		multipart  = "multipart/form-data; boundary=xyz"
+	)
+	cases := []struct {
+		name    string
+		path    string
+		headers []string
+		status  int
+		code    string
+	}{
+		{"urlencoded, same-origin", "/form", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", urlencoded}, 200, ""},
+		{"urlencoded with a charset", "/form", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", urlencoded + "; charset=utf-8"}, 200, ""},
+		{"multipart, same-origin", "/form", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", multipart}, 200, ""},
+		{"urlencoded, matching Origin", "/form", []string{"Origin", "https://app.example.com", "Content-Type", urlencoded}, 200, ""},
+		{"json still works on a form route", "/form", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", "application/json"}, 200, ""},
+		{"cross-site is refused first", "/form", []string{"Sec-Fetch-Site", "cross-site", "Content-Type", urlencoded}, 403, "CROSS_ORIGIN_REQUEST"},
+		{"a foreign Origin is refused first", "/form", []string{"Origin", "https://evil.example.com", "Content-Type", urlencoded}, 403, "CROSS_ORIGIN_REQUEST"},
+		{"neither header is refused first", "/form", []string{"Content-Type", urlencoded}, 403, "CROSS_ORIGIN_REQUEST"},
+		{"text/plain is still 415", "/form", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", "text/plain"}, 415, "UNSUPPORTED_MEDIA_TYPE"},
+		{"no content type is still 415", "/form", []string{"Sec-Fetch-Site", "same-origin"}, 415, "UNSUPPORTED_MEDIA_TYPE"},
+		{"an unparseable content type is 415", "/form", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", "multipart/form-data; boundary"}, 415, "UNSUPPORTED_MEDIA_TYPE"},
+		{"a form body on a normal route is 415", "/thing", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", urlencoded}, 415, "UNSUPPORTED_MEDIA_TYPE"},
+		{"multipart on a normal route is 415", "/thing", []string{"Sec-Fetch-Site", "same-origin", "Content-Type", multipart}, 415, "UNSUPPORTED_MEDIA_TYPE"},
+	}
+	for _, c := range cases {
+		r := do(d, "POST", c.path, "a=1", c.headers...)
+		if r.status != c.status || code(r) != c.code {
+			t.Errorf("%s: got %d %q, want %d %q (%s)", c.name, r.status, code(r), c.status, c.code, r.body)
+		}
+	}
+	// the public guard is JSON-only for every caller, even on a form route
+	pub := guardApp(t, httpfw.PublicFormGuard(baseURL(t, "https://app.example.com")))
+	if r := do(pub, "POST", "/form", "a=1", "Sec-Fetch-Site", "same-origin", "Content-Type", urlencoded); r.status != 415 {
+		t.Errorf("the public guard takes no form body: %d", r.status)
 	}
 }
 

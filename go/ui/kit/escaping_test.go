@@ -334,10 +334,8 @@ func TestIdsSignalsAndPathsThatReachExpressionsAreValidated(t *testing.T) {
 	for _, bad := range []string{"", "9a", "a-b", "a_b", "a b"} {
 		assertPanics(t, "Signal "+bad, "invalid signal name", func() { Signal(bad) })
 	}
-	for _, bad := range []string{"", "x", "/a b", "/a.b", "/a?b", "//x'"} {
-		if bad == "//x'" || bad == "" || bad == "x" || strings.ContainsAny(bad, " .?") {
-			assertPanics(t, "Path "+bad, "invalid path", func() { Path(bad) })
-		}
+	for _, bad := range []string{"", "x", "/a b", "/a.b", "/a?b", "//x'", "//evil", "//"} {
+		assertPanics(t, "Path "+bad, "invalid path", func() { Path(bad) })
 	}
 	if got := Path("/a/b_c-d"); got != "/a/b_c-d" {
 		t.Errorf("Path = %q", got)

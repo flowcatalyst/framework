@@ -50,9 +50,9 @@ func (p PermissionDeniedDialogProps) expired() bool { return p.kind() == Session
 // required returns an application path the caller must supply: the kit has
 // no defaults of its own (contract section 7: nothing in the module names an
 // application path).
-func required(what, value string) string {
+func required(rule, value string) string {
 	if value == "" {
-		panic("kit: " + what + " is required (the kit names no application path; contract section 7)")
+		panic("kit: " + rule + " (the kit names no application path; contract section 7)")
 	}
 	return value
 }
@@ -104,10 +104,10 @@ templ PermissionDeniedDialog(p PermissionDeniedDialogProps) {
 		</div>
 		<div class="fc-dialog-footer">
 			if p.expired() {
-				<a class="fc-btn fc-btn-primary" autofocus href={ SafeURL(required("PermissionDeniedDialogProps.LoginURL", p.LoginURL)) }>Log In Again</a>
+				<a class="fc-btn fc-btn-primary" autofocus href={ SafeURL(required("PermissionDeniedDialogProps.LoginURL (loginUrl) is required when kind is session", p.LoginURL)) }>Log In Again</a>
 			} else {
 				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="history.back()">Go Back</button>
-				<a class="fc-btn fc-btn-primary" href={ SafeURL(required("PermissionDeniedDialogProps.HomeURL", p.HomeURL)) }>Go to Dashboard</a>
+				<a class="fc-btn fc-btn-primary" href={ SafeURL(required("PermissionDeniedDialogProps.HomeURL (homeUrl) is required when kind is denied", p.HomeURL)) }>Go to Dashboard</a>
 			}
 		</div>
 	</dialog>

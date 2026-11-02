@@ -244,6 +244,7 @@ func (d *Dispatcher) route(w http.ResponseWriter, r *http.Request) error {
 	case found:
 		route := m.route
 		st.route = route.pattern.text
+		st.acceptForms = route.acceptForms
 		for name, v := range m.params {
 			r.SetPathValue(name, v)
 		}

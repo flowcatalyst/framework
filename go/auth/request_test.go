@@ -70,6 +70,41 @@ func TestCSRFOnCookieRequests(t *testing.T) {
 	}
 }
 
+// A route declared with httpfw.AcceptForms takes form bodies from the session cookie, after the
+// provenance rules; nothing else does (sessions contract 7.2 rule 5, as amended).
+func TestFormRoutesAcceptFormBodiesAfterProvenance(t *testing.T) {
+	a, b := clerkApp(t, config{})
+	const urlencoded, multipart = "application/x-www-form-urlencoded", "multipart/form-data; boundary=x"
+	for _, ct := range []string{urlencoded, multipart} {
+		if r := postAs(b, "/ui/things", ct, "a=b", "Sec-Fetch-Site", "same-origin"); r.status != 201 {
+			t.Errorf("%s same-origin: %d %s", ct, r.status, r.body)
+		}
+	}
+	if r := postAs(b, "/ui/things", urlencoded, "a=b", "Origin", "https://app.example"); r.status != 201 {
+		t.Errorf("matching Origin: %d %s", r.status, r.body)
+	}
+	for name, headers := range map[string][]string{
+		"cross-site":     {"Sec-Fetch-Site", "cross-site"},
+		"foreign Origin": {"Origin", "https://evil.example"},
+		"no provenance":  nil,
+	} {
+		r := postAs(b, "/ui/things", urlencoded, "a=b", headers...)
+		if r.status != 403 || r.str("error") != "CROSS_ORIGIN_REQUEST" {
+			t.Errorf("%s: %d %s", name, r.status, r.body)
+		}
+	}
+	if r := postAs(b, "/ui/things", "text/plain", "a", "Sec-Fetch-Site", "same-origin"); r.status != 415 {
+		t.Errorf("text/plain on a form route: %d", r.status)
+	}
+	if r := postAs(b, "/api/things", urlencoded, "a=b", "Sec-Fetch-Site", "same-origin"); r.status != 415 {
+		t.Errorf("a form body on a route not declared with AcceptForms: %d", r.status)
+	}
+	token := a.provider.AccessToken(map[string]any{"sub": "prn_SVC", "scope": "orders:thing:create"})
+	if r := postAs(b, "/ui/things", urlencoded, "a=b", "Authorization", "Bearer "+token, "Sec-Fetch-Site", "cross-site"); r.status != 201 {
+		t.Errorf("bearer is unaffected: %d", r.status)
+	}
+}
+
 func TestBearerRequestsAreExemptAndTheCookieIsIgnored(t *testing.T) {
 	a, b := clerkApp(t, config{})
 	token := a.provider.AccessToken(map[string]any{"sub": "prn_SVC", "scope": "orders:thing:create"})

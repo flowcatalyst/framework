@@ -1,4 +1,4 @@
-<!-- types: Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, PermissionDeniedDialogProps -->
+<!-- types: Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, PermissionDeniedDialogProps, Views, Patches, PageOption, Declared, Module, Failure -->
 # Go: server-rendered pages with templ and Datastar (optional)
 
 > **Optional, and secondary to the Nuxt UI package.** The framework's primary UI is the shared
@@ -6,9 +6,10 @@
 > wants server-rendered pages without a JavaScript build; the Java counterpart is
 > [Server-rendered pages (JTE)](../ui-jte.md). Nothing else in the framework depends on it. The
 > specification is [`contracts/server-rendered-ui.md`](../../contracts/server-rendered-ui.md); the build plan
-> is [`go/ui-templ-plan.md`](../../go/ui-templ-plan.md). **Phase GU1 is built** (the module, the kit, `ds`,
-> `assets`, `md`, `compress`, `htmlnorm`); the pages, the answer helpers, form routes and the framework
-> wiring (`views`, `fwui`) are GU2 and do not exist yet.
+> is [`go/ui-templ-plan.md`](../../go/ui-templ-plan.md). **Phases GU1 and GU2 are built**: the module, the kit,
+> `ds`, `assets`, `md`, `compress`, `htmlnorm` (GU1), and the pages and answers (`views`), form routes
+> (`httpfw.AcceptForms`) and the framework wiring (`fwui`) (GU2). The Java catch-up, the thirteen spec-only
+> components, the Go demo and the platform's adoption are GU3 to GU6 and do not exist yet.
 
 ## The module
 
@@ -16,7 +17,7 @@
 goldmark, bluemonday and brotli stay out of the core module. It is built from the FlowCatalyst platform's
 templ port, with the platform's defaults taken out. Every package except the kit is plain `net/http` and
 imports neither the framework's lifecycle nor its router, so an application that is not built on the framework
-can use them.
+can use them. Only `fwui` imports the core module.
 
 | Package | What it is |
 |---|---|
@@ -24,7 +25,9 @@ can use them.
 | `ds` | The Datastar 1.0 adapter on `net/http`, written to [http contract section 10](../../contracts/http.md) |
 | `assets` | The static files (kit stylesheet, Datastar, icon sprite, the islands) as an instance with hashed URLs, ETags and 304 |
 | `md` | Markdown to sanitised HTML (goldmark with GFM, bluemonday) |
-| `compress` | Opt-in Brotli/gzip for pages and Datastar streams that flushes each event |
+| `views` | Pages and answers: one template as a full document or a patch, `Patches`, the page policy (`CSP`), the flash cookie, the theme cookies |
+| `fwui` | The framework wiring: `Declare`/`Build`, the static-file routes, the shell user from the session, the use-case error mapper |
+| `compress` | Opt-in Brotli/gzip for pages, Datastar streams and the static files; flushes each event; an ETag per encoding |
 | `htmlnorm` | The HTML normaliser the fixture comparison uses |
 
 ## The kit
@@ -145,6 +148,129 @@ sprite. The islands' sources and how to rebuild them are in
 `ui-kit/islands/README.md`.
 The platform's `fc-webauthn.js` is not in the module: the platform adds it with `WithFiles`.
 
+## Pages and answers: package `views`
+
+`views.New(assets, opts...)` builds the page layer for an assets instance (contract sections 5 to 10). One page
+template answers a navigation with a full document and a request with `Datastar-Request: true` with a patch of
+the same content, so a link, a form post and a live update share a template. Everything is rendered into a buffer
+first: an error returns and a panic propagates before anything is written, so a response is never half-sent.
+
+```go
+v, err := views.New(a,
+	views.WithTitleSuffix(" - Demo"),
+	views.WithLogin("/auth/login", ""), // the parameter defaults to returnTo
+	views.WithFlashes(map[string]kit.FlashMessageProps{"saved": {Kind: kit.FlashSuccess, Summary: "Saved."}}),
+	views.WithShell(func(r *http.Request) kit.AppShellProps { ... }))
+
+err = v.Page(w, r, "Orders", content)                                  // 200, or a Datastar patch
+err = v.Page(w, r, "Orders", form, views.WithStatus(422),              // a re-rendered form
+	views.WithPageFlashes(kit.FlashMessageProps{Kind: kit.FlashError, Summary: "Check the details."}),
+	views.WithScripts("fc-code-editor.js"))                            // island scripts, by asset name
+err = v.Stream(w, r, func(p *views.Patches) error {                    // several patches
+	return errors.Join(p.Inner("#rows", rows), p.Flash(kit.FlashSuccess, "Saved.", ""))
+})
+```
+
+- **The document** is `<!DOCTYPE html>` with the theme attributes on `<html>`, a head (title plus the suffix, the
+  stylesheet, `datastar.js` as a module, the page's island scripts) and the app shell around the flash stack and
+  the content, or, without a shell, `<main class="mx-auto max-w-xl p-[24px]">`. It has no inline script, no
+  `<style>` element and no `on*` attribute. The content is wrapped in `<div id="fw-page">`; the stack is
+  `#flash-stack`. Headers: `Content-Security-Policy`, `Cross-Origin-Opener-Policy: same-origin`,
+  `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `X-Content-Type-Options: nosniff`,
+  `Cache-Control: private, no-cache`. The shell function gets the request; the module fills in the theme from the
+  cookies when its props leave it empty. Icons use the assets' sprite URL (the module puts it in the render
+  context), so an application mounted under `/ui/assets/` works.
+- **A Datastar answer** is always `200`, `text/event-stream` and has no CSP (it is not a document). `Page` sends
+  one `datastar-patch-elements` event with the wrapped content; the document-only options (status, flashes
+  from the cookie) do not apply. An invalid option (a script that is not a JavaScript asset, a status a document
+  cannot have) is an error for either kind of request.
+- **`Patches`** (contract section 6): `Outer`, `Page`, `Replace`, `Inner`, `Append`, `Prepend`, `Remove`, `Focus`,
+  `CloseDialog`, `Redirect`, `ReplaceURL`, `Flash`, `Signals`; each is one event. `Redirect` and `ReplaceURL`
+  take a local path only (`ds.ErrUnsafeRedirect` otherwise), `Focus` and `CloseDialog` a valid id. `SSE()` is the
+  underlying `ds.SSE` for patch options.
+- **`CSP(hashes...)`** returns the policy of contract section 6 rule 1 exactly: `script-src 'self'
+  'unsafe-eval'` (Datastar compiles expressions with `Function`), `style-src 'self'` with `style-src-attr
+  'unsafe-inline'`, `frame-ancestors 'none'`, `base-uri 'none'`, `form-action 'self'`, `object-src 'none'`. Script
+  hashes (`WithScriptHash`) are `sha256-`, `sha384-` or `sha512-` plus base64, without quotes; a malformed one is
+  an error at `New`. The policy is weaker than the single-page application's strict one because of
+  `'unsafe-eval'`; the kit escapes every dynamic value, and the policy is the second line.
+- **Session expiry** (`WithLogin(path, param)`): the document's `<body>` listens for a Datastar fetch answered
+  `401` and navigates to `<path>?<param>=<current path and query, percent-encoded>`. The parameter is `returnTo`
+  unless named; the path must be a local path of letters, digits, `/`, `_` and `-`.
+- **Flash after a redirect** (contract section 9): the cookie `fw_flash` holds a key, never text.
+  `v.SetFlash(w, r, key)` (key `[a-z0-9-]{1,64}`, otherwise `views.ErrInvalidFlashKey`; a key not registered with `WithFlashes`, `views.ErrUnknownFlashKey`) sets it with `Path=/`,
+  `HttpOnly`, `SameSite=Lax`, `Max-Age=60` and `Secure`; the next document answer looks the key up in the
+  `WithFlashes` map (an unknown key renders nothing), renders the message in the flash stack and clears the
+  cookie. A Datastar answer leaves the cookie alone. `Secure` is dropped only when the application says so with
+  `WithPlainHTTPCookies()` **and** the request is plain HTTP (`fwui` sets it when `APP_ENV` is `local` or `test`).
+  `v.SeeOther(w, r, path, key)` answers a successful form post: `303` to a local path with the flash (an empty key
+  sets none); a Datastar request cannot follow a `303`, so it gets a redirect patch with status `200` instead.
+- **Theme** (contract section 10): `fc_theme` (`light`, `dark`, `system`; anything else is system), `fc_scheme`
+  (`dark` when the browser reported dark) and `fc_sidebar` (`collapsed`) decide the `dark` class and the signals
+  on `<html>` (`kit.ThemeHTMLAttrs`, `kit.ShellHTMLAttrs`), so a dark page does not flash light.
+
+The tests (`views/views_test.go`) are the port of Java's `ViewsTest` plus the flash cookie, the local-path check,
+the CSP builder, the options, and "an error or a panic writes nothing".
+
+## Form posts: `httpfw.AcceptForms`
+
+A native form posts `application/x-www-form-urlencoded` or `multipart/form-data`, which the sessions CSRF check
+refuses (`415`) on every route by default. A route registered with `httpfw.AcceptForms()` takes them, after the
+provenance rules, which are unchanged ([HTTP page](http.md#csrf-and-security-headers)). The page's success path
+is `v.SeeOther(...)`; a use-case refusal is a `422` re-render (next section).
+
+## The framework wiring: package `fwui`
+
+```go
+ui := fwui.Declare(app)                                  // declaring: adds the "ui" module, no settings
+...
+mod, err := ui.Build(b,                                  // in the build function
+	fwui.WithViews(views.WithLogin("/auth/login", ""), views.WithShell(shellFor)))
+srv, err := httpfw.NewServer(b, web, []*httpfw.Routes{authModule.Routes(), mod.Routes(), pages}, ...)
+```
+
+- `Build` loads the assets (`fwui.WithAssets(assets.WithPrefix("/ui/assets/"), ...)`), builds the views
+  (`fwui.WithViews(...)`) and the route table: `GET <prefix>{file}` and `GET /icons/lucide-sprite.svg` (any
+  start-up problem is a `*fw.StartupError` naming module `ui`). `mod.Views()` and `mod.Assets()` are for the
+  handlers. `fwui.CompressAssets()` serves the files through `compress.Handler`; pages and streams are compressed
+  by wrapping the server (`compress.Handler(srv.Handler())`).
+- `fwui.ShellUser(r)` is the shell's user from `auth.Current`: the display name (the email, then the principal id,
+  when the token had none), the email and the initials (`fwui.Initials`). It needs a route that requires a context.
+- **Errors.** `fwui.Classify(err)` maps an error to a `Failure` (status, code, message, details): a
+  `httpfw.ServiceError` (which a use case's `*usecase.Error` is) with a 4xx status keeps its message; anything else
+  is a 500 with a generic message, because it may name internals. `mod.Fail(w, r, err)` answers a Datastar request
+  itself (status `200`, one error flash patch; the real status is only logged) and returns `answered`; for a native
+  request it writes nothing and the handler re-renders the form when `f.Rerender()` (validation `400`, conflict or
+  business rule `409`, `422`) with `views.WithStatus(f.FormStatus())` (`422`), or returns the error for the
+  framework's envelope (403, 404, 5xx). On a stream already open, `mod.FlashFailure(patches, r, err)`.
+
+```go
+f, answered := mod.Fail(w, r, err)
+if answered {
+	return nil
+}
+if !f.Rerender() {
+	return err
+}
+return mod.Views().Page(w, r, "Orders", form, views.WithStatus(f.FormStatus()),
+	views.WithPageFlashes(kit.FlashMessageProps{Kind: kit.FlashError, Summary: f.Title(), Detail: f.Message}))
+```
+
+The tests (`fwui/fwui_test.go`) run a real application: the auth module against the test provider, a signed-in
+session, the static routes, a form route through the real sessions guard (`303` with the flash cookie, `403`
+without provenance, `415` on a route without `AcceptForms`), and the error mapping both ways.
+
+## Compression and the assets
+
+`compress.Handler` also compresses `text/css`, `text/javascript` and `image/svg+xml` (contract section 12), so it
+can wrap the assets handler. A compressed response's `ETag` gets the coding as a suffix inside the quotes (`"abc"`
+becomes `"abc-br"` or `"abc-gz"`, a weak tag keeps its `W/`), `Vary: Accept-Encoding` is on every answer it could
+have compressed, and `If-None-Match` matches per variant: a request that negotiated Brotli and sent `"abc-br"`
+gets `304` (with the variant's tag), `"abc-gz"` matches nothing. The middleware translates a tag with the
+negotiated coding's suffix back to the handler's own tag, so the assets' own conditional logic is unchanged. A tag
+without a suffix still reaches the handler as sent and matches the uncompressed tag (the `304` then carries the
+plain tag): only a client that cached the uncompressed body sends that. A `HEAD` carries the headers of the `GET`.
+
 ## Building and checking
 
 The templ files are compiled by `templ` (v0.3.1020, a `tool` of `go/ui/go.mod`) and the generated `*_templ.go`
@@ -152,13 +278,14 @@ files are committed. `make -C go ui-generate` regenerates them; `make -C go ui-v
 any generated file changed or appeared, and is part of `make -C go go-check` and the CI workflow. `go-check`
 also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go test -race` on the module.
 
-## Known gaps at GU1
+## Known gaps
 
-- **`kit.css` is Java's build**, which scans only the Java templates, so it lacks about 20 utility classes that
-  the Go kit's templates use, mostly in the components Java does not render yet (`aria-selected:*` of the tab
-  list, `size-16` and `bg-red-500/15` of the permission-denied dialog, `[&_svg]:*` of the diagram, ...). The hand-written `.fc-*` rules are identical in both builds. A
-  rebuild with the Go templates as an extra `@source` is open (see [Status](../STATUS.md)).
-- Static files are not compressed (contract section 12 also describes per-encoding ETags for assets; the
-  `compress` package has `Encode` and `Negotiate` for it, the `assets` handler does not use them yet).
-- No pages, no `Patches` helpers, no flash cookie, no CSP builder, no form routes: GU2. The Java renderers for
-  the seven components that only Go has, the thirteen spec-only components and the Go demo are GU3 to GU5.
+- **`kit.css`** is the Tailwind build of Java's templates **and** the Go kit's templ sources (`framework-ui/assets/kit.css`
+  names `go/ui/kit/*.templ`, `kit.go` and `go/ui/views/*.templ` as extra `@source`s; `assets/build.sh`, then
+  `go/internal/conformance/sync-shared.sh`). Tailwind also picks up words in comments and prose as class names, so a
+  few unused rules (`blur`, `italic`, ...) are in the file. An application with its own templates writes its own
+  input, as the file's header says.
+- The Java renderers for the seven components that only Go has, the thirteen spec-only components, the Go demo and
+  the platform's adoption are GU3 to GU6. Java does not yet have form routes, `returnTo`, `Patches.redirect` or the
+  flash cookie (GU3).
+- `views` has no `?theme=` query override (the platform's shell has one for screenshots).

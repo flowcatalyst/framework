@@ -39,6 +39,7 @@ type RouteOption interface{ apply(*routeOptions) }
 
 type routeOptions struct {
 	requiresContext bool
+	acceptForms     bool
 	middleware      []Middleware
 }
 
@@ -49,6 +50,14 @@ func (f routeOptionFunc) apply(o *routeOptions) { f(o) }
 // RequiresContext resolves the fw.Context before the handler runs (ContextOf reads it).
 func RequiresContext() RouteOption {
 	return routeOptionFunc(func(o *routeOptions) { o.requiresContext = true })
+}
+
+// AcceptForms declares a route that server-rendered pages post to: the sessions CSRF check
+// ([SessionsGuard]) also accepts application/x-www-form-urlencoded and multipart/form-data bodies on
+// it (sessions-and-login 7.2 rule 5, server-rendered-ui section 8 rule 2). The provenance rules still
+// apply first, and every other route keeps the JSON-only rule.
+func AcceptForms() RouteOption {
+	return routeOptionFunc(func(o *routeOptions) { o.acceptForms = true })
 }
 
 // With adds route middleware, inside the global middleware and after context resolution.
@@ -247,7 +256,7 @@ func Compile(tables []*Routes, opts ...Option) (*Dispatcher, error) {
 		for _, mw := range slices.Backward(r.opts.middleware) {
 			h = mw(h)
 		}
-		c := &compiled{pattern: r.pattern, registrant: r.registrant, requiresContext: r.opts.requiresContext, handler: h}
+		c := &compiled{pattern: r.pattern, registrant: r.registrant, requiresContext: r.opts.requiresContext, acceptForms: r.opts.acceptForms, handler: h}
 		rt.add(c)
 		routes = append(routes, c)
 		lines = append(lines, label+" ("+r.registrant+")")
