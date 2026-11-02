@@ -1,0 +1,156 @@
+package kit
+
+// Class lists from alert-dialog.md, radio-group.md and dirty-form.md.
+const (
+	radioInputClasses = "peer size-4 shrink-0 appearance-none rounded-full border border-input bg-background transition-colors outline-none checked:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none"
+	radioDotClasses   = "pointer-events-none absolute inset-0 m-auto size-2 rounded-full bg-primary opacity-0 transition-opacity peer-checked:opacity-100"
+
+	// dirtyInit and the expressions built from a signal are dirty-form.md's
+	// Behaviour; only a validated signal name enters them.
+	dirtyInit  = "el.dataset.snapshot = new URLSearchParams(new FormData(el)).toString()"
+	dirtyClass = "flex flex-col gap-3"
+)
+
+// AlertDialogProps mirrors alert-dialog.md's Props table.
+type AlertDialogProps struct {
+	// ID is required: the dialog id; {id}-title and {id}-desc derive from it.
+	ID      string `json:"id"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
+	// CancelLabel defaults to Cancel, ConfirmLabel to Confirm.
+	CancelLabel  string `json:"cancelLabel"`
+	ConfirmLabel string `json:"confirmLabel"`
+	// ConfirmVariant is ButtonDestructive (default) or ButtonPrimary.
+	ConfirmVariant ButtonVariant `json:"confirmVariant"`
+	// Action, when set, wraps the footer in <form method="post" action> with
+	// the HiddenFields before it (URL-checked).
+	Action       string        `json:"action"`
+	HiddenFields []HiddenField `json:"hiddenFields"`
+	Class        string        `json:"class"`
+}
+
+// AlertDialog is alert-dialog.md: a modal role="alertdialog" without light
+// dismiss, Cancel focused first.
+templ AlertDialog(p AlertDialogProps) {
+	<dialog
+		role="alertdialog"
+		id={ ID(p.ID) }
+		aria-labelledby={ p.ID + "-title" }
+		aria-describedby={ p.ID + "-desc" }
+		class={ cx(dialogOverlay, p.Class) }
+	>
+		<div class={ dialogContent }>
+			<div class={ dialogHeader }>
+				<h2 id={ p.ID + "-title" } class={ dialogTitle }>{ p.Title }</h2>
+				<p id={ p.ID + "-desc" } class={ dialogDescription }>{ p.Message }</p>
+			</div>
+			if p.Action != "" {
+				<form method="post" action={ SafeURL(p.Action) }>
+					for _, h := range p.HiddenFields {
+						<input type="hidden" name={ h.Name } value={ h.Value }/>
+					}
+					@alertDialogFooter(p)
+				</form>
+			} else {
+				@alertDialogFooter(p)
+			}
+		</div>
+	</dialog>
+}
+
+templ alertDialogFooter(p AlertDialogProps) {
+	<div class={ dialogFooter }>
+		<button class={ ButtonClasses(ButtonGhost, ButtonMd) } type="button" autofocus data-on:click={ CloseDialog }>{ orDefault(p.CancelLabel, "Cancel") }</button>
+		<button class={ ButtonClasses(oneOf("alert dialog confirm variant", p.ConfirmVariant, ButtonDestructive, ButtonDestructive, ButtonPrimary), ButtonMd) } type="submit">{ orDefault(p.ConfirmLabel, "Confirm") }</button>
+	</div>
+}
+
+// RadioOption is one radio of a RadioGroup.
+type RadioOption struct {
+	// ID ties the radio to its <label for>.
+	ID       string `json:"id"`
+	Value    string `json:"value"`
+	Label    string `json:"label"`
+	Disabled bool   `json:"disabled"`
+}
+
+// RadioGroupProps mirrors radio-group.md's Props table.
+type RadioGroupProps struct {
+	// Name is required and shared by all radios.
+	Name string `json:"name"`
+	// Label is the group's aria-label, LabelledBy its aria-labelledby.
+	Label       string `json:"label"`
+	LabelledBy  string `json:"labelledBy"`
+	// Value is the selected value; empty = nothing checked.
+	Value   string        `json:"value"`
+	Options []RadioOption `json:"options"`
+	Class   string        `json:"class"`
+}
+
+// RadioGroup is radio-group.md: native radio buttons sharing a name.
+templ RadioGroup(p RadioGroupProps) {
+	<div
+		role="radiogroup"
+		if p.Label != "" {
+			aria-label={ p.Label }
+		}
+		if p.LabelledBy != "" {
+			aria-labelledby={ ID(p.LabelledBy) }
+		}
+		class={ cx("grid gap-3", p.Class) }
+	>
+		for _, o := range p.Options {
+			<div class="flex items-center gap-2">
+				<span class={ controlWrapClasses }>
+					<input
+						type="radio"
+						class={ radioInputClasses }
+						id={ o.ID }
+						name={ p.Name }
+						value={ o.Value }
+						checked?={ p.Value != "" && o.Value == p.Value }
+						disabled?={ o.Disabled }
+					/>
+					<span class={ radioDotClasses }></span>
+				</span>
+				<label class={ labelClasses } for={ o.ID }>{ o.Label }</label>
+			</div>
+		}
+	</div>
+}
+
+// DirtyFormProps mirrors dirty-form.md's Props table. Slot: the fields.
+type DirtyFormProps struct {
+	// ID is the form id (required).
+	ID string `json:"id"`
+	// Signal is the camelCase signal name, unique per page (required).
+	Signal string `json:"signal"`
+	// SaveLabel defaults to Save, DiscardLabel to Discard.
+	SaveLabel    string           `json:"saveLabel"`
+	DiscardLabel string           `json:"discardLabel"`
+	Attrs        templ.Attributes `json:"attrs"`
+	Class        string           `json:"class"`
+}
+
+func (p DirtyFormProps) signalAttrs() templ.Attributes {
+	s := "$" + Signal(p.Signal)
+	return templ.Attributes{
+		"data-signals:" + SignalAttr(p.Signal): "false",
+		"data-init":                            dirtyInit,
+		"data-on:input":                        s + " = new URLSearchParams(new FormData(el)).toString() !== el.dataset.snapshot",
+		"data-on:reset":                        "setTimeout(() => " + s + " = false)",
+		"data-on:submit":                       "void 0",
+	}
+}
+
+// DirtyForm is dirty-form.md: Save stays disabled and Discard hidden until a
+// value differs from what the form was rendered with.
+templ DirtyForm(p DirtyFormProps) {
+	<form id={ ID(p.ID) } class={ cx(dirtyClass, p.Class) } { p.signalAttrs()... } { Attrs(p.Attrs)... }>
+		{ children... }
+		<div class="flex gap-2">
+			<button type="submit" class={ ButtonClasses(ButtonPrimary, ButtonMd) } data-attr:disabled={ "!$" + Signal(p.Signal) } disabled>{ orDefault(p.SaveLabel, "Save") }</button>
+			<button type="reset" class={ ButtonClasses(ButtonGhost, ButtonMd) } data-show={ "$" + Signal(p.Signal) } style="display: none">{ orDefault(p.DiscardLabel, "Discard") }</button>
+		</div>
+	</form>
+}

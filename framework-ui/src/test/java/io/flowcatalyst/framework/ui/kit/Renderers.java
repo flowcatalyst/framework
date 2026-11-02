@@ -170,6 +170,31 @@ final class Renderers {
           }
           return Kit.tabList(p, panels);
         });
+    r(
+        "accordion",
+        Props.Accordion.class,
+        (p, s) -> {
+          Map<String, Content> panels = new HashMap<>();
+          for (Props.AccordionItem it : p.itemList()) {
+            Content c = s.get(it.value());
+            if (c != null) {
+              panels.put(it.value(), c);
+            }
+          }
+          return Kit.accordion(p, panels);
+        });
+    r("alert-dialog", Props.AlertDialog.class, (p, s) -> Kit.alertDialog(p));
+    r("avatar", Props.Avatar.class, (p, s) -> Kit.avatar(p));
+    r("card", Props.Card.class, (p, s) -> Kit.card(p, s.get("default"), s.get("footer")));
+    r("dirty-form", Props.DirtyForm.class, (p, s) -> Kit.dirtyForm(p, s.get("default")));
+    r("dropdown-menu", Props.DropdownMenu.class, (p, s) -> Kit.dropdownMenu(p, s.get("trigger"), s.get("items")));
+    r("hover-card", Props.HoverCard.class, (p, s) -> Kit.hoverCard(p, s.get("trigger"), s.get("default")));
+    r("json-block", Props.JsonBlock.class, (p, s) -> Kit.jsonBlock(p));
+    r("kbd", Props.Kbd.class, (p, s) -> Kit.kbd(p));
+    r("progress", Props.Progress.class, (p, s) -> Kit.progress(p));
+    r("radio-group", Props.RadioGroup.class, (p, s) -> Kit.radioGroup(p));
+    r("separator", Props.Separator.class, (p, s) -> Kit.separator(p));
+    r("tooltip", Props.Tooltip.class, (p, s) -> Kit.tooltip(p, s.get("trigger")));
     r("app-shell", Props.AppShell.class, (p, s) -> Kit.appShell(p, s.get("default")));
     r("app-sidebar", Props.AppShell.class, (p, s) -> Kit.appSidebar(p));
     r("user-menu", Props.AppShell.class, (p, s) -> Kit.userMenu(p));

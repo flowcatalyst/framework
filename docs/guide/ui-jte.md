@@ -1,4 +1,4 @@
-<!-- types: Kit, Props, Markup, MarkdownHtml, Views, Patches, UiAssets, UiModule, ViewCsp, Theme, Flash, Classes, AppShells, Datastar, TestClient, RouteOptions, CsrfGuard, Response -->
+<!-- types: Kit, Props, Markup, JsonPretty, MarkdownHtml, Views, Patches, UiAssets, UiModule, ViewCsp, Theme, Flash, Classes, AppShells, Datastar, TestClient, RouteOptions, CsrfGuard, Response -->
 # Server-rendered pages with JTE (optional)
 
 > **Optional, and secondary to the Nuxt UI package.** The framework's UI is the shared Nuxt UI package
@@ -88,7 +88,7 @@ ${Kit.tableCell(new Props.TD(0, null, null), @`${Kit.badge(new Props.Badge(o.bad
 `)}
 ```
 
-All 67 fixture directories of `ui-kit/fixtures` (196 cases) are covered: button, legacy button, icon button,
+All 80 fixture directories of `ui-kit/fixtures` (268 cases) are covered: button, legacy button, icon button,
 input, textarea, select, checkbox, switch, label, field, field group, form field, search input, filter
 select, toggle group, badge, tag, alert, flash banner, flash message, flash stack, spinner, skeleton,
 breadcrumb, empty state, page header, form section, detail field, code chips, code block, table and its
@@ -96,11 +96,30 @@ parts, sortable header, empty row, data table, row actions, table toolbar (and i
 pagination, cursor pager, paginator, local time, date range, tabs, dialog, confirm dialog, sheet,
 drawer (and its content part), form dialog, autocomplete (and its options part), pick list, multi-select,
 app shell, sidebar and user menu, and (added in GU3) tab list, password input, secret reference input,
-permission-denied dialog, search select, markdown, code editor and diagram. Not components of the kit and not
+permission-denied dialog, search select, markdown, code editor and diagram, and (added in GU4 step 2) the thirteen
+components that had only a spec: accordion, alert dialog, avatar, card, dirty form, dropdown menu, hover card, JSON
+block, kbd, progress, radio group, separator and tooltip. Not components of the kit and not
 here: login pages (the platform hosts login), and anything the specs mark NP.
 
 `FixtureConformanceTest.NOT_YET` (fixture directories without a renderer) is empty. A new fixture directory must
 get its renderer in the same change, or be listed there first.
+
+### The thirteen former spec-only components
+
+`Kit.accordion(props, panels)` (one slot per item, by its `value`), `alertDialog`, `avatar`, `card(props, body,
+footer)` (the content and footer regions render only when the slot writes something), `dirtyForm(props, body)`,
+`dropdownMenu(props, trigger, items)`, `hoverCard(props, trigger, body)`, `jsonBlock`, `kbd`, `progress`,
+`radioGroup`, `separator` and `tooltip(props, trigger)`. Props are the records of the same names
+(`Props.Accordion`, `Props.AlertDialog`, ...; `Props.RadioOption`, `Props.NameValue`, `Props.AccordionItem` for
+list entries). Unknown sizes, orientations, alignments, confirm variants and heading levels outside 1 to 6 are
+refused; ids and the dirty form's signal are validated; the avatar's `src` and the alert dialog's `action` pass
+the URL check.
+
+`Kit.jsonBlock(new Props.JsonBlock(node, attrs, cls))` takes a Jackson `JsonNode` and prints it with
+`JsonPretty` (2-space indent, `"key": value`, one member per line, `{}` and `[]` when empty, keys in the order
+the node has them, no `\u003c` escapes) before the text is HTML-escaped. Jackson's own pretty printer writes
+`"a" : 1`, so the module has a small printer of its own. `Props.Progress` takes `BigDecimal` numbers (an absent
+`value` is the indeterminate bar, zero is a value).
 
 ### Markdown, the code editor and the diagram
 

@@ -199,28 +199,51 @@ var renderers = map[string]renderer{
 		p.Footer = f.slot("footer")
 		return withDefault(f, Drawer(p)), err
 	},
+	"alert-dialog": simple(AlertDialog),
+	"avatar":       simple(Avatar),
+	"dirty-form":   simple(DirtyForm),
+	"json-block":   simple(JSONBlock),
+	"kbd":          simple(Kbd),
+	"progress":     simple(Progress),
+	"radio-group":  simple(RadioGroup),
+	"separator":    simple(Separator),
+	"accordion": func(f *fixture) (templ.Component, error) {
+		p, err := decode[AccordionProps](f)
+		p.Panels = map[string]templ.Component{}
+		for _, it := range p.Items {
+			p.Panels[it.Value] = f.slot(it.Value)
+		}
+		return Accordion(p), err
+	},
+	"card": func(f *fixture) (templ.Component, error) {
+		p, err := decode[CardProps](f)
+		p.Footer = f.slot("footer")
+		return withDefault(f, Card(p)), err
+	},
+	"tooltip": func(f *fixture) (templ.Component, error) {
+		p, err := decode[TooltipProps](f)
+		p.Trigger = f.slot("trigger")
+		return Tooltip(p), err
+	},
+	"hover-card": func(f *fixture) (templ.Component, error) {
+		p, err := decode[HoverCardProps](f)
+		p.Trigger = f.slot("trigger")
+		return withDefault(f, HoverCard(p)), err
+	},
+	"dropdown-menu": func(f *fixture) (templ.Component, error) {
+		p, err := decode[DropdownMenuProps](f)
+		p.Trigger = f.slot("trigger")
+		p.Items = f.slot("items")
+		return DropdownMenu(p), err
+	},
 }
 
-// notYet names fixture directories that have no templ renderer yet: GU4 step 1
-// wrote the thirteen spec-only components' fixtures before their renderers
-// (contract server-rendered-ui.md section 2 rules 3 and 4). It is checked both
-// ways, like Java's NOT_YET: an entry must have a fixture directory and no
-// renderer, so the list cannot rot. It must be empty again when GU4 is closed.
-var notYet = map[string]bool{
-	"accordion":     true,
-	"alert-dialog":  true,
-	"avatar":        true,
-	"card":          true,
-	"dirty-form":    true,
-	"dropdown-menu": true,
-	"hover-card":    true,
-	"json-block":    true,
-	"kbd":           true,
-	"progress":      true,
-	"radio-group":   true,
-	"separator":     true,
-	"tooltip":       true,
-}
+// notYet names fixture directories that have no templ renderer yet (contract
+// server-rendered-ui.md section 2 rules 3 and 4: fixtures come before
+// renderers). It is checked both ways, like Java's NOT_YET: an entry must have
+// a fixture directory and no renderer, so the list cannot rot. It is empty:
+// GU4 step 2 wrote the last thirteen renderers.
+var notYet = map[string]bool{}
 
 // fixturesDir is ui-kit/fixtures of the repository that holds this module
 // (go/ui is two levels below the repository root), or UI_KIT_FIXTURES.

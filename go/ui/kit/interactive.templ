@@ -1,0 +1,161 @@
+package kit
+
+// Class lists from accordion.md, tooltip.md, hover-card.md and dropdown-menu.md.
+const (
+	accordionRoot    = "w-full"
+	accordionItem    = "group border-b border-border last:border-b-0 [interpolate-size:allow-keywords] [&::details-content]:h-0 [&::details-content]:overflow-hidden [&::details-content]:[transition:height_200ms_ease-out,content-visibility_200ms_allow-discrete] [&[open]::details-content]:h-auto"
+	accordionTrigger = "flex w-full cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-sm font-medium outline-none transition-colors hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden"
+	accordionChevron = "size-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out group-open:rotate-180"
+	accordionContent = "pb-4 text-sm text-muted-foreground"
+
+	tooltipWrap   = "group relative inline-flex"
+	tooltipBubble = "pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md bg-foreground px-2.5 py-1 text-xs font-medium text-background opacity-0 shadow-sm whitespace-nowrap [transition:opacity_150ms_ease-out,visibility_150ms_allow-discrete] group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+
+	hoverCardContent = "flex flex-col gap-2 invisible absolute top-full left-0 z-50 mt-2 w-64 rounded-lg border border-border bg-popover p-4 text-popover-foreground opacity-0 shadow-sm [transition:opacity_150ms_ease-out_300ms,visibility_150ms_allow-discrete_300ms] group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+
+	dropdownRoot    = "group relative inline-block"
+	dropdownSummary = "cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+	dropdownPanel   = "absolute z-50 min-w-40 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-sm"
+
+	// dropdownOutsideClick and dropdownEscape are dropdown-menu.md's dismiss
+	// attributes (code; no request data enters them).
+	dropdownOutsideClick = "el.open && !el.contains(evt.target) && (el.open = false)"
+	dropdownEscape       = "evt.key === 'Escape' && el.open && (el.open = false, el.querySelector('summary').focus())"
+)
+
+// AccordionItem is one section of an Accordion.
+type AccordionItem struct {
+	// Value names the item's slot ([A-Za-z][A-Za-z0-9_-]*).
+	Value string `json:"value"`
+	// Title is the summary text (escaped).
+	Title string `json:"title"`
+}
+
+// AccordionProps mirrors accordion.md's Props table. The content of each item
+// is a slot, in Panels by Value.
+type AccordionProps struct {
+	// Name makes the items exclusive (the native details name); empty = independent.
+	Name  string          `json:"name"`
+	Items []AccordionItem `json:"items"`
+	// Open is the Value of the initially open item; empty = all closed.
+	Open   string                     `json:"open"`
+	Class  string                     `json:"class"`
+	Panels map[string]templ.Component `json:"-"`
+}
+
+func (p AccordionProps) panel(value string) templ.Component {
+	if c, ok := p.Panels[value]; ok && c != nil {
+		return c
+	}
+	return templ.NopComponent
+}
+
+// Accordion is accordion.md: native <details> sections.
+templ Accordion(p AccordionProps) {
+	<div class={ cx(accordionRoot, p.Class) }>
+		for _, it := range p.Items {
+			<details
+				class={ accordionItem }
+				if p.Name != "" {
+					name={ p.Name }
+				}
+				open?={ p.Open != "" && ID(it.Value) == p.Open }
+			>
+				<summary class={ accordionTrigger }>
+					{ it.Title }
+					@Icon(IconProps{Name: "chevron-down", Class: accordionChevron})
+				</summary>
+				<div class={ accordionContent }>
+					@p.panel(ID(it.Value))
+				</div>
+			</details>
+		}
+	</div>
+}
+
+// TooltipProps mirrors tooltip.md's Props table. Slot: Trigger (the default
+// children are not used); it must carry aria-describedby="{id}".
+type TooltipProps struct {
+	ID    string `json:"id"`
+	Text  string `json:"text"`
+	Class string `json:"class"`
+	// Trigger is the caller's trigger markup.
+	Trigger templ.Component `json:"-"`
+}
+
+// Tooltip is tooltip.md: a CSS-only label above its trigger.
+templ Tooltip(p TooltipProps) {
+	<span class={ cx(tooltipWrap, p.Class) }>
+		if p.Trigger != nil {
+			@p.Trigger
+		}
+		<span id={ ID(p.ID) } role="tooltip" class={ tooltipBubble }>{ p.Text }</span>
+	</span>
+}
+
+// HoverCardProps mirrors hover-card.md's Props table. Slots: Trigger (must
+// carry aria-describedby="{id}") and the default slot (the card content).
+type HoverCardProps struct {
+	ID      string          `json:"id"`
+	Class   string          `json:"class"`
+	Trigger templ.Component `json:"-"`
+}
+
+// HoverCard is hover-card.md: richer content shown below its trigger after a
+// 300ms delay, CSS only.
+templ HoverCard(p HoverCardProps) {
+	<span class={ cx("group relative inline-flex", p.Class) }>
+		if p.Trigger != nil {
+			@p.Trigger
+		}
+		<span id={ ID(p.ID) } class={ hoverCardContent }>
+			{ children... }
+		</span>
+	</span>
+}
+
+// DropdownAlign is dropdown-menu.md's `align` option.
+type DropdownAlign string
+
+// Dropdown menu alignments (dropdown-menu.md).
+const (
+	AlignLeft  DropdownAlign = "left"
+	AlignRight DropdownAlign = "right"
+)
+
+var dropdownAligns = map[DropdownAlign]string{
+	AlignLeft:  "top-full left-0 mt-1",
+	AlignRight: "top-full right-0 mt-1",
+}
+
+// DropdownMenuProps mirrors dropdown-menu.md's Props table.
+type DropdownMenuProps struct {
+	ID    string        `json:"id"`
+	Align DropdownAlign `json:"align"`
+	Class string        `json:"class"`
+	// Trigger is the whole <summary> content; Items the whole panel content.
+	Trigger templ.Component `json:"-"`
+	Items   templ.Component `json:"-"`
+}
+
+// DropdownMenu is dropdown-menu.md: a native <details> menu with Datastar
+// outside-click and Escape dismissal.
+templ DropdownMenu(p DropdownMenuProps) {
+	<details
+		id={ ID(p.ID) }
+		class={ cx(dropdownRoot, p.Class) }
+		data-on:click__window={ dropdownOutsideClick }
+		data-on:keydown__window={ dropdownEscape }
+	>
+		<summary class={ dropdownSummary }>
+			if p.Trigger != nil {
+				@p.Trigger
+			}
+		</summary>
+		<div class={ cx(dropdownPanel, pick("dropdown align", dropdownAligns, p.Align, AlignLeft)) }>
+			if p.Items != nil {
+				@p.Items
+			}
+		</div>
+	</details>
+}

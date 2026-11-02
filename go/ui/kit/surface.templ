@@ -1,0 +1,231 @@
+package kit
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// Class lists from card.md, avatar.md, separator.md, kbd.md and progress.md.
+const (
+	cardClasses        = "flex flex-col gap-5 rounded-xl border border-border bg-card py-6 text-card-foreground shadow-sm"
+	cardHeaderClasses  = "flex flex-col gap-1.5 px-6"
+	cardTitleClasses   = "text-base leading-none font-semibold"
+	cardDescClasses    = "text-sm text-muted-foreground"
+	cardContentClasses = "px-6"
+	cardFooterClasses  = "flex items-center gap-2 px-6"
+
+	avatarBase     = "relative flex shrink-0 overflow-hidden rounded-full"
+	avatarImage    = "absolute inset-0 size-full object-cover"
+	avatarFallback = "flex size-full items-center justify-center bg-foreground/10 font-medium text-foreground select-none"
+
+	separatorBase = "shrink-0 border-0 bg-border"
+
+	kbdClasses      = "inline-flex h-5 w-fit min-w-5 shrink-0 items-center justify-center gap-1 rounded-sm border border-border bg-foreground/5 px-1.5 font-sans text-xs font-medium text-muted-foreground"
+	kbdGroupClasses = "inline-flex items-center gap-1 whitespace-nowrap"
+
+	progressClasses = "h-2 w-full appearance-none overflow-hidden rounded-full bg-foreground/10 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary [&::-webkit-progress-value]:transition-all [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-primary"
+)
+
+// CardProps mirrors card.md's Props table. Slots: the content is the default
+// slot (children), the footer is Footer.
+type CardProps struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	// HeadingLevel is 1-6 (default 3): the title element is <h{level}>.
+	HeadingLevel int             `json:"headingLevel"`
+	Class        string          `json:"class"`
+	Footer       templ.Component `json:"-"`
+}
+
+func (p CardProps) level() int {
+	if p.HeadingLevel == 0 {
+		return 3
+	}
+	if p.HeadingLevel < 1 || p.HeadingLevel > 6 {
+		panic(fmt.Sprintf("kit: unknown card heading level %d (contract section 3 rule 5: want 1-6)", p.HeadingLevel))
+	}
+	return p.HeadingLevel
+}
+
+// Card is card.md: a bordered surface. The header renders when there is a
+// title or a description, the content and the footer when their slot is not
+// empty.
+templ Card(p CardProps) {
+	@cardLayout(p) {
+		{ children... }
+	}
+}
+
+templ cardFrame(p CardProps, content, footer string) {
+	<div class={ cx(cardClasses, p.Class) }>
+		if p.Title != "" || p.Description != "" {
+			<div class={ cardHeaderClasses }>
+				if p.Title != "" {
+					@cardTitle(p.level(), p.Title)
+				}
+				if p.Description != "" {
+					<p class={ cardDescClasses }>{ p.Description }</p>
+				}
+			</div>
+		}
+		if content != "" {
+			<div class={ cardContentClasses }>
+				@Raw(content)
+			</div>
+		}
+		if footer != "" {
+			<div class={ cardFooterClasses }>
+				@Raw(footer)
+			</div>
+		}
+	</div>
+}
+
+templ cardTitle(level int, text string) {
+	switch level {
+		case 1:
+			<h1 class={ cardTitleClasses }>{ text }</h1>
+		case 2:
+			<h2 class={ cardTitleClasses }>{ text }</h2>
+		case 4:
+			<h4 class={ cardTitleClasses }>{ text }</h4>
+		case 5:
+			<h5 class={ cardTitleClasses }>{ text }</h5>
+		case 6:
+			<h6 class={ cardTitleClasses }>{ text }</h6>
+		default:
+			<h3 class={ cardTitleClasses }>{ text }</h3>
+	}
+}
+
+// AvatarSize is avatar.md's `size` option.
+type AvatarSize string
+
+// Avatar sizes (avatar.md).
+const (
+	AvatarSm AvatarSize = "sm"
+	AvatarMd AvatarSize = "md"
+	AvatarLg AvatarSize = "lg"
+)
+
+var avatarSizes = map[AvatarSize]string{
+	AvatarSm: "size-8 text-xs",
+	AvatarMd: "size-10 text-sm",
+	AvatarLg: "size-12 text-base",
+}
+
+// AvatarProps mirrors avatar.md's Props table.
+type AvatarProps struct {
+	Size AvatarSize `json:"size"`
+	// Src is the image URL (URL-checked); empty = initials only.
+	Src string `json:"src"`
+	// Alt is the image's alt text; empty = decorative.
+	Alt      string `json:"alt"`
+	Initials string `json:"initials"`
+	Class    string `json:"class"`
+}
+
+// Avatar is avatar.md: a round image over an initials fallback.
+templ Avatar(p AvatarProps) {
+	<span class={ cx(avatarBase, pick("avatar size", avatarSizes, p.Size, AvatarMd), p.Class) }>
+		if p.Src != "" {
+			<img src={ SafeURL(p.Src) } alt={ p.Alt } class={ avatarImage }/>
+		}
+		<span class={ avatarFallback }>{ p.Initials }</span>
+	</span>
+}
+
+// Orientation is separator.md's `orientation` option.
+type Orientation string
+
+// Separator orientations (separator.md).
+const (
+	Horizontal Orientation = "horizontal"
+	Vertical   Orientation = "vertical"
+)
+
+// SeparatorProps mirrors separator.md's Props table.
+type SeparatorProps struct {
+	Orientation Orientation `json:"orientation"`
+	Class       string      `json:"class"`
+}
+
+// Separator is separator.md: a horizontal or vertical rule.
+templ Separator(p SeparatorProps) {
+	if oneOf("separator orientation", p.Orientation, Horizontal, Horizontal, Vertical) == Vertical {
+		<hr aria-orientation="vertical" class={ cx(separatorBase, "h-full w-px", p.Class) }/>
+	} else {
+		<hr class={ cx(separatorBase, "h-px w-full", p.Class) }/>
+	}
+}
+
+// KbdProps mirrors kbd.md's Props table.
+type KbdProps struct {
+	// Keys are the key texts: one renders a bare <kbd>, two or more a group; none is refused.
+	Keys []string `json:"keys"`
+	// Class goes on the lone <kbd> or on the group <span>.
+	Class string `json:"class"`
+}
+
+// Kbd is kbd.md: keyboard key hints.
+templ Kbd(p KbdProps) {
+	switch len(kbdKeys(p.Keys)) {
+		case 1:
+			<kbd class={ cx(kbdClasses, p.Class) }>{ p.Keys[0] }</kbd>
+		default:
+			<span class={ cx(kbdGroupClasses, p.Class) }>
+				for _, k := range p.Keys {
+					<kbd class={ kbdClasses }>{ k }</kbd>
+				}
+			</span>
+	}
+}
+
+// ProgressProps mirrors progress.md's Props table.
+type ProgressProps struct {
+	ID string `json:"id"`
+	// Value is nil for indeterminate; 0 is a value.
+	Value *float64 `json:"value"`
+	// Max defaults to 100 when 0.
+	Max float64 `json:"max"`
+	// Label is the aria-label.
+	Label string `json:"label"`
+	Class string `json:"class"`
+}
+
+func (p ProgressProps) max() string {
+	if p.Max == 0 {
+		return "100"
+	}
+	return num(p.Max)
+}
+
+// Progress is progress.md: a native <progress> bar.
+templ Progress(p ProgressProps) {
+	<progress
+		class={ cx(progressClasses, p.Class) }
+		if p.ID != "" {
+			id={ ID(p.ID) }
+		}
+		if p.Value != nil {
+			value={ num(*p.Value) }
+		}
+		max={ p.max() }
+		if p.Label != "" {
+			aria-label={ p.Label }
+		}
+	></progress>
+}
+
+// JSONBlockProps mirrors json-block.md's Props table.
+type JSONBlockProps struct {
+	// Value is a raw JSON value, so key order is kept; see [JSONValue].
+	Value json.RawMessage  `json:"value"`
+	Attrs templ.Attributes `json:"attrs"`
+	Class string           `json:"class"`
+}
+
+// JSONBlock is json-block.md: pretty-printed JSON in a scrollable <pre>.
+templ JSONBlock(p JSONBlockProps) {
+	<pre class={ cx("fc-json", p.Class) } { Attrs(p.Attrs)... }>{ prettyJSON(p.Value) }</pre>
+}

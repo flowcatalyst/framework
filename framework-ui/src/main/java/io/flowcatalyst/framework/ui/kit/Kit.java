@@ -872,4 +872,154 @@ public final class Kit {
   public static Content document(Props.Document p, Content body) {
     return component("document", params(p, "body", body));
   }
+
+  // ---- the thirteen components that were spec-only (GU4)
+
+  /**
+   * accordion component.
+   *
+   * @param p props
+   * @param panels the content of each item, by its value
+   * @return the component
+   */
+  public static Content accordion(Props.Accordion p, Map<String, Content> panels) {
+    return component("accordion", params(p, "panels", panels));
+  }
+
+  /**
+   * alert-dialog component.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content alertDialog(Props.AlertDialog p) {
+    return component("alert_dialog", params(p));
+  }
+
+  /**
+   * avatar component.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content avatar(Props.Avatar p) {
+    return component("avatar", params(p));
+  }
+
+  /**
+   * card component; the content and footer regions render only when their slot is not empty.
+   *
+   * @param p props
+   * @param body the content slot
+   * @param footer the footer slot
+   * @return the component
+   */
+  public static Content card(Props.Card p, @Nullable Content body, @Nullable Content footer) {
+    return component("card", params(p, "body", nonEmpty(body), "footer", nonEmpty(footer)));
+  }
+
+  /** The content rendered once, or null when it writes nothing. */
+  private static @Nullable Content nonEmpty(@Nullable Content c) {
+    if (c == null) {
+      return null;
+    }
+    String html = Markup.render(c);
+    return html.isEmpty() ? null : Markup.raw(html);
+  }
+
+  /**
+   * dirty-form component.
+   *
+   * @param p props
+   * @param body the fields, placed before the button row
+   * @return the component
+   */
+  public static Content dirtyForm(Props.DirtyForm p, @Nullable Content body) {
+    return component("dirty_form", params(p, "body", body));
+  }
+
+  /**
+   * dropdown-menu component.
+   *
+   * @param p props
+   * @param trigger the content of the summary
+   * @param items the content of the panel
+   * @return the component
+   */
+  public static Content dropdownMenu(Props.DropdownMenu p, @Nullable Content trigger, @Nullable Content items) {
+    return component("dropdown_menu", params(p, "trigger", trigger, "items", items));
+  }
+
+  /**
+   * hover-card component.
+   *
+   * @param p props
+   * @param trigger the trigger markup, which carries {@code aria-describedby} of the id
+   * @param body the card content
+   * @return the component
+   */
+  public static Content hoverCard(Props.HoverCard p, @Nullable Content trigger, @Nullable Content body) {
+    return component("hover_card", params(p, "trigger", trigger, "body", body));
+  }
+
+  /**
+   * json-block component.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content jsonBlock(Props.JsonBlock p) {
+    return component("json_block", params(p));
+  }
+
+  /**
+   * kbd component.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content kbd(Props.Kbd p) {
+    return component("kbd", params(p));
+  }
+
+  /**
+   * progress component.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content progress(Props.Progress p) {
+    return component("progress", params(p));
+  }
+
+  /**
+   * radio-group component.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content radioGroup(Props.RadioGroup p) {
+    return component("radio_group", params(p));
+  }
+
+  /**
+   * separator component.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content separator(Props.Separator p) {
+    return component("separator", params(p));
+  }
+
+  /**
+   * tooltip component.
+   *
+   * @param p props
+   * @param trigger the trigger markup, which carries {@code aria-describedby} of the id
+   * @return the component
+   */
+  public static Content tooltip(Props.Tooltip p, @Nullable Content trigger) {
+    return component("tooltip", params(p, "trigger", trigger));
+  }
 }

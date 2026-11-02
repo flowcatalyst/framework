@@ -1,4 +1,4 @@
-<!-- types: Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, PermissionDeniedDialogProps, Views, Patches, PageOption, Declared, Module, Failure -->
+<!-- types: Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, PermissionDeniedDialogProps, CardProps, AvatarProps, SeparatorProps, KbdProps, ProgressProps, JSONBlockProps, AccordionProps, TooltipProps, HoverCardProps, DropdownMenuProps, AlertDialogProps, RadioGroupProps, DirtyFormProps, Views, Patches, PageOption, Declared, Module, Failure -->
 # Go: server-rendered pages with templ and Datastar (optional)
 
 > **Optional, and secondary to the Nuxt UI package.** The framework's primary UI is the shared
@@ -9,8 +9,8 @@
 > is [`go/ui-templ-plan.md`](../../go/ui-templ-plan.md). **Phases GU1, GU2, GU3 and GU5 are built**: the module, the kit,
 > `ds`, `assets`, `md`, `compress`, `htmlnorm` (GU1), and the pages and answers (`views`), form routes
 > (`httpfw.AcceptForms`) and the framework wiring (`fwui`) (GU2); Java's catch-up is GU3; the orders demo is
-> GU5 ([below](#the-orders-demo)). The thirteen spec-only components and the platform's adoption are GU4 and
-> GU6 and do not exist yet.
+> GU5 ([below](#the-orders-demo)). The thirteen spec-only components have templ renderers (GU4, step 2, below);
+> the platform's adoption is GU6 and does not exist yet.
 
 ## The module
 
@@ -76,6 +76,18 @@ request that reaches a bad value fails with 500 before anything is written.
 Test coverage: `kit/escaping_test.go` (the cases of Java's `EscapingTest`, one test per rule) and
 `kit/xss_test.go` (the sweep: every string prop of every fixture replaced by a payload, one at a time).
 
+### The thirteen spec-only components
+
+`Accordion`, `AlertDialog`, `Avatar`, `Card`, `DirtyForm`, `DropdownMenu`, `HoverCard`, `JSONBlock`, `Kbd`,
+`Progress`, `RadioGroup`, `Separator` and `Tooltip` (`kit/surface.templ`, `interactive.templ`, `forms2.templ`).
+Named slots are `templ.Component` fields: `Card.Footer`, `Tooltip.Trigger`, `HoverCard.Trigger`,
+`DropdownMenu.Trigger` and `.Items`, and `Accordion.Panels` (a map from the item's `Value`). A `Card` draws its
+content and footer regions only when the slot renders something (it renders them to text first, in
+`cardLayout`). `JSONBlockProps.Value` is a `json.RawMessage`, re-spaced (never decoded) so key order and number
+text stay as given; `kit.JSONValue(v)` encodes a Go value for it without HTML escapes. `ProgressProps.Value` is a
+`*float64` (nil = indeterminate, 0 is a value). `AlertDialog.ConfirmVariant` is `ButtonDestructive` (default) or
+`ButtonPrimary`; any other value panics.
+
 ## Conformance with the fixtures
 
 `kit/conformance_test.go` renders every case of `ui-kit/fixtures` and compares it with the golden HTML after
@@ -83,7 +95,7 @@ the normalisation of `ui-kit/fixtures/README.md`. The fixtures are read in place
 below the repository root; `UI_KIT_FIXTURES=/path` overrides). It checks both directions (a fixture
 directory without a renderer fails, a renderer without a fixture directory fails), decodes props strictly (an
 unknown property fails the case) and fails when a case fills a slot the component does not have. At GU1 all 66
-fixture directories (189 cases) pass; GU3 added the search select (spec, 7 cases: 67 directories, 196 cases). Go's `SearchSelect` now builds `data-filter-text` as `multi-select.md` does (the label alone when it equals the value).
+fixture directories (189 cases) pass; GU3 added the search select (spec, 7 cases: 67 directories, 196 cases); GU4 step 2 added the thirteen spec-only components (80 directories, 268 cases, `notYet` empty). Go's `SearchSelect` now builds `data-filter-text` as `multi-select.md` does (the label alone when it equals the value).
 
 ## Datastar: package `ds`
 
@@ -367,7 +379,7 @@ also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go 
   `go/internal/conformance/sync-shared.sh`). Tailwind also picks up words in comments and prose as class names, so a
   few unused rules (`blur`, `italic`, ...) are in the file. An application with its own templates writes its own
   input, as the file's header says.
-- The thirteen spec-only components and the platform's adoption are GU4 and GU6. Java has caught up
+- The platform's adoption of the kit is GU6. Java has caught up
   (GU3, [JTE](../ui-jte.md)): the seven components, search select, form routes, `returnTo`, `Patches.redirect`, island
   scripts and the flash cookie.
 - `views` has no `?theme=` query override (the platform's shell has one for screenshots).

@@ -19,7 +19,7 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `keys` | list<string> | [] | text (escaped); one key renders a bare `<kbd>`, two or more render inside the group `<span>` |
+| `keys` | list<string> | (required) | text (escaped); one key renders a bare `<kbd>`, two or more render inside the group `<span>`; an empty list is refused |
 | `class` | string | - | appended to the root element's class list (concatenated, not merged): the lone `<kbd>` for one key, the group `<span>` for two or more |
 
 ## Accessibility

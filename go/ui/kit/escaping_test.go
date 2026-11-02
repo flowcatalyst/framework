@@ -306,6 +306,11 @@ func TestUnsafeURLSchemesAreBlockedOnEveryRenderedURL(t *testing.T) {
 }
 
 // Rule 4: ids, signals and paths that enter an expression.
+func TestKbdRefusesAnEmptyKeyList(t *testing.T) {
+	assertPanics(t, "kbd no keys", "kbd keys must not be empty", func() { render(t, Kbd(KbdProps{}), nil) })
+	assertPanics(t, "kbd empty keys", "kbd keys must not be empty", func() { render(t, Kbd(KbdProps{Keys: []string{}}), nil) })
+}
+
 func TestIdsSignalsAndPathsThatReachExpressionsAreValidated(t *testing.T) {
 	evil := "x');alert(1);//"
 	assertPanics(t, "ID", "invalid element id", func() { ID(evil) })

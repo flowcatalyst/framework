@@ -360,4 +360,52 @@ class EscapingTest {
     assertThat(doc.select("a[role=option]").text()).isEqualTo(XSS);
     assertThat(doc.select("a[role=option]").attr("data-filter-text")).isEqualTo(XSS.toLowerCase());
   }
+
+  /** A render refused by a validator: JTE wraps it, the cause is the IllegalArgumentException. */
+  private static void assertRefused(org.assertj.core.api.ThrowableAssert.ThrowingCallable call) {
+    Throwable t = org.assertj.core.api.Assertions.catchThrowable(call);
+    assertThat(t).isNotNull();
+    while (t.getCause() != null) {
+      t = t.getCause();
+    }
+    assertThat(t).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void theThirteenFormerlySpecOnlyComponentsRefuseWhatTheyValidate() {
+    assertRefused(() -> html(Kit.avatar(new Props.Avatar("xl", null, null, "A", null))));
+    assertRefused(() -> html(Kit.separator(new Props.Separator("diagonal", null))));
+    assertThatThrownBy(() -> new Props.Kbd(java.util.List.of(), null)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new Props.Kbd(null, null)).isInstanceOf(IllegalArgumentException.class);
+    assertRefused(() -> html(Kit.card(new Props.Card("t", null, 7, null), null, null)));
+    assertRefused(() -> html(Kit.dropdownMenu(new Props.DropdownMenu("m", "up", null), null, null)));
+    assertRefused(
+            () ->
+                html(
+                    Kit.alertDialog(
+                        new Props.AlertDialog("d", "t", "m", null, null, "warn", null, null, null))));
+    assertRefused(
+            () -> html(Kit.dirtyForm(new Props.DirtyForm("f", "dirty'); alert(1); ('", null, null, null, null), null)));
+    assertRefused(
+            () ->
+                html(
+                    Kit.dirtyForm(
+                        new Props.DirtyForm("f", "dirtyX", null, null, Map.of("onclick", "x"), null), null)));
+    assertRefused(
+            () ->
+                html(
+                    Kit.accordion(
+                        new Props.Accordion(
+                            null, java.util.List.of(new Props.AccordionItem("a b", "T")), null, null),
+                        Map.of())));
+  }
+
+  @Test
+  void jsonBlockPrintsKeysInOrderWithoutJsonOrHtmlEscapesOfAngleBrackets() throws Exception {
+    var node = FixtureConformanceTest.MAPPER.readTree("{\"z\":[],\"a\":{},\"s\":\"<&>\\n\\u00e9\\u0001\"}");
+    assertThat(JsonPretty.print(node))
+        .isEqualTo("{\n  \"z\": [],\n  \"a\": {},\n  \"s\": \"<&>\\n\u00e9\\u0001\"\n}");
+    String out = html(Kit.jsonBlock(new Props.JsonBlock(node, null, null)));
+    assertThat(out).contains("&lt;&amp;&gt;").doesNotContain("<&>");
+  }
 }

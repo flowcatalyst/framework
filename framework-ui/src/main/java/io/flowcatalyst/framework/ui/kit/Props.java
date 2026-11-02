@@ -18,6 +18,282 @@ public final class Props {
   /** A (value, label) pair. */
   public record Option(String value, String label) {}
 
+  // ---- the thirteen components that were spec-only (GU4)
+
+  /**
+   * One accordion item: its slot name and its heading.
+   *
+   * @param value names the item's slot, {@code [A-Za-z][A-Za-z0-9_-]*}
+   * @param title the heading text (escaped)
+   */
+  public record AccordionItem(String value, String title) {}
+
+  /**
+   * accordion.md.
+   *
+   * @param name when set the items share it and are exclusive; absent = independent items
+   * @param items the items; the slots are named by their {@code value}
+   * @param open the {@code value} of the initially open item, absent = all closed
+   * @param cls extra classes for the root
+   */
+  public record Accordion(
+      @Nullable String name,
+      @Nullable List<AccordionItem> items,
+      @Nullable String open,
+      @Nullable String cls) {
+
+    /**
+     * The items, never null.
+     *
+     * @return the items
+     */
+    public List<AccordionItem> itemList() {
+      return items == null ? List.of() : items;
+    }
+  }
+
+  /**
+   * alert-dialog.md.
+   *
+   * @param id the dialog id; {@code {id}-title} and {@code {id}-desc} derive from it
+   * @param title the heading
+   * @param message the question
+   * @param cancelLabel the Cancel button's text, default Cancel
+   * @param confirmLabel the Confirm button's text, default Confirm
+   * @param confirmVariant destructive (default) or primary
+   * @param action when set the footer sits in a POST form to this URL
+   * @param hiddenFields hidden inputs, rendered only with {@code action}
+   * @param cls extra classes for the dialog
+   */
+  public record AlertDialog(
+      String id,
+      @Nullable String title,
+      @Nullable String message,
+      @Nullable String cancelLabel,
+      @Nullable String confirmLabel,
+      @Nullable String confirmVariant,
+      @Nullable String action,
+      @Nullable List<NameValue> hiddenFields,
+      @Nullable String cls) {}
+
+  /**
+   * A name and a value (a hidden input of the alert dialog).
+   *
+   * @param name the name
+   * @param value the value
+   */
+  public record NameValue(@Nullable String name, @Nullable String value) {}
+
+  /**
+   * avatar.md.
+   *
+   * @param size sm, md (default) or lg
+   * @param src the image URL, absent = initials only
+   * @param alt the image's alt text, empty = decorative
+   * @param initials the fallback text
+   * @param cls extra classes for the root
+   */
+  public record Avatar(
+      @Nullable String size,
+      @Nullable String src,
+      @Nullable String alt,
+      @Nullable String initials,
+      @Nullable String cls) {}
+
+  /**
+   * card.md.
+   *
+   * @param title the heading text
+   * @param description the description text
+   * @param headingLevel 1 to 6, default 3
+   * @param cls extra classes for the root
+   */
+  public record Card(
+      @Nullable String title,
+      @Nullable String description,
+      @Nullable Integer headingLevel,
+      @Nullable String cls) {
+
+    /**
+     * The heading level.
+     *
+     * @return 1 to 6, 3 when absent
+     * @throws IllegalArgumentException outside 1 to 6
+     */
+    public int level() {
+      int n = headingLevel == null ? 3 : headingLevel;
+      if (n < 1 || n > 6) {
+        throw new IllegalArgumentException("card heading level must be 1 to 6");
+      }
+      return n;
+    }
+  }
+
+  /**
+   * dirty-form.md.
+   *
+   * @param id the form id
+   * @param signal the camelCase signal name, unique per page
+   * @param saveLabel default Save
+   * @param discardLabel default Discard
+   * @param attrs extra attributes for the form
+   * @param cls extra classes for the form
+   */
+  public record DirtyForm(
+      String id,
+      String signal,
+      @Nullable String saveLabel,
+      @Nullable String discardLabel,
+      @Nullable Map<String, Object> attrs,
+      @Nullable String cls) {
+
+    private static final String SNAPSHOT = "new URLSearchParams(new FormData(el)).toString()";
+
+    /**
+     * The form's attributes: the signal, the snapshot, the dirty check, the reset handler, then the
+     * caller's own.
+     *
+     * @return attributes for {@link Markup#attrs}
+     */
+    public Map<String, Object> formAttrs() {
+      String sig = Markup.signal(signal);
+      Map<String, Object> m = new java.util.LinkedHashMap<>();
+      m.put("data-signals:" + Markup.signalAttr(sig), "false");
+      m.put("data-init", "el.dataset.snapshot = " + SNAPSHOT);
+      m.put("data-on:input", "$" + sig + " = " + SNAPSHOT + " !== el.dataset.snapshot");
+      m.put("data-on:reset", "setTimeout(() => $" + sig + " = false)");
+      m.put("data-on:submit", "void 0");
+      if (attrs != null) {
+        m.putAll(attrs);
+      }
+      return m;
+    }
+
+    /**
+     * The signal read in an expression.
+     *
+     * @return {@code $signal}
+     */
+    public String dirty() {
+      return "$" + Markup.signal(signal);
+    }
+  }
+
+  /**
+   * dropdown-menu.md.
+   *
+   * @param id the {@code <details>} id
+   * @param align left (default) or right
+   * @param cls extra classes for the root
+   */
+  public record DropdownMenu(String id, @Nullable String align, @Nullable String cls) {}
+
+  /**
+   * hover-card.md.
+   *
+   * @param id the content span's id
+   * @param cls extra classes for the wrapper
+   */
+  public record HoverCard(String id, @Nullable String cls) {}
+
+  /**
+   * json-block.md.
+   *
+   * @param value any JSON value; objects keep their key order
+   * @param attrs extra attributes for the {@code <pre>}
+   * @param cls extra classes, after {@code fc-json}
+   */
+  public record JsonBlock(
+      tools.jackson.databind.@Nullable JsonNode value,
+      @Nullable Map<String, Object> attrs,
+      @Nullable String cls) {}
+
+  /**
+   * kbd.md.
+   *
+   * @param keys the key texts: one renders a bare {@code <kbd>}, two or more a group; none is refused
+   * @param cls extra classes for the lone kbd or the group
+   */
+  public record Kbd(@Nullable List<String> keys, @Nullable String cls) {
+    /** Refuses an empty key list: a key hint with no key is a programming error. */
+    public Kbd {
+      if (keys == null || keys.isEmpty()) {
+        throw new IllegalArgumentException("kbd: keys must not be empty (kbd.md Props)");
+      }
+    }
+  }
+
+  /**
+   * progress.md.
+   *
+   * @param id optional element id
+   * @param value absent = indeterminate; zero is a value
+   * @param max default 100
+   * @param label the {@code aria-label}
+   * @param cls extra classes
+   */
+  public record Progress(
+      @Nullable String id,
+      java.math.@Nullable BigDecimal value,
+      java.math.@Nullable BigDecimal max,
+      @Nullable String label,
+      @Nullable String cls) {}
+
+  /**
+   * One radio of a radio group.
+   *
+   * @param id ties the radio to its label
+   * @param value the value
+   * @param label the label text
+   * @param disabled whether the radio is disabled
+   */
+  public record RadioOption(String id, String value, String label, boolean disabled) {}
+
+  /**
+   * radio-group.md.
+   *
+   * @param name shared by all radios
+   * @param label the group's {@code aria-label}
+   * @param labelledBy the group's {@code aria-labelledby}
+   * @param value the selected value, absent = nothing checked
+   * @param options the radios
+   * @param cls extra classes for the group
+   */
+  public record RadioGroup(
+      String name,
+      @Nullable String label,
+      @Nullable String labelledBy,
+      @Nullable String value,
+      @Nullable List<RadioOption> options,
+      @Nullable String cls) {
+
+    /**
+     * The options, never null.
+     *
+     * @return the options
+     */
+    public List<RadioOption> optionList() {
+      return options == null ? List.of() : options;
+    }
+  }
+
+  /**
+   * separator.md.
+   *
+   * @param orientation horizontal (default) or vertical
+   * @param cls extra classes
+   */
+  public record Separator(@Nullable String orientation, @Nullable String cls) {}
+
+  /**
+   * tooltip.md.
+   *
+   * @param id the bubble's id
+   * @param text the bubble's text
+   * @param cls extra classes for the wrapper
+   */
+  public record Tooltip(String id, @Nullable String text, @Nullable String cls) {}
+
   // ---- display
 
   /**
