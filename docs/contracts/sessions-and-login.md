@@ -560,6 +560,9 @@ session cookie:
 5. Then, if the request has a body (a declared length greater than 0, from the server or the
    `Content-Length` header, or `Transfer-Encoding` present), its media type must be `application/json` or `application/*+json`: otherwise `415
    UNSUPPORTED_MEDIA_TYPE`. A request without a body needs no `Content-Type`.
+   *Amended 2026-11-02 (owner ruling R2, [`server-rendered-ui.md`](server-rendered-ui.md) section 8):* a route
+   the application declares as a form route (server-rendered pages) also accepts
+   `application/x-www-form-urlencoded` and `multipart/form-data`. Rules 1 to 4 still apply to it unchanged.
 
 No synchronizer token: Fetch Metadata, the Origin check, `SameSite=Lax` and JSON-only bodies leave
 nothing for a token to add. **No CORS** is configured anywhere in the framework, so no credentialed

@@ -372,6 +372,9 @@ owner may reverse them.
 6. **No compression** (no precompressed `.br`/`.gz` siblings, as [`../go/ui.md`](../go/ui.md) section 9
    sketched): compression is outside the http contract; a proxy or CDN compresses. Both
    implementations leave it out so they answer the same bytes.
+   *Amended 2026-11-02 (owner ruling R3):* the SPA handler still does not compress; the Go
+   server-rendered UI module has an opt-in compressor ([`server-rendered-ui.md`](server-rendered-ui.md)
+   section 12), off by default, for deployments behind a proxy that does not compress (an AWS ALB).
 
 ## 13. Out of scope
 

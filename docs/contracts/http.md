@@ -251,8 +251,10 @@ Package `io.flowcatalyst.framework.http.datastar`, in `framework-http`. Follows 
 SDK specification (events and field names below are the ones to implement; check against the
 published spec when implementing and flag any difference).
 
-- `Datastar.signals(Request)` returns the client's signals as a `JsonNode`: for `GET` and
-  `HEAD`, the JSON in the `datastar` query parameter; otherwise the JSON request body.
+- `Datastar.signals(Request)` returns the client's signals as a `JsonNode`: for `GET`, `HEAD`
+  and `DELETE`, the JSON in the `datastar` query parameter; otherwise the JSON request body.
+  *Amended 2026-11-02 (server-rendered UI contract section 15):* `DELETE` added, because Datastar
+  1.0.4 sends a body only for other methods; a body above 1 MiB is refused `413`.
   `Datastar.signals(Request, Class<T>)` decodes to a record. Absent/invalid: `ValidationException`.
 - `Datastar.stream(Request, Datastar.Events)` returns the streamed `Response`; the body is written
   after the handler returns, so the callback receives a `ServerSentEventGenerator` when the server
