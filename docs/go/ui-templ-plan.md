@@ -92,11 +92,18 @@ markup), then the Go and Java renderers in parallel. `NOT_YET` empty in both at 
 
 ### GU5: a Go server-rendered orders demo
 
-`go/ui/examples/orders-demo-templ`, the counterpart of Java's `examples/orders-demo-jte` (its pages, its same-origin
+`go/ui/fwui/examples/orders-demo-templ`, the counterpart of Java's `examples/orders-demo-jte` (its pages, its same-origin
 check now covered by form routes, its browser check), on the `ordersweb` library, sessions from `auth`. `make -C go
 e2e-orders-templ`.
 
 ### GU6: the platform uses the module (ruling R1)
+
+**Step 1 done (2026-11-02, owner ruling): the `fwui` split.** `fwui` and the orders demo moved to their own module
+`github.com/flowcatalyst/framework/go/ui/fwui` (directory `go/ui/fwui`, requires the core module and `go/ui`, with
+`replace` directives to `../..` and `..`); `go/ui` now depends on no framework module (no core `require`, no `replace`;
+a throwaway consumer module requiring only `go/ui` builds `kit`, `ds`, `assets`, `views`, `compress` and `md` with no
+core entry in its `go.sum`). The Makefile loops and CI cover both modules. Import paths are unchanged; the demo is at
+`go/ui/fwui/examples/orders-demo-templ`. Tagging and the platform's switch (the steps below) remain.
 
 1. **Needs an owner decision first:** how the platform fetches the module (decision 33: nothing is published; the
    platform's Docker and CI builds need a tag such as `go/ui/v0.1.0` on `github.com/flowcatalyst/framework`, or a

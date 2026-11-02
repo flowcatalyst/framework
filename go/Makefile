@@ -6,13 +6,13 @@
 #   go-check         everything below, in order
 #   fmt              rewrite the sources with gofumpt
 #   fmt-check        fail when a file is not gofumpt-formatted
-#   lint             golangci-lint (.golangci.yml) on all three modules (core, flowcatalyst, ui)
+#   lint             golangci-lint (.golangci.yml) on all four modules (core, flowcatalyst, ui, ui/fwui)
 #   vet              go vet with the framework's analyzers (cmd/fwvet)
 #   nilaway          NilAway over the framework's packages
-#   test             go test -race on all three modules (PostgreSQL and Redis come from fwtest)
-#   ui-generate      templ generate in the ui module (the generated *_templ.go files are committed)
+#   test             go test -race on all four modules (PostgreSQL and Redis come from fwtest)
+#   ui-generate      templ generate in the ui and ui/fwui modules (the generated *_templ.go files are committed)
 #   ui-verify        ui-generate, then fail when a generated file changed or appeared: the committed
-#                    *_templ.go files are the templates' output (templ v0.3.1020, pinned by ui/go.mod)
+#                    *_templ.go files are the templates' output (templ v0.3.1020, pinned by ui/go.mod and ui/fwui/go.mod)
 #   sql-check        the examples' checked SQL (orders-demo, and the tickets-trial of the flowcatalyst module): schema
 #                    dir, sqlc vet (db-prepare) and diff, jet code
 #                    (needs sqlc v1.31.1 on PATH: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1)
@@ -26,7 +26,7 @@
 #   e2e-tickets      the tickets SPA's browser suite (ui/apps/tickets/e2e, 24 tests) against the Go tickets-trial
 #                    (flowcatalyst/examples/tickets-trial): builds the SPA, the launcher binary into bin/, and runs
 #                    Playwright through the kit. Ports 4394 and 4395, so not while the Java tickets suite runs.
-#   e2e-orders-templ the Go server-rendered orders demo (ui/examples/orders-demo-templ) against the Java demo's
+#   e2e-orders-templ the Go server-rendered orders demo (ui/fwui/examples/orders-demo-templ) against the Java demo's
 #                    browser check (examples/orders-demo-jte/e2e/browser-check.mjs, run unchanged). Builds the
 #                    binary into bin/, starts it on a free 127.0.0.1 port (never 8080 or 15432), runs the check
 #                    (Playwright and Chromium from the ui workspace) and stops the server by its PID.
@@ -50,8 +50,11 @@ FCSDK ?=
 # cannot run in a workspace, so they are built into bin/ first.)
 FC = cd flowcatalyst && if [ -f go.local.work ]; then export GOWORK=$(CURDIR)/flowcatalyst/go.local.work; fi;
 # Run a command in the ui module (go/ui: templ + Datastar server-rendered UI; its own go.mod, so templ,
-# goldmark, bluemonday and brotli stay out of the core module).
+# goldmark, bluemonday and brotli stay out of the core module; it depends on no framework module).
 UI = cd ui &&
+# Run a command in the fwui module (go/ui/fwui: the wiring of the ui module into the core module's fw and
+# httpfw, and the orders-demo-templ example; its own go.mod, so go/ui stays free of the core module).
+FWUI = cd ui/fwui &&
 LINT := $(CURDIR)/bin/golangci-lint
 NILAWAY := $(CURDIR)/bin/nilaway
 
@@ -86,22 +89,26 @@ lint: fc-modfile tools
 	$(LINT) run ./...
 	$(FC) $(LINT) run --config ../.golangci.yml ./...
 	$(UI) $(LINT) run --config ../.golangci.yml ./...
+	$(FWUI) $(LINT) run --config ../../.golangci.yml ./...
 
 vet: fc-modfile
 	$(GO) build -o bin/fwvet ./cmd/fwvet
 	$(GO) vet -vettool=$(CURDIR)/bin/fwvet ./...
 	$(FC) $(GO) vet -vettool=$(CURDIR)/bin/fwvet ./...
 	$(UI) $(GO) vet -vettool=$(CURDIR)/bin/fwvet ./...
+	$(FWUI) $(GO) vet -vettool=$(CURDIR)/bin/fwvet ./...
 
 nilaway: fc-modfile tools
 	$(NILAWAY) -include-pkgs=$(MODULE) ./...
 	$(FC) $(NILAWAY) -include-pkgs=$(MODULE)/flowcatalyst ./...
 	$(UI) $(NILAWAY) -include-pkgs=$(MODULE)/ui ./...
+	$(FWUI) $(NILAWAY) -include-pkgs=$(MODULE)/ui/fwui ./...
 
 test: fc-modfile
 	$(GO) test -race -count=1 ./...
 	$(FC) $(GO) test -race -count=1 ./...
 	$(UI) $(GO) test -race -count=1 ./...
+	$(FWUI) $(GO) test -race -count=1 ./...
 
 sql-check:
 	cd examples/orders-demo && $(GO) run ./tools/fwsql check
@@ -112,12 +119,13 @@ go-sync-shared:
 
 ui-generate:
 	$(UI) $(GO) tool templ generate
+	$(FWUI) $(GO) tool templ generate
 
 # The committed *_templ.go files must be exactly what templ generates from the .templ files.
 ui-verify:
 	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; mkdir "$$tmp/old" "$$tmp/new"; \
 	(cd ui && find . -name '*_templ.go' | sort | tar -cf - -T -) | (cd "$$tmp/old" && tar -xf -); \
-	($(UI) $(GO) tool templ generate >/dev/null); \
+	($(UI) $(GO) tool templ generate >/dev/null); ($(FWUI) $(GO) tool templ generate >/dev/null); \
 	(cd ui && find . -name '*_templ.go' | sort | tar -cf - -T -) | (cd "$$tmp/new" && tar -xf -); \
 	if ! diff -rq "$$tmp/old" "$$tmp/new"; then echo "generated templ files are stale (run make -C go ui-generate and commit them)"; exit 1; fi; \
 	echo "ui-verify: the generated templ files are current"
@@ -133,7 +141,7 @@ e2e-tickets:
 	cd ../ui/apps/tickets && TICKETS_E2E_BINARY=$(CURDIR)/bin/tickets-trial node node_modules/@flowcatalyst/ui/src/e2e/cli.ts playwright test --config ../../../go/flowcatalyst/examples/tickets-trial/e2e/playwright.config.ts
 
 e2e-orders-templ:
-	$(UI) $(GO) build -o $(CURDIR)/bin/orders-demo-templ ./examples/orders-demo-templ
+	$(FWUI) $(GO) build -o $(CURDIR)/bin/orders-demo-templ ./examples/orders-demo-templ
 	@port=$$(node -e "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close()})"); \
 	case "$$port" in 8080|15432|"") echo "e2e-orders-templ: no usable free port ($$port)"; exit 1;; esac; \
 	bin/orders-demo-templ serve --port $$port >bin/orders-demo-templ.log 2>&1 & pid=$$!; \

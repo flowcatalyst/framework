@@ -18,7 +18,15 @@
 goldmark, bluemonday and brotli stay out of the core module. It is built from the FlowCatalyst platform's
 templ port, with the platform's defaults taken out. Every package except the kit is plain `net/http` and
 imports neither the framework's lifecycle nor its router, so an application that is not built on the framework
-can use them. Only `fwui` imports the core module.
+can use them. The module depends on **no framework module**: its `go.mod` requires neither the core module
+(`github.com/flowcatalyst/framework/go`) nor anything else of the framework, so a consumer that is not built on the
+framework takes `go/ui` alone. The framework wiring, `fwui`, is its own module (next paragraph).
+
+`github.com/flowcatalyst/framework/go/ui/fwui` is a second module (its own `go.mod`, in the `go/ui/fwui` directory)
+that requires the core module and `go/ui`; the orders demo lives in it too. In this repository both modules
+resolve the others with `replace` directives (`../..` and `..`), as `go/flowcatalyst` does for the core module;
+a consumer ignores them and resolves each module by version (the tags are the owner's, GU6). Import paths are
+unchanged: `.../go/ui/kit`, `.../go/ui/views`, `.../go/ui/fwui`.
 
 | Package | What it is |
 |---|---|
@@ -27,7 +35,7 @@ can use them. Only `fwui` imports the core module.
 | `assets` | The static files (kit stylesheet, Datastar, icon sprite, the islands) as an instance with hashed URLs, ETags and 304 |
 | `md` | Markdown to sanitised HTML (goldmark with GFM, bluemonday) |
 | `views` | Pages and answers: one template as a full document or a patch, `Patches`, the page policy (`CSP`), the flash cookie, the theme cookies |
-| `fwui` | The framework wiring: `Declare`/`Build`, the static-file routes, the shell user from the session, the use-case error mapper |
+| `fwui` (module `go/ui/fwui`) | The framework wiring: `Declare`/`Build`, the static-file routes, the shell user from the session, the use-case error mapper |
 | `compress` | Opt-in Brotli/gzip for pages, Datastar streams and the static files; flushes each event; an ETag per encoding |
 | `htmlnorm` | The HTML normaliser the fixture comparison uses |
 
@@ -275,13 +283,13 @@ without provenance, `415` on a route without `AcceptForms`), and the error mappi
 
 ## The orders demo
 
-`go/ui/examples/orders-demo-templ` is the counterpart of Java's `examples/orders-demo-jte` ([JTE guide](../ui-jte.md)):
+`go/ui/fwui/examples/orders-demo-templ` (module `go/ui/fwui`) is the counterpart of Java's `examples/orders-demo-jte` ([JTE guide](../ui-jte.md)):
 the same in-memory orders (23 seeded), the same pages, URLs, element ids, signals and element structure, so the
 Java demo's browser check runs against it unchanged. It is a main package plus `internal/orders` (the store, the
 query, the form, the handlers and the templ templates). It needs no database and no configuration file.
 
 ```
-go run ./examples/orders-demo-templ serve --port 4711     # from go/ui; binds 127.0.0.1, there is no default port
+go run ./examples/orders-demo-templ serve --port 4711     # from go/ui/fwui; binds 127.0.0.1, there is no default port
 make -C go e2e-orders-templ                              # builds the binary, starts it on a free port, runs the browser check
 ```
 
@@ -367,10 +375,10 @@ plain tag): only a client that cached the uncompressed body sends that. A `HEAD`
 
 ## Building and checking
 
-The templ files are compiled by `templ` (v0.3.1020, a `tool` of `go/ui/go.mod`) and the generated `*_templ.go`
+The templ files are compiled by `templ` (v0.3.1020, a `tool` of `go/ui/go.mod` and `go/ui/fwui/go.mod`) and the generated `*_templ.go`
 files are committed. `make -C go ui-generate` regenerates them; `make -C go ui-verify` regenerates and fails if
 any generated file changed or appeared, and is part of `make -C go go-check` and the CI workflow. `go-check`
-also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go test -race` on the module.
+also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go test -race` on both modules (`go/ui` and `go/ui/fwui`).
 
 ## Known gaps
 

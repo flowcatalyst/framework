@@ -17,8 +17,8 @@ import (
 
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/httpfw"
-	"github.com/flowcatalyst/framework/go/ui/examples/orders-demo-templ/internal/orders"
 	"github.com/flowcatalyst/framework/go/ui/fwui"
+	"github.com/flowcatalyst/framework/go/ui/fwui/examples/orders-demo-templ/internal/orders"
 	"github.com/flowcatalyst/framework/go/ui/views"
 )
 
