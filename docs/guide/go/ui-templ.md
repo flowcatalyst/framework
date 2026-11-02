@@ -6,10 +6,11 @@
 > wants server-rendered pages without a JavaScript build; the Java counterpart is
 > [Server-rendered pages (JTE)](../ui-jte.md). Nothing else in the framework depends on it. The
 > specification is [`contracts/server-rendered-ui.md`](../../contracts/server-rendered-ui.md); the build plan
-> is [`go/ui-templ-plan.md`](../../go/ui-templ-plan.md). **Phases GU1, GU2 and GU3 are built**: the module, the kit,
+> is [`go/ui-templ-plan.md`](../../go/ui-templ-plan.md). **Phases GU1, GU2, GU3 and GU5 are built**: the module, the kit,
 > `ds`, `assets`, `md`, `compress`, `htmlnorm` (GU1), and the pages and answers (`views`), form routes
-> (`httpfw.AcceptForms`) and the framework wiring (`fwui`) (GU2); Java's catch-up is GU3. The thirteen spec-only
-> components, the Go demo and the platform's adoption are GU4 to GU6 and do not exist yet.
+> (`httpfw.AcceptForms`) and the framework wiring (`fwui`) (GU2); Java's catch-up is GU3; the orders demo is
+> GU5 ([below](#the-orders-demo)). The thirteen spec-only components and the platform's adoption are GU4 and
+> GU6 and do not exist yet.
 
 ## The module
 
@@ -260,6 +261,87 @@ The tests (`fwui/fwui_test.go`) run a real application: the auth module against 
 session, the static routes, a form route through the real sessions guard (`303` with the flash cookie, `403`
 without provenance, `415` on a route without `AcceptForms`), and the error mapping both ways.
 
+## The orders demo
+
+`go/ui/examples/orders-demo-templ` is the counterpart of Java's `examples/orders-demo-jte` ([JTE guide](../ui-jte.md)):
+the same in-memory orders (23 seeded), the same pages, URLs, element ids, signals and element structure, so the
+Java demo's browser check runs against it unchanged. It is a main package plus `internal/orders` (the store, the
+query, the form, the handlers and the templ templates). It needs no database and no configuration file.
+
+```
+go run ./examples/orders-demo-templ serve --port 4711     # from go/ui; binds 127.0.0.1, there is no default port
+make -C go e2e-orders-templ                              # builds the binary, starts it on a free port, runs the browser check
+```
+
+**Wiring.** The demo uses the framework's lifecycle: `fw.App`, `httpfw` for the server and `fwui` for the assets
+and the views. It has no sessions, so there is no `auth` module and no resolver, and its handlers are plain
+`httpfw.HandlerFunc`s.
+
+```go
+return func(_ context.Context, b *fw.Boot) (fw.Serve, error) {
+	mod, err := ui.Build(b, fwui.WithViews(views.WithTitleSuffix(" - Orders demo"), views.WithShell(orders.Shell)))
+	...
+	pages := httpfw.NewRoutes("orders-ui")
+	orders.New(mod.Views(), orders.Seeded(b.Clock().Now()), b.Clock()).Register(pages)
+	return httpfw.NewServer(b, web, []*httpfw.Routes{mod.Routes(), pages})
+}
+```
+
+**Routes.** `GET /` redirects to `/orders`; `GET /orders` is the list; `GET /orders/{id}` is the drawer (a Datastar
+request) or the record page (a navigation); `POST /orders` creates; `POST /orders/{id}/cancel` cancels. Each answers a
+navigation with a document and a Datastar request with patches, through the same template:
+
+```go
+f := Validate(formValues(r))
+if len(f.Errors) > 0 {
+	// an expected failure: the form again with its errors (200 for Datastar, 422 for a navigation)
+	if ds.IsDatastar(r) {
+		return u.views.Stream(w, r, func(p *views.Patches) error { return p.Outer(newOrderDialog(f)) })
+	}
+	return u.listPage(w, r, http.StatusUnprocessableEntity, f)
+}
+```
+
+A successful create through Datastar reloads the list from the defaults, replaces the dialog (so the old modal
+leaves the top layer; a morph would not do that), flashes and hands focus back to the trigger:
+
+```go
+if err := p.Outer(ordersList(ordersView{Query: q, Listing: l, Form: EmptyForm()})); err != nil { return err }
+if err := p.Replace("#new-order", newOrderDialog(EmptyForm())); err != nil { return err }
+if err := p.Flash(kit.FlashSuccess, "Order created.", o.Customer+" ("+o.ID+")"); err != nil { return err }
+return p.Focus("new-order-open")
+```
+
+A native success is `u.views.SeeOther(w, r, "/orders?flash=created", "")`. The demo keeps Java's flash scheme, a fixed
+key in the query string (`?flash=created`, looked up in `orders.Flashes`; an unknown key shows nothing, and request
+text is never a message), and so passes no key to `SeeOther`. An application that does not want the key in the URL
+registers the messages with `views.WithFlashes` and passes the key, which travels in the `fw_flash` cookie
+([above](#pages-and-answers-package-views)).
+
+**Templates** are templ files over the kit's props (`internal/orders/pages.templ`). Slots are templ children or a
+`templ.Component` field:
+
+```templ
+@kit.TR(kit.TRProps{ID: "row-" + o.ID}) {
+	@kit.TD(kit.TDProps{}) {
+		<a href={ kit.SafeURL("/orders/" + o.ID) } data-id={ o.ID } class="font-medium text-foreground no-underline" data-on:click__prevent={ OpenOrder }>{ o.Customer }</a>
+	}
+```
+
+The row link has a plain `href` and the id in `data-id`; the click handler (`OpenOrder`) is the constant
+`$selOrder = el.dataset.id; @get(el.href)`, so no user data enters a Datastar expression.
+
+**The same-origin check.** The demo has no sessions, so `httpfw.AcceptForms` (honoured by the sessions guard) does
+not apply: a form body is not refused by anything. The POST handlers call `refuseCrossSite`, a port of the Java demo's
+`requireSameOrigin`: `Sec-Fetch-Site` must be `same-origin` or `none`, else `Origin` must equal the request's own
+`http(s)://Host`, else `403`; a request with neither header passes.
+
+**Tests.** `internal/orders/ui_test.go` is the port of Java's `OrdersUiTest` (13 tests, the same assertions) on
+`httptest` over `httpfw.Compile`; `selector_test.go` is a small CSS-selector engine over `golang.org/x/net/html` (the
+module has no jsoup or goquery). `main_test.go` checks the `serve --port` parser. `make -C go e2e-orders-templ` runs
+`examples/orders-demo-jte/e2e/browser-check.mjs` unchanged against the binary (Playwright and Chromium come from the
+`ui` workspace; the target stops the server by its PID).
+
 ## Compression and the assets
 
 `compress.Handler` also compresses `text/css`, `text/javascript` and `image/svg+xml` (contract section 12), so it
@@ -285,7 +367,7 @@ also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go 
   `go/internal/conformance/sync-shared.sh`). Tailwind also picks up words in comments and prose as class names, so a
   few unused rules (`blur`, `italic`, ...) are in the file. An application with its own templates writes its own
   input, as the file's header says.
-- The thirteen spec-only components, the Go demo and the platform's adoption are GU4 to GU6. Java has caught up
+- The thirteen spec-only components and the platform's adoption are GU4 and GU6. Java has caught up
   (GU3, [JTE](../ui-jte.md)): the seven components, search select, form routes, `returnTo`, `Patches.redirect`, island
   scripts and the flash cookie.
 - `views` has no `?theme=` query override (the platform's shell has one for screenshots).

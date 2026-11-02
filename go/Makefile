@@ -26,6 +26,10 @@
 #   e2e-tickets      the tickets SPA's browser suite (ui/apps/tickets/e2e, 24 tests) against the Go tickets-trial
 #                    (flowcatalyst/examples/tickets-trial): builds the SPA, the launcher binary into bin/, and runs
 #                    Playwright through the kit. Ports 4394 and 4395, so not while the Java tickets suite runs.
+#   e2e-orders-templ the Go server-rendered orders demo (ui/examples/orders-demo-templ) against the Java demo's
+#                    browser check (examples/orders-demo-jte/e2e/browser-check.mjs, run unchanged). Builds the
+#                    binary into bin/, starts it on a free 127.0.0.1 port (never 8080 or 15432), runs the check
+#                    (Playwright and Chromium from the ui workspace) and stops the server by its PID.
 #   tools            build golangci-lint and NilAway (pinned in tools/go.mod) into bin/
 #   fc-modfile       with FCSDK=<path> set, write flowcatalyst/go.local.work and go.local.mod (not committed):
 #                    a replace of the fcsdk module by that checkout, to develop against unreleased fcsdk
@@ -51,7 +55,7 @@ UI = cd ui &&
 LINT := $(CURDIR)/bin/golangci-lint
 NILAWAY := $(CURDIR)/bin/nilaway
 
-.PHONY: e2e-orders e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
+.PHONY: e2e-orders e2e-orders-templ e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
 
 go-check: fc-modfile fmt-check lint vet nilaway test sql-check ui-verify
 
@@ -127,3 +131,15 @@ e2e-tickets:
 	cd ../ui/apps/tickets && npx --no-install vite build
 	$(FC) $(GO) build -o $(CURDIR)/bin/tickets-trial ./examples/tickets-trial
 	cd ../ui/apps/tickets && TICKETS_E2E_BINARY=$(CURDIR)/bin/tickets-trial node node_modules/@flowcatalyst/ui/src/e2e/cli.ts playwright test --config ../../../go/flowcatalyst/examples/tickets-trial/e2e/playwright.config.ts
+
+e2e-orders-templ:
+	$(UI) $(GO) build -o $(CURDIR)/bin/orders-demo-templ ./examples/orders-demo-templ
+	@port=$$(node -e "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{console.log(s.address().port);s.close()})"); \
+	case "$$port" in 8080|15432|"") echo "e2e-orders-templ: no usable free port ($$port)"; exit 1;; esac; \
+	bin/orders-demo-templ serve --port $$port >bin/orders-demo-templ.log 2>&1 & pid=$$!; \
+	i=0; until curl -fs "http://127.0.0.1:$$port/health/live" >/dev/null 2>&1; do \
+	  i=$$((i+1)); if [ $$i -gt 100 ] || ! kill -0 $$pid 2>/dev/null; then echo "e2e-orders-templ: the demo did not start (bin/orders-demo-templ.log)"; kill $$pid 2>/dev/null; exit 1; fi; sleep 0.1; \
+	done; \
+	BASE_URL=http://127.0.0.1:$$port node ../examples/orders-demo-jte/e2e/browser-check.mjs; status=$$?; \
+	kill $$pid 2>/dev/null; wait $$pid 2>/dev/null; \
+	exit $$status

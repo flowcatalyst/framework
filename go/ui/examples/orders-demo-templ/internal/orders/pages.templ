@@ -1,0 +1,237 @@
+package orders
+
+import (
+	"strconv"
+
+	"github.com/flowcatalyst/framework/go/ui/kit"
+)
+
+// OpenOrder selects a record: the click handler of a link whose href is the record's URL. The id
+// travels in data-id, never in the expression.
+const OpenOrder = "$selOrder = el.dataset.id; @get(el.href)"
+
+// CloseDrawer closes the drawer.
+const CloseDrawer = "$selOrder = ''"
+
+// ordersView is what the list page renders.
+type ordersView struct {
+	Query   Query
+	Listing Listing
+	Form    NewOrderForm
+}
+
+templ ordersPage(v ordersView) {
+	<div data-signals:sel-order="''">
+		@kit.PageHeader(kit.PageHeaderProps{Title: "Orders", Subtitle: "Server-rendered with templ and Datastar", Actions: newOrderButton()})
+		@ordersList(v)
+		@kit.Drawer(kit.DrawerProps{ID: "order-drawer", Signal: "selOrder", Label: "Order", BodyID: "order-drawer-body"}) {
+			<p class="text-sm text-muted-foreground">Select an order to see it here.</p>
+		}
+		@kit.ConfirmDialog(kit.ConfirmDialogProps{
+			ID: "cancel-order", Action: "#", Title: "Cancel order", Message: "Cancel this order? It cannot be restored.",
+			ConfirmLabel: "Cancel order", Tone: kit.ToneDanger, FormAttrs: templ.Attributes{"data-on:submit": kit.SubmitConfirm},
+		})
+		@newOrderDialog(v.Form)
+	</div>
+}
+
+templ newOrderButton() {
+	@kit.Button(kit.ButtonProps{
+		Variant: kit.ButtonPrimary, Icon: "plus",
+		Attrs: templ.Attributes{"id": "new-order-open", "data-on:click": kit.ShowModal("new-order"), "aria-haspopup": "dialog"},
+	}) {
+		New order
+	}
+}
+
+templ ordersList(v ordersView) {
+	<div id="orders-region">
+		@kit.TableToolbar(kit.TableToolbarProps{
+			ID: "orders-list", Action: "/orders", SearchPlaceholder: "Search customers", SearchValue: v.Query.Q,
+			ClearHref: clearHref(v.Query), ActiveFilterCount: v.Query.ActiveFilters(),
+			Hidden: []kit.HiddenField{
+				{Name: "sort", Value: v.Query.Sort},
+				{Name: "dir", Value: direction(v.Query.Desc)},
+				{Name: "rows", Value: strconv.Itoa(v.Query.Rows)},
+			},
+			Filters: statusFilter(v.Query),
+		})
+		@kit.DataTable(kit.DataTableProps{
+			ID: "orders-table", BodyID: "orders-rows",
+			Columns: []kit.DataColumn{
+				column("Customer", "customer", v.Query),
+				column("Status", "status", v.Query),
+				column("Total", "total", v.Query),
+				column("Placed", "created", v.Query),
+				{Label: "Actions", Class: "w-px text-right"},
+			},
+			Empty: emptyState(v),
+		}) {
+			for _, o := range v.Listing.Rows {
+				@orderRow(o)
+			}
+		}
+		@kit.Paginator(kit.PaginatorProps{
+			ID: "orders-pager", Page: v.Listing.Page, Pages: v.Listing.Pages, Total: v.Listing.Total, Rows: v.Query.Rows,
+			RowsOptions: PageSizes, Noun: "orders", HrefPattern: v.Query.PagePattern(), FormID: "orders-list",
+		})
+	</div>
+}
+
+templ statusFilter(q Query) {
+	@kit.FilterSelect(kit.FilterSelectProps{
+		Name: "status", Label: "Status", Placeholder: "All statuses", Selected: q.Status, AutoSubmit: true,
+		Options: []kit.Option{{Value: "PENDING", Label: "Pending"}, {Value: "PAID", Label: "Paid"}, {Value: "SHIPPED", Label: "Shipped"}, {Value: "CANCELLED", Label: "Cancelled"}},
+	})
+}
+
+templ orderRow(o Order) {
+	@kit.TR(kit.TRProps{ID: "row-" + o.ID}) {
+		@kit.TD(kit.TDProps{}) {
+			<a href={ kit.SafeURL("/orders/" + o.ID) } data-id={ o.ID } class="font-medium text-foreground no-underline" data-on:click__prevent={ OpenOrder }>{ o.Customer }</a>
+		}
+		@kit.TD(kit.TDProps{}) {
+			@statusBadge(o)
+		}
+		@kit.TD(kit.TDProps{Class: "tabular-nums"}) {
+			{ o.Total() }
+		}
+		@kit.TD(kit.TDProps{}) {
+			@kit.LocalTime(kit.LocalTimeProps{At: o.CreatedAt})
+		}
+		@kit.RowActions(kit.RowActionsProps{
+			ID: "row-" + o.ID + "-act", RowLabel: o.Customer,
+			Actions: []kit.RowAction{{
+				Icon: "eye", Label: "View", Href: "/orders/" + o.ID,
+				Attrs: templ.Attributes{"data-id": o.ID, "data-on:click__prevent": OpenOrder},
+			}},
+			Menu: []kit.RowAction{{
+				Icon: "ban", Label: "Cancel order", Destructive: true, DisabledReason: cancelReason(o),
+				Attrs: templ.Attributes{"data-action": "/orders/" + o.ID + "/cancel", "data-on:click": kit.OpenConfirm("cancel-order")},
+			}},
+		})
+	}
+}
+
+templ statusBadge(o Order) {
+	@kit.Badge(kit.BadgeProps{Variant: o.BadgeVariant()}) {
+		{ o.StatusLabel() }
+	}
+}
+
+templ orderDrawer(o Order) {
+	@kit.DrawerContent(kit.DrawerProps{
+		ID: "order-drawer", Signal: "selOrder", Label: "Order", Title: o.Customer, Subtitle: o.ID, BodyID: "order-drawer-body",
+		Extras: statusBadge(o), Footer: closeButton(),
+	}) {
+		@kit.FormSection(kit.FormSectionProps{Title: "Details"}) {
+			<div class="fc-detail-grid">
+				@kit.DetailField(kit.DetailFieldProps{Label: "Order", Value: o.ID})
+				@kit.DetailField(kit.DetailFieldProps{Label: "Customer", Value: o.Customer})
+				@kit.DetailField(kit.DetailFieldProps{Label: "Total", Value: o.Total()})
+				@kit.DetailField(kit.DetailFieldProps{Label: "Placed"}) {
+					@kit.LocalTime(kit.LocalTimeProps{At: o.CreatedAt})
+				}
+			</div>
+		}
+	}
+}
+
+templ closeButton() {
+	<button type="button" class="fc-btn fc-btn-text" data-on:click={ CloseDrawer }>Close</button>
+}
+
+templ orderPage(o Order) {
+	@kit.Breadcrumb(kit.BreadcrumbProps{Items: []kit.Crumb{{Label: "Orders", Href: "/orders"}, {Label: o.ID}}})
+	@kit.PageHeader(kit.PageHeaderProps{Title: o.Customer, Subtitle: o.ID, Actions: statusBadge(o)})
+	@kit.FormSection(kit.FormSectionProps{Title: "Details", Card: true}) {
+		<div class="fc-detail-grid">
+			@kit.DetailField(kit.DetailFieldProps{Label: "Total", Value: o.Total()})
+			@kit.DetailField(kit.DetailFieldProps{Label: "Placed"}) {
+				@kit.LocalTime(kit.LocalTimeProps{At: o.CreatedAt})
+			}
+		</div>
+	}
+}
+
+templ notFoundPage() {
+	@kit.Alert(kit.AlertProps{Variant: kit.AlertDestructive, Icon: "triangle-alert", Title: "Order not found", Description: "There is no such order."})
+}
+
+templ newOrderDialog(f NewOrderForm) {
+	@kit.FormDialog(kit.FormDialogProps{
+		ID: "new-order", Title: "New order", Description: "Place an order for a customer.", Width: kit.WidthNarrow,
+		Action: "/orders", SubmitLabel: "Create order", Signal: "newOrder", Open: f.Open, Error: f.FormError,
+	}) {
+		@kit.Field(kit.FieldProps{
+			Label: "Customer", For: "new-order-customer", Error: f.Error("customer"), Required: true,
+			Attrs: templ.Attributes{"id": "new-order-customer-field"},
+		}) {
+			@kit.Input(kit.InputProps{
+				ID: "new-order-customer", Name: "customer", Value: f.Customer, Placeholder: "Ada Lovelace", Required: true,
+				Invalid: f.Error("customer") != "", DescribedBy: describedBy(f, "customer", "new-order-customer-err"),
+				Attrs: templ.Attributes{"autofocus": true, "maxlength": "80", "autocomplete": "off"},
+			})
+		}
+		@kit.Field(kit.FieldProps{
+			Label: "Amount", For: "new-order-amount", Description: "In currency units, up to two decimals.", Error: f.Error("amount"), Required: true,
+			Attrs: templ.Attributes{"id": "new-order-amount-field"},
+		}) {
+			@kit.Input(kit.InputProps{
+				ID: "new-order-amount", Name: "amount", Type: "text", Value: f.Amount, Placeholder: "49.90", Required: true,
+				Invalid: f.Error("amount") != "", DescribedBy: describedBy(f, "amount", "new-order-amount-err"),
+				Attrs: templ.Attributes{"inputmode": "decimal"},
+			})
+		}
+		@kit.Field(kit.FieldProps{
+			Label: "Status", For: "new-order-status", Error: f.Error("status"),
+			Attrs: templ.Attributes{"id": "new-order-status-field"},
+		}) {
+			@kit.Select(kit.SelectProps{
+				ID: "new-order-status", Name: "status", Selected: f.Status,
+				Options:     []kit.Option{{Value: "PENDING", Label: "Pending"}, {Value: "PAID", Label: "Paid"}, {Value: "SHIPPED", Label: "Shipped"}},
+				Invalid:     f.Error("status") != "",
+				DescribedBy: describedBy(f, "status", "new-order-status-err"),
+			})
+		}
+	}
+}
+
+func describedBy(f NewOrderForm, field, id string) string {
+	if f.Error(field) == "" {
+		return ""
+	}
+	return id
+}
+
+func direction(desc bool) string {
+	if desc {
+		return "desc"
+	}
+	return "asc"
+}
+
+func clearHref(q Query) string {
+	if q.Filtered() {
+		return "/orders"
+	}
+	return ""
+}
+
+func cancelReason(o Order) string {
+	if o.Cancellable() {
+		return ""
+	}
+	return "Only pending or paid orders can be cancelled"
+}
+
+func column(label, name string, q Query) kit.DataColumn {
+	return kit.DataColumn{Label: label, Href: q.SortHref(name), Direction: kit.SortDirection(q.Direction(name))}
+}
+
+func emptyState(v ordersView) *kit.EmptyStateProps {
+	if len(v.Listing.Rows) > 0 {
+		return nil
+	}
+	return &kit.EmptyStateProps{Message: "No orders match.", Icon: "inbox", ClearHref: clearHref(v.Query), Status: true}
+}
