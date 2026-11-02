@@ -308,6 +308,9 @@ public final class Routes {
       for (Binding b : state.bindings) {
         already |= b.operation() == operation;
       }
+      if (options.acceptsForms()) {
+        throw new IllegalArgumentException("a typed operation takes JSON bodies: RouteOptions.acceptForms() is for plain routes");
+      }
       boolean mismatch = options.needsContext() && !operation.requiresContext();
       state.bindings.add(new Binding(registrant, operation, mismatch));
       if (already || !operation.problems().isEmpty() || mismatch) {
@@ -417,7 +420,13 @@ public final class Routes {
       }
       Pipeline<Request, Response> pipeline = Pipeline.of(r.options().middleware(), r.handler()::handle);
       Router.Compiled route =
-          new Router.Compiled(r.method(), r.pattern(), r.registrant(), r.options().needsContext(), pipeline);
+          new Router.Compiled(
+              r.method(),
+              r.pattern(),
+              r.registrant(),
+              r.options().needsContext(),
+              r.options().acceptsForms(),
+              pipeline);
       router.add(route);
       compiled.add(route);
       lines.add(r.method() + " " + r.pattern().text() + " (" + r.registrant() + ")");

@@ -262,6 +262,12 @@ requests and a `302` to `/auth/login` for HTML navigations. See
 *Added by M4c:* `request.rawQuery()` (the query as sent), `request.contentLength()` (the declared
 body length, `-1` when none) and `Response.redirect(location)` (a `302` with no body).
 
+*Added by GU3:* `Response.seeOther(location)` (a `303` with no body, where a browser goes after a form post) and
+`RouteOptions.acceptForms()` / `.acceptingForms()`, which declare a route that server-rendered pages post to:
+the sessions CSRF guard accepts a form body on it (see [sessions and login](sessions-and-login.md#csrf)).
+`Request.acceptsForms()` tells whether the matched route was declared so. A typed operation cannot be one
+(`Routes.bind` throws `IllegalArgumentException`).
+
 ## Datastar
 
 For server-driven pages, `io.flowcatalyst.framework.http.datastar` follows the Datastar 1.0 SDK
@@ -281,8 +287,10 @@ routes.get(
 ```
 
 - `Datastar.signals(request)` returns the client's signals as a `JsonNode`: the JSON in the
-  `datastar` query parameter for `GET`/`HEAD`, otherwise the JSON body. `Datastar.signals(request,
-  SomeRecord.class)` decodes to a record. Absent or invalid is a `ValidationException`.
+  `datastar` query parameter for `GET`, `HEAD` and `DELETE` (Datastar 1.0.4 sends a body for no other method
+  than those), otherwise the JSON body. A body above 1 MiB (`Datastar.MAX_SIGNAL_BYTES`) is `413
+  PAYLOAD_TOO_LARGE`. `Datastar.signals(request, SomeRecord.class)` decodes to a record. Absent or invalid is a
+  `ValidationException`.
 - `Datastar.stream(request, events)` runs your `Datastar.Events` callback with a
   `ServerSentEventGenerator` and streams `text/event-stream`. The callback form is how it is
   built (the body is written after the handler returns). When the callback returns the stream ends.

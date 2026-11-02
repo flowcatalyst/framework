@@ -16,9 +16,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The module's static files, served from the jar: the kit stylesheet ({@code kit.css}, the Tailwind
- * build of {@code ui-kit/theme}), Datastar ({@code datastar.js}, 1.0.4, vendored) and the icon
- * sprite. They are read once; each URL carries a content hash ({@code ?v=}) so it can be cached for
- * a year, and the files answer {@code If-None-Match} with 304.
+ * build of {@code ui-kit/theme}), Datastar ({@code datastar.js}, 1.0.4, vendored), the icon sprite,
+ * the islands ({@code fc-code-editor.js}, {@code fc-diagram.js} and {@code mermaid.min.js}) and the
+ * licence notices the third-party files travel with. They are read once; each URL carries a content
+ * hash ({@code ?v=}) so it can be cached for a year, and the files answer {@code If-None-Match}
+ * with 304.
  */
 public final class UiAssets {
 
@@ -27,11 +29,34 @@ public final class UiAssets {
 
   private record File(byte[] bytes, String contentType, String etag, String version) {}
 
+  /** The sha256 of {@code datastar.js} 1.0.4 as published (contract server-rendered-ui.md section 4); a test pins it. */
+  public static final String DATASTAR_SHA256 = "727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91";
+
+  /** The sha256 of {@code mermaid.min.js}, {@code dist/mermaid.min.js} of mermaid 12.1.0, unmodified. */
+  public static final String MERMAID_SHA256 = "6484afc32872a3aa16cac9a76ba1816a1ed4cc870a6593cc2e17757750f518b2";
+
+  /** The sha256 of {@code fc-code-editor.js} as built by {@code ui-kit/islands/codemirror}. */
+  public static final String CODE_EDITOR_SHA256 = "74b59f1db8170b490d4a76140dd2c8318d62581bb95362c1563da295f99ca49f";
+
+  /** The sha256 of {@code fc-diagram.js} (hand-written, no build). */
+  public static final String DIAGRAM_SHA256 = "49aecf56c42fe89a9d28d1b9f4d727be09643611568d7f4978a5cc0b03be94d8";
+
+  private static final String JS = "text/javascript; charset=utf-8";
+  private static final String TEXT = "text/plain; charset=utf-8";
+
   private static final Map<String, String> TYPES =
-      Map.of(
-          "kit.css", "text/css; charset=utf-8",
-          "datastar.js", "text/javascript; charset=utf-8",
-          "lucide-sprite.svg", "image/svg+xml");
+      Map.ofEntries(
+          Map.entry("kit.css", "text/css; charset=utf-8"),
+          Map.entry("datastar.js", JS),
+          Map.entry("lucide-sprite.svg", "image/svg+xml"),
+          Map.entry("fc-code-editor.js", JS),
+          Map.entry("fc-diagram.js", JS),
+          Map.entry("mermaid.min.js", JS),
+          Map.entry("LICENSE-datastar.md", TEXT),
+          Map.entry("LICENSE-lucide.txt", TEXT),
+          Map.entry("LICENSE-mermaid.md", TEXT),
+          Map.entry("LICENSE-codemirror.md", TEXT),
+          Map.entry("KIT-THIRD-PARTY-NOTICES.md", TEXT));
 
   private final Map<String, File> files = new LinkedHashMap<>();
 
@@ -72,13 +97,13 @@ public final class UiAssets {
    * @return the names
    */
   public List<String> names() {
-    return List.copyOf(files.keySet());
+    return files.keySet().stream().sorted().toList();
   }
 
   /**
    * The URL of a file, with its content hash.
    *
-   * @param name {@code kit.css}, {@code datastar.js} or {@code lucide-sprite.svg}
+   * @param name a name from {@link #names()}, for example {@code kit.css} or {@code datastar.js}
    * @return for example {@code /fw-ui/kit.css?v=0123456789ab}
    * @throws IllegalArgumentException for an unknown name
    */

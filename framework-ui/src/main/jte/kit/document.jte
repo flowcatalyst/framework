@@ -11,6 +11,8 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="${p.cssUrl()}">
 <script type="module" src="${p.jsUrl()}"></script>
+@for(var s : p.scripts())<script type="module" src="${s}"></script>
+@endfor
 </head>
 <body data-on:datastar-fetch="${p.sessionExpiredExpr()}">
 ${body}

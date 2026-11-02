@@ -1,0 +1,21 @@
+{
+  "props": {
+    "id": "app",
+    "label": "Application",
+    "options": [
+      {
+        "value": "a",
+        "label": "Alpha"
+      },
+      {
+        "value": "b",
+        "label": "Beta"
+      }
+    ],
+    "selected": "b",
+    "href": "/x?app={value}",
+    "placeholder": "Choose",
+    "signal": "appSearch"
+  },
+  "source": "search-select.md Structure: one option chosen, plain links; label and value differ so data-filter-text has both"
+}

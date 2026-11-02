@@ -157,6 +157,7 @@ var renderers = map[string]renderer{
 		}
 		return TabList(p), err
 	},
+	"search-select":            searchSelect,
 	"password-input":           simple(PasswordInput),
 	"secret-ref-input":         simple(SecretRefInput),
 	"permission-denied-dialog": permissionDenied,
@@ -222,6 +223,33 @@ func fixturesDir(t testing.TB) string {
 		}
 		dir = parent
 	}
+}
+
+// searchSelectFixture is the props of a search-select fixture: Href is a
+// string in which {value} stands for the option's value (search-select.md,
+// Props), and OptionAttrs a plain object, because the component's own props
+// hold a function and templ attributes.
+type searchSelectFixture struct {
+	ID          string         `json:"id"`
+	Label       string         `json:"label"`
+	Options     []Option       `json:"options"`
+	Selected    string         `json:"selected"`
+	Href        string         `json:"href"`
+	Placeholder string         `json:"placeholder"`
+	Signal      string         `json:"signal"`
+	EmptyText   string         `json:"emptyText"`
+	OptionAttrs map[string]any `json:"optionAttrs"`
+	Class       string         `json:"class"`
+}
+
+func searchSelect(f *fixture) (templ.Component, error) {
+	fp, err := decode[searchSelectFixture](f)
+	return SearchSelect(SearchSelectProps{
+		ID: fp.ID, Label: fp.Label, Options: fp.Options, Selected: fp.Selected,
+		Href:        func(value string) string { return strings.ReplaceAll(fp.Href, "{value}", value) },
+		Placeholder: fp.Placeholder, Signal: fp.Signal, EmptyText: fp.EmptyText,
+		OptionAttrs: templ.Attributes(fp.OptionAttrs), Class: fp.Class,
+	}), err
 }
 
 func permissionDenied(f *fixture) (templ.Component, error) {

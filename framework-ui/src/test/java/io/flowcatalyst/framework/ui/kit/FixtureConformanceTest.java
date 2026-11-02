@@ -28,16 +28,8 @@ import tools.jackson.databind.node.ObjectNode;
  */
 class FixtureConformanceTest {
 
-  /** Fixture directories this module does not render yet. Shrinks to empty as the kit grows. */
-  static final Set<String> NOT_YET =
-      Set.of(
-          "code-editor",
-          "diagram",
-          "markdown",
-          "password-input",
-          "permission-denied-dialog",
-          "secret-ref-input",
-          "tab-list");
+  /** Fixture directories this module does not render yet. Empty since GU3; a new one must be added here first. */
+  static final Set<String> NOT_YET = Set.of();
 
   static final ObjectMapper MAPPER =
       JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
@@ -51,7 +43,7 @@ class FixtureConformanceTest {
   static JsonNode rename(JsonNode n, String key) {
     if (n instanceof ObjectNode o) {
       ObjectNode out = MAPPER.createObjectNode();
-      boolean attrs = key.equals("attrs") || key.equals("inputAttrs");
+      boolean attrs = key.equals("attrs") || key.equals("inputAttrs") || key.equals("optionAttrs");
       o.properties()
           .forEach(
               e -> {

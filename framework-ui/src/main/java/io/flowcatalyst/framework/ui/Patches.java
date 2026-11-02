@@ -90,6 +90,35 @@ public final class Patches {
   }
 
   /**
+   * Navigates the browser to a local path, by a hidden element whose {@code
+   * data-init} runs {@code window.location.assign} (the page's policy allows no inline script). The
+   * path is JSON-encoded, then attribute-escaped.
+   *
+   * @param path a local path (contract server-rendered-ui.md section 8 rule 3), query allowed
+   * @throws IllegalArgumentException when the path is not local
+   */
+  public void redirect(String path) {
+    runOnce("window.location.assign(", path, ")");
+  }
+
+  /**
+   * Sets the address bar to a local path without navigating ({@code history.replaceState}), so a
+   * view filtered or sorted through Datastar keeps a URL that reloads to the same view. The
+   * appended element removes itself.
+   *
+   * @param path a local path (contract server-rendered-ui.md section 8 rule 3), query allowed
+   * @throws IllegalArgumentException when the path is not local
+   */
+  public void replaceURL(String path) {
+    runOnce("history.replaceState(history.state, '', ", path, "); el.remove()");
+  }
+
+  private void runOnce(String prefix, String path, String suffix) {
+    String target = Json.mapper().writeValueAsString(Markup.localPath(path));
+    append("body", Markup.raw("<span hidden" + Markup.attrs(Map.of("data-init", prefix + target + suffix)) + "></span>"));
+  }
+
+  /**
    * Replaces the inside of the element matching the selector.
    *
    * @param selector a CSS selector, normally {@code #id}

@@ -44,6 +44,7 @@ Read `_conventions.md` first. One file per component; each has purpose, exact HT
 | [Legacy button (.fc-btn) and icon button (.fc-icon-btn)](legacy-fc-btn.md) | hand-built | (a) native |
 | [Local time](local-time.md) | hand-built | (b) Datastar `data-init` |
 | [Multi-select (checklist with search)](multi-select.md) | new (Go platform port) | (a) `<details>` + checkboxes; (b) search; (c) summary/options patched |
+| [Search select (single choice with search; options are links)](search-select.md) | new (Go platform port) | (a) `<details>` + links; (b) search; (c) live link |
 | [Markdown (sanitised)](markdown.md) | new (Go platform port) | (a) server-rendered |
 | [Page header](page-header.md) | hand-built | (a) native |
 | [Pagination](pagination.md) | fc-web themed copy | (a) native (links) |

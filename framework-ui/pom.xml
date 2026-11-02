@@ -30,6 +30,35 @@
       <groupId>gg.jte</groupId>
       <artifactId>jte-runtime</artifactId>
     </dependency>
+    <!-- Markdown (kit/Markdown.java): CommonMark + GFM, then the OWASP sanitiser (contract section 11). -->
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-gfm-tables</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-task-list-items</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-autolink</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-heading-anchor</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+      <artifactId>owasp-java-html-sanitizer</artifactId>
+    </dependency>
     <!-- Tests only: strict fixture props, and the HTML5 fragment parser behind the normaliser. -->
     <dependency>
       <groupId>tools.jackson.core</groupId>

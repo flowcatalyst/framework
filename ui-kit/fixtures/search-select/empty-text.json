@@ -1,0 +1,11 @@
+{
+  "props": {
+    "id": "app",
+    "label": "Application",
+    "options": [],
+    "href": "/x?app={value}",
+    "signal": "appSearch",
+    "emptyText": "No applications yet"
+  },
+  "source": "search-select.md: emptyText; no placeholder and nothing chosen leaves the summary empty"
+}

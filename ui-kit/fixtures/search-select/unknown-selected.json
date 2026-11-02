@@ -1,0 +1,17 @@
+{
+  "props": {
+    "id": "app",
+    "label": "Application",
+    "options": [
+      {
+        "value": "a",
+        "label": "Alpha"
+      }
+    ],
+    "selected": "gone",
+    "href": "/x?app={value}",
+    "placeholder": "Choose",
+    "signal": "appSearch"
+  },
+  "source": "search-select.md: a selected value that is not among the options shows the placeholder, and no option is selected"
+}

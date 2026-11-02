@@ -1,0 +1,20 @@
+{
+  "props": {
+    "id": "filter-app",
+    "label": "Applications",
+    "options": [
+      {
+        "value": "billing",
+        "label": "billing"
+      },
+      {
+        "value": "orders",
+        "label": "orders"
+      }
+    ],
+    "href": "?app={value}",
+    "placeholder": "All Applications",
+    "signal": "filterAppQ"
+  },
+  "source": "search-select.md: nothing chosen shows the placeholder; label equal to value gives a one-word data-filter-text"
+}

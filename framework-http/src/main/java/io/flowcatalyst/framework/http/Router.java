@@ -18,6 +18,7 @@ final class Router {
       RoutePattern pattern,
       String registrant,
       boolean requiresContext,
+      boolean acceptsForms,
       Pipeline<Request, Response> pipeline) {}
 
   sealed interface Match {}

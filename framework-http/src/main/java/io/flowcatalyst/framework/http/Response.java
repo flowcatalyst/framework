@@ -140,6 +140,18 @@ public final class Response {
   }
 
   /**
+   * A {@code 303 See Other} with a {@code Location} header and no body: where a browser goes after a
+   * form post (post/redirect/get); it always follows with a {@code GET}.
+   *
+   * @param location the target, for example {@code /orders}
+   * @return the response
+   * @throws IllegalArgumentException when the location contains CR or LF
+   */
+  public static Response seeOther(String location) {
+    return of(303, null, new Body.Empty()).header("Location", location);
+  }
+
+  /**
    * A 204 response with no body.
    *
    * @return the response

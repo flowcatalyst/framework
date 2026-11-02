@@ -1,0 +1,20 @@
+{
+  "props": {
+    "id": "app",
+    "label": "Fish & <b>Chips</b>",
+    "options": [
+      {
+        "value": "fish&chips",
+        "label": "Fish & <Chips>"
+      },
+      {
+        "value": "q\"1",
+        "label": "Quote 'one'"
+      }
+    ],
+    "selected": "fish&chips",
+    "href": "/x?app={value}",
+    "signal": "appSearch"
+  },
+  "source": "search-select.md Escaping: labels and values are text and attribute values, escaped; the fixture adapter substitutes {value} as is"
+}

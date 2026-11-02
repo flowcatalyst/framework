@@ -3,6 +3,7 @@ package io.flowcatalyst.framework.ui.kit;
 import gg.jte.Content;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -40,7 +41,36 @@ final class Renderers {
     ALL.put(name, new Renderer(props, (p, s) -> fn.apply((P) p, s)));
   }
 
+  /** search-select fixtures: {@code href} is a string with {@code {value}} (search-select.md, Props). */
+  record SearchSelectFixture(
+      String id,
+      @Nullable String label,
+      @Nullable List<Props.Option> options,
+      @Nullable String selected,
+      String href,
+      @Nullable String placeholder,
+      String signal,
+      @Nullable String emptyText,
+      @Nullable Map<String, Object> optionAttrs,
+      @Nullable String cls) {}
+
   static {
+    r(
+        "search-select",
+        SearchSelectFixture.class,
+        (f, s) ->
+            Kit.searchSelect(
+                new Props.SearchSelect(
+                    f.id(),
+                    f.label(),
+                    f.options(),
+                    f.selected(),
+                    v -> f.href().replace("{value}", v),
+                    f.placeholder(),
+                    f.signal(),
+                    f.emptyText(),
+                    f.optionAttrs(),
+                    f.cls())));
     r("badge", Props.Badge.class, (p, s) -> Kit.badge(p, nn(s.get("default"))));
     r("tag", Props.Tag.class, (p, s) -> Kit.tag(p));
     r("alert", Props.Alert.class, (p, s) -> Kit.alert(p, s.get("default")));
@@ -121,6 +151,25 @@ final class Renderers {
     r("multi-select", Props.MultiSelect.class, (p, s) -> Kit.multiSelect(p));
     r("code-chips", Props.CodeChips.class, (p, s) -> Kit.codeChips(p));
     r("code-block", Props.CodeBlock.class, (p, s) -> Kit.codeBlock(p, s.get("default")));
+    r("code-editor", Props.CodeEditor.class, (p, s) -> Kit.codeEditor(p));
+    r("diagram", Props.Diagram.class, (p, s) -> Kit.diagram(p, s.get("default")));
+    r("markdown", Props.Markdown.class, (p, s) -> Kit.markdown(p));
+    r("password-input", Props.PasswordInput.class, (p, s) -> Kit.passwordInput(p));
+    r("secret-ref-input", Props.SecretRefInput.class, (p, s) -> Kit.secretRefInput(p));
+    r("permission-denied-dialog", Props.PermissionDeniedDialog.class, (p, s) -> Kit.permissionDeniedDialog(p));
+    r(
+        "tab-list",
+        Props.TabList.class,
+        (p, s) -> {
+          Map<String, Content> panels = new HashMap<>();
+          for (Props.TabItem t : p.tabs()) {
+            Content c = s.get(t.value());
+            if (c != null) {
+              panels.put(t.value(), c);
+            }
+          }
+          return Kit.tabList(p, panels);
+        });
     r("app-shell", Props.AppShell.class, (p, s) -> Kit.appShell(p, s.get("default")));
     r("app-sidebar", Props.AppShell.class, (p, s) -> Kit.appSidebar(p));
     r("user-menu", Props.AppShell.class, (p, s) -> Kit.userMenu(p));

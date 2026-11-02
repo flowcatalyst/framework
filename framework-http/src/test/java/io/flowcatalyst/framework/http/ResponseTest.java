@@ -164,6 +164,16 @@ class ResponseTest {
   }
 
   @Test
+  void aSeeOtherIsA303WithALocationAndNoBody() {
+    Response r = Response.seeOther("/orders?flash=saved");
+    assertThat(r.status()).isEqualTo(303);
+    assertThat(r.header("Location")).isEqualTo("/orders?flash=saved");
+    assertThat(r.body()).isInstanceOf(Response.Body.Empty.class);
+    assertThat(r.contentType()).isNull();
+    assertThatIllegalArgumentException().isThrownBy(() -> Response.seeOther("/x\r\nSet-Cookie: a=b"));
+  }
+
+  @Test
   void theRawQueryIsTheQueryAsSent() {
     Request with =
         Request.of(new RawRequest(Method.GET, "/a", "b=%2F&c", Map.of(), new java.io.ByteArrayInputStream(new byte[0]), 0, 10, "HTTP/1.1"));

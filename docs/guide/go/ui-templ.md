@@ -6,10 +6,10 @@
 > wants server-rendered pages without a JavaScript build; the Java counterpart is
 > [Server-rendered pages (JTE)](../ui-jte.md). Nothing else in the framework depends on it. The
 > specification is [`contracts/server-rendered-ui.md`](../../contracts/server-rendered-ui.md); the build plan
-> is [`go/ui-templ-plan.md`](../../go/ui-templ-plan.md). **Phases GU1 and GU2 are built**: the module, the kit,
+> is [`go/ui-templ-plan.md`](../../go/ui-templ-plan.md). **Phases GU1, GU2 and GU3 are built**: the module, the kit,
 > `ds`, `assets`, `md`, `compress`, `htmlnorm` (GU1), and the pages and answers (`views`), form routes
-> (`httpfw.AcceptForms`) and the framework wiring (`fwui`) (GU2). The Java catch-up, the thirteen spec-only
-> components, the Go demo and the platform's adoption are GU3 to GU6 and do not exist yet.
+> (`httpfw.AcceptForms`) and the framework wiring (`fwui`) (GU2); Java's catch-up is GU3. The thirteen spec-only
+> components, the Go demo and the platform's adoption are GU4 to GU6 and do not exist yet.
 
 ## The module
 
@@ -82,7 +82,7 @@ the normalisation of `ui-kit/fixtures/README.md`. The fixtures are read in place
 below the repository root; `UI_KIT_FIXTURES=/path` overrides). It checks both directions (a fixture
 directory without a renderer fails, a renderer without a fixture directory fails), decodes props strictly (an
 unknown property fails the case) and fails when a case fills a slot the component does not have. At GU1 all 66
-fixture directories (189 cases) pass.
+fixture directories (189 cases) pass; GU3 added the search select (spec, 7 cases: 67 directories, 196 cases). Go's `SearchSelect` now builds `data-filter-text` as `multi-select.md` does (the label alone when it equals the value).
 
 ## Datastar: package `ds`
 
@@ -285,7 +285,7 @@ also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go 
   `go/internal/conformance/sync-shared.sh`). Tailwind also picks up words in comments and prose as class names, so a
   few unused rules (`blur`, `italic`, ...) are in the file. An application with its own templates writes its own
   input, as the file's header says.
-- The Java renderers for the seven components that only Go has, the thirteen spec-only components, the Go demo and
-  the platform's adoption are GU3 to GU6. Java does not yet have form routes, `returnTo`, `Patches.redirect` or the
-  flash cookie (GU3).
+- The thirteen spec-only components, the Go demo and the platform's adoption are GU4 to GU6. Java has caught up
+  (GU3, [JTE](../ui-jte.md)): the seven components, search select, form routes, `returnTo`, `Patches.redirect`, island
+  scripts and the flash cookie.
 - `views` has no `?theme=` query override (the platform's shell has one for screenshots).

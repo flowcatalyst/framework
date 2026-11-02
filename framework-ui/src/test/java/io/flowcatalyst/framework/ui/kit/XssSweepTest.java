@@ -62,10 +62,13 @@ class XssSweepTest {
     }
   }
 
-  /** Script and image elements plus event-handler and stray attributes: what a payload would add. */
-  static int danger(String html) {
+  /**
+   * Script and image elements plus event-handler and stray attributes: what a payload would add.
+   * Markdown may keep a sanitised image (contract section 13), but never a script or a handler.
+   */
+  static int danger(String component, String html) {
     Document doc = Jsoup.parseBodyFragment(html);
-    int n = doc.select("script, img").size();
+    int n = doc.select(component.equals("markdown") ? "script" : "script, img").size();
     for (Element e : doc.getAllElements()) {
       for (var a : e.attributes()) {
         if (a.getKey().startsWith("on") || a.getKey().equals("x")) {
@@ -93,7 +96,7 @@ class XssSweepTest {
               continue;
             }
             // trusted slot markup (the golden's own links with handlers) is the baseline
-            int baseline = danger(FixtureConformanceTest.render(component, original));
+            int baseline = danger(component, FixtureConformanceTest.render(component, original));
             List<List<Object>> leaves = new ArrayList<>();
             collect(original.get("props"), leaves, new ArrayList<>());
             for (List<Object> leaf : leaves) {
@@ -102,7 +105,7 @@ class XssSweepTest {
               String where = component + "/" + json.getFileName() + " " + leaf;
               try {
                 String out = FixtureConformanceTest.render(component, copy);
-                assertThat(danger(out)).as("payload became live markup in %s", where).isEqualTo(baseline);
+                assertThat(danger(component, out)).as("payload became live markup in %s", where).isEqualTo(baseline);
                 rendered++;
               } catch (RuntimeException e) {
                 // a validated value (id, signal, path, variant) or a decode error for a typed value

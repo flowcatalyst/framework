@@ -16,9 +16,12 @@ import org.slf4j.LoggerFactory;
  * applied by the framework to every unsafe request authenticated by the session cookie: {@code
  * Sec-Fetch-Site} must be {@code same-origin} or {@code none}, else {@code Origin} must be the
  * application's origin, and a request with neither is refused ({@code 403 CROSS_ORIGIN_REQUEST});
- * then a body must be JSON ({@code 415}). {@link #publicForm} is the variant for an application's
+ * then a body must be JSON ({@code 415}), or, on a route declared with {@link
+ * io.flowcatalyst.framework.http.RouteOptions#acceptForms()}, JSON or a form ({@code
+ * application/x-www-form-urlencoded}, {@code multipart/form-data}); the provenance rules come
+ * first and are the same on every route. {@link #publicForm} is the variant for an application's
  * own public {@code POST} routes (a sign-up form): a request with neither header passes, and the
- * body must be JSON for everyone.
+ * body must be JSON for everyone, form routes included.
  */
 public final class CsrfGuard {
 
@@ -26,10 +29,12 @@ public final class CsrfGuard {
 
   private final String origin;
   private final boolean refuseWithoutProvenance;
+  private final boolean honourFormRoutes; // only forSessions
 
-  private CsrfGuard(URI publicBaseUrl, boolean refuseWithoutProvenance) {
+  private CsrfGuard(URI publicBaseUrl, boolean refuseWithoutProvenance, boolean honourFormRoutes) {
     this.origin = origin(publicBaseUrl);
     this.refuseWithoutProvenance = refuseWithoutProvenance;
+    this.honourFormRoutes = honourFormRoutes;
   }
 
   /**
@@ -39,7 +44,7 @@ public final class CsrfGuard {
    * @return the guard
    */
   public static CsrfGuard forSessions(URI publicBaseUrl) {
-    return new CsrfGuard(publicBaseUrl, true);
+    return new CsrfGuard(publicBaseUrl, true, true);
   }
 
   /**
@@ -49,7 +54,7 @@ public final class CsrfGuard {
    * @return the guard
    */
   public static CsrfGuard publicForm(URI publicBaseUrl) {
-    return new CsrfGuard(publicBaseUrl, false);
+    return new CsrfGuard(publicBaseUrl, false, false);
   }
 
   /**
@@ -82,7 +87,7 @@ public final class CsrfGuard {
           LogSafe.of(sentOrigin));
       throw new HttpException(403, "CROSS_ORIGIN_REQUEST", "cross-origin requests are not allowed here");
     }
-    if (hasBody(request) && !json(request.header("Content-Type"))) {
+    if (hasBody(request) && !bodyAllowed(request)) {
       throw new HttpException(415, "UNSUPPORTED_MEDIA_TYPE", "content type must be application/json");
     }
   }
@@ -118,6 +123,31 @@ public final class CsrfGuard {
       }
     }
     return request.header("Transfer-Encoding") != null;
+  }
+
+  /** JSON always; a form only for the sessions guard, and only on a declared form route. */
+  private boolean bodyAllowed(Request request) {
+    String contentType = request.header("Content-Type");
+    return json(contentType) || (honourFormRoutes && request.acceptsForms() && form(contentType));
+  }
+
+  /** {@code application/x-www-form-urlencoded} or {@code multipart/form-data}; a malformed parameter is not a form. */
+  private static boolean form(@Nullable String contentType) {
+    if (contentType == null) {
+      return false;
+    }
+    String[] parts = contentType.split(";", -1);
+    String media = parts[0].trim().toLowerCase(Locale.ROOT);
+    if (!media.equals("application/x-www-form-urlencoded") && !media.equals("multipart/form-data")) {
+      return false;
+    }
+    for (int i = 1; i < parts.length; i++) {
+      String parameter = parts[i].trim();
+      if (!parameter.isEmpty() && parameter.indexOf('=') <= 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private static boolean json(@Nullable String contentType) {

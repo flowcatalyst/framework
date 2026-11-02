@@ -104,7 +104,7 @@ public final class Dispatcher {
         return Response.noContent().header("Allow", allow(o.allowed()));
       }
       case Router.Found f -> {
-        request.bind(f.route().pattern().text(), f.params());
+        request.bind(f.route().pattern().text(), f.params(), f.route().acceptsForms());
         if (f.route().requiresContext()) {
           ContextResolver r = resolver;
           if (r == null) {

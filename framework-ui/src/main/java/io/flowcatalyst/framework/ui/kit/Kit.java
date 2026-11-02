@@ -695,6 +695,101 @@ public final class Kit {
   }
 
   /**
+   * search-select.md: a single choice from a searchable list of links.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content searchSelect(Props.SearchSelect p) {
+    return component("search_select", params(p));
+  }
+
+  /**
+   * code-editor.md: a textarea the {@code <fc-code-editor>} island replaces with CodeMirror. The
+   * page must list {@code fc-code-editor.js} ({@code Views.page} with the script).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content codeEditor(Props.CodeEditor p) {
+    return component("code_editor", params(p));
+  }
+
+  /**
+   * diagram.md: Mermaid source drawn by the {@code <fc-diagram>} island. The page must list {@code
+   * fc-diagram.js}.
+   *
+   * @param p props
+   * @param source the Mermaid source as a slot; use {@link Markup#text} so it is escaped
+   * @return the component
+   */
+  public static Content diagram(Props.Diagram p, @Nullable Content source) {
+    return component("diagram", params(p, "source", source));
+  }
+
+  /**
+   * markdown.md: Markdown rendered and sanitised on the server ({@link MarkdownHtml}). A render
+   * failure shows the source as text.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content markdown(Props.Markdown p) {
+    String source = p.source() == null ? "" : p.source();
+    String html;
+    try {
+      html = MarkdownHtml.html(source);
+    } catch (RuntimeException e) {
+      html = "<pre>" + Markup.escape(source) + "</pre>";
+    }
+    Map<String, Object> m = params(p);
+    m.put("html", html);
+    return component("markdown", m);
+  }
+
+  /**
+   * password-input.md: a password field with a show/hide toggle and an optional advisory meter.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content passwordInput(Props.PasswordInput p) {
+    return component("password_input", params(p));
+  }
+
+  /**
+   * secret-ref-input.md: a text field for the name of a secret, never its value.
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content secretRefInput(Props.SecretRefInput p) {
+    return component("secret_ref_input", params(p));
+  }
+
+  /**
+   * permission-denied-dialog.md: the modal for a 403 or an expired session.
+   *
+   * @param p props
+   * @return the component
+   * @throws IllegalArgumentException (while rendering) without the URL the case needs
+   */
+  public static Content permissionDeniedDialog(Props.PermissionDeniedDialog p) {
+    return component("permission_denied_dialog", params(p));
+  }
+
+  /**
+   * tab-list.md: the ARIA tab pattern; the panels are the slots, by tab value.
+   *
+   * @param p props
+   * @param panels each tab's content by value
+   * @return the component
+   */
+  public static Content tabList(Props.TabList p, Map<String, Content> panels) {
+    return component("tab_list", params(p, "panels", panels));
+  }
+
+  /**
    * appShell component (see its spec).
    *
    * @param p props

@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.http.datastar;
 
+import io.flowcatalyst.framework.http.HttpException;
 import io.flowcatalyst.framework.http.Json;
 import io.flowcatalyst.framework.http.Method;
 import io.flowcatalyst.framework.http.Request;
@@ -24,6 +25,9 @@ public final class Datastar {
 
   private Datastar() {}
 
+  /** The largest signals body read: 1 MiB (http contract section 10); a larger one is refused 413. */
+  public static final int MAX_SIGNAL_BYTES = 1 << 20;
+
   /** Produces the events of one stream. */
   @FunctionalInterface
   public interface Events {
@@ -38,19 +42,25 @@ public final class Datastar {
     void run(ServerSentEventGenerator sse) throws Exception;
   }
 
+  private static boolean signalsInQuery(Method method) {
+    // Datastar 1.0.4 sends a body only for the other methods (!["GET","DELETE"].includes(method)).
+    return method == Method.GET || method == Method.HEAD || method == Method.DELETE;
+  }
+
   /**
-   * The client's signals: for {@code GET} and {@code HEAD} the JSON in the {@code datastar} query
-   * parameter, otherwise the JSON request body.
+   * The client's signals: for {@code GET}, {@code HEAD} and {@code DELETE} the JSON in the {@code
+   * datastar} query parameter, otherwise the JSON request body (at most {@link #MAX_SIGNAL_BYTES}).
    *
    * @param request the request
    * @return the signals tree
    * @throws ValidationException when absent or not valid JSON
+   * @throws HttpException 413 {@code PAYLOAD_TOO_LARGE} when the body is above 1 MiB
    */
   public static JsonNode signals(Request request) {
     String field;
     JsonNode node;
     try {
-      if (request.method() == Method.GET || request.method() == Method.HEAD) {
+      if (signalsInQuery(request.method())) {
         field = "datastar";
         String raw = request.query("datastar");
         if (raw == null) {
@@ -59,11 +69,18 @@ public final class Datastar {
         node = Json.mapper().readTree(raw);
       } else {
         field = "body";
-        node = Json.mapper().readTree(request.bodyBytes());
+        if (request.contentLength() > MAX_SIGNAL_BYTES) {
+          throw tooLarge();
+        }
+        byte[] body = request.bodyBytes();
+        if (body.length > MAX_SIGNAL_BYTES) {
+          throw tooLarge();
+        }
+        node = Json.mapper().readTree(body);
       }
     } catch (JacksonException e) {
       throw ValidationException.of(
-          request.method() == Method.GET || request.method() == Method.HEAD ? "datastar" : "body",
+          signalsInQuery(request.method()) ? "datastar" : "body",
           "INVALID_JSON",
           "signals are not valid JSON");
     }
@@ -71,6 +88,10 @@ public final class Datastar {
       throw ValidationException.of(field, "INVALID_JSON", "signals are required");
     }
     return node;
+  }
+
+  private static HttpException tooLarge() {
+    return new HttpException(413, "PAYLOAD_TOO_LARGE", "signals are larger than 1 MiB");
   }
 
   /**
@@ -81,6 +102,7 @@ public final class Datastar {
    * @param type the record class
    * @return the decoded signals
    * @throws ValidationException when absent, not valid JSON, or not decodable into the type
+   * @throws HttpException 413 {@code PAYLOAD_TOO_LARGE} when the body is above 1 MiB
    */
   public static <T> T signals(Request request, Class<T> type) {
     JsonNode node = signals(request);

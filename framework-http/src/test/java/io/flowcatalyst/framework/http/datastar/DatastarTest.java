@@ -229,6 +229,8 @@ class DatastarTest {
     routes.get("/sig", r -> Response.ok(Datastar.signals(r)));
     routes.get("/sig-typed", r -> Response.ok(Datastar.signals(r, Sig.class)));
     routes.post("/sig-typed", r -> Response.ok(Datastar.signals(r, Sig.class)));
+    routes.delete("/sig", r -> Response.ok(Datastar.signals(r)));
+    routes.put("/sig", r -> Response.ok(Datastar.signals(r)));
     routes.get("/gone", r -> Datastar.stream(r, g -> {
       throw new ClientDisconnectedException(new IOException("closed"));
     }));
@@ -270,6 +272,28 @@ class DatastarTest {
     assertThat(r.body()).isEqualTo("event: datastar-patch-signals\ndata: signals {\"echo\":\"bob\"}\n\n");
     TestResponse typed = client().post("/sig-typed").jsonBody("{\"name\":\"bob\",\"n\":4}").send();
     assertThat(typed.json(Sig.class)).isEqualTo(new Sig("bob", 4));
+  }
+
+  @Test
+  void signalsFromTheQueryOnDeleteToo() {
+    TestResponse r = client().delete("/sig?datastar=%7B%22name%22%3A%22ada%22%7D").send();
+    assertThat(r.status()).isEqualTo(200);
+    assertThat(r.tree().get("name").asString()).isEqualTo("ada");
+    // a DELETE has no body to read: without the parameter it is absent, whatever the body says
+    assertThat(client().delete("/sig").jsonBody("{\"name\":\"bob\"}").send().status()).isEqualTo(400);
+  }
+
+  @Test
+  void aSignalsBodyAboveOneMiBIs413AndOneAtTheLimitIsRead() {
+    String pad = "x".repeat(Datastar.MAX_SIGNAL_BYTES);
+    // the server's own limit is raised, so the refusal is the adapter's 1 MiB cap
+    TestClient wide = client().withMaxBodyBytes(4L << 20);
+    TestResponse tooBig = wide.put("/sig").jsonBody("{\"pad\":\"" + pad + "\"}").send();
+    assertThat(tooBig.status()).isEqualTo(413);
+    assertThat(tooBig.tree().get("error").asString()).isEqualTo("PAYLOAD_TOO_LARGE");
+    String exact = "{\"pad\":\"" + "x".repeat(Datastar.MAX_SIGNAL_BYTES - 10) + "\"}";
+    assertThat(exact.length()).isEqualTo(Datastar.MAX_SIGNAL_BYTES);
+    assertThat(wide.put("/sig").jsonBody(exact).send().status()).isEqualTo(200);
   }
 
   @Test

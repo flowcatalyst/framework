@@ -1,0 +1,10 @@
+{
+  "props": {
+    "id": "app",
+    "label": "Application",
+    "href": "/x?app={value}",
+    "signal": "appSearch",
+    "placeholder": "Choose"
+  },
+  "source": "search-select.md: no options shows the empty text (default No options)"
+}

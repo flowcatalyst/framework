@@ -3,7 +3,6 @@ package kit
 import (
 	"slices"
 	"strconv"
-	"strings"
 )
 
 // SearchSelectProps is a single-choice select with a search box: a
@@ -52,7 +51,7 @@ const chooseExpr = "const d = el.closest('details'); d.querySelector('.fc-multis
 
 func (p SearchSelectProps) optionAttrs(o Option) templ.Attributes {
 	attrs := templ.Attributes{
-		"data-filter-text": strings.ToLower(o.Label + " " + o.Value),
+		"data-filter-text": multiSelectFilterText(o),
 		"data-show":        p.filterExpr(),
 		"data-on:click":    chooseExpr,
 	}

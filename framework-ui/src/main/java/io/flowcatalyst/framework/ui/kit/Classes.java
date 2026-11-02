@@ -11,6 +11,18 @@ public final class Classes {
   /** button.md BASE (also used by pagination links). */
   public static final String BUTTON_BASE = "inline-flex shrink-0 items-center justify-center border text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50";
 
+  /** input.md's classes (the password and secret-reference inputs extend them). */
+  public static final String INPUT = "h-9 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors outline-none placeholder:text-muted-foreground file:mr-3 file:h-full file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50";
+
+  /** textarea.md's classes (the code editor's fallback textarea extends them). */
+  public static final String TEXTAREA = "field-sizing-content min-h-16 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50";
+
+  /** field.md's description paragraph. */
+  public static final String FIELD_DESC = "text-sm leading-relaxed text-muted-foreground [&_a]:underline [&_a]:underline-offset-4";
+
+  /** tab-list.md's trigger: tabs.md's with the selected look on {@code aria-selected}. */
+  public static final String TAB_LIST_TRIGGER = "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background text-muted-foreground hover:bg-foreground/5 hover:text-foreground aria-selected:bg-foreground/10 aria-selected:text-foreground aria-selected:hover:bg-foreground/10";
+
   private static final Map<String, String> BUTTON_VARIANTS =
       Map.of(
           "primary", "border-transparent bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80",

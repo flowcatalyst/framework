@@ -1958,6 +1958,476 @@ public final class Props {
    */
   public record CodeBlock(@Nullable String id, @Nullable String label, @Nullable String cls) {}
 
+  /**
+   * search-select.md: a single choice from a searchable list whose options are links.
+   *
+   * @param id derives the parts: -field, -label, -summary, -options; required
+   * @param label the label text
+   * @param options the options, shown in the order given
+   * @param selected the chosen value; one that is not among the options is the same as none
+   * @param href the address an option links to, from its value; required
+   * @param placeholder the summary when nothing is chosen
+   * @param signal the search text's signal, required
+   * @param emptyText shown without options, default {@code No options}
+   * @param optionAttrs attributes for every option link (a live link's {@code @get} on click)
+   * @param cls extra classes on the root
+   */
+  public record SearchSelect(
+      String id,
+      @Nullable String label,
+      @Nullable List<Option> options,
+      @Nullable String selected,
+      java.util.function.Function<String, String> href,
+      @Nullable String placeholder,
+      String signal,
+      @Nullable String emptyText,
+      @Nullable Map<String, Object> optionAttrs,
+      @Nullable String cls) {
+
+    /** Runs on an option's click: the trigger shows the choice and the list closes. */
+    public static final String CHOOSE_EXPR =
+        "const d = el.closest('details'); d.querySelector('.fc-multiselect-summary').textContent = el.textContent; d.querySelectorAll('[role=option]').forEach(o => o.setAttribute('aria-selected', o === el)); d.open = false";
+
+    /**
+     * The options, never null.
+     *
+     * @return the options
+     */
+    public List<Option> opts() {
+      return options == null ? List.of() : options;
+    }
+
+    /**
+     * The trigger's text: the chosen option's label, else the placeholder, else empty.
+     *
+     * @return the text
+     */
+    public String summary() {
+      for (Option o : opts()) {
+        if (o.value().equals(selected)) {
+          return o.label();
+        }
+      }
+      return placeholder == null ? "" : placeholder;
+    }
+
+    /**
+     * The expression that shows an option while the search text matches it.
+     *
+     * @return the expression
+     */
+    public String filterExpr() {
+      String s = "$" + Markup.signal(signal);
+      return "!" + s + ".trim() || el.dataset.filterText.includes(" + s + ".trim().toLowerCase())";
+    }
+
+    /**
+     * The attributes of one option link, besides class, role, href and aria-selected.
+     *
+     * @param o the option
+     * @return attributes for {@code Markup.attrs}
+     */
+    public Map<String, Object> optionAttributes(Option o) {
+      String label = o.label();
+      Map<String, Object> a = new java.util.LinkedHashMap<>();
+      a.put(
+          "data-filter-text",
+          (label.equals(o.value()) ? label : label + " " + o.value()).toLowerCase(java.util.Locale.ROOT));
+      a.put("data-show", filterExpr());
+      a.put("data-on:click", CHOOSE_EXPR);
+      if (optionAttrs != null) {
+        for (Map.Entry<String, Object> e : optionAttrs.entrySet()) {
+          if (e.getKey().equals("data-on:click__prevent")) {
+            // A live link must not navigate; the choice is made first.
+            a.put(e.getKey(), CHOOSE_EXPR + "; " + e.getValue());
+            a.remove("data-on:click");
+          } else {
+            a.put(e.getKey(), e.getValue());
+          }
+        }
+      }
+      return a;
+    }
+  }
+
+  // ---- code editor, diagram, markdown, password, secret reference, permission denied, tab list
+
+  /**
+   * code-editor.md: a textarea the {@code <fc-code-editor>} island replaces with CodeMirror (the
+   * page lists {@code fc-code-editor.js}). Without the script the textarea is the control.
+   *
+   * @param id the textarea id
+   * @param name the form field name
+   * @param value the initial text
+   * @param language json, yaml or none
+   * @param readOnly read-only
+   * @param label the aria-label of the textarea and the editor
+   * @param rows height of the fallback textarea, 0 for the default
+   * @param invalid sets aria-invalid
+   * @param describedBy the id of the error or help text
+   * @param cls extra classes on the root
+   * @param attrs extra attributes on the textarea
+   */
+  public record CodeEditor(
+      @Nullable String id,
+      @Nullable String name,
+      @Nullable String value,
+      @Nullable String language,
+      boolean readOnly,
+      @Nullable String label,
+      int rows,
+      boolean invalid,
+      @Nullable String describedBy,
+      @Nullable String cls,
+      @Nullable Map<String, Object> attrs) {}
+
+  /**
+   * diagram.md: Mermaid source drawn by the {@code <fc-diagram>} island (the page lists {@code
+   * fc-diagram.js}); the source is the slot, kept below the drawing.
+   *
+   * @param label the diagram's accessible name
+   * @param bundle the URL of the Mermaid bundle ({@code UiAssets.url("mermaid.min.js")})
+   * @param cls extra classes on the root
+   */
+  public record Diagram(@Nullable String label, @Nullable String bundle, @Nullable String cls) {}
+
+  /**
+   * markdown.md: Markdown rendered and sanitised on the server.
+   *
+   * @param source the Markdown text; it may come from user data, the output is sanitised
+   * @param cls appended to {@code fc-markdown}
+   */
+  public record Markdown(@Nullable String source, @Nullable String cls) {}
+
+  /**
+   * password-input.md: a password field with a show/hide toggle and an optional advisory strength
+   * meter.
+   *
+   * @param id the input id, required
+   * @param name the field name
+   * @param signal camelCase base of {@code <signal>Show} and {@code <signal>Score}, required
+   * @param placeholder the placeholder
+   * @param required required
+   * @param disabled disabled
+   * @param invalid sets aria-invalid
+   * @param describedBy the id of the server's error text, listed after the strength line
+   * @param autocomplete {@code new-password} (default) or {@code current-password}
+   * @param meter adds the strength meter, text and help
+   * @param cls extra classes on the root
+   */
+  public record PasswordInput(
+      String id,
+      @Nullable String name,
+      String signal,
+      @Nullable String placeholder,
+      boolean required,
+      boolean disabled,
+      boolean invalid,
+      @Nullable String describedBy,
+      @Nullable String autocomplete,
+      boolean meter,
+      @Nullable String cls) {
+
+    /**
+     * The advisory strength rule, run on each input: empty is 0, under 8 characters 1, from 8 one
+     * point plus one each for 12 and 16 characters, mixed case, a digit and a symbol, capped at 4.
+     *
+     * @return the expression
+     */
+    public String scoreExpr() {
+      return "const v = el.value; $"
+          + Markup.signal(signal)
+          + "Score = !v ? 0 : v.length < 8 ? 1 : Math.min(4, 1 + (v.length >= 12) + (v.length >= 16) + (/[a-z]/.test(v) && /[A-Z]/.test(v)) + /\\d/.test(v) + /[^A-Za-z0-9]/.test(v))";
+    }
+
+    /**
+     * The signals the control keeps.
+     *
+     * @return the {@code data-signals} value
+     */
+    public String signals() {
+      return "{" + Markup.signal(signal) + "Show: false, " + Markup.signal(signal) + "Score: 0}";
+    }
+
+    /**
+     * The expression that is true while the password is shown.
+     *
+     * @return the expression
+     */
+    public String shown() {
+      return "$" + Markup.signal(signal) + "Show";
+    }
+
+    /**
+     * The expression for the strength word.
+     *
+     * @return the expression
+     */
+    public String strengthText() {
+      return "['', 'Weak', 'Fair', 'Good', 'Strong'][$" + Markup.signal(signal) + "Score]";
+    }
+
+    /**
+     * The expression for the meter's data-score.
+     *
+     * @return the expression
+     */
+    public String scoreAttr() {
+      return "String($" + Markup.signal(signal) + "Score)";
+    }
+
+    /**
+     * The input's aria-describedby: the strength line (with the meter), then the error.
+     *
+     * @return the ids, or null when there are none
+     */
+    public @Nullable String describedByIds() {
+      String err = Markup.nz(describedBy);
+      if (!meter) {
+        return err;
+      }
+      return Markup.id(id) + "-strength" + (err == null ? "" : " " + err);
+    }
+  }
+
+  /**
+   * secret-ref-input.md: a text field for the name of a secret, never its value.
+   *
+   * @param id the input id, required
+   * @param name the field name
+   * @param value the saved reference
+   * @param placeholder default {@code my-secret-name}
+   * @param required required
+   * @param disabled disabled
+   * @param invalid sets aria-invalid
+   * @param describedBy the id of the error text, listed after the help
+   * @param cls extra classes on the root
+   */
+  public record SecretRefInput(
+      String id,
+      @Nullable String name,
+      @Nullable String value,
+      @Nullable String placeholder,
+      boolean required,
+      boolean disabled,
+      boolean invalid,
+      @Nullable String describedBy,
+      @Nullable String cls) {
+
+    /** The HTML pattern of a secret reference: a name, with an optional {@code store:} prefix. */
+    public static final String PATTERN = "([a-z0-9]+(-[a-z0-9]+)*:)?[a-z0-9]+(-[a-z0-9]+)*";
+
+    /**
+     * The input's aria-describedby: the help, then the error.
+     *
+     * @return the ids
+     */
+    public String describedByIds() {
+      String err = Markup.nz(describedBy);
+      return Markup.id(id) + "-help" + (err == null ? "" : " " + err);
+    }
+  }
+
+  /**
+   * permission-denied-dialog.md: the modal shown after a 403 or an expired session. The kit names
+   * no application path: {@code homeUrl} is required for {@code denied}, {@code loginUrl} for
+   * {@code session}.
+   *
+   * @param id the dialog id, required
+   * @param kind {@code denied} (default) or {@code session}
+   * @param message the server's text
+   * @param requiredPermission shown for the denied case when known
+   * @param homeUrl the "Go to Dashboard" target
+   * @param loginUrl the "Log In Again" target
+   * @param open adds {@code data-init="el.showModal()"}
+   */
+  public record PermissionDeniedDialog(
+      String id,
+      @Nullable String kind,
+      @Nullable String message,
+      @Nullable String requiredPermission,
+      @Nullable String homeUrl,
+      @Nullable String loginUrl,
+      boolean open) {
+
+    /**
+     * Picks the case from the server's message, as the SPA does: a message that mentions the
+     * session, expiry or authentication is a session problem, anything else a missing permission.
+     *
+     * @param message the server's message
+     * @return {@code session} or {@code denied}
+     */
+    public static String kindOf(String message) {
+      String m = message.toLowerCase(java.util.Locale.ROOT);
+      for (String w : List.of("session", "expired", "authenticated")) {
+        if (m.contains(w)) {
+          return "session";
+        }
+      }
+      return "denied";
+    }
+
+    /**
+     * Whether this is the session-expired case.
+     *
+     * @return true for {@code session}
+     * @throws IllegalArgumentException for an unknown kind
+     */
+    public boolean expired() {
+      return Classes.oneOf(kind, "denied", "permission-denied kind", "denied", "session").equals("session");
+    }
+
+    /**
+     * A target the application must supply.
+     *
+     * @param rule the prop's name, for the message
+     * @param value the value
+     * @return the value
+     * @throws IllegalArgumentException when it is empty (the kit names no application path)
+     */
+    static String required(String rule, @Nullable String value) {
+      if (value == null || value.isEmpty()) {
+        throw new IllegalArgumentException(rule + " (the kit names no application path; contract section 7)");
+      }
+      return value;
+    }
+
+    /**
+     * The "Go to Dashboard" target.
+     *
+     * @return the URL
+     */
+    public String home() {
+      return required("homeUrl is required when kind is denied", homeUrl);
+    }
+
+    /**
+     * The "Log In Again" target.
+     *
+     * @return the URL
+     */
+    public String login() {
+      return required("loginUrl is required when kind is session", loginUrl);
+    }
+
+    /**
+     * The attributes of the dialog element that depend on the case.
+     *
+     * @return attributes for {@code Markup.attrs}
+     */
+    public Map<String, Object> dialogAttrs() {
+      Map<String, Object> a = new java.util.LinkedHashMap<>();
+      if (expired()) {
+        a.put("closedby", "none");
+        a.put("data-on:cancel", "evt.preventDefault()");
+      } else {
+        a.put("closedby", "any");
+        a.put("data-on:click", Markup.LIGHT_DISMISS);
+      }
+      if (open) {
+        a.put("data-init", "el.showModal()");
+      }
+      return a;
+    }
+  }
+
+  /**
+   * tab-list.md: the ARIA tab pattern, the selected tab kept in the URL. The panels are slots by
+   * value.
+   *
+   * @param id derives the tab and panel ids, required
+   * @param signal holds the selected value, camelCase, required
+   * @param label the tablist's aria-label
+   * @param tabs the tabs
+   * @param selected the initial tab, default the first
+   * @param param the query parameter the tab is written to, default {@code tab}
+   * @param listClass appended to the tablist's classes
+   * @param cls extra classes on the root
+   */
+  public record TabList(
+      String id,
+      String signal,
+      @Nullable String label,
+      List<TabItem> tabs,
+      @Nullable String selected,
+      @Nullable String param,
+      @Nullable String listClass,
+      @Nullable String cls) {
+
+    /** Moves focus and selection with the arrow keys, Home and End (automatic activation). */
+    public static final String KEYS_EXPR =
+        "const t = [...el.querySelectorAll('[role=tab]')]; const i = t.indexOf(document.activeElement); const k = evt.key; const n = k === 'ArrowRight' ? (i + 1) % t.length : k === 'ArrowLeft' ? (i - 1 + t.length) % t.length : k === 'Home' ? 0 : k === 'End' ? t.length - 1 : -1; if (i >= 0 && n >= 0) { evt.preventDefault(); t[n].focus(); t[n].click() }";
+
+    /**
+     * The initially selected value.
+     *
+     * @return the value, empty when there are no tabs
+     */
+    public String initial() {
+      if (Markup.nz(selected) != null) {
+        return Markup.id(selected);
+      }
+      return tabs.isEmpty() ? "" : Markup.id(tabs.get(0).value());
+    }
+
+    /**
+     * The query parameter.
+     *
+     * @return the validated name
+     */
+    public String queryParam() {
+      return Markup.id(Markup.or(param, "tab"));
+    }
+
+    /**
+     * A tab's id.
+     *
+     * @param value the tab value
+     * @return the id
+     */
+    public String tabId(String value) {
+      return Markup.id(id) + "-tab-" + Markup.id(value);
+    }
+
+    /**
+     * A panel's id.
+     *
+     * @param value the tab value
+     * @return the id
+     */
+    public String panelId(String value) {
+      return Markup.id(id) + "-panel-" + Markup.id(value);
+    }
+
+    /**
+     * The expression that is true while the tab is selected.
+     *
+     * @param value the tab value
+     * @return the expression
+     */
+    public String is(String value) {
+      return "$" + Markup.signal(signal) + " === '" + Markup.id(value) + "'";
+    }
+
+    /**
+     * The expression that selects the tab and writes it to the address bar without a navigation.
+     *
+     * @param value the tab value
+     * @return the expression
+     */
+    public String select(String value) {
+      return "$"
+          + Markup.signal(signal)
+          + " = '"
+          + Markup.id(value)
+          + "'; const u = new URL(location.href); u.searchParams.set('"
+          + queryParam()
+          + "', '"
+          + Markup.id(value)
+          + "'); history.replaceState(null, '', u)";
+    }
+  }
+
   // ---- app shell
 
   /**
@@ -2031,16 +2501,58 @@ public final class Props {
    * @param jsUrl the Datastar script, loaded as a module
    * @param loginPath when set, a request answered 401 navigates there (with a return path); a local
    *     path
+   * @param loginParam the query parameter that carries the return path, default {@code returnTo}
+   * @param scripts the page's island scripts (URLs), each loaded as a module after Datastar
    */
   public record Document(
       String title,
       @Nullable Map<String, Object> htmlAttrs,
       String cssUrl,
       String jsUrl,
-      @Nullable String loginPath) {
+      @Nullable String loginPath,
+      @Nullable String loginParam,
+      List<String> scripts) {
+
+    /** The default name of the return-path parameter (sessions contract 4.1). */
+    public static final String DEFAULT_LOGIN_PARAM = "returnTo";
+
+    private static final java.util.regex.Pattern LOGIN_PARAM = java.util.regex.Pattern.compile("[A-Za-z][A-Za-z0-9_]*");
 
     /**
-     * The handler that sends a user whose session expired to the sign-in page.
+     * A document with the default return parameter and no island scripts.
+     *
+     * @param title the page title
+     * @param htmlAttrs attributes of the html element
+     * @param cssUrl the stylesheet
+     * @param jsUrl the Datastar script
+     * @param loginPath when set, where a 401 sends the user
+     */
+    public Document(
+        String title,
+        @Nullable Map<String, Object> htmlAttrs,
+        String cssUrl,
+        String jsUrl,
+        @Nullable String loginPath) {
+      this(title, htmlAttrs, cssUrl, jsUrl, loginPath, null, List.of());
+    }
+
+    /**
+     * Validates a login parameter name.
+     *
+     * @param param the name
+     * @return the name
+     * @throws IllegalArgumentException unless it matches {@code [A-Za-z][A-Za-z0-9_]*}
+     */
+    public static String loginParam(@Nullable String param) {
+      if (param == null || !LOGIN_PARAM.matcher(param).matches()) {
+        throw new IllegalArgumentException("invalid login parameter (want [A-Za-z][A-Za-z0-9_]*)");
+      }
+      return param;
+    }
+
+    /**
+     * The handler that sends a user whose session expired to the sign-in page, which returns here
+     * after.
      *
      * @return the expression, or null when no login path is set
      */
@@ -2050,7 +2562,9 @@ public final class Props {
       }
       return "evt.detail.type === 'error' && evt.detail.argsRaw.status === '401' && window.location.assign('"
           + Markup.path(loginPath)
-          + "?redirect=' + encodeURIComponent(location.pathname + location.search))";
+          + "?"
+          + loginParam(Markup.or(loginParam, DEFAULT_LOGIN_PARAM))
+          + "=' + encodeURIComponent(location.pathname + location.search))";
     }
   }
 }

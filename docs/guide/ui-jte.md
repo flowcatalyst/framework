@@ -1,4 +1,4 @@
-<!-- types: Kit, Props, Markup, Views, Patches, UiAssets, UiModule, ViewCsp, Theme, Flash, Classes, AppShells, Datastar, TestClient -->
+<!-- types: Kit, Props, Markup, MarkdownHtml, Views, Patches, UiAssets, UiModule, ViewCsp, Theme, Flash, Classes, AppShells, Datastar, TestClient, RouteOptions, CsrfGuard, Response -->
 # Server-rendered pages with JTE (optional)
 
 > **Optional, and secondary to the Nuxt UI package.** The framework's UI is the shared Nuxt UI package
@@ -88,19 +88,38 @@ ${Kit.tableCell(new Props.TD(0, null, null), @`${Kit.badge(new Props.Badge(o.bad
 `)}
 ```
 
-59 of the 66 fixture directories of `ui-kit/fixtures` (173 cases) are covered: button, legacy button, icon button,
+All 67 fixture directories of `ui-kit/fixtures` (196 cases) are covered: button, legacy button, icon button,
 input, textarea, select, checkbox, switch, label, field, field group, form field, search input, filter
 select, toggle group, badge, tag, alert, flash banner, flash message, flash stack, spinner, skeleton,
 breadcrumb, empty state, page header, form section, detail field, code chips, code block, table and its
 parts, sortable header, empty row, data table, row actions, table toolbar (and its state part),
 pagination, cursor pager, paginator, local time, date range, tabs, dialog, confirm dialog, sheet,
 drawer (and its content part), form dialog, autocomplete (and its options part), pick list, multi-select,
-app shell, sidebar and user menu. Not components of the kit and not here: login pages (the platform hosts
-login), and anything the specs mark NP.
+app shell, sidebar and user menu, and (added in GU3) tab list, password input, secret reference input,
+permission-denied dialog, search select, markdown, code editor and diagram. Not components of the kit and not
+here: login pages (the platform hosts login), and anything the specs mark NP.
 
-Specified in `ui-kit/components` but with no `Kit` function yet: tab list, password input, secret reference
-input, permission-denied dialog, markdown, code editor and diagram. Their fixture directories are listed in
-`FixtureConformanceTest.NOT_YET`.
+`FixtureConformanceTest.NOT_YET` (fixture directories without a renderer) is empty. A new fixture directory must
+get its renderer in the same change, or be listed there first.
+
+### Markdown, the code editor and the diagram
+
+`Kit.markdown(new Props.Markdown(source, cls))` renders CommonMark plus the GFM tables, strikethrough, task lists and
+autolinks with heading ids (commonmark-java), then sanitises with the OWASP HTML sanitiser (`MarkdownHtml.html`):
+raw HTML in the source, `script`, `iframe`, `svg`, forms, `on*` attributes, `javascript:` and `data:` URLs and any
+attribute or class outside the policy are removed; kept are heading ids, `language-*` classes on `code`,
+`text-align` on table cells, display-only task-list checkboxes, images, and links with `http`, `https`, `mailto`
+or a relative URL. It may be given user data. A render failure shows the source in a `<pre>`.
+
+The code editor and the diagram are islands: `Kit.codeEditor(new Props.CodeEditor(...))` is a `<textarea>` that
+`fc-code-editor.js` replaces with CodeMirror, `Kit.diagram(new Props.Diagram(label, bundleUrl, cls), Markup.text(mermaidSource))`
+is Mermaid source that `fc-diagram.js` draws. The components emit no `<script>`; the page names the island
+(next section).
+
+`Props.PermissionDeniedDialog` names no application path: `homeUrl` is required when the kind is `denied`, `loginUrl`
+when it is `session` (an `IllegalArgumentException` while rendering otherwise); `PermissionDeniedDialog.kindOf(message)`
+is the SPA's text rule. `Kit.searchSelect(new Props.SearchSelect(...))` is a single choice from a searchable list of
+links (`ui-kit/components/search-select.md`); its `href` is a `Function<String, String>` of the option's value.
 
 The pick list covers long role lists: `Props.PickItem` takes `key` (the id token, for a value that is not
 id-safe), `group`, `description` and `locked` (shown ticked, counted, submitted through a hidden input, and not
@@ -154,6 +173,45 @@ same routes answer a native form post: a validation failure re-renders the page 
 (`Views.page(request, 422, ...)`), a success redirects `303` with a fixed flash key (`?flash=created`) that the
 page maps to text on the server; an unknown key shows nothing, and text from a request is never a flash.
 
+A page that uses an island lists its script by asset name; each becomes a `<script type="module">` in the head,
+after Datastar (only JavaScript assets of `UiAssets` can be named; anything else is an `IllegalArgumentException`):
+
+```java
+return views.page(r, 200, "Editor", Markup.text("x"), List.of(), List.of("fc-code-editor.js", "fc-diagram.js"));
+```
+
+`UiAssets` serves the islands (`fc-code-editor.js`, `fc-diagram.js`, `mermaid.min.js`, the last only fetched by a
+page that draws a diagram) and the licence notices the third-party files travel with; the pins of the Datastar,
+Mermaid and island files are checked by `ViewsTest`.
+
+`Views.Builder.sessionExpiredLogin(path)` sends a user whose Datastar action was answered `401` to
+`path?returnTo=<current page>` (sessions contract 4.1); `sessionExpiredLogin(path, param)` names another parameter
+for an application with its own sign-in. `Patches.redirect(path)` and `Patches.replaceURL(path)` navigate or set the
+address bar by a hidden `data-init` element (no inline script); the path must be local (one leading `/`, not `//`
+or `/\`, no control character or backslash, `Markup.isLocalPath`), otherwise they throw `IllegalArgumentException`.
+
+### Native form posts: form routes, `303` and the flash cookie
+
+A route a page posts to natively is declared `RouteOptions.acceptForms()` (or `.acceptingForms()` on other options):
+the sessions CSRF guard (`CsrfGuard.forSessions`) then also accepts `application/x-www-form-urlencoded` and
+`multipart/form-data` bodies on it. Fetch Metadata and the `Origin` check run first and are unchanged; every other
+route stays JSON-only (`415`), the public guard (`CsrfGuard.publicForm`) stays JSON-only on every route, and bearer
+requests are not checked at all. A re-rendered form answers `422` with the page; success calls
+`views.seeOther(r, "/orders?x=1", "saved")`: `303` with `Location` and a `fw_flash` cookie, or, for a Datastar
+request (which cannot follow a `303`), `200` with the cookie and a redirect patch.
+
+The cookie holds a key, never text. Register the messages when building the views and the next document shows the
+message in its flash stack and clears the cookie:
+
+```java
+Views.builder(ASSETS).flash("saved", new Props.FlashMessage("success", "Saved.", "The order was saved.", false, null)).build();
+```
+
+A key must be `[a-z0-9-]{1,64}` and registered, or `setFlash`/`seeOther` throw `IllegalArgumentException` (nothing is
+sent); an unknown key in a request cookie renders nothing. The cookie is `Path=/; HttpOnly; SameSite=Lax;
+Max-Age=60` and `Secure`; call `Views.Builder.plainHttpCookies()` only when the application runs over plain HTTP
+in local or test (this module cannot see the connection, so it cannot decide per request as the Go module does).
+
 POST handlers need a same-origin check, because a Datastar action carries no token; the demo's
 `OrdersUi.requireSameOrigin` reads `Sec-Fetch-Site`, then `Origin`. A real application also authorises
 every handler (see [sessions and login](sessions-and-login.md)); the demo has no sign-in.
@@ -194,10 +252,11 @@ from `fc_sidebar`. Icons reference `/icons/lucide-sprite.svg#i-<name>`; `Kit.wit
 
 - `FixtureConformanceTest` renders every fixture (strict props: an unknown name fails) and compares it with the
   golden after the kit's normalisation (`ui-kit/fixtures/README.md`); the list of fixture directories without
-  a renderer (`NOT_YET`) is asserted exact, both ways.
+  a renderer (`NOT_YET`, empty) is asserted exact, both ways. A `search-select` fixture gives `href` as a string with
+  `{value}` for the option's value, which the test adapter turns into the function.
 - `XssSweepTest` puts an XSS payload into every string prop of every fixture that has a renderer, one at a time: the component
   refuses it (a validated id, signal, path or variant) or the output has no script or image element and no event
-  handler beyond the fixture's own.
+  handler beyond the fixture's own (markdown may keep a sanitised image, never a script or a handler).
 - `EscapingTest` and `ViewsTest` cover URL schemes, `attrs`, the policy, the full-page or patch switch, assets and
   cookies. Mutants checked by hand (each fails a test): `Markup.escape` returning its input; a template
   writing a text, an attribute, a textarea body, an alert description or a breadcrumb label with `$unsafe`; the
@@ -221,6 +280,6 @@ Fixing them means changing the kit's tokens or specs and fixtures together; that
 
 ## Not in this module
 
-A login page, a CSRF token helper, a flash cookie, a rich-text or chart component, and a JTE-sources jar for
+A login page, a CSRF token helper, a rich-text or chart component, and a JTE-sources jar for
 applications that want to call kit templates by `@template` (they call `Kit` from Java or from a template, as
 above). Kit templates are not hot-reloaded: the build compiles them.

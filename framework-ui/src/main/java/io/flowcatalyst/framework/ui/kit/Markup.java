@@ -174,13 +174,50 @@ public final class Markup {
    *
    * @param p the path
    * @return the path
-   * @throws IllegalArgumentException unless it matches {@code /[A-Za-z0-9/_-]*}
+   * @throws IllegalArgumentException unless it matches {@code /[A-Za-z0-9/_-]*} and does not start
+   *     with {@code //} (which a browser reads as another host)
    */
   public static String path(@Nullable String p) {
-    if (p == null || !PATH.matcher(p).matches()) {
-      throw new IllegalArgumentException("invalid path (want /[A-Za-z0-9/_-]*)");
+    if (p == null || !PATH.matcher(p).matches() || p.startsWith("//")) {
+      throw new IllegalArgumentException("invalid path (want /[A-Za-z0-9/_-]*, not starting with //)");
     }
     return p;
+  }
+
+  /**
+   * Whether a string is a local path in the sense of contract server-rendered-ui.md section 8 rule
+   * 3, for a redirect or a {@code returnTo}: it starts with a single {@code /}, does not start with
+   * {@code //} or {@code /\}, and has no control character or backslash. A query and a fragment
+   * are allowed.
+   *
+   * @param p the candidate
+   * @return true for a local path
+   */
+  public static boolean isLocalPath(@Nullable String p) {
+    if (p == null || !p.startsWith("/") || p.startsWith("//")) {
+      return false;
+    }
+    for (int i = 0; i < p.length(); i++) {
+      char c = p.charAt(i);
+      if (c < 0x20 || c == 0x7f || c == '\\') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Requires a local path ({@link #isLocalPath}).
+   *
+   * @param p the path
+   * @return the path
+   * @throws IllegalArgumentException when it is not local
+   */
+  public static String localPath(@Nullable String p) {
+    if (!isLocalPath(p)) {
+      throw new IllegalArgumentException("not a local path (want one leading /, no //, no control character or backslash)");
+    }
+    return java.util.Objects.requireNonNull(p);
   }
 
   /**

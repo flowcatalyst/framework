@@ -1,0 +1,24 @@
+{
+  "props": {
+    "id": "app",
+    "label": "Application",
+    "options": [
+      {
+        "value": "a",
+        "label": "Alpha"
+      },
+      {
+        "value": "b",
+        "label": "Beta"
+      }
+    ],
+    "selected": "a",
+    "href": "/ui/apps/{value}",
+    "signal": "appSearch",
+    "optionAttrs": {
+      "data-on:click__prevent": "@get(el.href)"
+    },
+    "class": "max-w-xs"
+  },
+  "source": "search-select.md Behaviour (c): a live link; the choice runs first, then the option's own click handler replaces the plain one"
+}

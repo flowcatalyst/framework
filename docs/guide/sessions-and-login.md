@@ -231,6 +231,12 @@ is no CSRF token to fetch or send, and no CORS: a browser's `fetch` from your ow
 Bearer-token requests skip the check. For a public `POST` of your own (a sign-up form), put
 `CsrfGuard.publicForm(publicBaseUrl).middleware()` on the route.
 
+**Form routes.** Server-rendered pages ([JTE](ui-jte.md)) post forms natively. A route declared with
+`RouteOptions.acceptForms()` also accepts `application/x-www-form-urlencoded` and `multipart/form-data` bodies from a
+session-cookie request. Everything before the body check is unchanged and runs first (`Sec-Fetch-Site`, then
+`Origin`, a request with neither header refused `403`); a route not declared this way, and
+`CsrfGuard.publicForm` on every route, keep the JSON-only rule (`415`).
+
 ## Signing out
 
 `POST /auth/logout` (subject to the CSRF rules) deletes the session, clears the cookie and answers

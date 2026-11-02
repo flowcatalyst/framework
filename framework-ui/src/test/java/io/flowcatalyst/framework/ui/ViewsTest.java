@@ -1,15 +1,21 @@
 package io.flowcatalyst.framework.ui;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import gg.jte.Content;
 import io.flowcatalyst.framework.http.Request;
+import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.Routes;
 import io.flowcatalyst.framework.http.TestClient;
 import io.flowcatalyst.framework.http.TestResponse;
 import io.flowcatalyst.framework.ui.kit.Kit;
 import io.flowcatalyst.framework.ui.kit.Markup;
 import io.flowcatalyst.framework.ui.kit.Props;
+import io.flowcatalyst.framework.http.datastar.ServerSentEventGenerator;
+import java.io.ByteArrayOutputStream;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.List;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -177,5 +183,252 @@ class ViewsTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(() -> ViewCsp.policy("not a hash"))
         .isInstanceOf(IllegalArgumentException.class);
     assertThat(ViewCsp.policy("sha256-abc=")).contains("'sha256-abc='");
+  }
+
+  // ---- returnTo (contract section 8 rule 1) -----------------------------------------------------
+
+  @Test
+  void theSessionExpiredListenerSendsReturnToByDefault() {
+    Document doc = Jsoup.parse(client(false).get("/orders").send().body());
+    String expr = doc.select("body").attr("data-on:datastar-fetch");
+    assertThat(expr).contains("window.location.assign('/auth/login?returnTo=' + encodeURIComponent(location.pathname + location.search))");
+    assertThat(expr).doesNotContain("redirect=");
+  }
+
+  @Test
+  void anApplicationMayNameTheReturnParameterAndBadOnesAreRefused() {
+    Routes routes = new Routes("test");
+    Views views = Views.builder(ASSETS).sessionExpiredLogin("/signin", "next_page").build();
+    routes.get("/p", r -> views.page(r, "P", Markup.text("x")));
+    String expr = Jsoup.parse(TestClient.of(routes).get("/p").send().body()).select("body").attr("data-on:datastar-fetch");
+    assertThat(expr).contains("assign('/signin?next_page='");
+    for (String bad : new String[] {"", "1a", "a-b", "a b", "x');alert(1);//"}) {
+      assertThatThrownBy(() -> Views.builder(ASSETS).sessionExpiredLogin("/signin", bad)).isInstanceOf(IllegalArgumentException.class);
+    }
+    assertThatThrownBy(() -> Views.builder(ASSETS).sessionExpiredLogin("//evil.example")).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Views.builder(ASSETS).sessionExpiredLogin("/a b")).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  // ---- island scripts (contract section 6 rule 5) ------------------------------------------------
+
+  private static TestClient scriptsClient() {
+    Routes routes = new Routes("test");
+    Views views = Views.builder(ASSETS).build();
+    routes.get(
+        "/editor",
+        r ->
+            views.page(
+                r,
+                200,
+                "Editor",
+                Markup.text("x"),
+                List.of(),
+                List.of("fc-code-editor.js", "datastar.js", "fc-diagram.js", "fc-code-editor.js")));
+    routes.get("/bad", r -> views.page(r, 200, "Bad", Markup.text("x"), List.of(), List.of(r.query("s"))));
+    ASSETS.register(routes.forModule("ui"));
+    return TestClient.of(routes);
+  }
+
+  @Test
+  void aPageListsItsIslandScriptsAsModulesAfterDatastarOnceEach() {
+    Document doc = Jsoup.parse(scriptsClient().get("/editor").send().body());
+    List<String> srcs = doc.select("head script[type=module]").eachAttr("src");
+    assertThat(srcs).hasSize(3);
+    assertThat(srcs.get(0)).startsWith("/fw-ui/datastar.js?v=");
+    assertThat(srcs.get(1)).isEqualTo(ASSETS.url("fc-code-editor.js"));
+    assertThat(srcs.get(2)).isEqualTo(ASSETS.url("fc-diagram.js"));
+    assertThat(doc.select("script:not([src])")).isEmpty();
+  }
+
+  @Test
+  void onlyJavaScriptAssetsCanBeNamedAsPageScripts() {
+    TestClient c = scriptsClient();
+    // a refusal fails the request (500) before anything is written
+    for (String bad : new String[] {"kit.css", "lucide-sprite.svg", "LICENSE-mermaid.md", "nope.js", "..%2Fx.js", "%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E.js"}) {
+      TestResponse r = c.get("/bad?s=" + bad).send();
+      assertThat(r.status()).as(bad).isEqualTo(500);
+      assertThat(r.body()).as(bad).doesNotContain("<script>");
+    }
+    assertThat(c.get("/bad?s=fc-diagram.js").send().status()).isEqualTo(200);
+  }
+
+  @Test
+  void aDatastarAnswerIgnoresThePageScripts() {
+    String body = scriptsClient().get("/editor").header("Datastar-Request", "true").send().body();
+    assertThat(body).doesNotContain("fc-code-editor").contains("data: elements <div id=\"fw-page\">");
+  }
+
+  // ---- the flash cookie (contract section 9) ----------------------------------------------------
+
+  private static final Props.FlashMessage SAVED = new Props.FlashMessage("success", "Saved.", "The order was saved.", false, null);
+
+  private static Views flashViews(boolean plain) {
+    Views.Builder b = Views.builder(ASSETS).flash("saved", SAVED).flash("order-deleted", new Props.FlashMessage("warn", "Deleted.", null, false, null));
+    return (plain ? b.plainHttpCookies() : b).build();
+  }
+
+  private static TestClient flashClient(Views views) {
+    Routes routes = new Routes("test");
+    routes.get("/orders", r -> views.page(r, "Orders", Markup.text("list")));
+    routes.get("/orders/page-flash", r -> views.page(r, 200, "Orders", Markup.text("list"), List.of(new Props.FlashMessage("info", "Careful", null, false, null))));
+    routes.post("/orders", r -> views.seeOther(r, "/orders?x=1", "saved"));
+    routes.post("/orders/bare", r -> views.seeOther(r, "/orders", null));
+    routes.post("/orders/bad-path", r -> views.seeOther(r, "//evil.example", "saved"));
+    routes.post("/orders/bad-key", r -> views.seeOther(r, "/orders", "typo"));
+    return TestClient.of(routes);
+  }
+
+  @Test
+  void aFlashCookieRendersOnTheNextDocumentAndIsCleared() {
+    TestClient c = flashClient(flashViews(true));
+    TestResponse r = c.get("/orders").header("Cookie", "fw_flash=saved").send();
+    Document doc = Jsoup.parse(r.body());
+    assertThat(doc.select("#flash-stack").text()).contains("Saved.").contains("The order was saved.");
+    assertThat(r.headerValues("Set-Cookie")).containsExactly("fw_flash=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+    // the cookie's message comes before the page's own
+    Document both = Jsoup.parse(c.get("/orders/page-flash").header("Cookie", "fw_flash=saved").send().body());
+    assertThat(both.select("#flash-stack > .fc-flash .fc-flash-summary").eachText()).containsExactly("Saved.", "Careful");
+    // an unknown or malformed key renders nothing and is cleared too
+    for (String key : new String[] {"nope", "Bad_Key", "a".repeat(65), ""}) {
+      TestResponse x = c.get("/orders").header("Cookie", "fw_flash=" + key).send();
+      assertThat(Jsoup.parse(x.body()).select("#flash-stack").text()).as(key).doesNotContain("Saved");
+      assertThat(x.headerValues("Set-Cookie")).as(key).hasSize(1);
+    }
+    // no cookie: nothing set
+    assertThat(c.get("/orders").send().headerValues("Set-Cookie")).isEmpty();
+    // a Datastar answer ignores the cookie and leaves it for the next document
+    TestResponse d = c.get("/orders").header("Cookie", "fw_flash=saved").header("Datastar-Request", "true").send();
+    assertThat(d.body()).doesNotContain("Saved.");
+    assertThat(d.headerValues("Set-Cookie")).isEmpty();
+  }
+
+  @Test
+  void theFlashCookieIsSecureUnlessThePlainHttpOptionWasGiven() {
+    String strict = flashClient(flashViews(false)).post("/orders").send().header("Set-Cookie");
+    assertThat(strict).isEqualTo("fw_flash=saved; Path=/; Max-Age=60; HttpOnly; SameSite=Lax; Secure");
+    String plain = flashClient(flashViews(true)).post("/orders").send().header("Set-Cookie");
+    assertThat(plain).isEqualTo("fw_flash=saved; Path=/; Max-Age=60; HttpOnly; SameSite=Lax");
+    // the clearing cookie follows the same rule
+    assertThat(flashClient(flashViews(false)).get("/orders").header("Cookie", "fw_flash=saved").send().header("Set-Cookie"))
+        .isEqualTo("fw_flash=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure");
+  }
+
+  @Test
+  void setFlashRefusesAKeyThatIsNotRegisteredOrNotLowerCaseAlphanumericOrDash() {
+    Views v = flashViews(false);
+    Response ok = Response.noContent();
+    for (String key : new String[] {"", "Saved", "a_b", "a b", "a;b", "a\r\nSet-Cookie: x=y", "a".repeat(65), "é", "typo"}) {
+      assertThatThrownBy(() -> v.setFlash(ok, key)).as(key).isInstanceOf(IllegalArgumentException.class);
+    }
+    assertThat(v.setFlash(ok, "order-deleted").header("Set-Cookie")).startsWith("fw_flash=order-deleted;");
+    // registration is checked too
+    assertThatThrownBy(() -> Views.builder(ASSETS).flash("Bad_Key", SAVED)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Views.builder(ASSETS).flash("ok", new Props.FlashMessage("loud", "x", null, false, null))).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void seeOtherAnswers303WithTheFlashCookieAndADatastarRequestGetsARedirectPatch() {
+    TestClient c = flashClient(flashViews(false));
+    TestResponse r = c.post("/orders").send();
+    assertThat(r.status()).isEqualTo(303);
+    assertThat(r.header("Location")).isEqualTo("/orders?x=1");
+    assertThat(r.header("Set-Cookie")).startsWith("fw_flash=saved;");
+    TestResponse bare = c.post("/orders/bare").send();
+    assertThat(bare.status()).isEqualTo(303);
+    assertThat(bare.headerValues("Set-Cookie")).isEmpty();
+    // a Datastar request cannot follow a 303: 200, the cookie, and a redirect patch
+    TestResponse d = c.post("/orders").header("Datastar-Request", "true").send();
+    assertThat(d.status()).isEqualTo(200);
+    assertThat(d.header("Content-Type")).startsWith("text/event-stream");
+    assertThat(d.header("Set-Cookie")).startsWith("fw_flash=saved;");
+    assertThat(d.body()).contains("data: selector body").contains("data: mode append")
+        .contains("<span hidden data-init=\"window.location.assign(&quot;/orders?x=1&quot;)\"></span>");
+    assertThat(d.header("Location")).isNull();
+  }
+
+  @Test
+  void seeOtherRefusesAPathThatIsNotLocalAndAKeyThatIsNotRegistered() {
+    TestClient c = flashClient(flashViews(false));
+    // a refusal fails the request (500): no Location, no cookie
+    for (String path : new String[] {"/orders/bad-path", "/orders/bad-key"}) {
+      TestResponse r = c.post(path).send();
+      assertThat(r.status()).as(path).isEqualTo(500);
+      assertThat(r.header("Location")).as(path).isNull();
+      assertThat(r.headerValues("Set-Cookie")).as(path).isEmpty();
+    }
+  }
+
+  // ---- redirect and replaceURL (contract section 6 rule 3) --------------------------------------
+
+  private static String patches(java.util.function.Consumer<Patches> fn) {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    ServerSentEventGenerator sse = new ServerSentEventGenerator(out);
+    fn.accept(new Patches(sse, Views.FLASH_STACK_ID));
+    sse.close();
+    return out.toString(java.nio.charset.StandardCharsets.UTF_8);
+  }
+
+  @Test
+  void redirectAndReplaceUrlAppendOneHiddenDataInitElementToTheBody() {
+    String redirect = patches(p -> p.redirect("/orders?q=a&b=\"c\""));
+    assertThat(redirect)
+        .isEqualTo(
+            "event: datastar-patch-elements\ndata: selector body\ndata: mode append\n"
+                + "data: elements <span hidden data-init=\"window.location.assign(&quot;/orders?q=a&amp;b=\\&quot;c\\&quot;&quot;)\"></span>\n\n");
+    String replace = patches(p -> p.replaceURL("/orders?sort=name"));
+    assertThat(replace)
+        .contains("data: selector body")
+        .contains("data: mode append")
+        .contains("<span hidden data-init=\"history.replaceState(history.state, &#39;&#39;, &quot;/orders?sort=name&quot;); el.remove()\"></span>");
+    assertThat(replace.lines().filter(l -> l.startsWith("event:")).count()).isEqualTo(1);
+  }
+
+  @Test
+  void redirectAndReplaceUrlRefuseAnythingButALocalPath() {
+    for (String bad : new String[] {"//evil.example", "https://evil.example", "javascript:alert(1)", "/a\\b", "orders", "", "/a\nb"}) {
+      assertThatThrownBy(() -> patches(p -> p.redirect(bad))).as(bad).isInstanceOf(IllegalArgumentException.class);
+      assertThatThrownBy(() -> patches(p -> p.replaceURL(bad))).as(bad).isInstanceOf(IllegalArgumentException.class);
+    }
+    // a path that tries to leave the attribute or the string is data, not code
+    String hostile = patches(p -> p.redirect("/x\"');alert(1);//"));
+    assertThat(hostile).doesNotContain("\"');alert").contains("&quot;/x\\&quot;");
+  }
+
+  // ---- the islands and licences (contract section 4) --------------------------------------------
+
+  private static String sha256(byte[] bytes) throws Exception {
+    return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+  }
+
+  @Test
+  void theVendoredFilesAreExactlyThePinnedOnes() throws Exception {
+    TestClient c = client(false);
+    assertThat(sha256(c.get("/fw-ui/datastar.js").send().bytes())).isEqualTo(UiAssets.DATASTAR_SHA256);
+    assertThat(UiAssets.DATASTAR_SHA256).isEqualTo("727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91");
+    assertThat(sha256(c.get(ASSETS.url("mermaid.min.js")).send().bytes())).isEqualTo(UiAssets.MERMAID_SHA256);
+    assertThat(sha256(c.get(ASSETS.url("fc-code-editor.js")).send().bytes())).isEqualTo(UiAssets.CODE_EDITOR_SHA256);
+    assertThat(sha256(c.get(ASSETS.url("fc-diagram.js")).send().bytes())).isEqualTo(UiAssets.DIAGRAM_SHA256);
+  }
+
+  @Test
+  void theIslandsAndEveryThirdPartyLicenceAreServedWithTheirTypes() {
+    TestClient c = client(false);
+    assertThat(ASSETS.names())
+        .containsExactlyInAnyOrder(
+            "KIT-THIRD-PARTY-NOTICES.md", "LICENSE-codemirror.md", "LICENSE-datastar.md", "LICENSE-lucide.txt",
+            "LICENSE-mermaid.md", "datastar.js", "fc-code-editor.js", "fc-diagram.js", "kit.css",
+            "lucide-sprite.svg", "mermaid.min.js");
+    for (String name : ASSETS.names()) {
+      TestResponse r = c.get(ASSETS.url(name)).send();
+      assertThat(r.status()).as(name).isEqualTo(200);
+      assertThat(r.header("Cache-Control")).as(name).contains("immutable");
+      assertThat(c.get(ASSETS.url(name)).header("If-None-Match", r.header("ETag")).send().status()).as(name).isEqualTo(304);
+      String type = r.header("Content-Type");
+      assertThat(type).as(name).isEqualTo(
+          name.endsWith(".js") ? "text/javascript; charset=utf-8"
+              : name.endsWith(".css") ? "text/css; charset=utf-8"
+              : name.endsWith(".svg") ? "image/svg+xml" : "text/plain; charset=utf-8");
+    }
+    assertThat(c.get("/fw-ui/fc-webauthn.js").send().status()).isEqualTo(404);
   }
 }

@@ -217,4 +217,147 @@ class EscapingTest {
     String form = html(Kit.confirmDialog(new Props.ConfirmDialog("c", "javascript:alert(1)", "t", "m", "ok", null, null, null)));
     assertThat(org.jsoup.Jsoup.parseBodyFragment(form).select("form").first().attr("action")).isEqualTo(Markup.BLOCKED_URL);
   }
+
+  @Test
+  void aPathRefusesTheProtocolRelativeForm() {
+    assertThat(Markup.path("/orders/new")).isEqualTo("/orders/new");
+    assertThatThrownBy(() -> Markup.path("//evil.example")).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Markup.path("//")).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Markup.path("/\\evil")).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void aLocalPathHasOneLeadingSlashAndNoControlCharactersOrBackslash() {
+    for (String ok : new String[] {"/", "/orders?q=a%20b&page=2", "/a/b#frag", "/x?next=//y"}) {
+      assertThat(Markup.isLocalPath(ok)).as(ok).isTrue();
+    }
+    for (String bad : new String[] {"", "orders", "//evil.example", "/\\evil", "/a\\b", "/a\nb", "/a\u007fb", "https://evil.example", "javascript:alert(1)"}) {
+      assertThat(Markup.isLocalPath(bad)).as(bad).isFalse();
+      assertThatThrownBy(() -> Markup.localPath(bad)).isInstanceOf(IllegalArgumentException.class);
+    }
+    assertThat(Markup.isLocalPath(null)).isFalse();
+  }
+
+  // ---- the GU3 components -----------------------------------------------------------------------
+
+  @Test
+  void markdownIsSanitisedWhateverTheSource() {
+    String out = html(Kit.markdown(new Props.Markdown(XSS + "\n\n[x](javascript:alert(1)) [y](data:text/html,x) <a href=\"/ok\" onclick=\"z()\">ok</a>\n\n<iframe src=\"/x\"></iframe><svg onload=alert(1)>\n", "extra")));
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(out);
+    assertThat(doc.select("script, iframe, svg, style")).isEmpty();
+    for (org.jsoup.nodes.Element e : doc.getAllElements()) {
+      e.attributes().forEach(a -> assertThat(a.getKey()).doesNotStartWith("on"));
+    }
+    assertThat(doc.select("a[href]").eachAttr("href")).containsExactly("/ok");
+    assertThat(doc.select("div.fc-markdown.extra")).hasSize(1);
+  }
+
+  @Test
+  void markdownKeepsAnImageButNotItsHandlerAndHeadingIdsFollowTheText() {
+    String out = html(Kit.markdown(new Props.Markdown("## Second factors\n\n<img src=x onerror=alert(1)>\n\n- [x] done\n- [ ] todo\n\n~~gone~~ https://example.com/auto\n", null)));
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(out);
+    assertThat(doc.select("h2").attr("id")).isEqualTo("second-factors");
+    assertThat(doc.select("img").attr("src")).isEqualTo("x");
+    assertThat(doc.select("img").first().attributes().size()).isEqualTo(1);
+    assertThat(doc.select("input[type=checkbox]")).hasSize(2);
+    assertThat(doc.select("input[checked]")).hasSize(1);
+    assertThat(doc.select("del").text()).isEqualTo("gone");
+    assertThat(doc.select("a[href]").eachAttr("href")).containsExactly("https://example.com/auto");
+  }
+
+  @Test
+  void markdownWithoutASourceIsEmpty() {
+    assertThat(html(Kit.markdown(new Props.Markdown(null, null))).strip()).isEqualTo("<div class=\"fc-markdown\"></div>");
+  }
+
+  @Test
+  void theCodeEditorWritesItsTextAsTheTextareaBodyOnly() {
+    String out = html(Kit.codeEditor(new Props.CodeEditor("e", "n", XSS, "json", false, XSS, 0, false, null, null, null)));
+    assertNoLiveMarkup(out);
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(out);
+    assertThat(doc.select("textarea").first().wholeText()).isEqualTo(XSS);
+    assertThat(doc.select("textarea").attr("aria-label")).isEqualTo(XSS);
+    assertThat(doc.select("fc-code-editor script")).isEmpty();
+  }
+
+  @Test
+  void aDiagramSourceIsElementTextAndItsBundleUrlIsChecked() {
+    String out = html(Kit.diagram(new Props.Diagram(XSS, "javascript:alert(1)", null), Markup.text(XSS)));
+    assertNoLiveMarkup(out);
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(out);
+    assertThat(doc.select("fc-diagram").attr("data-bundle")).isEqualTo(Markup.BLOCKED_URL);
+    assertThat(doc.select("pre code").first().wholeText()).isEqualTo(XSS);
+    assertThat(doc.select("[data-ignore][hidden]")).hasSize(1);
+  }
+
+  @Test
+  void thePermissionDeniedDialogNamesNoApplicationPath() {
+    assertThatThrownBy(() -> html(Kit.permissionDeniedDialog(new Props.PermissionDeniedDialog("d", "denied", "m", null, null, "/login", false))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> html(Kit.permissionDeniedDialog(new Props.PermissionDeniedDialog("d", null, "m", null, "", null, false))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> html(Kit.permissionDeniedDialog(new Props.PermissionDeniedDialog("d", "session", "m", null, "/home", null, false))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> html(Kit.permissionDeniedDialog(new Props.PermissionDeniedDialog("d", "other", "m", null, "/home", "/login", false))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    // the other case's URL is not needed
+    assertThat(html(Kit.permissionDeniedDialog(new Props.PermissionDeniedDialog("d", "session", "m", null, null, "/login", false)))).contains("href=\"/login\"");
+    String out = html(Kit.permissionDeniedDialog(new Props.PermissionDeniedDialog("d", "denied", XSS, XSS, "javascript:alert(1)", null, false)));
+    assertNoLiveMarkup(out);
+    assertThat(org.jsoup.Jsoup.parseBodyFragment(out).select("a.fc-btn-primary").attr("href")).isEqualTo(Markup.BLOCKED_URL);
+  }
+
+  @Test
+  void thePermissionDeniedKindFollowsTheMessageAsTheSpaDoes() {
+    assertThat(Props.PermissionDeniedDialog.kindOf("Your session has expired")).isEqualTo("session");
+    assertThat(Props.PermissionDeniedDialog.kindOf("User is not Authenticated")).isEqualTo("session");
+    assertThat(Props.PermissionDeniedDialog.kindOf("Forbidden")).isEqualTo("denied");
+  }
+
+  @Test
+  void theSignalsAndIdsOfThePasswordTabListAndSecretRefComponentsAreValidated() {
+    String evil = "x');alert(1);//";
+    assertThatThrownBy(() -> html(Kit.passwordInput(new Props.PasswordInput("p", null, evil, null, false, false, false, null, null, true, null))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> html(Kit.passwordInput(new Props.PasswordInput(evil, null, "pw", null, false, false, false, null, null, false, null))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> html(Kit.secretRefInput(new Props.SecretRefInput(evil, null, null, null, false, false, false, null, null))))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+    for (Props.TabList bad :
+        new Props.TabList[] {
+          new Props.TabList("t", "sig", null, java.util.List.of(new Props.TabItem(evil, "x")), null, null, null, null),
+          new Props.TabList("t", "sig", null, java.util.List.of(new Props.TabItem("a", "x")), null, evil, null, null),
+          new Props.TabList("t", evil, null, java.util.List.of(new Props.TabItem("a", "x")), null, null, null, null),
+          new Props.TabList(evil, "sig", null, java.util.List.of(new Props.TabItem("a", "x")), null, null, null, null),
+          new Props.TabList("t", "sig", null, java.util.List.of(new Props.TabItem("a", "x")), evil, null, null, null),
+        }) {
+      assertThatThrownBy(() -> html(Kit.tabList(bad, Map.of()))).hasRootCauseInstanceOf(IllegalArgumentException.class);
+    }
+  }
+
+  @Test
+  void aSecretReferenceValueAndTheSearchSelectTextAreEscaped() {
+    String out = html(Kit.secretRefInput(new Props.SecretRefInput("s", "n", XSS, XSS, false, false, true, XSS, XSS)));
+    assertNoLiveMarkup(out);
+    assertThat(org.jsoup.Jsoup.parseBodyFragment(out).select("input").attr("value")).isEqualTo(XSS);
+    String select =
+        html(
+            Kit.searchSelect(
+                new Props.SearchSelect(
+                    "app",
+                    XSS,
+                    java.util.List.of(new Props.Option(XSS, XSS)),
+                    XSS,
+                    v -> "javascript:alert(1)",
+                    XSS,
+                    "appSearch",
+                    XSS,
+                    null,
+                    null)));
+    assertNoLiveMarkup(select);
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(select);
+    assertThat(doc.select("a[role=option]").attr("href")).isEqualTo(Markup.BLOCKED_URL);
+    assertThat(doc.select("a[role=option]").text()).isEqualTo(XSS);
+    assertThat(doc.select("a[role=option]").attr("data-filter-text")).isEqualTo(XSS.toLowerCase());
+  }
 }

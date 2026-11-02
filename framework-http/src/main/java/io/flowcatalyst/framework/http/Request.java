@@ -66,6 +66,7 @@ public final class Request {
   private @Nullable Map<String, List<String>> query;
   private @Nullable Map<String, String> pathParams;
   private @Nullable String routePattern;
+  private boolean acceptsForms;
   private @Nullable Context context;
   private byte @Nullable [] cachedBody;
   private boolean streamTaken;
@@ -228,10 +229,32 @@ public final class Request {
    *
    * @param pattern the route pattern
    * @param params the decoded parameters
+   * @param acceptsForms whether the route was declared with {@link RouteOptions#acceptForms()}
    */
-  void bind(String pattern, Map<String, String> params) {
+  void bind(String pattern, Map<String, String> params, boolean acceptsForms) {
     this.routePattern = pattern;
     this.pathParams = Map.copyOf(params);
+    this.acceptsForms = acceptsForms;
+  }
+
+  /**
+   * Binds a matched route that is not a form route (the SPA fallback).
+   *
+   * @param pattern the route pattern
+   * @param params the decoded parameters
+   */
+  void bind(String pattern, Map<String, String> params) {
+    bind(pattern, params, false);
+  }
+
+  /**
+   * Whether the matched route was declared with {@link RouteOptions#acceptForms()}; the sessions
+   * CSRF guard reads it to accept a form body.
+   *
+   * @return true on a form route, false on every other route and before routing
+   */
+  public boolean acceptsForms() {
+    return acceptsForms;
   }
 
   /**
