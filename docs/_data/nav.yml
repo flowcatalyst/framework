@@ -69,6 +69,7 @@
     - { title: "Go: secrets", path: guide/go/secrets.md }
     - { title: "Go: the FlowCatalyst module", path: guide/go/flowcatalyst.md }
     - { title: "Go: sessions and login", path: guide/go/sessions-and-login.md }
+    - { title: "Go: field workers", path: guide/go/field-workers.md }
     - { title: "Go: the application admin", path: guide/go/admin.md }
     - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
     - { title: "Go: server-rendered pages (templ)", path: guide/go/ui-templ.md }

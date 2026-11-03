@@ -28,6 +28,7 @@ type routes struct {
 	postLogout     string // absolute URL, "" for none
 	clock          fw.Clock
 	log            *slog.Logger
+	field          *fieldRuntime // nil unless FieldWorkers
 }
 
 func (rt *routes) landing(requested string) string {

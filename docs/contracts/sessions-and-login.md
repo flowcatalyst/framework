@@ -821,8 +821,14 @@ platform's JWKS, the same cache), then:
 | `sub` starts with `fwu_`; `client_id`, `client_identifier`, `device_id`, `sid`, `cnf.jkt` present | `sub`, `claims` |
 | no `pcr: true` claim (a temporary-PIN token works only on the platform's `/field/auth/pin`) | `pcr`, answered `403 PIN_CHANGE_REQUIRED` |
 
+*Added by the Go build (2026-11-03):* the refusals of the parse, header, key and signature rules keep
+their 5.5 names (`malformed`, `alg`, `crit`, `kid`, `unknown_kid`, `signature`); the platform's vectors
+(15.9) call all of them `invalid_token`. `typ` is read after the signature has been checked, and the
+checks of the table run in its order. `claims` also covers a `client_identifier` that is not a valid
+client identifier (`[A-Za-z0-9._-]{1,100}`), because it becomes the `Context`'s client.
+
 A platform API token (`fc` access token, `token_use: api`) presented with the `DPoP` scheme is
-refused (`wrong_typ`), and a field token presented as `Bearer` is refused by 5.6 (`token_use`).
+refused (`wrong_typ`), and a field token presented as `Bearer` is refused by 5.6 (`aud` or `token_use`).
 Keys unreadable: `503 UNAVAILABLE`, as in 5.6.
 
 ### 15.3 Verifying the proof
@@ -834,9 +840,11 @@ with no private members. The checks are:
 - the RFC 7638 SHA-256 thumbprint of `jwk` equals the token's `cnf.jkt` (`jkt_mismatch`);
 - `htm` equals the request method (`htm_mismatch`);
 - `htu` equals `auth.public-base-url` + the request path, with no query or fragment (`htu_mismatch`).
-  The `Host` header is never used;
+  The `Host` header is never used. The path is the escaped path as received (Go:
+  `URL.EscapedPath()`), and the comparison is exact;
 - `ath` equals base64url(SHA-256(access token)) (`ath_mismatch`);
-- `jti` is present and not seen before (`replayed`);
+- `jti` is present (a string of at most 256 characters, else `invalid_proof`) and not seen before
+  (`replayed`). The replay cache is written last, only for a proof that passed every other check;
 - `iat` is within ±24 hours of the server clock (`stale_proof`). Field devices keep bad time, so
   freshness comes from the nonce;
 - `nonce` is a valid application nonce (15.4). Missing or invalid: `401` with
@@ -844,7 +852,12 @@ with no private members. The checks are:
   code `USE_DPOP_NONCE`. The client library retries once.
 
 Any other refusal is `401 UNAUTHENTICATED` with `WWW-Authenticate: DPoP error="invalid_token"`. The
-reason is logged at debug level, as for bearer tokens.
+reason is logged at debug level, as for bearer tokens. *Added by the Go build:* a request with no
+`DPoP` header is `missing_proof`; a proof that is not a compact JWS, has another `typ`, an `alg`
+other than `ES256` or a `crit` header, whose `jwk` is not a public EC P-256 key on the curve (a `d`
+member is refused), whose signature does not verify, or that lacks a numeric `iat` or a `jti`, is
+`invalid_proof`; more than one `DPoP` header is `invalid_proof`. A replay cache that cannot be asked
+is `503 UNAVAILABLE`.
 
 ### 15.4 Application nonces (stateless)
 
@@ -854,7 +867,11 @@ The application issues its own nonces:
 - `bucket` = floor(unix seconds / 300), as 8 bytes big-endian;
 - `nonce` = base64url(`bucket` ‖ first 16 bytes of HMAC-SHA256(k, `"fw-field-nonce"` ‖ `bucket`));
 - `k` = HKDF-SHA256 over the **current** cookie key (`auth.cookie-keys`, 5.3), with info
-  `"fw-field-nonce"`;
+  `"fw-field-nonce"`. *Pinned by the Go build:* the input key material is the key's 32 raw bytes
+  (the decoded value after `<kid>:`), the salt is empty (RFC 5869: a string of zero bytes), the
+  output is 32 bytes. The MAC input is the ASCII bytes `fw-field-nonce` followed by the 8 bucket
+  bytes. A valid nonce is exactly 24 bytes (32 characters); the 16 MAC bytes are compared in
+  constant time, trying every configured key;
 - a nonce is valid when its bucket is the current or the previous one and its MAC verifies under
   the key derived from **any** configured cookie key, so key rotation does not break devices.
 
@@ -862,8 +879,10 @@ Every response to a request that used the `DPoP` scheme carries a fresh `DPoP-No
 success or error, so a client rarely needs the retry.
 
 **The replay cache** remembers `jti` per `cnf.jkt` for 11 minutes, the nonce window plus one
-minute. It is built in code (Go: `auth.FieldReplayCache`): `memory` by default, or `redis` through
-`redisfw` (key `fw:dpop:{jkt}:{jti}`, `SET NX PX`). With more than one replica, the memory cache
+minute. It is built in code (Go: `auth.FieldReplayCache`, one method `Remember(ctx, jkt, jti, ttl)`
+returning whether the pair was new): `memory` by default, or `redis` through
+`redisfw` (key `fw:dpop:{jkt}:{jti}`, `SET NX PX`; Go: `authredis.NewReplayCache`,
+`authredis.ReplayCacheOf(clients)`). With more than one replica, the memory cache
 lets a captured proof be replayed against another replica inside the window. The Go default logs
 one WARN at start-up saying so. Applications with several replicas pass the Redis cache. Replay
 also needs the access token (`ath`), and is limited to the same method and URL.
@@ -888,8 +907,12 @@ authority.
 **Permission mapping** is code, separate from the session and bearer mapping:
 `FieldPermissions(FieldPrincipal) -> set of permission strings`. The **default is none** (rule 6
 of 12 carries over), so a route that requires a permission refuses field workers until the
-application maps them. Helpers: a fixed set (`fieldPermissions.all(...)`) and one set per device
-mode (`fieldPermissions.byDeviceMode(personal, shared)`), because shared kiosks usually get less.
+application maps them. Helpers: a fixed set (`fieldPermissions.all(...)`; Go `auth.FieldPermissionsAll`) and one set per
+device mode (`fieldPermissions.byDeviceMode(personal, shared)`; Go `auth.FieldPermissionsByDeviceMode`),
+because shared kiosks usually get less. A device mode that is neither `PERSONAL` nor `SHARED` gets
+the `shared` set (the lesser). The Go option that sets the mapping is `auth.MapFieldPermissions`.
+Field workers need `auth.Application` (the audience) and `auth.cookie-keys` (the nonces), and
+start-up fails naming whichever is missing.
 A route that must be field-only or never-field checks
 `Authenticated.source` (Go: `auth.RequireSource(auth.SourceField)`).
 
@@ -900,7 +923,10 @@ expires. For actions that cannot wait (opening a gate, releasing a load), route 
 `flowcatalyst` module (Go: `flowcatalyst.RequireLiveField(maxAge)`) calls the platform's `POST
 /api/field-tokens/introspect {token}` with the application's service account, which needs the
 permission `platform:iam:field-token:introspect`. The answer `{active, sub, clientId, workerCode,
-deviceId, appCode, amr, authTime, exp}` is cached per `sid` for `maxAge` (default 0: no cache).
+deviceId, appCode, amr, authTime, exp}` is cached per `sid` for `maxAge` (default 0: no cache); only
+`active: true` answers are cached, and an answer whose `sub` is present and differs from the
+request's worker counts as `active: false`. On a request that was not authenticated as a field
+worker the middleware answers `403 FORBIDDEN` (it never lets such a request through unchecked).
 
 - `active: false`: `401 UNAUTHENTICATED` with `WWW-Authenticate: DPoP error="invalid_token"`.
 - Platform unreachable: `503 UNAVAILABLE`. It fails closed: a high-value action is never let
@@ -913,7 +939,15 @@ The platform emits `platform:iam:field-worker:suspended`, `platform:iam:field-de
 `flowcatalyst.OnFieldRevocation`) registers a receiver for the three. The handler gets a sealed
 value, `WorkerSuspended{workerId, clientId}`, `DeviceRevoked{deviceId, clientId}` or
 `SessionRevoked{sessionId, workerId, deviceId}`, built from the event data as the platform writes it
-(the platform's `fieldidentity/events.go`). The events are for **application state** (cached work
+(the platform's `fieldidentity/events.go` and `operations.go`). *Pinned by the Go build:* the data of
+`field-worker:suspended` is `{workerId, clientId, workerCode}`; of `field-device:revoked`
+`{deviceId, clientId, mode}`; of `field-session:revoked` `{clientId, reason, count, workerId?,
+deviceId?, applicationId?, familyId?}`. `SessionRevoked.sessionId` is therefore `familyId` (the
+token's `sid`), which the platform sets only when it revokes one family (a refresh-token reuse); an
+administrator revoking all sessions of a worker or a device gives `workerId` or `deviceId` and no
+`sessionId`. The value also carries `clientId` and `reason`. An event whose data lacks the identifier
+it is about (`workerId`; `deviceId`; all of `familyId`, `workerId` and `deviceId`) is rejected as
+undeliverable. The events are for **application state** (cached work
 assignments, open gate sessions), not for token validity: tokens expire on their own within 10
 minutes. The definition sync declares the subscription. **To check when building:** that an
 application's subscription to `platform:iam:field-*` events is accepted and delivered by a real
@@ -929,7 +963,11 @@ the receiver.
   gives its `jkt`, and `Proof(method, url, nonce, token)` returns a valid proof, with options to
   break each rule. A helper fetches an application nonce from a first `401`.
 - `AuthTesting` gains `fieldRequest(principal)`, which returns the `Authorization` and `DPoP`
-  headers for a route under test. It is refused unless `APP_ENV` is `test`.
+  headers for a route under test. It is refused unless `APP_ENV` is `test`. *Go:*
+  `auth.Testing.FieldRequest(provider, device, method, path, auth.FieldPrincipal{})` (the provider and
+  the device above, passed as the interfaces `auth.FieldTokenMinter` and `auth.FieldProofSigner`;
+  zero fields of the principal get defaults); `Testing.FieldNonce()` returns a current application
+  nonce without the 401 round trip, and `authtest.NonceFrom(header)` reads one from a response.
 
 ### 15.9 Conformance
 
@@ -937,7 +975,11 @@ the receiver.
 from `flowcatalyst-go/api/field-fixtures/` with the source commit in `conformance/field/README.md`).
 Each case gives `accessToken`, `dpopProof`, `method`, `url`, `now` and `expect` (`valid` or a
 refusal reason in 15.2 and 15.3). The platform's vectors carry the **platform's** nonces, so the
-conformance run turns the application-nonce check off through a test-only option. Nonces are covered
+conformance run turns the application-nonce check off through a test-only option. *Amended by the
+Go build:* the vectors' `stale_proof` case is a proof one hour old, which the 24-hour window of 15.3
+accepts, so the same test-only option also narrows the proof window to the vectors' five minutes.
+And the vectors' `expect: invalid_token` stands for any refusal of the parse, header, key and
+signature rules (15.2). Nonces are covered
 by their own tests (15.10). Go and Java both run every case.
 
 ### 15.10 Tests
@@ -947,7 +989,8 @@ Every refusal in 15.2 and 15.3, over real HTTP routes:
 - A field token as `Bearer`, and an API token as `DPoP`.
 - A missing proof.
 - A proof signed by another key.
-- A replayed `jti`, through the memory cache and the Redis cache (Testcontainers).
+- A replayed `jti`, through the memory cache and the Redis cache (Java: Testcontainers; Go: the Redis
+  server `fwtest` starts from `PATH`, as for the Redis session store).
 - A nonce from two buckets ago, a nonce under a rotated-out key (refused), and a nonce under the
   previous cookie key that is still configured (accepted).
 - `use_dpop_nonce` and its `DPoP-Nonce` header.

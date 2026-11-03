@@ -1,9 +1,11 @@
 package auth_test
 
 import (
+	"cmp"
 	"context"
 	"encoding/json/v2"
 	"io"
+	"log/slog"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -43,6 +45,7 @@ type config struct {
 	declare []auth.DeclareOption
 	files   string // application.yaml
 	store   auth.StoreFactory
+	logger  *slog.Logger // default: discard
 }
 
 // startApp starts the application; a start-up failure is returned.
@@ -74,7 +77,7 @@ func startApp(t *testing.T, c config) (*app, error) {
 		}
 	}
 	a := fw.New("auth-test", fw.WithEnvironment(env), fw.WithConfigDir(dir), fw.WithClock(clock),
-		fw.WithOutput(io.Discard, io.Discard), fw.WithLogger(discard()))
+		fw.WithOutput(io.Discard, io.Discard), fw.WithLogger(cmp.Or(c.logger, discard())))
 	web := httpfw.Declare(a)
 	d := auth.Declare(a, web, c.declare...)
 	out := &app{t: t, clock: clock, provider: provider, store: auth.NewMemoryStore(clock)}
@@ -149,6 +152,16 @@ func testRoutes() *httpfw.Routes {
 	rt.HandleContext("POST /api/echo", func(w http.ResponseWriter, _ *http.Request, _ fw.Context) error {
 		return httpfw.JSON(w, 200, map[string]any{"ok": true})
 	})
+	rt.HandleContext("POST /api/field/only", func(w http.ResponseWriter, r *http.Request, _ fw.Context) error {
+		a, _ := auth.Current(r)
+		return httpfw.JSON(w, 200, map[string]any{
+			"worker": a.Field.WorkerCode, "device": a.Field.DeviceID, "mode": a.Field.DeviceMode, "session": a.Field.SessionID,
+			"clientId": a.Field.ClientID, "roles": len(a.Principal.Roles), "tier": a.Principal.Tier,
+		})
+	}, httpfw.With(auth.RequireSource(auth.SourceField)))
+	rt.HandleContext("POST /api/field/never", func(w http.ResponseWriter, _ *http.Request, _ fw.Context) error {
+		return httpfw.JSON(w, 200, map[string]any{"ok": true})
+	}, httpfw.With(auth.RequireSource(auth.SourceSession, auth.SourceBearer)))
 	rt.Handle("GET /public", func(http.ResponseWriter, *http.Request) error { return httpfw.Unauthenticated("handler says no") })
 	return rt
 }

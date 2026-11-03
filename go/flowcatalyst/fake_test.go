@@ -195,6 +195,8 @@ func (f *fakePlatform) handle(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/oauth/token":
 		f.token(w, string(b))
+	case r.URL.Path == "/api/field-tokens/introspect":
+		f.introspect(w, r)
 	case syncPath.MatchString(r.URL.Path):
 		f.sync(w, r, rec)
 	case instancePath.MatchString(r.URL.Path):
@@ -344,4 +346,33 @@ func signature(secret, timestamp, body string) string {
 	m.Write([]byte(timestamp))
 	m.Write([]byte(body))
 	return hex.EncodeToString(m.Sum(nil))
+}
+
+// introspect answers POST /api/field-tokens/introspect with the canned "field-introspect" answer
+// ({"active":false} by default); the caller must hold a token the fake issued.
+func (f *fakePlatform) introspect(w http.ResponseWriter, r *http.Request) {
+	if !f.authorised(r) {
+		http.Error(w, `{"error":"UNAUTHORIZED"}`, http.StatusUnauthorized)
+		return
+	}
+	f.mu.Lock()
+	a, ok := f.canned["field-introspect"]
+	f.mu.Unlock()
+	if !ok {
+		a = cannedAnswer{http.StatusOK, `{"active":false}`}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(a.status)
+	_, _ = io.WriteString(w, a.body)
+}
+
+// introspections are the requests made to the introspection endpoint.
+func (f *fakePlatform) introspections() []recorded {
+	var out []recorded
+	for _, r := range f.requests() {
+		if r.path == "/api/field-tokens/introspect" {
+			out = append(out, r)
+		}
+	}
+	return out
 }

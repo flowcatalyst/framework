@@ -543,6 +543,13 @@ hands its handler, or the refusal when the service principal cannot be resolved.
    platform records admin writes against the service account, not the signed-in user; a `403` for "client is not
    available to this application" has the same code (`FORBIDDEN`) as a missing permission, so the framework
    tells them apart by the message (a code of its own would be better).
+8. **Field revocation events: subscription not verified** (2026-11-03, sessions-and-login contract 15.7).
+   `OnFieldRevocation` receives `platform:iam:field-worker:suspended`, `platform:iam:field-device:revoked`
+   and `platform:iam:field-session:revoked`, and the application declares a subscription to them. That a
+   real platform accepts an application's subscription to `platform:iam:field-*` event types, and delivers
+   them to it, was **not verified** by the Go build (no platform was run; the receivers are tested against
+   deliveries built from the platform's event data). To check with `fcdev`; if the platform refuses or does
+   not deliver, it is platform work, and the receiver stays.
 
 ## 6. Tests
 

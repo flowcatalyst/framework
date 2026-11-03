@@ -72,6 +72,7 @@ type Provider struct {
 	signing          Signing
 	authorizeError   string
 	tokenStatus      int
+	fieldAudience    string
 	lastTokenForm    map[string]string
 	lastTokenAuth    string
 

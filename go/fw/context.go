@@ -83,15 +83,21 @@ const (
 	PrincipalUser PrincipalKind = iota + 1
 	// PrincipalService is a service account (the FlowCatalyst receivers run as one).
 	PrincipalService
+	// PrincipalFieldWorker is a field worker: someone who signed in to the platform's field plane
+	// (worker code and PIN on an enrolled device, principal id fwu_...). Only the request resolver
+	// sets it, from a field access token (sessions-and-login contract section 15).
+	PrincipalFieldWorker
 )
 
-// String returns USER or SERVICE.
+// String returns USER, SERVICE or FIELD_WORKER.
 func (k PrincipalKind) String() string {
 	switch k {
 	case PrincipalUser:
 		return "USER"
 	case PrincipalService:
 		return "SERVICE"
+	case PrincipalFieldWorker:
+		return "FIELD_WORKER"
 	}
 	return ""
 }
@@ -128,7 +134,7 @@ func (cx Context) WithPrincipal(p PrincipalID) Context {
 // WithPrincipalOfKind returns a copy with the principal and its kind set. It panics on the zero
 // PrincipalID or an unknown kind.
 func (cx Context) WithPrincipalOfKind(p PrincipalID, k PrincipalKind) Context {
-	if k != PrincipalUser && k != PrincipalService {
+	if k != PrincipalUser && k != PrincipalService && k != PrincipalFieldWorker {
 		panic("fw: Context.WithPrincipalOfKind with an unknown PrincipalKind")
 	}
 	cx = cx.WithPrincipal(p)

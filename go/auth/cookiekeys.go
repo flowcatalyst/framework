@@ -25,13 +25,14 @@ type CookieKeys struct {
 	current string
 	order   []string
 	aead    map[string]cipher.AEAD
+	raw     map[string][]byte
 }
 
 // ParseCookieKeys parses auth.cookie-keys: "<kid>:<base64url of 32 bytes>[,<kid>:<key>...]". The
 // first key seals. An empty or malformed list, a key that is not 32 bytes and a repeated kid are
 // errors; the error never contains key material.
 func ParseCookieKeys(value string) (*CookieKeys, error) {
-	keys := &CookieKeys{aead: map[string]cipher.AEAD{}}
+	keys := &CookieKeys{aead: map[string]cipher.AEAD{}, raw: map[string][]byte{}}
 	for i, entry := range strings.Split(value, ",") {
 		position := i + 1
 		trimmed := strings.TrimSpace(entry)
@@ -61,6 +62,7 @@ func ParseCookieKeys(value string) (*CookieKeys, error) {
 			return nil, errors.New("auth.cookie-keys: cannot use key '" + kid + "'")
 		}
 		keys.aead[kid] = gcm
+		keys.raw[kid] = raw
 		keys.order = append(keys.order, kid)
 	}
 	keys.current = keys.order[0]

@@ -11,6 +11,7 @@ import (
 type requestState struct {
 	mu            sync.Mutex
 	cookies       []string
+	headers       [][2]string
 	sessionKnown  bool
 	session       *Authenticated
 	authenticated *Authenticated
@@ -41,6 +42,27 @@ func (s *requestState) takeCookies() []string {
 	defer s.mu.Unlock()
 	out := s.cookies
 	s.cookies = nil
+	return out
+}
+
+// setHeader asks for a response header (replacing any of the name) to be written with the cookies.
+func (s *requestState) setHeader(name, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, h := range s.headers {
+		if h[0] == name {
+			s.headers[i][1] = value
+			return
+		}
+	}
+	s.headers = append(s.headers, [2]string{name, value})
+}
+
+func (s *requestState) takeHeaders() [][2]string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := s.headers
+	s.headers = nil
 	return out
 }
 

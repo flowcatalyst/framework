@@ -51,6 +51,9 @@ func (c *cookieWriter) flush() {
 	for _, v := range c.state.takeCookies() {
 		c.ResponseWriter.Header().Add("Set-Cookie", v)
 	}
+	for _, h := range c.state.takeHeaders() {
+		c.ResponseWriter.Header().Set(h[0], h[1])
+	}
 }
 
 func (c *cookieWriter) WriteHeader(status int) {
@@ -76,6 +79,9 @@ func (c *cookieWriter) Unwrap() http.ResponseWriter { return c.ResponseWriter }
 func (rt *routes) middleware(next httpfw.HandlerFunc) httpfw.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		r, st := withState(r)
+		if rt.field != nil && isDPoP(r) {
+			st.setHeader("DPoP-Nonce", rt.field.tokens.Nonce()) // every DPoP response carries a fresh nonce
+		}
 		cw := &cookieWriter{ResponseWriter: w, state: st}
 		err := next(cw, r)
 		if err != nil && !cw.begun {

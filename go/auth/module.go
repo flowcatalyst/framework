@@ -60,7 +60,7 @@ func Declare(app *fw.App, web *httpfw.Declared, opts ...DeclareOption) *Declared
 		publicBaseURL: config.Declare(m, config.String("auth.public-base-url",
 			"This application's public base URL, for example https://ingest.example.com.").Required()),
 		cookieKeys: config.Declare(m, config.SecretValue("auth.cookie-keys",
-			"Keys that seal session cookies: <kid>:<base64url of 32 bytes>, comma-separated, the sealing key first.")),
+			"Keys that seal session cookies (and derive the field-worker nonces): <kid>:<base64url of 32 bytes>, comma-separated, the sealing key first.")),
 		bearer: true,
 	}
 	for _, o := range opts {
@@ -90,6 +90,7 @@ type options struct {
 	rateLimited    bool
 	httpTimeout    time.Duration
 	problems       []string
+	field          *fieldOptions
 }
 
 // SessionStore names the session store: auth.MemoryStoreFactory(), authdb.Factory(dbs) (the documented
@@ -195,6 +196,21 @@ func NoRateLimit() Option { return func(o *options) { o.rateLimit, o.rateLimited
 // 10 seconds.
 func HTTPTimeout(d time.Duration) Option { return func(o *options) { o.httpTimeout = d } }
 
+// FieldWorkers turns on field-worker authentication (contract section 15): the DPoP scheme is
+// accepted beside Bearer, with application nonces derived from auth.cookie-keys (required) and a
+// replay cache ([FieldReplay]; default memory). It needs [Application]: field tokens are addressed
+// to the application's code. A field worker's permissions come from [MapFieldPermissions] (default
+// none), never from the session and bearer mapping.
+func FieldWorkers(opts ...FieldOption) Option {
+	return func(o *options) {
+		f := &fieldOptions{permissions: FieldNoPermissions()}
+		for _, opt := range opts {
+			opt(f)
+		}
+		o.field = f
+	}
+}
+
 // Module is the built module: provide [Module.Resolver] to httpfw.NewServer and [Module.Routes]
 // among its tables.
 type Module struct {
@@ -202,6 +218,7 @@ type Module struct {
 	resolver    *ContextResolver
 	sessions    *Sessions
 	tokens      *PlatformTokens
+	field       *FieldTokens
 	environment string
 }
 
@@ -214,6 +231,9 @@ func (m *Module) Sessions() *Sessions { return m.sessions }
 
 // Tokens is the platform access-token verifier the module built (its keys are cached).
 func (m *Module) Tokens() *PlatformTokens { return m.tokens }
+
+// FieldTokens is the field access-token verifier, or nil unless [FieldWorkers] was passed.
+func (m *Module) FieldTokens() *FieldTokens { return m.field }
 
 // Routes is the module's route table: the middleware, /auth/login, /auth/callback, /auth/session
 // and /auth/logout. Pass it among the tables of httpfw.NewServer.
@@ -264,9 +284,16 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 		bad("", "no session store is named: use auth.SessionStore(authdb.Factory(dbs)) (the default driver), authredis.Factory, auth.MemoryStoreFactory() or auth.CookieSessions()")
 	}
 	var cookieKeys *CookieKeys
-	if o.cookieSessions {
+	if o.field != nil && o.application.IsZero() {
+		bad("", errFieldNeedsApplication.Error())
+	}
+	if o.cookieSessions || o.field != nil {
 		if keys, ok := d.cookieKeys.Lookup(b); !ok {
-			bad("auth.cookie-keys", "the cookie session store needs auth.cookie-keys")
+			if o.cookieSessions {
+				bad("auth.cookie-keys", "the cookie session store needs auth.cookie-keys")
+			} else {
+				bad("auth.cookie-keys", "field workers need auth.cookie-keys: the application nonces are derived from them")
+			}
 		} else if k, err := ParseCookieKeys(keys.Reveal()); err != nil {
 			bad("auth.cookie-keys", err.Error())
 		} else {
@@ -310,6 +337,24 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 		return nil, err
 	}
 	tokens := &PlatformTokens{platform: p, clock: b.Clock()}
+	var fieldTokens *FieldTokens
+	var fieldRT *fieldRuntime
+	if o.field != nil && cookieKeys != nil {
+		nonces, err := newFieldNonces(cookieKeys)
+		if err != nil {
+			return nil, err
+		}
+		replay := o.field.replay
+		if replay == nil {
+			replay = NewMemoryFieldReplayCache(b.Clock())
+			log.Warn("FIELD WORKERS: the proof replay cache is in memory. With more than one replica, a captured proof can be replayed against another replica inside the 11-minute window. Pass auth.FieldReplay(authredis.NewReplayCache(...)) when you run more than one.")
+		}
+		fieldTokens = &FieldTokens{
+			platform: p, clock: b.Clock(), appCode: o.application.String(), baseURL: strings.TrimRight(baseText, "/"),
+			nonces: nonces, replay: replay,
+		}
+		fieldRT = &fieldRuntime{tokens: fieldTokens, permissions: o.field.permissions}
+	}
 	rp := &relyingParty{
 		platform: p, clientID: clientID, clientSecret: clientSecret, redirectURI: origin + "/auth/callback",
 		scope: o.scope, theme: o.loginTheme, clock: b.Clock(),
@@ -321,7 +366,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 		return nil, err
 	}
 	sessions := &Sessions{manager: mgr, cookies: cookies, csrf: httpfw.SessionsGuard(base), authorities: auths, clock: b.Clock()}
-	resolver := &ContextResolver{sessions: sessions, authorities: auths, log: log}
+	resolver := &ContextResolver{sessions: sessions, authorities: auths, field: fieldRT, log: log}
 	if d.bearer {
 		resolver.bearer = tokens
 	}
@@ -331,7 +376,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 	}
 	rt := &routes{
 		rp: rp, manager: mgr, sessions: sessions, cookies: cookies, returnTo: o.returnTo, defaultLanding: o.defaultLanding,
-		failures: o.failures, postLogout: postLogout, clock: b.Clock(), log: log,
+		failures: o.failures, postLogout: postLogout, clock: b.Clock(), log: log, field: fieldRT,
 	}
 	if !store.Revocable() {
 		log.Info("session store keeps nothing on the server: logout cannot revoke a copied session cookie")
@@ -354,7 +399,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 	table.Handle("GET /auth/callback", rt.callback, publicRoute...)
 	table.Bind(httpfw.Handle(sessionapi.Session, rt.session))
 	table.Bind(httpfw.Handle(sessionapi.Logout, rt.logout))
-	return &Module{routes: table, resolver: resolver, sessions: sessions, tokens: tokens, environment: env}, nil
+	return &Module{routes: table, resolver: resolver, sessions: sessions, tokens: tokens, field: fieldTokens, environment: env}, nil
 }
 
 func defaultRateLimit(b *fw.Boot, log *slog.Logger) (httpfw.Middleware, error) {

@@ -108,15 +108,19 @@ const (
 	SourceSession Source = iota + 1
 	// SourceBearer is an Authorization: Bearer platform access token.
 	SourceBearer
+	// SourceField is an Authorization: DPoP field access token with its proof (contract section 15).
+	SourceField
 )
 
-// String returns SESSION or BEARER.
+// String returns SESSION, BEARER or FIELD.
 func (s Source) String() string {
 	switch s {
 	case SourceSession:
 		return "SESSION"
 	case SourceBearer:
 		return "BEARER"
+	case SourceField:
+		return "FIELD"
 	}
 	return ""
 }
@@ -129,8 +133,12 @@ type Authenticated struct {
 	Client fw.ClientID
 	// Permissions is what the application's mapping granted.
 	Permissions []string
-	// Source is a browser session or a bearer token.
+	// Source is a browser session, a bearer token or a field token.
 	Source Source
+	// Field is the field worker and device, set when Source is [SourceField]; nil otherwise. A field
+	// worker's Principal has an id, the FIELD_WORKER kind and a name; its roles, applications, clients
+	// and tier are empty.
+	Field *FieldPrincipal
 	// ExpiresAt is when the session or token stops being valid.
 	ExpiresAt time.Time
 	// IdleExpiresAt is, for a session, when it expires without activity; zero for a bearer token.
@@ -173,8 +181,14 @@ func (a *authorities) context(au Authenticated, r *http.Request) (fw.Context, er
 		return fw.Context{}, err
 	}
 	cx := fw.ContextFor(au.Client).WithPrincipalOfKind(id, au.Principal.Kind).WithCorrelation(httpfw.CorrelationID(r))
-	if !a.application.IsZero() {
-		cx = cx.WithApplication(a.application)
+	application := a.application
+	if au.Field != nil { // the application is the token's audience
+		if code, err := fw.ParseApplicationCode(au.Field.AppCode); err == nil {
+			application = code
+		}
+	}
+	if !application.IsZero() {
+		cx = cx.WithApplication(application)
 	}
 	perms := make([]fw.Permission, 0, len(au.Permissions))
 	for _, s := range au.Permissions {
@@ -191,3 +205,37 @@ func (a *authorities) context(au Authenticated, r *http.Request) (fw.Context, er
 }
 
 var errNoClient = httpfw.NewError(http.StatusInternalServerError, "INTERNAL", "internal error")
+
+// fieldAuthenticated is who a verified field token and proof describe (contract section 15.5). The
+// client is the token's client_identifier; the application's client selector is not consulted.
+func fieldAuthenticated(f FieldPrincipal, permissions FieldPermissionMapper) (Authenticated, error) {
+	client, err := fw.ParseClientID(f.ClientIdentifier)
+	if err != nil {
+		return Authenticated{}, errNoClient
+	}
+	return Authenticated{
+		Principal: Principal{
+			ID: f.WorkerID, Kind: fw.PrincipalFieldWorker, Name: f.Name,
+			Clients: []string{}, Applications: []string{}, Roles: []string{}, Scopes: []string{},
+		},
+		Client: client, Permissions: slices.Clone(permissions(f)), Source: SourceField, Field: &f,
+		ExpiresAt: f.ExpiresAt, AuthTime: f.AuthTime,
+	}, nil
+}
+
+// RequireSource is route middleware that answers 403 FORBIDDEN unless the request was
+// authenticated by one of the sources: a route that must be field-only, or never field, says so
+// here (contract section 15.5). Use it on a route that requires a context.
+//
+//	rt.HandleContext("POST /api/gate/open", open, httpfw.With(auth.RequireSource(auth.SourceField)))
+func RequireSource(sources ...Source) httpfw.Middleware {
+	allowed := slices.Clone(sources)
+	return func(next httpfw.HandlerFunc) httpfw.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) error {
+			if a, ok := Current(r); !ok || !slices.Contains(allowed, a.Source) {
+				return httpfw.Forbidden("FORBIDDEN", "this route does not accept this kind of sign-in")
+			}
+			return next(w, r)
+		}
+	}
+}

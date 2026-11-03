@@ -18,6 +18,8 @@ State of the slices:
 | 4 | the four endpoints, the context resolver, 401 versus 302, client selection and permission mapping, `Context.permissions`, `auth.Testing`, the login-failure vector | built |
 | G5c | `examples/orders-demo` on the module and the browser end-to-end launcher ([below](#the-orders-demo-on-sessions-and-the-browser-suite)) | built |
 
+Field workers (drivers and pickers on enrolled devices, `Authorization: DPoP`) are a separate opt-in: [Go: field workers](field-workers.md).
+
 ## Verifying platform tokens on their own
 
 `auth.NewPlatformTokens(issuer, timeout, clock, logger, opts...)` verifies a platform **access token**
