@@ -27,15 +27,27 @@ final class Jwt {
   /** The outcome of the signature checks. */
   sealed interface Checked {
     /** Signed by the platform; the claims are not yet checked. */
-    record Ok(JsonNode claims) implements Checked {}
+    record Ok(JsonNode claims, JsonNode header) implements Checked {}
 
     /** Refused, with the contract's reason name. */
     record Refused(String reason) implements Checked {}
   }
 
+  /** Where the platform's signing keys come from: the live key set, or a fixed one in tests. */
+  interface KeySource {
+    /**
+     * The key with this id.
+     *
+     * @param kid the key id the token names
+     * @return the key, or empty when the platform does not publish it
+     * @throws PlatformUnavailableException when no keys can be read
+     */
+    Optional<RSAPublicKey> key(String kid) throws PlatformUnavailableException;
+  }
+
   private Jwt() {}
 
-  static Checked verify(String token, Platform platform) throws PlatformUnavailableException {
+  static Checked verify(String token, KeySource platform) throws PlatformUnavailableException {
     if (token.isEmpty() || token.length() > MAX_LENGTH) {
       return new Checked.Refused("malformed");
     }
@@ -70,7 +82,7 @@ final class Jwt {
     if (claims == null) {
       return new Checked.Refused("malformed");
     }
-    return new Checked.Ok(claims);
+    return new Checked.Ok(claims, header);
   }
 
   private static boolean signatureMatches(RSAPublicKey key, String signedPart, byte[] signature) {

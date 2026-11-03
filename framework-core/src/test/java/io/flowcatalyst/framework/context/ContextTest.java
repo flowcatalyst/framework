@@ -175,8 +175,9 @@ class ContextTest {
   }
 
   @Test
-  void thereAreExactlyTwoKinds() {
-    assertThat(PrincipalKind.values()).containsExactly(PrincipalKind.USER, PrincipalKind.SERVICE);
+  void thereAreExactlyThreeKinds() {
+    // FIELD_WORKER: core contract section 3, amended 2026-11-03
+    assertThat(PrincipalKind.values()).containsExactly(PrincipalKind.USER, PrincipalKind.SERVICE, PrincipalKind.FIELD_WORKER);
   }
 
   @Test

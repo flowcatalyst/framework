@@ -90,6 +90,33 @@ public final class Receivers {
   }
 
   /**
+   * Registers a handler for the platform's field-identity revocations (sessions-and-login contract
+   * section 15.7): {@code platform:iam:field-worker:suspended}, {@code
+   * platform:iam:field-device:revoked} and {@code platform:iam:field-session:revoked}. The handler
+   * receives a {@link FieldRevocation}. A delivery whose data lacks what its event type needs is
+   * rejected (terminal), since a retry cannot fix it. The application must also have a subscription
+   * to these events ({@link FieldRevocation#subscription}).
+   *
+   * @param handler the handler
+   * @throws IllegalArgumentException when one of the three types already has a handler
+   * @throws IllegalStateException after start-up
+   */
+  public void onFieldRevocation(FieldRevocation.Handler handler) {
+    for (String type : FieldRevocation.EVENT_TYPES) {
+      onDispatch(
+          type,
+          (ctx, delivery) -> {
+            java.util.Optional<FieldRevocation> event = FieldRevocation.parse(type, delivery.data().orElse(null));
+            if (event.isEmpty()) {
+              return DispatchResult.reject("the " + type + " event data is not in the shape the platform writes");
+            }
+            handler.handle(ctx, event.get());
+            return DispatchResult.ack();
+          });
+    }
+  }
+
+  /**
    * Registers the handler of a scheduled job. The platform POSTs the job's firings to
    * {@code {prefix}/scheduled-jobs}; the job's {@code targetUrl} must point there.
    *

@@ -24,6 +24,15 @@ public final class MutableClock implements InstantSource {
   }
 
   /**
+   * Sets the clock.
+   *
+   * @param value the new time
+   */
+  public void set(Instant value) {
+    now = value;
+  }
+
+  /**
    * Moves the clock forward.
    *
    * @param by how far

@@ -37,7 +37,7 @@ import tools.jackson.databind.JsonNode;
  * its signing keys, and form posts to its token endpoint. Only the server reads these; nothing a
  * token says is ever fetched.
  */
-final class Platform {
+final class Platform implements Jwt.KeySource {
 
   private static final Logger LOG = LoggerFactory.getLogger(Platform.class);
 
@@ -237,7 +237,8 @@ final class Platform {
    * @return the key, or empty when the platform does not publish it
    * @throws PlatformUnavailableException when no keys have ever been read and they cannot be
    */
-  Optional<RSAPublicKey> key(String kid) throws PlatformUnavailableException {
+  @Override
+  public Optional<RSAPublicKey> key(String kid) throws PlatformUnavailableException {
     Instant now = clock.instant();
     Instant fetched = keysFetchedAt;
     if (fetched == null) {
@@ -303,7 +304,7 @@ final class Platform {
     return known;
   }
 
-  private static @Nullable RSAPublicKey rsaKey(JsonNode jwk) {
+  static @Nullable RSAPublicKey rsaKey(JsonNode jwk) {
     if (!"RSA".equals(jwk.path("kty").asString(""))) {
       return null;
     }

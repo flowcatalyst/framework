@@ -21,7 +21,7 @@ public record Context(
 |---|---|---|
 | `client` | always | the tenant the work is for, as a `ClientId` that holds the platform's **client code** (see below). Every aggregate carries one, and a use case refuses to write another client's aggregate |
 | `principal` | no | the user or service account acting; the audit row and event metadata record it |
-| `principalKind` | no; only with a principal | `USER` (a person) or `SERVICE` (a service account): the platform's `type` claim. Absent when unknown |
+| `principalKind` | no; only with a principal | `USER` (a person), `SERVICE` (a service account; the platform's `type` claim) or `FIELD_WORKER` (a driver, picker or yard worker who signed in with a PIN, [field workers](field-workers.md)). Absent when unknown |
 | `application` | no | the application code |
 | `correlationId` | always | follows a request into logs, events and jobs; generated when absent |
 | `causationId` | no | the event or message that caused this work |
@@ -95,7 +95,8 @@ service.principalKind(); // SERVICE
 
 A kind is never present without a principal (the constructor refuses it), and `withPrincipal(id)`
 without a kind **clears** any kind the context had, so a kind never describes another principal.
-The framework sets it wherever it knows it: `AuthModule`'s resolver from the session or the bearer
+`FIELD_WORKER` is set only by the request resolver from a field access token; a `switch` over the kind
+must name it (no `default` that treats it as `USER`). The framework sets it wherever it knows it: `AuthModule`'s resolver from the session or the bearer
 token's `type` (`SERVICE`, else `USER`), and the [receivers](receivers.md#who-runs-the-handler)
 always `SERVICE`, the application's own service account. Check it in `authorize` when an operation
 is for people only, or for the service only. It is not written to the outbox (the platform has no

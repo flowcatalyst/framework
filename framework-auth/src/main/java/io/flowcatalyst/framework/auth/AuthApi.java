@@ -44,6 +44,8 @@ final class AuthApi {
     OpenApi.property(app, AuthCsrf.class, "mode", Schema.string().constant("fetch-metadata"));
     OpenApi.property(app, AuthCsrf.class, "jsonBodies", Schema.bool().constant(true));
     OpenApi.property(app, AuthLogout.class, "loggedOut", Schema.bool().constant(true));
+    // a browser session is a person or a service account; a field worker (FIELD_WORKER) has no session
+    OpenApi.property(app, AuthPrincipal.class, "kind", Schema.string().enumOf("USER", "SERVICE"));
     OpenApi.securityScheme(app, "session", SecurityScheme.cookie(SESSION_COOKIE));
     if (bearer) {
       OpenApi.securityScheme(app, "bearer", SecurityScheme.bearer("JWT"));

@@ -106,6 +106,21 @@ public final class CookieKeys {
   }
 
   /**
+   * The raw bytes of every key, the sealing one first, for deriving other keys from them (the
+   * field-worker nonces, contract section 15.4). Never log them.
+   */
+  List<byte[]> rawKeys() {
+    List<byte[]> out = new ArrayList<>();
+    for (String kid : kids()) {
+      SecretKeySpec key = keys.get(kid);
+      if (key != null) {
+        out.add(key.getEncoded());
+      }
+    }
+    return out;
+  }
+
+  /**
    * Seals bytes with the first key.
    *
    * @param kind the record kind, bound into the additional data
