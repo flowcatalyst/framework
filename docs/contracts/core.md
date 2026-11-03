@@ -161,7 +161,7 @@ or a thread-local by the framework.
 |---|---|---|
 | client | `ClientId` | always (design rule 8) |
 | principal | `PrincipalId` | no |
-| principal kind | `PrincipalKind`: `USER` or `SERVICE` | no; only with a principal (added 2026-10-14, below) |
+| principal kind | `PrincipalKind`: `USER`, `SERVICE` or `FIELD_WORKER` | no; only with a principal (added 2026-10-14; `FIELD_WORKER` 2026-11-03, below) |
 | application | `ApplicationCode` | no |
 | correlation id | `CorrelationId` | always; generated when absent |
 | causation id | text | no (added in M2a: the event or message that caused this work) |
@@ -198,6 +198,14 @@ and `SERVICE` (a service account), the platform's `type` claim. Rules:
 - Causation and execution ids keep their meaning: causation is the message that caused this work
   (for a receiver, the delivered dispatch job or scheduled-job instance), execution the job or run
   this work belongs to.
+
+*Amended 2026-11-03 (field workers, sessions-and-login contract section 15):* `PrincipalKind` gains
+a third value, `FIELD_WORKER`, a person who signed in to the platform's field plane (worker code and
+PIN on an enrolled device, principal id `fwu_...`). It is set only by the request resolver from a
+field access token. A field worker has no platform authority and belongs to exactly one client.
+Code that switches on the kind must handle it: the Go linter's exhaustive check flags a missing
+case, and the Java enum switch must not use a default that treats it as `USER`. The kind is still not
+written to the outbox.
 
 ### 3a. Work for one client after another (amendment 2026-10-18, friction F3 and F15)
 

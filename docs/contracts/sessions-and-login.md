@@ -783,3 +783,184 @@ red before the fix: an interrupted first key read started the 5 second back-off)
 
 **Known limits, not addressed** (security review items I4, I6, I9 and I10; owner decision to skip;
 the review report holds their text): recorded here so they are not mistaken for oversights.
+
+## 15. Field workers (amendment 2026-11-03)
+
+Field workers (drivers, pickers, yard-gate staff) sign in to the **platform** with a worker code
+and PIN from an enrolled device, through the platform's `/field/*` routes and its `field-js`
+library. The platform issues a short **field access token** bound to the device's key. An
+application never sees a PIN and hosts no field login. It only verifies what the device presents.
+Platform design: `flowcatalyst-go/docs/field-worker-identity-design.md` (section 6.1 is the
+origin of this section). Wire reference: the "Field identity" section of the platform's
+`docs/wire-contract.md`.
+
+Field authentication is **off by default**. An application opts in with code (Go:
+`auth.Build(..., auth.FieldWorkers(opts))`; Java: `AuthBuilder.fieldWorkers(opts)`). Sessions and
+bearer tokens are unchanged.
+
+### 15.1 The request
+
+`Authorization: DPoP <field access token>` plus a `DPoP: <proof>` header (RFC 9449). *Amends 7.1:*
+when field workers are enabled, the `DPoP` scheme is step 1b, after `Bearer`. Without the opt-in it
+stays "any other scheme: `401`". There is no fall-back to the cookie, CSRF does not apply (as for
+bearer tokens), and a `401` is never turned into a redirect (7.4: the request carries an
+`Authorization` header).
+
+### 15.2 Verifying the field access token
+
+The parse, header, key and signature rules of 5.5 steps 1 to 4 (RS256 only, keys from the
+platform's JWKS, the same cache), then:
+
+| Check | Refusal reason |
+|---|---|
+| JOSE `typ` is exactly `fc-field+jwt` | `wrong_typ` |
+| `iss` equals `auth.issuer` | `iss` |
+| `aud` equals the application code (`flowcatalyst.application-code`), a string | `wrong_aud` |
+| `exp`, `nbf`, `iat` as in 5.5 | `expired`, `not_yet_valid`, `iat` |
+| `token_use` is exactly `field` | `wrong_token_use` |
+| `sub` starts with `fwu_`; `client_id`, `client_identifier`, `device_id`, `sid`, `cnf.jkt` present | `sub`, `claims` |
+| no `pcr: true` claim (a temporary-PIN token works only on the platform's `/field/auth/pin`) | `pcr`, answered `403 PIN_CHANGE_REQUIRED` |
+
+A platform API token (`fc` access token, `token_use: api`) presented with the `DPoP` scheme is
+refused (`wrong_typ`), and a field token presented as `Bearer` is refused by 5.6 (`token_use`).
+Keys unreadable: `503 UNAVAILABLE`, as in 5.6.
+
+### 15.3 Verifying the proof
+
+The proof is a compact JWS: header `typ: dpop+jwt`, `alg: ES256` only, `jwk` an EC P-256 public key
+with no private members. The checks are:
+
+- the signature verifies with that `jwk`;
+- the RFC 7638 SHA-256 thumbprint of `jwk` equals the token's `cnf.jkt` (`jkt_mismatch`);
+- `htm` equals the request method (`htm_mismatch`);
+- `htu` equals `auth.public-base-url` + the request path, with no query or fragment (`htu_mismatch`).
+  The `Host` header is never used;
+- `ath` equals base64url(SHA-256(access token)) (`ath_mismatch`);
+- `jti` is present and not seen before (`replayed`);
+- `iat` is within ±24 hours of the server clock (`stale_proof`). Field devices keep bad time, so
+  freshness comes from the nonce;
+- `nonce` is a valid application nonce (15.4). Missing or invalid: `401` with
+  `WWW-Authenticate: DPoP error="use_dpop_nonce"`, a fresh `DPoP-Nonce` header and the envelope
+  code `USE_DPOP_NONCE`. The client library retries once.
+
+Any other refusal is `401 UNAUTHENTICATED` with `WWW-Authenticate: DPoP error="invalid_token"`. The
+reason is logged at debug level, as for bearer tokens.
+
+### 15.4 Application nonces (stateless)
+
+The platform's nonces are single-use and stored platform-side, so an application cannot check them.
+The application issues its own nonces:
+
+- `bucket` = floor(unix seconds / 300), as 8 bytes big-endian;
+- `nonce` = base64url(`bucket` ‖ first 16 bytes of HMAC-SHA256(k, `"fw-field-nonce"` ‖ `bucket`));
+- `k` = HKDF-SHA256 over the **current** cookie key (`auth.cookie-keys`, 5.3), with info
+  `"fw-field-nonce"`;
+- a nonce is valid when its bucket is the current or the previous one and its MAC verifies under
+  the key derived from **any** configured cookie key, so key rotation does not break devices.
+
+Every response to a request that used the `DPoP` scheme carries a fresh `DPoP-Nonce` header,
+success or error, so a client rarely needs the retry.
+
+**The replay cache** remembers `jti` per `cnf.jkt` for 11 minutes, the nonce window plus one
+minute. It is built in code (Go: `auth.FieldReplayCache`): `memory` by default, or `redis` through
+`redisfw` (key `fw:dpop:{jkt}:{jti}`, `SET NX PX`). With more than one replica, the memory cache
+lets a captured proof be replayed against another replica inside the window. The Go default logs
+one WARN at start-up saying so. Applications with several replicas pass the Redis cache. Replay
+also needs the access token (`ath`), and is limited to the same method and URL.
+
+### 15.5 The `Context` and `Authenticated`
+
+| Context field | From a field token |
+|---|---|
+| `principal` | `sub` (`fwu_...`) |
+| principal kind | `FIELD_WORKER` (core contract section 3, amended 2026-11-03) |
+| `client` | `client_identifier`. *Amends 7.3:* the application's client selector is **not** consulted. A field worker belongs to exactly one client, and the token names it |
+| `application` | `aud` |
+| `permissions` | the field permission mapping (below) |
+| correlation id | the request's |
+
+`Authenticated` gains the source `FIELD` and a field part, `FieldPrincipal`: `workerId`,
+`workerCode`, `name`, `clientId` (`clt_...`), `clientIdentifier`, `appCode`, `deviceId`,
+`deviceMode` (`PERSONAL` or `SHARED`), `amr` (list), `authTime`, `sessionId` (`sid`) and
+`expiresAt`. Its roles, applications, clients and tier are empty. A field worker has no platform
+authority.
+
+**Permission mapping** is code, separate from the session and bearer mapping:
+`FieldPermissions(FieldPrincipal) -> set of permission strings`. The **default is none** (rule 6
+of 12 carries over), so a route that requires a permission refuses field workers until the
+application maps them. Helpers: a fixed set (`fieldPermissions.all(...)`) and one set per device
+mode (`fieldPermissions.byDeviceMode(personal, shared)`), because shared kiosks usually get less.
+A route that must be field-only or never-field checks
+`Authenticated.source` (Go: `auth.RequireSource(auth.SourceField)`).
+
+### 15.6 Online check before a high-value action (flowcatalyst module)
+
+Access tokens live 10 minutes. A revoked device or suspended worker keeps a valid token until it
+expires. For actions that cannot wait (opening a gate, releasing a load), route middleware in the
+`flowcatalyst` module (Go: `flowcatalyst.RequireLiveField(maxAge)`) calls the platform's `POST
+/api/field-tokens/introspect {token}` with the application's service account, which needs the
+permission `platform:iam:field-token:introspect`. The answer `{active, sub, clientId, workerCode,
+deviceId, appCode, amr, authTime, exp}` is cached per `sid` for `maxAge` (default 0: no cache).
+
+- `active: false`: `401 UNAUTHENTICATED` with `WWW-Authenticate: DPoP error="invalid_token"`.
+- Platform unreachable: `503 UNAVAILABLE`. It fails closed: a high-value action is never let
+  through unchecked.
+
+### 15.7 Revocation events (flowcatalyst module)
+
+The platform emits `platform:iam:field-worker:suspended`, `platform:iam:field-device:revoked` and
+`platform:iam:field-session:revoked`. `OnFieldRevocation(handler)` (Go:
+`flowcatalyst.OnFieldRevocation`) registers a receiver for the three. The handler gets a sealed
+value, `WorkerSuspended{workerId, clientId}`, `DeviceRevoked{deviceId, clientId}` or
+`SessionRevoked{sessionId, workerId, deviceId}`, built from the event data as the platform writes it
+(the platform's `fieldidentity/events.go`). The events are for **application state** (cached work
+assignments, open gate sessions), not for token validity: tokens expire on their own within 10
+minutes. The definition sync declares the subscription. **To check when building:** that an
+application's subscription to `platform:iam:field-*` events is accepted and delivered by a real
+platform (`fcdev`). If it is not, record it as platform work in `flowcatalyst.md` section 5 and keep
+the receiver.
+
+### 15.8 Test support
+
+- The test identity provider (9) mints field access tokens: Go `authtest.Provider.FieldToken(claims)`,
+  Java `TestOidcProvider.fieldToken(..)`. Defaults are a valid token for the application under test,
+  and any claim can be overridden.
+- **A test device**: Go `authtest.NewFieldDevice()`, Java `TestFieldDevice`. It holds an ES256 key,
+  gives its `jkt`, and `Proof(method, url, nonce, token)` returns a valid proof, with options to
+  break each rule. A helper fetches an application nonce from a first `401`.
+- `AuthTesting` gains `fieldRequest(principal)`, which returns the `Authorization` and `DPoP`
+  headers for a route under test. It is refused unless `APP_ENV` is `test`.
+
+### 15.9 Conformance
+
+`conformance/field/` holds the platform's generated vectors (`jwks.json`, `cases.json`, copied
+from `flowcatalyst-go/api/field-fixtures/` with the source commit in `conformance/field/README.md`).
+Each case gives `accessToken`, `dpopProof`, `method`, `url`, `now` and `expect` (`valid` or a
+refusal reason in 15.2 and 15.3). The platform's vectors carry the **platform's** nonces, so the
+conformance run turns the application-nonce check off through a test-only option. Nonces are covered
+by their own tests (15.10). Go and Java both run every case.
+
+### 15.10 Tests
+
+Every refusal in 15.2 and 15.3, over real HTTP routes:
+
+- A field token as `Bearer`, and an API token as `DPoP`.
+- A missing proof.
+- A proof signed by another key.
+- A replayed `jti`, through the memory cache and the Redis cache (Testcontainers).
+- A nonce from two buckets ago, a nonce under a rotated-out key (refused), and a nonce under the
+  previous cookie key that is still configured (accepted).
+- `use_dpop_nonce` and its `DPoP-Nonce` header.
+- `pcr` answered with `403 PIN_CHANGE_REQUIRED`.
+- The client selector ignored.
+- The default mapping gives no permissions, and both helpers.
+- `RequireSource`.
+- `RequireLiveField`: active, inactive, platform down giving 503, and the per-`sid` cache.
+- `OnFieldRevocation`: each of the three events.
+- The DPoP branch disabled: the `DPoP` scheme answered `401`.
+
+### 15.11 Not in this section
+
+Field login, PINs, enrolment and refresh: these are the platform and `field-js`. Server-rendered
+field pages: a field page is a page the `field-js` library calls with `fetch`, and no field cookie
+exists. Offline receipts and unlock keys: platform phases P5 and P6.
