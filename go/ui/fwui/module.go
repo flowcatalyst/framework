@@ -3,11 +3,11 @@ package fwui
 import (
 	"log/slog"
 	"net/http"
+	"slices"
 
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/httpfw"
 	"github.com/flowcatalyst/framework/go/ui/assets"
-	"github.com/flowcatalyst/framework/go/ui/compress"
 	"github.com/flowcatalyst/framework/go/ui/views"
 )
 
@@ -45,9 +45,10 @@ func WithViews(opts ...views.Option) Option {
 	return func(o *options) { o.views = append(o.views, opts...) }
 }
 
-// CompressAssets serves the static files through compress.Handler: Brotli or gzip from
-// Accept-Encoding, an ETag per encoding, Vary: Accept-Encoding (contract section 12). Pages and
-// streams are compressed by wrapping the whole server (compress.Handler around srv.Handler()).
+// CompressAssets serves the static files compressed (assets.WithCompression): Brotli or gzip from
+// Accept-Encoding, each file compressed once and kept, an ETag per encoding, Vary: Accept-Encoding
+// (contract section 12). Pages and streams are compressed by wrapping the whole server
+// (compress.Handler around srv.Handler()), which passes the compressed files through as they are.
 func CompressAssets() Option { return func(o *options) { o.compress = true } }
 
 // Module is the built module.
@@ -82,7 +83,11 @@ func build(environment string, log *slog.Logger, opts []Option) (*Module, error)
 	fail := func(err error) (*Module, error) {
 		return nil, &fw.StartupError{Problems: []fw.Problem{{Module: ModuleID, Message: err.Error()}}}
 	}
-	a, err := assets.Load(o.assets...)
+	assetOpts := o.assets
+	if o.compress {
+		assetOpts = append(slices.Clone(assetOpts), assets.WithCompression())
+	}
+	a, err := assets.Load(assetOpts...)
 	if err != nil {
 		return fail(err)
 	}
@@ -95,9 +100,6 @@ func build(environment string, log *slog.Logger, opts []Option) (*Module, error)
 		return fail(err)
 	}
 	files := a.Handler()
-	if o.compress {
-		files = compress.Handler(files)
-	}
 	serve := func(w http.ResponseWriter, r *http.Request) error {
 		files.ServeHTTP(w, r)
 		return nil

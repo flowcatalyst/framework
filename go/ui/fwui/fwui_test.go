@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -217,7 +218,7 @@ func TestAPrefixOtherThanTheDefaultAndCompressedAssets(t *testing.T) {
 		got := r.send("GET", url, "", "Accept-Encoding", coding)
 		suffix := map[string]string{"br": `-br"`, "gzip": `-gz"`}[coding]
 		if got.Code != 200 || got.Header().Get("Content-Encoding") != coding || !strings.HasSuffix(got.Header().Get("ETag"), suffix) ||
-			got.Header().Get("Vary") != "Accept-Encoding" {
+			got.Header().Get("Vary") != "Accept-Encoding" || got.Header().Get("Content-Length") != strconv.Itoa(got.Body.Len()) {
 			t.Fatalf("%s: %d %v", coding, got.Code, got.Header())
 		}
 		raw, err := io.ReadAll(decoder(t, coding, got.Body))

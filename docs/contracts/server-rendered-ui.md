@@ -17,7 +17,7 @@ markup from the same specs, and are held to it by the same fixtures.
 | Page policy | `ViewCsp` | `views.CSP` |
 | Datastar wire | `framework-http` `http.datastar` (http contract section 10) | package `ds` (same section) |
 | Flash after a redirect | `Views.page(..., flashes)` + section 9 | package `views` (section 9) |
-| Compression | not built | package `compress`, opt-in (section 12) |
+| Compression | not built | package `compress` and `assets.WithCompression`, opt-in (section 12) |
 
 The Go module's packages that are plain `net/http` (`kit`, `ds`, `assets`, `views`, `compress`, `htmlnorm`,
 `md`) do not import the framework's lifecycle or router, so an application that is not built on the framework
@@ -185,6 +185,14 @@ every answer it could have compressed, only for `text/html`, `text/event-stream`
 and `image/svg+xml`, never when the answer already has a `Content-Encoding`, the encoder flushed on every flush
 (so each SSE event reaches the browser), and an asset's `ETag` suffixed per encoding (`-br`, `-gz`). Static-assets
 contract ruling 6 is amended: the SPA handler still does not compress.
+
+The static files are compressed by the assets handler itself, also opt-in (Go: `assets.WithCompression()`, added
+2026-11-03): each `text/css`, `text/javascript` and `image/svg+xml` file is compressed once per coding (Brotli 9,
+gzip 9), by the first request that negotiates it, and kept for the life of the instance; a compressed body that is not
+smaller than the file is not used. The answer has the coding, the variant's `ETag` (the suffix above) and its
+`Content-Length`; `If-None-Match` matches the variant's tag or the plain tag (the `304` carries the tag that matched)
+and never the other coding's; `Vary: Accept-Encoding` is on every answer for those files. The middleware passes such
+an answer through, so the handler may still be wrapped by it, with the same answers.
 
 ## 13. Tests both implementations carry
 

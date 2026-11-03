@@ -325,3 +325,31 @@ func TestHandlerDoesNotMutateTheCallersRequest(t *testing.T) {
 		t.Errorf("the caller's request was changed: %q", got)
 	}
 }
+
+// The helpers for a handler that compresses its own content (the assets' WithCompression).
+func TestCompressibleVariantTagAndEncode(t *testing.T) {
+	for ctype, want := range map[string]bool{
+		"text/css; charset=utf-8": true, "text/javascript; charset=utf-8": true, "image/svg+xml": true, "TEXT/CSS": true,
+		"text/plain; charset=utf-8": false, "image/png": false, "text/html; charset=utf-8": false, "": false,
+	} {
+		if got := compress.Compressible(ctype); got != want {
+			t.Errorf("Compressible(%q) = %v", ctype, got)
+		}
+	}
+	for in, want := range map[[2]string]string{
+		{`"abc"`, compress.Brotli}: `"abc-br"`, {`"abc"`, compress.Gzip}: `"abc-gz"`, {`W/"abc"`, compress.Brotli}: `W/"abc-br"`,
+		{`abc`, compress.Brotli}: `abc`,
+	} {
+		if got := compress.VariantTag(in[0], in[1]); got != want {
+			t.Errorf("VariantTag(%s, %s) = %s, want %s", in[0], in[1], got, want)
+		}
+	}
+	body := bytes.Repeat([]byte("the kit stylesheet "), 500)
+	for _, coding := range []string{compress.Brotli, compress.Gzip} {
+		enc := compress.Encode(coding, body)
+		got, err := io.ReadAll(decode(t, coding, bytes.NewReader(enc)))
+		if err != nil || !bytes.Equal(got, body) || len(enc) >= len(body) {
+			t.Errorf("%s: %d -> %d bytes, round trip %v", coding, len(body), len(enc), err)
+		}
+	}
+}

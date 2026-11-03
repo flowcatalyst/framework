@@ -31,8 +31,12 @@
 // that stored the uncompressed body keeps it.
 //
 // Pages, streams and the static assets (text/css, text/javascript,
-// image/svg+xml) go through Handler; the SPA handler still does not compress.
-// For content compressed ahead of time there are Encode and Negotiate.
+// image/svg+xml) can go through Handler, which compresses the assets again on
+// every request; the assets' WithCompression compresses each file once. The
+// SPA handler still does not compress.
+// For content compressed ahead of time there are Encode, Negotiate and VariantTag; the
+// assets' WithCompression uses them, and an answer that already has a Content-Encoding passes
+// through Handler as it is.
 package compress
 
 import (
@@ -110,6 +114,16 @@ var streamed = map[string]bool{
 	"text/css": true, "text/javascript": true, "image/svg+xml": true,
 }
 
+// Compressible reports whether a static file of this Content-Type is compressed (contract section
+// 12): text/css, text/javascript and image/svg+xml.
+func Compressible(contentType string) bool {
+	switch mediaType(contentType) {
+	case "text/css", "text/javascript", "image/svg+xml":
+		return true
+	}
+	return false
+}
+
 func mediaType(contentType string) string {
 	t, _, _ := strings.Cut(contentType, ";")
 	return strings.ToLower(strings.TrimSpace(t))
@@ -146,16 +160,24 @@ var pools = map[string]*sync.Pool{
 	}},
 }
 
-// Encode compresses body once with coding at the best level (for content
-// compressed ahead of time, like the embedded assets).
+// Levels for content compressed once and kept (Encode, the assets' WithCompression). Measured on
+// mermaid.min.js (5.5 MB): Brotli 9 → 1.31 MB in 0.31 s, 11 → 1.18 MB in 6.7 s (too long for the
+// request that pays for it); gzip 9 → 1.58 MB in 0.13 s.
+const (
+	encodeBrotliLevel = 9
+	encodeGzipLevel   = gzip.BestCompression
+)
+
+// Encode compresses body once with coding (Brotli 9, gzip 9), for content compressed once and
+// kept, like the static assets. An unknown coding panics.
 func Encode(coding string, body []byte) []byte {
 	var buf bytes.Buffer
 	var w io.WriteCloser
 	switch coding {
 	case Brotli:
-		w = brotli.NewWriterLevel(&buf, brotli.BestCompression)
+		w = brotli.NewWriterLevel(&buf, encodeBrotliLevel)
 	case Gzip:
-		gw, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+		gw, err := gzip.NewWriterLevel(&buf, encodeGzipLevel)
 		if err != nil {
 			panic(err)
 		}
@@ -215,6 +237,11 @@ func stripVariant(values []string, sfx string) (bool, []string) {
 	}
 	return stripped, out
 }
+
+// VariantTag is the ETag of etag's representation compressed with coding: the coding's suffix
+// inside the quotes ("abc" becomes "abc-br" or "abc-gz", W/ kept). It is what Handler sends, for a
+// handler that compresses its own content (the assets' WithCompression).
+func VariantTag(etag, coding string) string { return variantTag(etag, suffix(coding)) }
 
 // variantTag adds the suffix to a quoted entity-tag, W/ prefix kept; anything else is returned as
 // it is.

@@ -10,12 +10,16 @@
 //	a, err := assets.Load(assets.WithPrefix("/ui/assets/"),
 //		assets.WithFiles(os.DirFS("static"), "fc-webauthn.js")) // an application's own file
 //
+//	a, err := assets.Load(assets.WithCompression())  // Brotli/gzip, each file compressed once
+//
 //	a.URL("kit.css")     // "/fw-ui/kit.css?v=0123456789ab" for <link>/<script>
 //	a.SpriteURL()        // "/fw-ui/lucide-sprite.svg" for <use href>
 //	mux.Handle(a.Prefix(), a.Handler())
 //	mux.Handle(assets.SpriteAliasPath, a.Handler())
 //
-// Every file is read once, by Load, which fails when one is missing.
+// Every file is read once, by Load, which fails when one is missing. With
+// [WithCompression] each compressible file is compressed once per coding, by
+// the first request that asks for it, and kept.
 package assets
 
 import (
@@ -31,6 +35,9 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
+
+	"github.com/flowcatalyst/framework/go/ui/compress"
 )
 
 // DefaultPrefix is the URL path the files are served under unless
@@ -78,6 +85,30 @@ type file struct {
 	ctype   string
 	etag    string // quoted, the first 32 hex of the sha256
 	version string // the first 12 hex
+	// coded holds the compressed bodies by coding (compress.Brotli, compress.Gzip); nil when the
+	// instance does not compress or the file's type is not compressible
+	coded map[string]*coded
+}
+
+// coded is one compressed body, made by the first request that negotiates its coding.
+type coded struct {
+	once sync.Once
+	body []byte // nil when the compressed body is not smaller than the file
+}
+
+// encoded returns the file compressed with coding, compressing it on the first call; false when
+// the file is not compressed with that coding.
+func (f file) encoded(coding string) ([]byte, bool) {
+	c := f.coded[coding]
+	if c == nil {
+		return nil, false
+	}
+	c.once.Do(func() {
+		if b := compress.Encode(coding, f.body); len(b) < len(f.body) {
+			c.body = b
+		}
+	})
+	return c.body, c.body != nil
 }
 
 // Assets is one set of served files. It is immutable after [Load] and safe for
@@ -98,8 +129,9 @@ type extra struct {
 }
 
 type config struct {
-	prefix string
-	extras []extra
+	prefix   string
+	extras   []extra
+	compress bool
 }
 
 // WithPrefix sets the URL path the files are served under. It must start and
@@ -122,6 +154,22 @@ func WithPrefix(prefix string) Option {
 func WithFiles(fsys fs.FS, names ...string) Option {
 	return func(c *config) error {
 		c.extras = append(c.extras, extra{fsys: fsys, names: names})
+		return nil
+	}
+}
+
+// WithCompression serves the text/css, text/javascript and image/svg+xml files
+// Brotli- or gzip-compressed when the request's Accept-Encoding allows it
+// (contract section 12). Each file is compressed once per coding (Brotli 9,
+// gzip 9), by the first request that asks for it, and the result is kept for
+// the life of the instance; a compressed body that is not smaller than the
+// file is not used. A compressed answer's ETag carries the coding's suffix
+// (compress.VariantTag) and every answer for those files has
+// Vary: Accept-Encoding. The handler can still be wrapped by compress.Handler:
+// an answer with a Content-Encoding passes through it as it is.
+func WithCompression() Option {
+	return func(c *config) error {
+		c.compress = true
 		return nil
 	}
 }
@@ -149,7 +197,7 @@ func Load(opts ...Option) (*Assets, error) {
 		if err != nil {
 			return nil, fmt.Errorf("assets: read %s: %w", e.Name(), err)
 		}
-		a.add(e.Name(), body)
+		a.add(e.Name(), body, c.compress)
 	}
 	for _, name := range required {
 		if _, ok := a.files[name]; !ok {
@@ -169,7 +217,7 @@ func Load(opts ...Option) (*Assets, error) {
 			if err != nil {
 				return nil, fmt.Errorf("assets: added file %s: %w", name, err)
 			}
-			a.add(name, body)
+			a.add(name, body, c.compress)
 		}
 	}
 
@@ -191,10 +239,14 @@ var required = []string{"kit.css", "datastar.js", SpriteName, "fc-code-editor.js
 
 var symbolID = regexp.MustCompile(`<symbol id="i-([a-z0-9-]+)"`)
 
-func (a *Assets) add(name string, body []byte) {
+func (a *Assets) add(name string, body []byte, compressed bool) {
 	sum := sha256.Sum256(body)
 	h := hex.EncodeToString(sum[:])
-	a.files[name] = file{body: body, ctype: contentType(path.Ext(name)), etag: `"` + h[:32] + `"`, version: h[:12]}
+	f := file{body: body, ctype: contentType(path.Ext(name)), etag: `"` + h[:32] + `"`, version: h[:12]}
+	if compressed && compress.Compressible(f.ctype) {
+		f.coded = map[string]*coded{compress.Brotli: {}, compress.Gzip: {}}
+	}
+	a.files[name] = f
 }
 
 func contentType(ext string) string {
@@ -249,6 +301,13 @@ func (a *Assets) HasIcon(name string) bool { return a.icons[name] }
 // `Cache-Control` and no body. `Cache-Control` is `public, max-age=31536000,
 // immutable` when the request has a `v` query parameter and
 // `public, max-age=3600, must-revalidate` without it.
+//
+// With [WithCompression], a compressible file is answered in the coding
+// compress.Negotiate picks, with that variant's ETag (compress.VariantTag) and
+// its Content-Length; `If-None-Match` matches the variant's tag, or the plain
+// tag (the `304` then carries the plain tag, which is the one a client that
+// stored the uncompressed body sent), and a tag of the other coding matches
+// nothing. `Vary: Accept-Encoding` is on every answer for those files.
 func (a *Assets) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -267,18 +326,31 @@ func (a *Assets) Handler() http.Handler {
 			cache = "public, max-age=31536000, immutable"
 		}
 		h := w.Header()
-		h.Set("ETag", f.etag)
+		body, etag, coding := f.body, f.etag, ""
+		if f.coded != nil {
+			compress.AddVary(h)
+			if c := compress.Negotiate(r.Header.Get("Accept-Encoding")); c != "" {
+				if b, ok := f.encoded(c); ok {
+					body, etag, coding = b, compress.VariantTag(f.etag, c), c
+				}
+			}
+		}
 		h.Set("Cache-Control", cache)
-		if matches(r.Header.Get("If-None-Match"), f.etag) {
+		if tag, ok := notModified(r.Header.Get("If-None-Match"), etag, f.etag); ok {
+			h.Set("ETag", tag)
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
+		h.Set("ETag", etag)
 		h.Set("Content-Type", f.ctype)
-		h.Set("Content-Length", fmt.Sprint(len(f.body)))
+		if coding != "" {
+			h.Set("Content-Encoding", coding)
+		}
+		h.Set("Content-Length", fmt.Sprint(len(body)))
 		if r.Method == http.MethodHead {
 			return
 		}
-		_, _ = w.Write(f.body)
+		_, _ = w.Write(body)
 	})
 }
 
@@ -292,6 +364,19 @@ func (a *Assets) nameOf(p string) (string, bool) {
 		return "", false
 	}
 	return name, true
+}
+
+// notModified returns the tag a 304 carries when an If-None-Match header names
+// the answer's representation (tag) or, for a compressed answer, the
+// uncompressed one (plain).
+func notModified(header, tag, plain string) (string, bool) {
+	if matches(header, tag) {
+		return tag, true
+	}
+	if tag != plain && matches(header, plain) {
+		return plain, true
+	}
+	return "", false
 }
 
 // matches reports whether an If-None-Match header names the etag: `*`, the

@@ -364,6 +364,14 @@ module has no jsoup or goquery). `main_test.go` checks the `serve --port` parser
 
 ## Compression and the assets
 
+Compress the static files with `assets.Load(assets.WithCompression())` (`fwui.CompressAssets()` does this): each
+CSS, JavaScript and SVG file is compressed once per coding (Brotli 9, gzip 9), by the first request that asks for it,
+and the bytes are kept for the life of the instance, so a file is not compressed again per request. Brotli's best
+level is not used because it is too slow for the request that pays for it (6.7 s for the 5.5 MB `mermaid.min.js`;
+level 9 takes 0.3 s and is 11% larger; gzip 9 takes 0.13 s). The answers carry the variant's `Content-Length`, and
+their `ETag`s and `304`s are the ones below. Wrapping the handler in `compress.Handler` as well changes nothing: an
+answer with a `Content-Encoding` passes through it.
+
 `compress.Handler` also compresses `text/css`, `text/javascript` and `image/svg+xml` (contract section 12), so it
 can wrap the assets handler. A compressed response's `ETag` gets the coding as a suffix inside the quotes (`"abc"`
 becomes `"abc-br"` or `"abc-gz"`, a weak tag keeps its `W/`), `Vary: Accept-Encoding` is on every answer it could
@@ -372,6 +380,8 @@ gets `304` (with the variant's tag), `"abc-gz"` matches nothing. The middleware 
 negotiated coding's suffix back to the handler's own tag, so the assets' own conditional logic is unchanged. A tag
 without a suffix still reaches the handler as sent and matches the uncompressed tag (the `304` then carries the
 plain tag): only a client that cached the uncompressed body sends that. A `HEAD` carries the headers of the `GET`.
+Without `WithCompression` the middleware compresses a file again on every request that negotiates a coding, so use
+the option for the assets and the middleware for the pages and streams.
 
 ## Building and checking
 
