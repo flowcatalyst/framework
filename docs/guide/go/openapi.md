@@ -99,7 +99,8 @@ that write their own JSON are refused with the path from the operation. A string
 a slice type with `UniqueItems()` is a set. Registrations (`Declared.Schema`, `Name`, `Property`) cover
 the rest, including `openapi.Union` (a discriminated union over struct variants) and `openapi.OneOf`.
 Security schemes are contributed by the module that resolves the Context (`Declared.Security`);
-`httpfw/sessionapi` contributes the session cookie and bearer scheme and the two session operations
+`httpfw/sessionapi` contributes the session cookie and bearer scheme (and `dpop`, `openapi.DPoP()`, when
+`auth.DeclareFieldWorkers()` is given at `auth.Declare`) and the two session operations
 (`getAuthSession`, `logout`) with their fixed components. Their handlers are the sessions milestone
 (G5b); `sessionapi.Unavailable` binds both to `501 NOT_IMPLEMENTED` until then.
 

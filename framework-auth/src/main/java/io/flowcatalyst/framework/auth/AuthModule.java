@@ -124,7 +124,7 @@ public final class AuthModule implements Module {
       app.provide(ContextResolver.class, lookup -> lookup.get(AuthContextResolver.class));
     }
     // GET /auth/session and POST /auth/logout are typed operations (contract section 4.5)
-    AuthApi.declare(app, b.bearer);
+    AuthApi.declare(app, b.bearer, b.field != null);
   }
 
   @Override

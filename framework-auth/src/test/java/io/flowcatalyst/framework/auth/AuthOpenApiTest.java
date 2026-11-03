@@ -6,11 +6,14 @@ import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import io.flowcatalyst.framework.conformance.Conformance;
+import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Module;
 import io.flowcatalyst.framework.http.Json;
 import io.flowcatalyst.framework.http.Method;
+import io.flowcatalyst.framework.http.NoBody;
+import io.flowcatalyst.framework.http.Operation;
 import io.flowcatalyst.framework.http.TestResponse;
 import io.flowcatalyst.framework.http.openapi.OpenApi;
 import io.flowcatalyst.framework.http.openapi.OpenApiDocument;
@@ -103,6 +106,58 @@ class AuthOpenApiTest {
         .isEqualTo(
             "{\"session\":{\"type\":\"apiKey\",\"in\":\"cookie\",\"name\":\"__Host-fw_session\"},"
                 + "\"bearer\":{\"type\":\"http\",\"scheme\":\"bearer\",\"bearerFormat\":\"JWT\"}}");
+  }
+
+  /** A module that declares one operation that requires a context. */
+  static Module ping() {
+    return new Module() {
+      @Override
+      public String id() {
+        return "ping";
+      }
+
+      @Override
+      public void register(AppBuilder app) {
+        OpenApi.declare(app, PING);
+      }
+    };
+  }
+
+  record Pong(boolean ok) {}
+
+  static final Operation<NoBody, Pong> PING = Operation.get("/api/ping", Pong.class).id("ping").requiresContext().build();
+
+  static JsonNode pingDocument(Consumer<AuthModule.Builder> customise) {
+    AuthModule.Builder b = AuthModule.builder();
+    customise.accept(b);
+    AppBuilder app = App.builder().environment(Map.of()).module(info()).module(ping()).module(b.build());
+    return switch (OpenApi.document(app.declarations())) {
+      case OpenApiDocument.Written w -> Json.mapper().readTree(w.json());
+      case OpenApiDocument.Refused r -> throw new AssertionError(String.join("\n", r.problems()));
+    };
+  }
+
+  @Test
+  void withFieldWorkersTheDpopSchemeIsContributedAndOperationsListItLast() {
+    JsonNode doc = pingDocument(b -> b.application(new ApplicationCode("orders")).fieldWorkers(FieldOptions.builder().build()));
+
+    assertThat(doc.path("components").path("securitySchemes").path("dpop").toString())
+        .isEqualTo(
+            "{\"type\":\"http\",\"scheme\":\"DPoP\",\"bearerFormat\":\"fc-field+jwt\","
+                + "\"description\":\"A FlowCatalyst field access token as `Authorization: DPoP <token>`, with a `DPoP` proof header"
+                + " (RFC 9449, ES256). The application answers `401` with a `DPoP-Nonce` header when the proof needs its nonce.\"}");
+    assertThat(doc.path("components").path("securitySchemes").propertyNames()).containsExactly("session", "bearer", "dpop");
+    assertThat(doc.path("paths").path("/api/ping").path("get").path("security").toString())
+        .isEqualTo("[{\"session\":[]},{\"bearer\":[]},{\"dpop\":[]}]");
+  }
+
+  @Test
+  void withoutFieldWorkersThereIsNoDpopScheme() {
+    JsonNode doc = pingDocument(b -> {});
+
+    assertThat(doc.path("components").path("securitySchemes").propertyNames()).containsExactly("session", "bearer");
+    assertThat(doc.path("paths").path("/api/ping").path("get").path("security").toString())
+        .isEqualTo("[{\"session\":[]},{\"bearer\":[]}]");
   }
 
   @Test

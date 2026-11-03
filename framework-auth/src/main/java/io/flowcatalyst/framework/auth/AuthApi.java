@@ -36,7 +36,7 @@ final class AuthApi {
   private AuthApi() {}
 
   /** Declares the operations, their fixed components and the security schemes this module resolves. */
-  static void declare(AppBuilder app, boolean bearer) {
+  static void declare(AppBuilder app, boolean bearer, boolean field) {
     OpenApi.declare(app, SESSION, LOGOUT);
     OpenApi.schema(app, AuthSession.class, Schema.oneOf(AuthSession.Authenticated.class, AuthSession.Anonymous.class));
     OpenApi.property(app, AuthSession.Authenticated.class, "authenticated", Schema.bool().constant(true));
@@ -49,6 +49,9 @@ final class AuthApi {
     OpenApi.securityScheme(app, "session", SecurityScheme.cookie(SESSION_COOKIE));
     if (bearer) {
       OpenApi.securityScheme(app, "bearer", SecurityScheme.bearer("JWT"));
+    }
+    if (field) {
+      OpenApi.securityScheme(app, "dpop", SecurityScheme.dpop());
     }
   }
 }

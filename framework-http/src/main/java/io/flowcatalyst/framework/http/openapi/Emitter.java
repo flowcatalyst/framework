@@ -331,6 +331,10 @@ final class Emitter {
     return m;
   }
 
+  private static final String DPOP_DESCRIPTION =
+      "A FlowCatalyst field access token as `Authorization: DPoP <token>`, with a `DPoP` proof header (RFC 9449, ES256)."
+          + " The application answers `401` with a `DPoP-Nonce` header when the proof needs its nonce.";
+
   private static Map<String, Object> scheme(SecurityScheme s) {
     Map<String, Object> m = new LinkedHashMap<>();
     switch (s) {
@@ -352,6 +356,12 @@ final class Emitter {
       case SecurityScheme.Basic b -> {
         m.put("type", "http");
         m.put("scheme", "basic");
+      }
+      case SecurityScheme.Dpop d -> {
+        m.put("type", "http");
+        m.put("scheme", "DPoP");
+        m.put("bearerFormat", "fc-field+jwt");
+        m.put("description", DPOP_DESCRIPTION);
       }
     }
     return m;

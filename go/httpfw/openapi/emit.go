@@ -23,6 +23,8 @@ var (
 
 const errorComponent = "Error"
 
+const dpopDescription = "A FlowCatalyst field access token as `Authorization: DPoP <token>`, with a `DPoP` proof header (RFC 9449, ES256). The application answers `401` with a `DPoP-Nonce` header when the proof needs its nonce."
+
 // Emit writes the OpenAPI 3.1 document, or returns every problem found (OpenAPI contract sections
 // 4 to 8). It is deterministic: the same input gives the same bytes in any declaration order.
 func Emit(in Input) (document []byte, problems []string) {
@@ -188,6 +190,8 @@ func scheme(s SecurityScheme) *node {
 		m.set("type", "http").set("scheme", "bearer").set("bearerFormat", s.Format)
 	case BasicAuth:
 		m.set("type", "http").set("scheme", "basic")
+	case DPoPToken:
+		m.set("type", "http").set("scheme", "DPoP").set("bearerFormat", "fc-field+jwt").set("description", dpopDescription)
 	}
 	return m
 }

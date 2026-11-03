@@ -172,4 +172,4 @@ client.get("/api/me").header("Authorization", "DPoP " + token).header("DPoP", pr
 - No field login, PIN, enrolment or refresh here: those are the platform and `field-js`.
 - Server-rendered field pages are not a thing: a field page is a page `field-js` calls with `fetch`, and
   no field cookie exists.
-- The OpenAPI document lists the `dpop` security scheme (openapi contract section 7, amended 2026-11-03) once the Java build lands.
+- The OpenAPI document lists the `dpop` security scheme (openapi contract section 7, amended 2026-11-03) when `fieldWorkers` is set, and context operations then list `session`, `bearer`, `dpop`; without field workers the document is unchanged.

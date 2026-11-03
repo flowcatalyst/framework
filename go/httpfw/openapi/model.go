@@ -117,6 +117,8 @@ const (
 	BearerToken
 	// BasicAuth is HTTP basic authentication.
 	BasicAuth
+	// DPoPToken is the HTTP "DPoP" scheme (RFC 9449): a field access token with a proof header.
+	DPoPToken
 )
 
 // SecurityScheme is a way callers authenticate, contributed by the module that resolves the
@@ -128,6 +130,10 @@ type SecurityScheme struct {
 	// Format is the bearer format ("JWT").
 	Format string
 }
+
+// DPoP is the HTTP "DPoP" scheme (RFC 9449) carrying a FlowCatalyst field access token
+// (OpenAPI contract section 7, amended 2026-11-03).
+func DPoP() SecurityScheme { return SecurityScheme{Kind: DPoPToken} }
 
 // Cookie is an API key in the named cookie.
 func Cookie(name string) SecurityScheme { return SecurityScheme{Kind: CookieKey, Name: name} }

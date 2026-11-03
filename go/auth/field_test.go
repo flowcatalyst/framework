@@ -63,6 +63,7 @@ func startField(t *testing.T, c config, field ...auth.FieldOption) *fieldApp {
 		c.env["AUTH_COOKIE_KEYS"] = entry
 	}
 	c.options = append([]auth.Option{auth.Application(orders), auth.FieldWorkers(field...)}, c.options...)
+	c.declare = append([]auth.DeclareOption{auth.DeclareFieldWorkers()}, c.declare...)
 	a := mustStart(t, c)
 	a.provider.FieldAudience(orders.String())
 	tt, err := a.module.Testing()
@@ -475,13 +476,13 @@ func TestFieldKeysUnreadable(t *testing.T) {
 func TestFieldStartup(t *testing.T) {
 	entry, _ := rawKey("k1", 1)
 	t.Run("needs the application", func(t *testing.T) {
-		_, err := startApp(t, config{env: map[string]string{"AUTH_COOKIE_KEYS": entry}, options: []auth.Option{auth.FieldWorkers()}})
+		_, err := startApp(t, config{env: map[string]string{"AUTH_COOKIE_KEYS": entry}, options: []auth.Option{auth.FieldWorkers()}, declare: []auth.DeclareOption{auth.DeclareFieldWorkers()}})
 		if err == nil || !strings.Contains(err.Error(), "auth.Application") {
 			t.Fatalf("%v", err)
 		}
 	})
 	t.Run("needs cookie keys", func(t *testing.T) {
-		_, err := startApp(t, config{options: []auth.Option{auth.Application(orders), auth.FieldWorkers()}})
+		_, err := startApp(t, config{options: []auth.Option{auth.Application(orders), auth.FieldWorkers()}, declare: []auth.DeclareOption{auth.DeclareFieldWorkers()}})
 		if err == nil || !strings.Contains(err.Error(), "auth.cookie-keys") {
 			t.Fatalf("%v", err)
 		}

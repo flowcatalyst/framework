@@ -52,7 +52,7 @@ func startFieldApp(t *testing.T, maxAges ...time.Duration) *fieldApp {
 	app := fw.New("orders", fw.WithEnvironment(env), fw.WithConfigDir(t.TempDir()), fw.WithClock(clock),
 		fw.WithOutput(io.Discard, io.Discard), fw.WithLogger(slog.New(slog.DiscardHandler)))
 	web := httpfw.Declare(app)
-	ad := auth.Declare(app, web)
+	ad := auth.Declare(app, web, auth.DeclareFieldWorkers())
 	fd := flowcatalyst.Declare(app)
 	f := &fieldApp{t: t, platform: p, clock: clock, provider: provider, device: authtest.NewFieldDevice(authtest.DeviceClock(clock))}
 	run, err := app.Start(t.Context(), func(ctx context.Context, b *fw.Boot) (fw.Serve, error) {

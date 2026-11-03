@@ -112,8 +112,9 @@ var (
 )
 
 // Declare adds the two operations, their fixed components and the security schemes the session
-// resolver contributes (the cookie, and a bearer token when bearer is true) to the document.
-func Declare(web *httpfw.Declared, bearer bool) {
+// resolver contributes (the cookie, a bearer token when bearer is true, and the DPoP scheme when
+// field is true) to the document.
+func Declare(web *httpfw.Declared, bearer bool, field ...bool) {
 	web.Operations(Session, Logout)
 	web.Schema(openapi.TypeOf[AuthSession](), openapi.OneOf(openapi.TypeOf[AuthSessionAuthenticated](), openapi.TypeOf[AuthSessionAnonymous]()))
 	web.Property(openapi.TypeOf[AuthSessionAuthenticated](), "authenticated", openapi.Bool().ConstBool(true))
@@ -124,6 +125,9 @@ func Declare(web *httpfw.Declared, bearer bool) {
 	web.Security("auth", "session", openapi.Cookie(SessionCookie))
 	if bearer {
 		web.Security("auth", "bearer", openapi.Bearer("JWT"))
+	}
+	if len(field) > 0 && field[0] {
+		web.Security("auth", "dpop", openapi.DPoP())
 	}
 }
 

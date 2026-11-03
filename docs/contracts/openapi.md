@@ -484,6 +484,12 @@ adds `openapi.DPoP()` (kind `DPoPToken`). Both are usable by an application that
 tokens itself. Each language has a test that pins the exact JSON above in a field-enabled
 document.
 
+*As built (2026-11-03):* Java contributes `dpop` from `AuthModule.register` when
+`Builder.fieldWorkers` was set. Go writes the document in the declare phase, before `Build` sees
+`auth.FieldWorkers`, so the application also passes `auth.DeclareFieldWorkers()` to `auth.Declare`;
+`Build` fails, naming both, when only one of the two is given. The `description` text is fixed in
+the emitter (the factories take no arguments).
+
 An operation that `requiresContext()` gets `security` listing every contributed scheme (each as its
 own alternative); a public operation gets none. An operation that requires a context when no
 scheme was contributed is a dump problem ("say how callers authenticate").

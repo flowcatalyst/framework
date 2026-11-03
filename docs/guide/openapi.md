@@ -195,8 +195,10 @@ Every operation lists `default` and, by its shape: `400` with a body or any para
 description). All of them point at one shared `Error` component, the http envelope.
 
 The module that resolves the context contributes the security schemes: `AuthModule` adds `session`
-(the `__Host-fw_session` cookie) and, when bearer tokens are accepted, `bearer`; an application with
-its own resolver calls `OpenApi.securityScheme(app, "basic", SecurityScheme.httpBasic())`. Operations
+(the `__Host-fw_session` cookie), `bearer` when bearer tokens are accepted, and `dpop` (HTTP scheme
+`DPoP`, `bearerFormat` `fc-field+jwt`) when `fieldWorkers` is set ([field workers](field-workers.md));
+an application with its own resolver calls `OpenApi.securityScheme(app, "basic", SecurityScheme.httpBasic())`
+(`SecurityScheme.dpop()` is available to one that resolves field tokens itself). Operations
 that need a context list every scheme; public ones none. A context operation with no scheme fails
 the dump.
 

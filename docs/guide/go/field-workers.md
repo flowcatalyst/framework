@@ -39,6 +39,12 @@ checks the `DPoP` scheme after `Bearer`; there is no fall back to the cookie, CS
 (as for bearer tokens), and a `401` is never turned into a redirect. Without `auth.FieldWorkers`
 the `DPoP` scheme is a plain `401`.
 
+The OpenAPI document lists the `dpop` security scheme (HTTP scheme `DPoP`, `bearerFormat`
+`fc-field+jwt`; operations then list `session`, `bearer`, `dpop`). The document is written in the
+declare phase, before `Build`, so pass `auth.DeclareFieldWorkers()` to `auth.Declare` as well as
+`auth.FieldWorkers` to `Build`; `Build` fails when only one of them is given. Without field workers
+the document is unchanged.
+
 The token must be RS256 from the platform's keys (the same key cache as `PlatformTokens`), with
 JOSE `typ` `fc-field+jwt`, `iss` the platform, `aud` your application code, `token_use` `field`,
 a `sub` starting `fwu_` and the claims `client_id`, `client_identifier`, `device_id`, `sid` and

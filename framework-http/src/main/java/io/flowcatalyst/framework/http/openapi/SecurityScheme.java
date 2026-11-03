@@ -33,6 +33,13 @@ public sealed interface SecurityScheme {
   record Basic() implements SecurityScheme {}
 
   /**
+   * The HTTP {@code DPoP} scheme (RFC 9449) carrying a FlowCatalyst field access token: {@code
+   * {"type": "http", "scheme": "DPoP", "bearerFormat": "fc-field+jwt", "description": ...}} (OpenAPI
+   * contract section 7, amended 2026-11-03).
+   */
+  record Dpop() implements SecurityScheme {}
+
+  /**
    * A session cookie.
    *
    * @param name the cookie name
@@ -69,5 +76,14 @@ public sealed interface SecurityScheme {
    */
   static SecurityScheme httpBasic() {
     return new Basic();
+  }
+
+  /**
+   * DPoP-bound field access tokens ({@code Authorization: DPoP <token>} with a {@code DPoP} proof).
+   *
+   * @return the scheme
+   */
+  static SecurityScheme dpop() {
+    return new Dpop();
   }
 }

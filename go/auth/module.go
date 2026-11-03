@@ -32,6 +32,7 @@ type Declared struct {
 	publicBaseURL config.Handle[string]
 	cookieKeys    config.Handle[config.Secret]
 	bearer        bool
+	fieldWorkers  bool
 }
 
 // DeclareOption changes what [Declare] declares.
@@ -41,6 +42,11 @@ type DeclareOption func(*Declared)
 // resolver ignores an Authorization header (contract section 3, "bearer tokens accepted").
 func NoBearerTokens() DeclareOption { return func(d *Declared) { d.bearer = false } }
 
+// DeclareFieldWorkers declares that the application accepts field workers ([FieldWorkers] at
+// Build): the OpenAPI document then lists the dpop security scheme. The document is written in the
+// declare phase, before Build, so the two must agree: Build fails when only one of them is given.
+func DeclareFieldWorkers() DeclareOption { return func(d *Declared) { d.fieldWorkers = true } }
+
 // Declare declares the module: the settings auth.issuer (the platform's base URL, which must equal
 // the discovery document's issuer and every token's iss), auth.client-id, auth.client-secret (set
 // for a CONFIDENTIAL login client; unset means PUBLIC), auth.public-base-url (this application's
@@ -48,7 +54,7 @@ func NoBearerTokens() DeclareOption { return func(d *Declared) { d.bearer = fals
 // CSRF check) and auth.cookie-keys (only for the cookie store), the claim on the "auth" component (a
 // misspelt key under it fails start-up), and, in the OpenAPI document, the two typed operations
 // getAuthSession and logout with the session (and, unless [NoBearerTokens], bearer) security
-// schemes.
+// schemes (and dpop, with [DeclareFieldWorkers]).
 func Declare(app *fw.App, web *httpfw.Declared, opts ...DeclareOption) *Declared {
 	m := app.Module(ModuleID)
 	m.ClaimComponent("auth")
@@ -66,7 +72,7 @@ func Declare(app *fw.App, web *httpfw.Declared, opts ...DeclareOption) *Declared
 	for _, o := range opts {
 		o(d)
 	}
-	sessionapi.Declare(web, d.bearer)
+	sessionapi.Declare(web, d.bearer, d.fieldWorkers)
 	return d
 }
 
@@ -260,6 +266,12 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, opts ...Option) (*Modu
 	}
 	for _, p := range o.problems {
 		bad("", p)
+	}
+	if o.field != nil && !d.fieldWorkers {
+		bad("", "FieldWorkers needs auth.DeclareFieldWorkers() at Declare: the OpenAPI document is written before Build and must list the dpop security scheme")
+	}
+	if o.field == nil && d.fieldWorkers {
+		bad("", "auth.DeclareFieldWorkers() was given at Declare, so the OpenAPI document lists the dpop security scheme, but Build was not given FieldWorkers")
 	}
 	if o.idle <= 0 || o.absolute <= 0 || o.httpTimeout <= 0 {
 		bad("", "the idle timeout, the absolute timeout and the HTTP timeout must be positive")
