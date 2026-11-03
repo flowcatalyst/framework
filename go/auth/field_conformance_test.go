@@ -76,6 +76,10 @@ func TestFieldConformance(t *testing.T) {
 				if slices.Contains([]string{"malformed", "alg", "crit", "kid", "unknown_kid", "signature"}, got) {
 					got = "invalid_token"
 				}
+				// 5.5 rule 8 names a missing exp "expired"; the vectors call it invalid_token (15.9).
+				if c.Name == "missing_exp" && got == "expired" {
+					got = "invalid_token"
+				}
 			case FieldNonceRequired:
 				got = "nonce"
 			case FieldUnavailable:

@@ -979,7 +979,8 @@ conformance run turns the application-nonce check off through a test-only option
 Go build:* the vectors' `stale_proof` case is a proof one hour old, which the 24-hour window of 15.3
 accepts, so the same test-only option also narrows the proof window to the vectors' five minutes.
 And the vectors' `expect: invalid_token` stands for any refusal of the parse, header, key and
-signature rules (15.2). Nonces are covered
+signature rules (15.2). *Added 2026-11-03:* the vectors' `missing_exp` case (a token with no `exp`) expects `invalid_token`;
+the framework refuses it as `expired` (5.5 rule 8), and the conformance run counts that as a match. Nonces are covered
 by their own tests (15.10). Go and Java both run every case.
 
 ### 15.10 Tests
