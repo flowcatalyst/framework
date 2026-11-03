@@ -462,6 +462,28 @@ callers authenticate:
 scheme names match `[A-Za-z][A-Za-z0-9_-]*`, and one name contributed twice is a dump problem.
 `components.securitySchemes` is left out when nothing was contributed.
 
+*Amended 2026-11-03 (field workers, sessions-and-login contract section 15):* when field workers are
+enabled (Go `auth.FieldWorkers(...)`, Java `AuthModule.Builder.fieldWorkers(...)`), `framework-auth`
+also contributes
+
+```json
+"dpop": {
+  "type": "http",
+  "scheme": "DPoP",
+  "bearerFormat": "fc-field+jwt",
+  "description": "A FlowCatalyst field access token as `Authorization: DPoP <token>`, with a `DPoP` proof header (RFC 9449, ES256). The application answers `401` with a `DPoP-Nonce` header when the proof needs its nonce."
+}
+```
+
+`DPoP` is the scheme name RFC 9449 registers in the IANA HTTP Authentication Scheme registry, which
+OpenAPI 3.1 refers to for `http` schemes. The member order is the one shown. Without field workers
+nothing changes, so the existing vectors in `conformance/openapi/` stay as they are. A context
+operation's `security` then lists `session`, `bearer`, `dpop`: the `dpop` entry sorts among "other
+schemes by name". Java adds `SecurityScheme.dpop()` (record `Dpop`) to the public factories; Go
+adds `openapi.DPoP()` (kind `DPoPToken`). Both are usable by an application that resolves field
+tokens itself. Each language has a test that pins the exact JSON above in a field-enabled
+document.
+
 An operation that `requiresContext()` gets `security` listing every contributed scheme (each as its
 own alternative); a public operation gets none. An operation that requires a context when no
 scheme was contributed is a dump problem ("say how callers authenticate").
