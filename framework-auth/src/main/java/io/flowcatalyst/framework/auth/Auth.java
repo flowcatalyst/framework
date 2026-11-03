@@ -44,4 +44,31 @@ public final class Auth {
             ? next.handle(request)
             : HttpErrors.forbidden("FORBIDDEN", "this needs the permission " + permission);
   }
+
+  /**
+   * Route middleware that answers {@code 403 FORBIDDEN} unless the request was authenticated one of
+   * the given ways (contract section 15.5). A route that is for field workers only passes {@link
+   * Authenticated.Source#FIELD}; one that must never be reached by a field worker passes {@code
+   * SESSION} and {@code BEARER}. Use it on a route that requires a context.
+   *
+   * <pre>{@code
+   * routes.post("/api/v1/gates/open", gates::open,
+   *     RouteOptions.requiresContext().with(Auth.requireSource(Authenticated.Source.FIELD)));
+   * }</pre>
+   *
+   * @param allowed the accepted sources; at least one
+   * @return the middleware
+   */
+  public static Middleware<Request, Response> requireSource(Authenticated.Source... allowed) {
+    if (allowed.length == 0) {
+      throw new IllegalArgumentException("at least one source must be allowed");
+    }
+    java.util.Set<Authenticated.Source> accepted = java.util.EnumSet.copyOf(java.util.List.of(allowed));
+    return (request, next) -> {
+      Optional<Authenticated> who = current(request);
+      return who.isPresent() && accepted.contains(who.get().source())
+          ? next.handle(request)
+          : HttpErrors.forbidden("FORBIDDEN", "this route does not accept this kind of sign-in");
+    };
+  }
 }

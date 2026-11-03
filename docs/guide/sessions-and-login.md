@@ -148,7 +148,10 @@ routes.post("/api/things", handler,
 - `Auth.require(permission)` answers `403 FORBIDDEN` when the context lacks it. In a use case,
   check `context.hasPermission(...)` in `authorize` (see [Context](context.md#permissions)).
 - `Auth.current(request)` returns the `Authenticated` (principal, roles, client, permissions,
-  whether it came from a session or a bearer token, and the expiries).
+  whether it came from a session, a bearer token or a field worker's token, and the expiries).
+- `Auth.requireSource(Authenticated.Source.FIELD)` (or `SESSION`, `BEARER`) answers `403 FORBIDDEN`
+  unless the request was authenticated that way: a route for field workers only, or one they must
+  never reach. Field workers are covered in [field workers](field-workers.md).
 
 ### Permissions
 

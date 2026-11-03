@@ -117,6 +117,9 @@ public final class AuthModule implements Module {
     app.provide(PlatformTokens.class, lookup -> lookup.get(Services.class).tokens());
     app.provide(Sessions.class, lookup -> lookup.get(Services.class).sessions());
     app.provide(AuthContextResolver.class, lookup -> lookup.get(Services.class).resolver());
+    if (b.field != null) {
+      app.provide(FieldTokens.class, lookup -> lookup.get(Services.class).requireField().tokens());
+    }
     if (b.provideResolver) {
       app.provide(ContextResolver.class, lookup -> lookup.get(AuthContextResolver.class));
     }
@@ -162,7 +165,56 @@ public final class AuthModule implements Module {
   }
 
   /** Everything the module builds, once. */
-  record Services(PlatformTokens tokens, Sessions sessions, AuthContextResolver resolver, AuthRoutes routes) {}
+  record Services(
+      PlatformTokens tokens,
+      Sessions sessions,
+      AuthContextResolver resolver,
+      AuthRoutes routes,
+      AuthContextResolver.@Nullable FieldAuth field) {
+
+    AuthContextResolver.FieldAuth requireField() {
+      AuthContextResolver.FieldAuth f = field;
+      if (f == null) {
+        throw new IllegalStateException("field workers are not enabled: AuthModule.builder().fieldWorkers(...)");
+      }
+      return f;
+    }
+  }
+
+  private AuthContextResolver.@Nullable FieldAuth fieldAuth(
+      Lookup lookup, Config config, InstantSource clock, URI base, PlatformTokens tokens) throws Exception {
+    FieldOptions options = b.field;
+    if (options == null) {
+      return null;
+    }
+    ApplicationCode application = b.application;
+    if (application == null) {
+      throw new IllegalStateException(
+          "field workers need the application code (a token's audience must equal it): AuthModule.builder().application(new ApplicationCode(...))");
+    }
+    Secret keys =
+        config
+            .find(COOKIE_KEYS)
+            .orElseThrow(() -> new IllegalArgumentException("field workers need auth.cookie-keys (the DPoP nonces derive from them)"));
+    FieldNonces nonces = new FieldNonces(CookieKeys.parse(keys), clock);
+    Provider<? extends FieldReplayCache> provider = options.replayCache();
+    FieldReplayCache cache;
+    if (provider == null) {
+      cache = FieldReplayCache.memory(clock);
+      LOG.warn(
+          "field workers use the in-memory proof replay cache: with more than one replica a captured DPoP proof can be replayed"
+              + " against another replica for up to 11 minutes; pass FieldOptions.builder().replayCache(...) with the Redis cache");
+    } else {
+      cache = provider.create(lookup);
+      if (cache == null) {
+        throw new IllegalStateException("the replay cache provider returned null");
+      }
+    }
+    FieldTokens fieldTokens = FieldTokens.create(tokens, application, clock);
+    String origin = CsrfGuard.origin(base);
+    FieldVerifier verifier = new FieldVerifier(fieldTokens, origin, options.proofWindow(), nonces, cache, clock);
+    return new AuthContextResolver.FieldAuth(verifier, nonces, options.permissions(), fieldTokens, origin, application);
+  }
 
   private Services services(Lookup lookup) throws Exception {
     Config config = lookup.get(Config.class);
@@ -199,14 +251,15 @@ public final class AuthModule implements Module {
     Authorities authorities = new Authorities(b.permissions, b.clients, b.application);
     SessionManager manager = new SessionManager(store, clock, b.idleTimeout, b.absoluteTimeout);
     Sessions sessions = new Sessions(manager, cookies, CsrfGuard.forSessions(base), authorities, clock);
-    AuthContextResolver resolver = new AuthContextResolver(sessions, b.bearer ? tokens : null, authorities);
+    AuthContextResolver.FieldAuth field = fieldAuth(lookup, config, clock, base, tokens);
+    AuthContextResolver resolver = new AuthContextResolver(sessions, b.bearer ? tokens : null, authorities, field);
     String postLogout = b.postLogoutPath == null ? null : origin + b.postLogoutPath;
     AuthRoutes routes =
         new AuthRoutes(rp, manager, sessions, cookies, b.returnTo, b.defaultLanding, b.loginFailure, postLogout, clock);
     if (!store.revocable()) {
       LOG.info("session store keeps nothing on the server: logout cannot revoke a copied session cookie");
     }
-    return new Services(tokens, sessions, resolver, routes);
+    return new Services(tokens, sessions, resolver, routes, field);
   }
 
   private SessionStore store(Lookup lookup, Config config, InstantSource clock) throws Exception {
@@ -260,8 +313,23 @@ public final class AuthModule implements Module {
     private boolean bearer = true;
     private Duration httpTimeout = Duration.ofSeconds(10);
     private boolean provideResolver = true;
+    private @Nullable FieldOptions field;
 
     private Builder() {}
+
+    /**
+     * Accepts field workers (contract section 15): {@code Authorization: DPoP <field access token>}
+     * with a {@code DPoP} proof, for drivers, pickers and yard staff who sign in to the platform
+     * with a PIN on an enrolled device. Off by default; without this the {@code DPoP} scheme is
+     * answered {@code 401}. Needs {@link #application} and {@code auth.cookie-keys}.
+     *
+     * @param options the options; {@link FieldOptions#defaults()} for none
+     * @return this builder
+     */
+    public Builder fieldWorkers(FieldOptions options) {
+      this.field = options;
+      return this;
+    }
 
     /**
      * The session store, built when the application starts. Without this (and without {@link
@@ -528,6 +596,7 @@ public final class AuthModule implements Module {
       copy.bearer = bearer;
       copy.httpTimeout = httpTimeout;
       copy.provideResolver = provideResolver;
+      copy.field = field;
       return new AuthModule(copy);
     }
 

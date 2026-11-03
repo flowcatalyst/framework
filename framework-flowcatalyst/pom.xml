@@ -28,6 +28,11 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-locks</artifactId>
     </dependency>
+    <!-- RequireLiveField reads who the request is authenticated as (a field worker, section 15.6). -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth</artifactId>
+    </dependency>
     <!-- The admin sections projected from the platform (M4e): event types and roles. -->
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
@@ -44,6 +49,13 @@
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-database</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- TestOidcProvider and TestFieldDevice, for the field-worker tests. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-auth</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>

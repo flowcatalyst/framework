@@ -396,6 +396,23 @@ public final class PlatformClient {
     }
   }
 
+  // ---- field tokens (sessions-and-login contract section 15.6) ----------------------------------
+
+  /**
+   * What the platform says about a field access token: {@code POST /api/field-tokens/introspect}.
+   * The pinned SDK has no method for it, so this is one plain HTTP call with the service account's
+   * token. The service account needs the permission {@code platform:iam:field-token:introspect}.
+   *
+   * @param token the field access token, exactly as the device presented it
+   * @return the answer; {@link FieldIntrospection#active()} is false for a token that is expired,
+   *     revoked, for another application or unknown
+   * @throws PlatformException when the platform refuses the service account or cannot be reached
+   * @throws IllegalStateException when the module is disabled
+   */
+  public FieldIntrospection introspectFieldToken(String token) {
+    return FieldIntrospection.parse(http().call("POST", "/api/field-tokens/introspect", java.util.Map.of(), java.util.Map.of("token", token)));
+  }
+
   // ---- users, invitations, events and dispatch jobs for the admin pages (M4e slices 1 and 4) -------
   //
   // The pinned SDK (0.0.11) has no methods for these routes (the platform's F20 added them to a later,

@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.auth;
 
+import io.flowcatalyst.framework.context.ApplicationCode;
 import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.http.ContextResolver;
 import io.flowcatalyst.framework.http.HttpException;
@@ -11,7 +12,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The real {@link ContextResolver} (contract section 7.1): a platform bearer token wins and never
- * falls back to the cookie; else the session cookie; else {@code 401 UNAUTHENTICATED}, which
+ * falls back to the cookie; with field workers enabled, so does the {@code DPoP} scheme (section
+ * 15); else the session cookie; else {@code 401 UNAUTHENTICATED}, which
  * {@link AuthModule}'s middleware turns into a {@code 302} for an HTML navigation.
  */
 public final class AuthContextResolver implements ContextResolver {
@@ -21,12 +23,22 @@ public final class AuthContextResolver implements ContextResolver {
   private final Sessions sessions;
   private final @Nullable PlatformTokens bearer;
   private final Authorities authorities;
+  private final @Nullable FieldAuth field;
 
   AuthContextResolver(Sessions sessions, @Nullable PlatformTokens bearer, Authorities authorities) {
+    this(sessions, bearer, authorities, null);
+  }
+
+  AuthContextResolver(Sessions sessions, @Nullable PlatformTokens bearer, Authorities authorities, @Nullable FieldAuth field) {
     this.sessions = sessions;
     this.bearer = bearer;
     this.authorities = authorities;
+    this.field = field;
   }
+
+  /** What the DPoP branch needs: the verifier, the nonces to issue and the field permission mapping. */
+  record FieldAuth(
+      FieldVerifier verifier, FieldNonces nonces, FieldPermissions permissions, FieldTokens tokens, String publicBase, ApplicationCode application) {}
 
   @Override
   public Context resolve(Request request) throws Exception {
@@ -38,6 +50,10 @@ public final class AuthContextResolver implements ContextResolver {
   private Authenticated authenticate(Request request) throws Exception {
     PlatformTokens tokens = bearer;
     String authorization = request.header("Authorization");
+    FieldAuth fieldAuth = field;
+    if (fieldAuth != null && authorization != null && authorization.regionMatches(true, 0, "DPoP ", 0, 5)) {
+      return authenticateField(request, authorization.substring(5).trim(), fieldAuth);
+    }
     if (tokens != null && authorization != null) {
       if (!authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
         throw unauthenticated();
@@ -60,6 +76,31 @@ public final class AuthContextResolver implements ContextResolver {
       return session.get();
     }
     throw unauthenticated();
+  }
+
+  /**
+   * Contract section 15.1: the {@code DPoP} scheme is step 1b. There is no fall-back to the cookie.
+   * Every answer carries a fresh {@code DPoP-Nonce}, so a client rarely needs the retry.
+   */
+  private Authenticated authenticateField(Request request, String token, FieldAuth fieldAuth) {
+    String nonce = fieldAuth.nonces().issue();
+    RequestState.of(request).dpopNonce(nonce);
+    FieldVerifier.Outcome outcome = fieldAuth.verifier().verify(token, request.headers("DPoP"), request.method().name(), request.path());
+    return switch (outcome) {
+      case FieldVerifier.Outcome.Verified v -> authorities.field(v.worker(), fieldAuth.permissions());
+      case FieldVerifier.Outcome.Refused r -> {
+        LOG.debug("refused a field credential: {}", r.reason());
+        throw new FieldAuthException(401, "UNAUTHENTICATED", "authentication is required", "DPoP error=\"invalid_token\"", nonce);
+      }
+      case FieldVerifier.Outcome.NonceRequired n ->
+          throw new FieldAuthException(401, "USE_DPOP_NONCE", "retry with the DPoP-Nonce from this answer", "DPoP error=\"use_dpop_nonce\"", nonce);
+      case FieldVerifier.Outcome.PinChangeRequired p ->
+          throw new FieldAuthException(403, "PIN_CHANGE_REQUIRED", "the PIN must be changed on the platform before this application can be used", null, nonce);
+      case FieldVerifier.Outcome.Unavailable u -> {
+        LOG.warn("a field credential could not be checked: {}", u.reason());
+        throw new FieldAuthException(503, "UNAVAILABLE", "tokens cannot be checked right now; try again", null, nonce);
+      }
+    };
   }
 
   private static HttpException unauthenticated() {

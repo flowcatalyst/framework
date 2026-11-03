@@ -261,6 +261,54 @@ public final class TestOidcProvider implements AutoCloseable {
   }
 
   /**
+   * A field access token (contract section 15.8) the way the platform signs it: RS256 under the
+   * published key, JOSE {@code typ} {@code fc-field+jwt}, {@code token_use} {@code field}, valid for
+   * ten minutes, bound to a device key.
+   *
+   * @param application the application it is for ({@code aud}); the one under test
+   * @param jkt the thumbprint of the device key ({@code cnf.jkt}), from {@code TestFieldDevice.jkt()}
+   * @param changes claims to set over the usual ones, or with a null value to remove
+   * @return the signed token
+   */
+  public String fieldToken(String application, String jkt, Map<String, Object> changes) {
+    Instant now = clock.instant();
+    Map<String, Object> claims = new LinkedHashMap<>();
+    claims.put("iss", issuer().toString());
+    claims.put("aud", application);
+    claims.put("sub", "fwu_0TESTWORKER");
+    claims.put("token_use", "field");
+    claims.put("client_id", "clt_0TESTCLIENT");
+    claims.put("client_identifier", "acme");
+    claims.put("worker_code", "W001");
+    claims.put("name", "Test Worker");
+    claims.put("device_id", "fwd_0TESTDEVICE");
+    claims.put("device_mode", "PERSONAL");
+    claims.put("sid", "fws_0TESTFAMILY");
+    claims.put("amr", List.of("pin"));
+    claims.put("auth_time", now.getEpochSecond());
+    claims.put("cnf", Map.of("jkt", jkt));
+    claims.put("jti", java.util.UUID.randomUUID().toString());
+    claims.put("iat", now.getEpochSecond());
+    claims.put("nbf", now.getEpochSecond());
+    claims.put("exp", now.plusSeconds(600).getEpochSecond());
+    apply(claims, changes);
+    return signField(claims);
+  }
+
+  /**
+   * Signs claims as a field access token: the published key, JOSE {@code typ} {@code fc-field+jwt}.
+   * Pass it as the signer to {@code AuthTesting.fieldRequest}.
+   *
+   * @param claims the claims
+   * @return the compact token
+   */
+  public String signField(Map<String, Object> claims) {
+    Map<String, Object> header = header();
+    header.put("typ", "fc-field+jwt");
+    return sign(header, claims, Signing.NORMAL);
+  }
+
+  /**
    * Signs any claims with the published key under its kid.
    *
    * @param claims the claims

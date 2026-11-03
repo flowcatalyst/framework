@@ -138,6 +138,14 @@ final class AuthApp implements AutoCloseable {
             request -> Response.json(201, Map.of("created", true)),
             RouteOptions.requiresContext().with(Auth.require("orders:thing:create")));
         routes.post("/api/echo", request -> Response.ok(Map.of("ok", true)), RouteOptions.requiresContext());
+        routes.get(
+            "/api/field-only",
+            request -> Response.ok(Map.of("ok", true)),
+            RouteOptions.requiresContext().with(Auth.requireSource(Authenticated.Source.FIELD)));
+        routes.get(
+            "/api/people-only",
+            request -> Response.ok(Map.of("ok", true)),
+            RouteOptions.requiresContext().with(Auth.requireSource(Authenticated.Source.SESSION, Authenticated.Source.BEARER)));
         routes.get("/public", request -> HttpErrors.unauthenticated("handler says no"));
       }
     };
