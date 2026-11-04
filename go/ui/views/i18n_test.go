@@ -70,7 +70,7 @@ func TestAMiddlewareLocaleIsKeptByTheViews(t *testing.T) {
 		t.Fatal("not af")
 	}
 	h := i18n.Middleware(i18n.Config{Supported: []string{"en", "af"}, User: func(*http.Request) string { return "en" }})(g.handler)
-	req, _ := http.NewRequest(http.MethodGet, "/orders", nil)
+	req := httptest.NewRequest(http.MethodGet, "/orders", nil)
 	req.Header.Set("Accept-Language", "af")
 	rr := newRecorder()
 	h.ServeHTTP(rr, req)

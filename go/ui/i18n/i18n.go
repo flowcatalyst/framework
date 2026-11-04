@@ -147,7 +147,11 @@ func Kit() *Bundle {
 	if _, err := KitCatalogs(); err != nil {
 		panic(err)
 	}
-	return kitBundle
+	b := kitBundle
+	if b == nil {
+		panic("i18n: the kit bundle is not loaded")
+	}
+	return b
 }
 
 // Bundle is the layered catalogs of an application: the kit's first, the

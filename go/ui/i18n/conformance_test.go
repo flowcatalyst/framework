@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
@@ -152,7 +153,7 @@ func TestConformanceResolve(t *testing.T) {
 			tn := *c.Tenant
 			cfg.Tenant = func(*http.Request) string { return tn }
 		}
-		r, _ := http.NewRequest(http.MethodGet, "/", nil)
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		if c.AcceptLanguage != nil {
 			r.Header.Set("Accept-Language", *c.AcceptLanguage)
 		}
