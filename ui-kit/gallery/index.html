@@ -862,7 +862,7 @@
 <div class="rounded-xl border border-border bg-card p-4 text-card-foreground">
 <div class="mb-3 flex flex-wrap items-center gap-2"><h3 class="text-sm font-semibold">Local time</h3><span class="inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold whitespace-nowrap border-transparent bg-info text-info-foreground [&]:text-[11px]">b · Datastar client</span></div>
 <div class="">
-Rendered in UTC, shown in your locale: <time datetime="2026-10-06T08:30:00Z" data-init="el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(document.documentElement.lang || undefined)">2026-10-06 08:30:00 UTC</time>
+Rendered in UTC, shown in your locale: <time datetime="2026-10-06T08:30:00Z" data-init="el.firstElementChild.textContent = new Date('2026-10-06T08:30:00Z').toLocaleString(document.documentElement.lang || undefined)"><span data-ignore-morph>2026-10-06 08:30:00 UTC</span></time>
 </div>
 
 </div>

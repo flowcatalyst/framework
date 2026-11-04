@@ -10,14 +10,15 @@ An amount and its ISO 4217 currency code written by the server as plain text and
 ## Structure
 
 ```html
-<data value="3132.48" data-currency="ZAR" data-init="el.textContent = new Intl.NumberFormat(document.documentElement.lang || undefined, {style: 'currency', currency: el.dataset.currency}).format(el.value)">3132.48 ZAR</data>
+<data value="3132.48" data-currency="ZAR" data-init="el.firstElementChild.textContent = new Intl.NumberFormat(document.documentElement.lang || undefined, {style: 'currency', currency: 'ZAR'}).format('3132.48')"><span data-ignore-morph>3132.48 ZAR</span></data>
 ```
 
 ## Parts
 
 | Part | Element | Classes / attributes | Role |
 |---|---|---|---|
-| Root | `<data value="{amount}" data-currency="{code}">` | - | Text content is `{amount} {code}`, shown without script |
+| Root | `<data value="{amount}" data-currency="{code}">` | `data-init` naming the same amount and code | Holds the text span; its `data-init` writes the localised amount into the span |
+| Text | `<span>` | `data-ignore-morph` | `{amount} {code}`, shown without script; then the localised amount, which a morph leaves alone |
 
 ## Options
 
@@ -42,7 +43,7 @@ As local-number.
 
 ## Behaviour
 
-As local-number.
+As local-number. The currency code is written into the expression too (`currency: '{code}'`), so a changed currency with the same amount also re-runs it.
 
 ## Notes for a template author
 

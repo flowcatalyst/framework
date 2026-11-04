@@ -10,14 +10,15 @@ A timestamp rendered by the server in UTC and rewritten in the viewer's time zon
 ## Structure
 
 ```html
-<time datetime="2026-10-06T08:30:00Z" data-init="el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(document.documentElement.lang || undefined)">2026-10-06 08:30:00 UTC</time>
+<time datetime="2026-10-06T08:30:00Z" data-init="el.firstElementChild.textContent = new Date('2026-10-06T08:30:00Z').toLocaleString(document.documentElement.lang || undefined)"><span data-ignore-morph>2026-10-06 08:30:00 UTC</span></time>
 ```
 
 ## Parts
 
 | Part | Element | Classes / attributes | Role |
 |---|---|---|---|
-| Root | `<time datetime="{iso8601}">` | - | Text content is the UTC fallback, shown without script |
+| Root | `<time datetime="{iso8601}">` | `data-init` naming the same instant | Holds the text span; its `data-init` writes the localised text into the span |
+| Text | `<span>` | `data-ignore-morph` | The UTC fallback, shown without script; then the localised text, which a morph leaves alone |
 
 ## Options
 
@@ -27,8 +28,10 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 
 | Value | Expression in `data-init` |
 |---|---|
-| date and time (default) | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(document.documentElement.lang || undefined)` |
-| date only | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString(document.documentElement.lang || undefined)` |
+| date and time (default) | `el.firstElementChild.textContent = new Date('{iso8601}').toLocaleString(document.documentElement.lang || undefined)` |
+| date only | `el.firstElementChild.textContent = new Date('{iso8601}').toLocaleDateString(document.documentElement.lang || undefined)` |
+
+`{iso8601}` is the `datetime` value, written into the expression.
 
 ## Props
 
@@ -46,7 +49,12 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 
 ## Behaviour
 
-`data-init` runs when the element is first processed **and when the element is patched into the DOM**, so rows added by a server patch are localised too. **A morph that keeps the element does not re-run it:** the patch resets the text to the UTC fallback and `data-init` (an unchanged attribute) stays idle, so the time reads in UTC until the next full load. A region that holds local times is therefore patched with mode `replace` (a list's table, a drawer's body), which inserts fresh elements; found in the Go dispatch-jobs list, where every live filter showed UTC. This replaces fc-web's 50-line `ui.js` (a MutationObserver). Datastar Pro's `@intl()` would do the same declaratively; it is not used because it is a paid action. Verified in the gallery.
+`data-init` runs when the element is first processed and when it is patched into the DOM, so rows added by a server patch are localised too. A **morph** that keeps the element (Datastar's default patch mode) is handled by the structure, so a region holding local values may be patched in any mode. The same structure is used by local-number, local-money and local-quantity:
+
+- **Same value:** the root's attributes are unchanged and both the old and the new span carry `data-ignore-morph`, so Datastar leaves the span and its localised text as they are.
+- **Changed value:** the value is written into the `data-init` expression, so the morph changes that attribute and Datastar runs it again, writing the new value into the span. Only checked values go into an expression (an RFC 3339 instant, a plain decimal, a currency code), so none needs escaping inside the quotes.
+
+The earlier structure (`el.textContent = ...` reading the value from the element's attributes, text directly inside) lost its localisation on every morph: the patch reset the text to the server fallback and the unchanged `data-init` stayed idle, so a live list read in UTC after its first filter (found in the Go dispatch-jobs list and the platform's field-worker pages, which patched in mode `replace` to avoid it). Verified in Chrome against the bundled Datastar v1.0.4: same-value morphs keep the local text, a changed value re-localises, and the earlier structure falls back. This replaces fc-web's 50-line `ui.js` (a MutationObserver). Datastar Pro's `@intl()` would do the same declaratively; it is not used because it is a paid action.
 
 ## Notes for a template author
 

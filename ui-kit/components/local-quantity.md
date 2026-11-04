@@ -10,14 +10,15 @@ A measured value and its unit symbol: the number is rewritten in the browser in 
 ## Structure
 
 ```html
-<data value="12.5" data-unit="kg" data-init="el.textContent = new Intl.NumberFormat(document.documentElement.lang || undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(el.value) + ' ' + el.dataset.unit">12.5 kg</data>
+<data value="12.5" data-unit="kg" data-init="el.firstElementChild.textContent = new Intl.NumberFormat(document.documentElement.lang || undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}).format('12.5')"><span data-ignore-morph>12.5</span> kg</data>
 ```
 
 ## Parts
 
 | Part | Element | Classes / attributes | Role |
 |---|---|---|---|
-| Root | `<data value="{value}" data-unit="{symbol}">` | - | Text content is `{value} {symbol}`, shown without script |
+| Root | `<data value="{value}" data-unit="{symbol}">` | `data-init` naming the same value | Holds the number span, then a space and the symbol as server text |
+| Number | `<span>` | `data-ignore-morph` | The plain value, shown without script; then the localised number, which a morph leaves alone |
 
 ## Options
 
@@ -41,7 +42,7 @@ As local-number.
 
 ## Behaviour
 
-As local-number.
+As local-number. Only the number is localised: the symbol is server text after the span, never in the expression, so a morph updates it like any other text and it needs no script escaping.
 
 ## Notes for a template author
 

@@ -249,7 +249,7 @@ func TestLocalNumberMoneyAndQuantityRefuseWhatIsNotAPlainValue(t *testing.T) {
 
 func TestLocalNumberKeepsThePlainValueAsText(t *testing.T) {
 	out := render(t, LocalNumber(LocalNumberProps{Value: "1234.50"}), nil)
-	if !strings.Contains(out, ">1234.50</data>") || !strings.Contains(out, `value="1234.50"`) {
+	if !strings.Contains(out, "<span data-ignore-morph>1234.50</span></data>") || !strings.Contains(out, `value="1234.50"`) {
 		t.Errorf("the plain value is not the element text:\n%s", out)
 	}
 	if !strings.Contains(out, "minimumFractionDigits: 2, maximumFractionDigits: 2") {

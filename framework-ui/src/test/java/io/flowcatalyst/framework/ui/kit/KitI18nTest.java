@@ -144,7 +144,7 @@ class KitI18nTest {
   @Test
   void localNumberKeepsThePlainValueAsText() {
     String out = Markup.render(Kit.localNumber(new Props.LocalNumber("1234.50", null)));
-    assertThat(out).contains(">1234.50</data>", "value=\"1234.50\"", "minimumFractionDigits: 2, maximumFractionDigits: 2");
+    assertThat(out).contains("<span data-ignore-morph>1234.50</span></data>", "value=\"1234.50\"", "minimumFractionDigits: 2, maximumFractionDigits: 2");
   }
 
   // ---- the sources and the catalog

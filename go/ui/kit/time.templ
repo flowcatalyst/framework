@@ -22,16 +22,25 @@ type LocalTimeProps struct {
 // locale the server resolved), else its own default.
 const localeExpr = "document.documentElement.lang || undefined"
 
-const (
-	localDateTimeExpr = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(" + localeExpr + ")"
-	localDateExpr     = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString(" + localeExpr + ")"
-)
+// The Local* components share one structure (local-time.md, Behaviour): the
+// text sits in a data-ignore-morph span, which a morph that keeps the element
+// leaves alone, and data-init names the value itself, so a morph that changes
+// the value changes the attribute and Datastar runs it again. Every value put
+// into an expression is checked first (an RFC 3339 instant, a plain decimal, a
+// currency code), so it needs no escaping inside the quotes.
+const localTextTarget = "el.firstElementChild.textContent = "
+
+// datetime is the <time datetime> value: UTC, whole seconds, RFC 3339.
+func (p LocalTimeProps) datetime() string {
+	return p.At.UTC().Truncate(time.Second).Format(time.RFC3339)
+}
 
 func (p LocalTimeProps) expr() string {
+	fn := "toLocaleString"
 	if p.DateOnly {
-		return localDateExpr
+		fn = "toLocaleDateString"
 	}
-	return localDateTimeExpr
+	return localTextTarget + "new Date('" + p.datetime() + "')." + fn + "(" + localeExpr + ")"
 }
 
 // fallback is the UTC text shown before (or without) the localisation.
@@ -48,7 +57,7 @@ templ LocalTime(p LocalTimeProps) {
 	if p.At.IsZero() {
 		{ orDefault(p.Empty, "-") }
 	} else {
-		<time datetime={ p.At.UTC().Truncate(time.Second).Format(time.RFC3339) } data-init={ p.expr() }>{ p.fallback() }</time>
+		<time datetime={ p.datetime() } data-init={ p.expr() }><span data-ignore-morph>{ p.fallback() }</span></time>
 	}
 }
 
@@ -137,9 +146,10 @@ func digitsOptions(n int) string {
 	return "minimumFractionDigits: " + d + ", maximumFractionDigits: " + d
 }
 
-// numberFormatExpr builds the data-init expression around an Intl.NumberFormat call.
-func numberFormatExpr(options string) string {
-	return "el.textContent = new Intl.NumberFormat(" + localeExpr + ", {" + options + "}).format(el.value)"
+// numberFormatExpr builds the data-init expression around an Intl.NumberFormat
+// call; value is a checked plain decimal.
+func numberFormatExpr(options, value string) string {
+	return localTextTarget + "new Intl.NumberFormat(" + localeExpr + ", {" + options + "}).format('" + value + "')"
 }
 
 // LocalNumberProps mirrors local-number.md's Props table.
@@ -155,7 +165,7 @@ templ LocalNumber(p LocalNumberProps) {
 	if p.Value == "" {
 		{ orDefault(p.Empty, "-") }
 	} else {
-		<data value={ p.Value } data-init={ numberFormatExpr(digitsOptions(fractionDigits("LocalNumber", p.Value))) }>{ p.Value }</data>
+		<data value={ p.Value } data-init={ numberFormatExpr(digitsOptions(fractionDigits("LocalNumber", p.Value)), p.Value) }><span data-ignore-morph>{ p.Value }</span></data>
 	}
 }
 
@@ -175,14 +185,14 @@ type LocalMoneyProps struct {
 var currencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
 
 func (p LocalMoneyProps) expr() string {
-	opts := "style: 'currency', currency: el.dataset.currency"
+	opts := "style: 'currency', currency: '" + p.checkedCurrency() + "'"
 	if p.Digits != nil {
 		if *p.Digits < 0 || *p.Digits > maxFractionDigits {
 			panic("kit: LocalMoney: digits must be 0 to " + strconv.Itoa(maxFractionDigits))
 		}
 		opts += ", " + digitsOptions(*p.Digits)
 	}
-	return numberFormatExpr(opts)
+	return numberFormatExpr(opts, p.checkedAmount())
 }
 
 // LocalMoney is local-money.md: an amount in a currency, written by the browser
@@ -192,7 +202,7 @@ templ LocalMoney(p LocalMoneyProps) {
 	if p.Amount == "" {
 		{ orDefault(p.Empty, "-") }
 	} else {
-		<data value={ p.checkedAmount() } data-currency={ p.checkedCurrency() } data-init={ p.expr() }>{ p.Amount + " " + p.Currency }</data>
+		<data value={ p.checkedAmount() } data-currency={ p.checkedCurrency() } data-init={ p.expr() }><span data-ignore-morph>{ p.Amount + " " + p.Currency }</span></data>
 	}
 }
 
@@ -218,19 +228,10 @@ type LocalQuantityProps struct {
 	Empty string `json:"empty"`
 }
 
+// expr localises the number only: the unit is server text after the span, so a
+// morph updates it like any other text.
 func (p LocalQuantityProps) expr() string {
-	e := numberFormatExpr(digitsOptions(fractionDigits("LocalQuantity", p.Value)))
-	if p.Unit != "" {
-		e += " + ' ' + el.dataset.unit"
-	}
-	return e
-}
-
-func (p LocalQuantityProps) text() string {
-	if p.Unit == "" {
-		return p.Value
-	}
-	return p.Value + " " + p.Unit
+	return numberFormatExpr(digitsOptions(fractionDigits("LocalQuantity", p.Value)), p.Value)
 }
 
 // LocalQuantity is local-quantity.md: a measured value and its unit symbol; the
@@ -239,8 +240,8 @@ templ LocalQuantity(p LocalQuantityProps) {
 	if p.Value == "" {
 		{ orDefault(p.Empty, "-") }
 	} else if p.Unit == "" {
-		<data value={ p.Value } data-init={ p.expr() }>{ p.text() }</data>
+		<data value={ p.Value } data-init={ p.expr() }><span data-ignore-morph>{ p.Value }</span></data>
 	} else {
-		<data value={ p.Value } data-unit={ p.Unit } data-init={ p.expr() }>{ p.text() }</data>
+		<data value={ p.Value } data-unit={ p.Unit } data-init={ p.expr() }><span data-ignore-morph>{ p.Value }</span>{ " " + p.Unit }</data>
 	}
 }

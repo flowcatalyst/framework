@@ -1,5 +1,5 @@
 {
   "props": { "value": "3", "unit": "m<sup>2</sup>" },
   "source": "components/local-quantity.md: Props, unit (not in the gallery)",
-  "notes": "the unit is text: escaped in the attribute and in the element, written into the page by textContent, never as markup"
+  "notes": "the unit is text: escaped in the attribute and in the element, and server-rendered after the localised span, never as markup"
 }

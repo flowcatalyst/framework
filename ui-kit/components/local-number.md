@@ -10,14 +10,15 @@ A decimal number written by the server as plain text and rewritten in the browse
 ## Structure
 
 ```html
-<data value="1234.5" data-init="el.textContent = new Intl.NumberFormat(document.documentElement.lang || undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(el.value)">1234.5</data>
+<data value="1234.5" data-init="el.firstElementChild.textContent = new Intl.NumberFormat(document.documentElement.lang || undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}).format('1234.5')"><span data-ignore-morph>1234.5</span></data>
 ```
 
 ## Parts
 
 | Part | Element | Classes / attributes | Role |
 |---|---|---|---|
-| Root | `<data value="{plain decimal}">` | - | Text content is the plain value, shown without script |
+| Root | `<data value="{plain decimal}">` | `data-init` naming the same value | Holds the text span; its `data-init` writes the localised number into the span |
+| Text | `<span>` | `data-ignore-morph` | The plain value, shown without script; then the localised number, which a morph leaves alone |
 
 ## Options
 
@@ -40,7 +41,7 @@ Fixtures, from the ui-kit root: `fixtures/local-number`.
 
 ## Behaviour
 
-As local-time: `data-init` runs when the element is first processed and when it is patched in; a morph that keeps the element does not re-run it, so a region that holds local numbers is patched with mode `replace`. `Intl.NumberFormat` reads the decimal text exactly (no rounding through a floating-point number).
+As local-time, Behaviour: the value is written into the `data-init` expression (`format('{plain decimal}')`) and the text is in a `data-ignore-morph` span, so a morph keeps the localised number and a changed value re-runs it; any patch mode works. `Intl.NumberFormat` reads the decimal text exactly (no rounding through a floating-point number).
 
 ## Notes for a template author
 

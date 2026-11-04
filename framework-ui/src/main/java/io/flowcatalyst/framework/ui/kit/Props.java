@@ -1274,8 +1274,15 @@ public final class Props {
     return "minimumFractionDigits: " + n + ", maximumFractionDigits: " + n;
   }
 
-  private static String numberFormatExpr(String options) {
-    return "el.textContent = new Intl.NumberFormat(" + LOCALE_EXPR + ", {" + options + "}).format(el.value)";
+  /**
+   * The Local* components' data-init target (local-time.md, Behaviour): the text is in a {@code
+   * data-ignore-morph} span, and the expression names the value itself, so a morph that changes the
+   * value re-runs it. Every value put in an expression is checked first, so it needs no escaping.
+   */
+  static final String LOCAL_TEXT_TARGET = "el.firstElementChild.textContent = ";
+
+  private static String numberFormatExpr(String options, String value) {
+    return LOCAL_TEXT_TARGET + "new Intl.NumberFormat(" + LOCALE_EXPR + ", {" + options + "}).format('" + value + "')";
   }
 
   /**
@@ -1292,7 +1299,8 @@ public final class Props {
      * @return the expression
      */
     public String expr() {
-      return numberFormatExpr(digitsOptions(fractionDigits("LocalNumber", Markup.or(value, ""))));
+      String v = Markup.or(value, "");
+      return numberFormatExpr(digitsOptions(fractionDigits("LocalNumber", v)), v);
     }
   }
 
@@ -1313,15 +1321,16 @@ public final class Props {
      * @return the expression
      */
     public String expr() {
-      fractionDigits("LocalMoney", Markup.or(amount, ""));
-      String opts = "style: 'currency', currency: el.dataset.currency";
+      String a = Markup.or(amount, "");
+      fractionDigits("LocalMoney", a);
+      String opts = "style: 'currency', currency: '" + code() + "'";
       if (digits != null) {
         if (digits < 0 || digits > MAX_FRACTION_DIGITS) {
           throw new IllegalArgumentException("kit: LocalMoney: digits must be 0 to " + MAX_FRACTION_DIGITS);
         }
         opts += ", " + digitsOptions(digits);
       }
-      return numberFormatExpr(opts);
+      return numberFormatExpr(opts, a);
     }
 
     /**
@@ -1347,23 +1356,13 @@ public final class Props {
    */
   public record LocalQuantity(@Nullable String value, @Nullable String unit, @Nullable String empty) {
     /**
-     * The {@code data-init} expression.
+     * The {@code data-init} expression: the number only; the unit is server text after the span.
      *
      * @return the expression
      */
     public String expr() {
-      String e = numberFormatExpr(digitsOptions(fractionDigits("LocalQuantity", Markup.or(value, ""))));
-      return Markup.nz(unit) == null ? e : e + " + ' ' + el.dataset.unit";
-    }
-
-    /**
-     * The server-rendered text.
-     *
-     * @return the value and the unit
-     */
-    public String text() {
       String v = Markup.or(value, "");
-      return Markup.nz(unit) == null ? v : v + " " + unit;
+      return numberFormatExpr(digitsOptions(fractionDigits("LocalQuantity", v)), v);
     }
   }
 
