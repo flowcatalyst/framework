@@ -37,11 +37,11 @@ public final class Theme {
    * One button of the theme picker.
    *
    * @param choice system, light or dark
-   * @param label the text
+   * @param labelKey the catalog key of the text
    * @param icon the icon
    * @param click the click handler
    */
-  public record Choice(String choice, String label, String icon, String click) {
+  public record Choice(String choice, String labelKey, String icon, String click) {
 
     /**
      * The initial aria-pressed value.
@@ -67,19 +67,19 @@ public final class Theme {
       List.of(
           new Choice(
               "system",
-              "System",
+              "kit.theme.system",
               "monitor",
               "$theme = 'system'; $dark = window.matchMedia('(prefers-color-scheme: dark)').matches; document.cookie = 'fc_theme=;path=/;max-age=0;samesite=lax'; document.cookie = 'fc_scheme=' + ($dark ? 'dark' : 'light') + '"
                   + COOKIE_TAIL
                   + "'"),
           new Choice(
               "light",
-              "Light",
+              "kit.theme.light",
               "sun",
               "$theme = 'light'; $dark = false; document.cookie = 'fc_theme=light" + COOKIE_TAIL + "'"),
           new Choice(
               "dark",
-              "Dark",
+              "kit.theme.dark",
               "moon",
               "$theme = 'dark'; $dark = true; document.cookie = 'fc_theme=dark" + COOKIE_TAIL + "'"));
 

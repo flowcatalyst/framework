@@ -1,0 +1,118 @@
+{
+  "kit.appshell.open_nav": "Maak navigasie oop",
+  "kit.appshell.close_nav": "Maak navigasie toe",
+  "kit.appshell.collapse": "Vou kantbalk toe",
+  "kit.appshell.main": "Hoof",
+  "kit.appshell.contains_current": "Bevat die huidige bladsy",
+  "kit.appshell.account_menu": "Rekeningkieslys",
+  "kit.appshell.profile": "Profiel",
+  "kit.appshell.reset_password": "Herstel wagwoord",
+  "kit.appshell.sign_out": "Teken uit",
+  "kit.appshell.version": "Weergawe",
+
+  "kit.theme.label": "Tema",
+  "kit.theme.system": "Stelsel",
+  "kit.theme.light": "Lig",
+  "kit.theme.dark": "Donker",
+
+  "kit.dialog.close": "Maak toe",
+  "kit.dialog.cancel": "Kanselleer",
+  "kit.dialog.confirm": "Bevestig",
+
+  "kit.form_dialog.discard_title": "Gooi veranderinge weg",
+  "kit.form_dialog.discard_message": "Jy het onbewaarde veranderinge. Gooi dit weg?",
+  "kit.form_dialog.keep_editing": "Gaan voort met wysig",
+  "kit.form_dialog.discard": "Gooi weg",
+
+  "kit.dirty_form.save": "Stoor",
+  "kit.dirty_form.discard": "Gooi weg",
+
+  "kit.flash.dismiss": "Maak kennisgewing toe",
+  "kit.flash_fallback.refused.summary": "Die versoek is geweier.",
+  "kit.flash_fallback.refused.detail": "Laai die bladsy weer en probeer weer.",
+  "kit.flash_fallback.failed.summary": "Iets het verkeerd gegaan.",
+  "kit.flash_fallback.failed.detail": "Die versoek het misluk. Probeer weer, of laai die bladsy weer.",
+  "kit.flash_fallback.offline.summary": "Die bediener kon nie bereik word nie.",
+  "kit.flash_fallback.offline.detail": "Gaan jou verbinding na en probeer weer. 'n Verandering wat jy pas gemaak het, is dalk nie gestoor nie.",
+
+  "kit.spinner.loading": "Laai tans",
+  "kit.breadcrumb.label": "kruimelpad",
+  "kit.empty_state.clear_filters": "Maak filters skoon",
+  "kit.diagram.source": "Diagrambron",
+  "kit.diagram.source_label": "{label} bron",
+
+  "kit.toolbar.result_size": "Aantal resultate",
+  "kit.toolbar.refresh": "Verfris",
+  "kit.toolbar.clear_all": "Maak alles skoon",
+  "kit.toolbar.filters": "Filters",
+
+  "kit.pagination.label": "paginering",
+  "kit.pagination.previous": "Vorige",
+  "kit.pagination.next": "Volgende",
+  "kit.pagination.more_pages": "Meer bladsye",
+
+  "kit.cursor_pager.label": "Paginering",
+  "kit.cursor_pager.newest": "Nuutste",
+  "kit.cursor_pager.older": "Ouer",
+
+  "kit.paginator.label": "Paginering",
+  "kit.paginator.first": "Eerste",
+  "kit.paginator.previous": "Vorige",
+  "kit.paginator.next": "Volgende",
+  "kit.paginator.last": "Laaste",
+  "kit.paginator.rows_per_page": "Rye per bladsy",
+  "kit.paginator.showing": "Wys {from} tot {to} van {total} {noun}",
+
+  "kit.row_actions.more": "Meer aksies",
+  "kit.row_actions.more_for": "Meer aksies vir {row}",
+
+  "kit.multiselect.search": "Soek",
+  "kit.multiselect.search_for": "Soek {label}",
+  "kit.multiselect.remove": "Verwyder {label}",
+  "kit.multiselect.selected": "{count} gekies",
+  "kit.multiselect.no_options": "Geen opsies nie",
+
+  "kit.search_select.search": "Soek",
+  "kit.search_select.search_for": "Soek {label}",
+  "kit.search_select.no_options": "Geen opsies nie",
+
+  "kit.picklist.select_shown": "Kies almal wat gewys word",
+  "kit.picklist.clear": "Maak skoon",
+  "kit.picklist.selected": "Gekies",
+  "kit.picklist.locked": "Kan nie verander word nie",
+  "kit.picklist.locked_named": "{name} kan nie verander word nie",
+  "kit.picklist.remove": "Verwyder",
+  "kit.picklist.remove_named": "Verwyder {name}",
+
+  "kit.password.show": "Wys wagwoord",
+  "kit.password.hide": "Versteek wagwoord",
+  "kit.password.weak": "Swak",
+  "kit.password.fair": "Redelik",
+  "kit.password.good": "Goed",
+  "kit.password.strong": "Sterk",
+  "kit.password.help": "Die aanwyser is slegs 'n riglyn; die wagwoordbeleid word nagegaan wanneer jy stoor.",
+
+  "kit.secretref.placeholder": "my-geheim-naam",
+  "kit.secretref.title": "Kleinletters, syfers en enkele koppeltekens, met 'n opsionele winkel:-voorvoegsel",
+  "kit.secretref.help": "Die naam van 'n geheim in die geheimwinkel, soos {example} of {vaultExample}. Dit is 'n verwysing, nie die geheime waarde self nie: moet nooit die waarde hier tik of plak nie.",
+
+  "kit.permission_denied.expired_title": "Sessie verval",
+  "kit.permission_denied.denied_title": "Toestemming geweier",
+  "kit.permission_denied.required": "Vereiste toestemming: {permission}",
+  "kit.permission_denied.contact_admin": "Kontak jou administrateur as jy glo jy behoort toegang tot hierdie hulpbron te hê.",
+  "kit.permission_denied.log_in_again": "Teken weer in",
+  "kit.permission_denied.go_back": "Gaan terug",
+  "kit.permission_denied.go_dashboard": "Gaan na die paneelbord",
+
+  "kit.date_range.from": "Van",
+  "kit.date_range.to": "Tot",
+
+  "validation.NOT_NULL": "is verpligtend",
+  "validation.NOT_BLANK": "mag nie leeg wees nie",
+  "validation.TOO_SHORT": "moet ten minste {min} karakters lank wees",
+  "validation.TOO_LONG": "mag hoogstens {max} karakters lank wees",
+  "validation.PATTERN": "het 'n ongeldige formaat",
+  "validation.OUT_OF_RANGE": "moet tussen {min} en {max} wees",
+  "validation.SIZE": "moet tussen {min} en {max} items hê",
+  "validation.NOT_ONE_OF": "moet een van die volgende wees: {allowed}"
+}

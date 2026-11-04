@@ -1,6 +1,11 @@
 package kit
 
-import "strings"
+import (
+	"context"
+	"strings"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
 
 // PermissionDeniedKind is which of the two cases the dialog shows.
 type PermissionDeniedKind string
@@ -57,11 +62,11 @@ func required(rule, value string) string {
 	return value
 }
 
-func (p PermissionDeniedDialogProps) title() string {
+func (p PermissionDeniedDialogProps) title(ctx context.Context) string {
 	if p.expired() {
-		return "Session Expired"
+		return i18n.T(ctx, "kit.permission_denied.expired_title")
 	}
-	return "Permission Denied"
+	return i18n.T(ctx, "kit.permission_denied.denied_title")
 }
 
 func (p PermissionDeniedDialogProps) dialogAttrs() templ.Attributes {
@@ -83,7 +88,7 @@ func (p PermissionDeniedDialogProps) dialogAttrs() templ.Attributes {
 // shows on a 403 or an expired session.
 templ PermissionDeniedDialog(p PermissionDeniedDialogProps) {
 	<dialog id={ ID(p.ID) } class="fc-dialog w-[26rem] max-w-[calc(100vw-2rem)]" role="alertdialog" aria-labelledby={ p.ID + "-title" } aria-describedby={ p.ID + "-desc" } { Attrs(p.dialogAttrs())... }>
-		<div class="fc-dialog-header"><span id={ p.ID + "-title" }>{ p.title() }</span></div>
+		<div class="fc-dialog-header"><span id={ p.ID + "-title" }>{ p.title(ctx) }</span></div>
 		<div class="fc-dialog-body flex flex-col items-center gap-3 text-center">
 			if p.expired() {
 				<span class="flex size-16 items-center justify-center rounded-full bg-yellow-500/15 text-yellow-600">
@@ -96,18 +101,20 @@ templ PermissionDeniedDialog(p PermissionDeniedDialogProps) {
 			}
 			<p id={ p.ID + "-desc" } class="text-[15px] leading-normal">{ p.Message }</p>
 			if !p.expired() && p.RequiredPermission != "" {
-				<p class="text-[13px] text-muted-foreground">Required permission: <code class="rounded bg-foreground/10 px-1.5 py-0.5 text-xs">{ p.RequiredPermission }</code></p>
+				<p class="text-[13px] text-muted-foreground">
+					@permissionRequired(ctx, p.RequiredPermission)
+				</p>
 			}
 			if !p.expired() {
-				<p class="text-[13px] text-muted-foreground">Contact your administrator if you believe you should have access to this resource.</p>
+				<p class="text-[13px] text-muted-foreground">{ i18n.T(ctx, "kit.permission_denied.contact_admin") }</p>
 			}
 		</div>
 		<div class="fc-dialog-footer">
 			if p.expired() {
-				<a class="fc-btn fc-btn-primary" autofocus href={ SafeURL(required("PermissionDeniedDialogProps.LoginURL (loginUrl) is required when kind is session", p.LoginURL)) }>Log In Again</a>
+				<a class="fc-btn fc-btn-primary" autofocus href={ SafeURL(required("PermissionDeniedDialogProps.LoginURL (loginUrl) is required when kind is session", p.LoginURL)) }>{ i18n.T(ctx, "kit.permission_denied.log_in_again") }</a>
 			} else {
-				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="history.back()">Go Back</button>
-				<a class="fc-btn fc-btn-primary" href={ SafeURL(required("PermissionDeniedDialogProps.HomeURL (homeUrl) is required when kind is denied", p.HomeURL)) }>Go to Dashboard</a>
+				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="history.back()">{ i18n.T(ctx, "kit.permission_denied.go_back") }</button>
+				<a class="fc-btn fc-btn-primary" href={ SafeURL(required("PermissionDeniedDialogProps.HomeURL (homeUrl) is required when kind is denied", p.HomeURL)) }>{ i18n.T(ctx, "kit.permission_denied.go_dashboard") }</a>
 			}
 		</div>
 	</dialog>

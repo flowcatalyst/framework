@@ -24,3 +24,7 @@ framework-ui/src/main/resources/fw-ui/LICENSE-lucide.txt ui/assets/files/LICENSE
 framework-ui/src/main/resources/fw-ui/LICENSE-mermaid.md ui/assets/files/LICENSE-mermaid.md
 framework-ui/src/main/resources/fw-ui/LICENSE-codemirror.md ui/assets/files/LICENSE-codemirror.md
 framework-ui/src/main/resources/fw-ui/KIT-THIRD-PARTY-NOTICES.md ui/assets/files/KIT-THIRD-PARTY-NOTICES.md
+ui-kit/messages/en.json ui/i18n/messages/en.json
+ui-kit/messages/af.json ui/i18n/messages/af.json
+conformance/measure/iso4217.json money/iso4217.json
+conformance/measure/units.json units/units.json

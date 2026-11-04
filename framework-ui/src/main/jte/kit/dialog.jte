@@ -10,7 +10,7 @@
 <h2 id="${p.id() + "-title"}" class="text-lg leading-none font-semibold">${p.title()}</h2>
 @if(nz(p.description()) != null)<p id="${p.id() + "-desc"}" class="text-sm text-muted-foreground">${p.description()}</p>@endif
 </div>
-@if(p.closable())<button type="button" class="${cx(Classes.button("ghost", "icon"), "absolute top-3 right-3 [&]:size-8 [&]:rounded-full text-muted-foreground")}" aria-label="Close" data-on:click="${CLOSE_DIALOG}">@template.kit.icon(name = "x", cls = "size-[1.1rem]")</button>@endif
+@if(p.closable())<button type="button" class="${cx(Classes.button("ghost", "icon"), "absolute top-3 right-3 [&]:size-8 [&]:rounded-full text-muted-foreground")}" aria-label="${Kit.t("kit.dialog.close")}" data-on:click="${CLOSE_DIALOG}">@template.kit.icon(name = "x", cls = "size-[1.1rem]")</button>@endif
 @if(body != null)${body}@endif
 @if(footer != null)<div class="flex flex-wrap items-center justify-end gap-2">${footer}</div>@endif
 </div>

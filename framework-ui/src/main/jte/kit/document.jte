@@ -3,7 +3,7 @@
 @param Props.Document p
 @param gg.jte.Content body
 <!DOCTYPE html>
-<html lang="en"$unsafe{attrs(p.htmlAttrs())}>
+<html lang="${or(p.lang(), Kit.locale())}"$unsafe{attrs(p.htmlAttrs())}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

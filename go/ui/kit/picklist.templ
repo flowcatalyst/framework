@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
 )
 
 // PickItem is one entry of a PickList.
@@ -285,8 +287,8 @@ templ pickPanes(p PickListProps) {
 			<input class={ inputClasses } type="search" placeholder={ p.FilterPlaceholder } aria-label={ p.FilterPlaceholder } { templ.Attributes{"data-bind:" + SignalAttr(p.FilterSignal): true}... }/>
 			if p.Bulk {
 				<div class="flex gap-2">
-					<button type="button" class={ ButtonClasses(ButtonOutline, ButtonSm) } data-on:click={ p.selectShownExpr() }>Select shown</button>
-					<button type="button" class={ ButtonClasses(ButtonGhost, ButtonSm) } data-on:click={ p.clearExpr() }>Clear</button>
+					<button type="button" class={ ButtonClasses(ButtonOutline, ButtonSm) } data-on:click={ p.selectShownExpr() }>{ i18n.T(ctx, "kit.picklist.select_shown") }</button>
+					<button type="button" class={ ButtonClasses(ButtonGhost, ButtonSm) } data-on:click={ p.clearExpr() }>{ i18n.T(ctx, "kit.picklist.clear") }</button>
 				</div>
 			}
 		</div>
@@ -317,7 +319,7 @@ templ pickPanes(p PickListProps) {
 		</div>
 	</div>
 	<div class={ pickPane }>
-		<div class="border-b border-border bg-subtle p-3"><h4 class={ pickHeading }>{ orDefault(p.SelectedTitle, "Selected") } (<span data-text={ p.count() }>{ strconv.Itoa(p.picked()) }</span>)</h4></div>
+		<div class="border-b border-border bg-subtle p-3"><h4 class={ pickHeading }>{ orDefault(p.SelectedTitle, i18n.T(ctx, "kit.picklist.selected")) } (<span data-text={ p.count() }>{ strconv.Itoa(p.picked()) }</span>)</h4></div>
 		<div class="h-[200px] overflow-y-auto p-1">
 			for i, it := range p.Items {
 				if p.startsGroup(i) && p.groupHasLocked(i) {
@@ -335,7 +337,7 @@ templ pickPanes(p PickListProps) {
 				if it.Locked {
 					<div class={ pickRowRight }>
 						@pickText(it)
-						<span class="inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground" role="img" title="Cannot be changed" aria-label={ it.Name + " cannot be changed" }>
+						<span class="inline-flex size-7 shrink-0 items-center justify-center text-muted-foreground" role="img" title={ i18n.T(ctx, "kit.picklist.locked") } aria-label={ i18n.T(ctx, "kit.picklist.locked_named", i18n.Args{"name": it.Name}) }>
 							@Icon(IconProps{Name: "lock", Class: "size-[0.9rem]"})
 						</span>
 					</div>
@@ -349,7 +351,7 @@ templ pickPanes(p PickListProps) {
 						class={ pickRowRight }
 					>
 						@pickText(it)
-						<label for={ p.itemID(it) } title="Remove" aria-label={ "Remove " + it.Name } class={ cx(ButtonClasses(ButtonGhost, ButtonIcon), pickRemoveExt) }>
+						<label for={ p.itemID(it) } title={ i18n.T(ctx, "kit.picklist.remove") } aria-label={ i18n.T(ctx, "kit.picklist.remove_named", i18n.Args{"name": it.Name}) } class={ cx(ButtonClasses(ButtonGhost, ButtonIcon), pickRemoveExt) }>
 							@Icon(IconProps{Name: "x", Class: "size-[0.9rem]"})
 						</label>
 					</div>

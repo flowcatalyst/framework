@@ -1,0 +1,1016 @@
+{
+  "description" : "docs/contracts/i18n.md sections 2 to 4. 'layers' are two layers of catalogs (language tag to the catalog file's JSON), the base first; 'lookup' cases give the bundle's text for (locale, key, args); 'format' cases are the placeholder rules alone; 'placeholders' the names a text contains; 'plurals' the CLDR category of a count (plain decimal text) for a language; 'resolve' the locale chosen for a supported list, a user preference, a tenant default and an Accept-Language header; 'validation' the text of a field error.",
+  "howToRun" : "Parse each layer's catalogs (messages are strings or plural objects with 'other'), build a bundle of the layers (later layers win within one tag; per key the tag, then its language, then en). For each case compute the 'expect' and compare it exactly. Args are JSON strings or numbers; a number is the text it was written with. A key no catalog has renders as the key. Locale tags are normalised (af-za is af-ZA).",
+  "layers" : [ {
+    "en" : {
+      "t.hello" : "Hello",
+      "t.greet" : "Hello {name}",
+      "t.braces" : "Use {{name}} for {name}",
+      "t.rows" : {
+        "one" : "{count} row",
+        "other" : "{count} rows"
+      },
+      "t.items" : {
+        "zero" : "No items",
+        "one" : "{count} item",
+        "other" : "{count} items"
+      },
+      "t.only_en" : "Only English",
+      "t.two" : "{a} then {b}",
+      "t.override" : "Kit text",
+      "validation.TOO_SHORT" : "must be at least {min} characters",
+      "validation.NOT_NULL" : "is required"
+    },
+    "af" : {
+      "t.hello" : "Hallo",
+      "t.greet" : "Hallo {name}",
+      "t.rows" : {
+        "one" : "{count} ry",
+        "other" : "{count} rye"
+      },
+      "t.override" : "Kit-teks",
+      "validation.TOO_SHORT" : "moet ten minste {min} karakters wees"
+    },
+    "af-ZA" : {
+      "t.hello" : "Hallo (ZA)"
+    },
+    "zu" : {
+      "t.hello" : "Sawubona",
+      "t.rows" : {
+        "one" : "{count} umugqa",
+        "other" : "{count} imigqa"
+      }
+    }
+  }, {
+    "en" : {
+      "t.override" : "App text",
+      "app.title" : "My app"
+    },
+    "af" : {
+      "t.override" : "Toepassing-teks",
+      "t.greet" : "Goeie dag {name}"
+    }
+  } ],
+  "lookup" : [ {
+    "locale" : "en",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hello"
+  }, {
+    "locale" : "af",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hallo"
+  }, {
+    "locale" : "af-ZA",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hallo (ZA)"
+  }, {
+    "locale" : "af-za",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hallo (ZA)"
+  }, {
+    "locale" : "af-NA",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hallo"
+  }, {
+    "locale" : "zu",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Sawubona"
+  }, {
+    "locale" : "xx",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hello"
+  }, {
+    "locale" : "",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hello"
+  }, {
+    "locale" : "not a tag",
+    "key" : "t.hello",
+    "args" : { },
+    "expect" : "Hello"
+  }, {
+    "locale" : "fr-CA",
+    "key" : "t.greet",
+    "args" : {
+      "name" : "Anna"
+    },
+    "expect" : "Hello Anna"
+  }, {
+    "locale" : "af",
+    "key" : "t.greet",
+    "args" : {
+      "name" : "Anna"
+    },
+    "expect" : "Goeie dag Anna"
+  }, {
+    "locale" : "af",
+    "key" : "t.greet",
+    "args" : { },
+    "expect" : "Goeie dag {name}"
+  }, {
+    "locale" : "af",
+    "key" : "t.only_en",
+    "args" : { },
+    "expect" : "Only English"
+  }, {
+    "locale" : "af-ZA",
+    "key" : "t.only_en",
+    "args" : { },
+    "expect" : "Only English"
+  }, {
+    "locale" : "af",
+    "key" : "t.missing",
+    "args" : { },
+    "expect" : "t.missing"
+  }, {
+    "locale" : "en",
+    "key" : "t.override",
+    "args" : { },
+    "expect" : "App text"
+  }, {
+    "locale" : "af",
+    "key" : "t.override",
+    "args" : { },
+    "expect" : "Toepassing-teks"
+  }, {
+    "locale" : "zu",
+    "key" : "t.override",
+    "args" : { },
+    "expect" : "App text"
+  }, {
+    "locale" : "en",
+    "key" : "app.title",
+    "args" : { },
+    "expect" : "My app"
+  }, {
+    "locale" : "af",
+    "key" : "app.title",
+    "args" : { },
+    "expect" : "My app"
+  }, {
+    "locale" : "en",
+    "key" : "t.braces",
+    "args" : {
+      "name" : "X"
+    },
+    "expect" : "Use {name} for X"
+  }, {
+    "locale" : "en",
+    "key" : "t.braces",
+    "args" : { },
+    "expect" : "Use {name} for {name}"
+  }, {
+    "locale" : "en",
+    "key" : "t.two",
+    "args" : {
+      "b" : 2,
+      "a" : "one"
+    },
+    "expect" : "one then 2"
+  }, {
+    "locale" : "en",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 1
+    },
+    "expect" : "1 row"
+  }, {
+    "locale" : "en",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 2
+    },
+    "expect" : "2 rows"
+  }, {
+    "locale" : "en",
+    "key" : "t.rows",
+    "args" : {
+      "count" : "1.0"
+    },
+    "expect" : "1.0 rows"
+  }, {
+    "locale" : "en",
+    "key" : "t.rows",
+    "args" : { },
+    "expect" : "{count} rows"
+  }, {
+    "locale" : "af",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 1
+    },
+    "expect" : "1 ry"
+  }, {
+    "locale" : "af",
+    "key" : "t.rows",
+    "args" : {
+      "count" : "1.0"
+    },
+    "expect" : "1.0 ry"
+  }, {
+    "locale" : "af",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 0
+    },
+    "expect" : "0 rye"
+  }, {
+    "locale" : "af-ZA",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 1
+    },
+    "expect" : "1 ry"
+  }, {
+    "locale" : "zu",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 0
+    },
+    "expect" : "0 umugqa"
+  }, {
+    "locale" : "zu",
+    "key" : "t.rows",
+    "args" : {
+      "count" : "0.5"
+    },
+    "expect" : "0.5 umugqa"
+  }, {
+    "locale" : "zu",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 1
+    },
+    "expect" : "1 umugqa"
+  }, {
+    "locale" : "zu",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 2
+    },
+    "expect" : "2 imigqa"
+  }, {
+    "locale" : "en",
+    "key" : "t.items",
+    "args" : {
+      "count" : 0
+    },
+    "expect" : "0 items"
+  }, {
+    "locale" : "en",
+    "key" : "t.items",
+    "args" : {
+      "count" : 1
+    },
+    "expect" : "1 item"
+  }, {
+    "locale" : "en",
+    "key" : "t.items",
+    "args" : {
+      "count" : 5
+    },
+    "expect" : "5 items"
+  }, {
+    "locale" : "xx",
+    "key" : "t.rows",
+    "args" : {
+      "count" : 1
+    },
+    "expect" : "1 row"
+  } ],
+  "format" : [ {
+    "text" : "plain",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "plain"
+  }, {
+    "text" : "{name}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "Anna"
+  }, {
+    "text" : "Hello {name}!",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "Hello Anna!"
+  }, {
+    "text" : "{name}{name}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "AnnaAnna"
+  }, {
+    "text" : "{{name}}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{name}"
+  }, {
+    "text" : "{{",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{"
+  }, {
+    "text" : "}}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "}"
+  }, {
+    "text" : "{{{name}}}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{Anna}"
+  }, {
+    "text" : "a { b",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "a { b"
+  }, {
+    "text" : "a } b",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "a } b"
+  }, {
+    "text" : "{}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{}"
+  }, {
+    "text" : "{ name }",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{ name }"
+  }, {
+    "text" : "{1a}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{1a}"
+  }, {
+    "text" : "{a1}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "0"
+  }, {
+    "text" : "{a-b}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{a-b}"
+  }, {
+    "text" : "{unclosed",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{unclosed"
+  }, {
+    "text" : "{name",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "{name"
+  }, {
+    "text" : "{count} of {total}",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "3 of 10"
+  }, {
+    "text" : "é{name}é",
+    "args" : {
+      "name" : "Anna",
+      "count" : 3,
+      "total" : "10",
+      "a1" : 0
+    },
+    "expect" : "éAnnaé"
+  } ],
+  "placeholders" : [ {
+    "text" : "plain",
+    "expect" : [ ]
+  }, {
+    "text" : "{name}",
+    "expect" : [ "name" ]
+  }, {
+    "text" : "Hello {name}!",
+    "expect" : [ "name" ]
+  }, {
+    "text" : "{name}{name}",
+    "expect" : [ "name" ]
+  }, {
+    "text" : "{{name}}",
+    "expect" : [ ]
+  }, {
+    "text" : "{{",
+    "expect" : [ ]
+  }, {
+    "text" : "}}",
+    "expect" : [ ]
+  }, {
+    "text" : "{{{name}}}",
+    "expect" : [ "name" ]
+  }, {
+    "text" : "a { b",
+    "expect" : [ ]
+  }, {
+    "text" : "a } b",
+    "expect" : [ ]
+  }, {
+    "text" : "{}",
+    "expect" : [ ]
+  }, {
+    "text" : "{ name }",
+    "expect" : [ ]
+  }, {
+    "text" : "{1a}",
+    "expect" : [ ]
+  }, {
+    "text" : "{a1}",
+    "expect" : [ "a1" ]
+  }, {
+    "text" : "{a-b}",
+    "expect" : [ ]
+  }, {
+    "text" : "{unclosed",
+    "expect" : [ ]
+  }, {
+    "text" : "{name",
+    "expect" : [ ]
+  }, {
+    "text" : "{count} of {total}",
+    "expect" : [ "count", "total" ]
+  }, {
+    "text" : "é{name}é",
+    "expect" : [ "name" ]
+  } ],
+  "plurals" : [ {
+    "lang" : "en",
+    "count" : "0",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "1",
+    "expect" : "one"
+  }, {
+    "lang" : "en",
+    "count" : "2",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "5",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "1.0",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "1.5",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "0.5",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "0.0",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "00",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "01",
+    "expect" : "one"
+  }, {
+    "lang" : "en",
+    "count" : "1.00",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "2.0",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "-1",
+    "expect" : "one"
+  }, {
+    "lang" : "en",
+    "count" : "+1",
+    "expect" : "one"
+  }, {
+    "lang" : "en",
+    "count" : "1000000",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "abc",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : "1e3",
+    "expect" : "other"
+  }, {
+    "lang" : "en",
+    "count" : " 1 ",
+    "expect" : "one"
+  }, {
+    "lang" : "af",
+    "count" : "0",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "1",
+    "expect" : "one"
+  }, {
+    "lang" : "af",
+    "count" : "2",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "5",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "1.0",
+    "expect" : "one"
+  }, {
+    "lang" : "af",
+    "count" : "1.5",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "0.5",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "0.0",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "00",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "01",
+    "expect" : "one"
+  }, {
+    "lang" : "af",
+    "count" : "1.00",
+    "expect" : "one"
+  }, {
+    "lang" : "af",
+    "count" : "2.0",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "-1",
+    "expect" : "one"
+  }, {
+    "lang" : "af",
+    "count" : "+1",
+    "expect" : "one"
+  }, {
+    "lang" : "af",
+    "count" : "1000000",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "abc",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : "1e3",
+    "expect" : "other"
+  }, {
+    "lang" : "af",
+    "count" : " 1 ",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "0",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "1",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "2",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : "5",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : "1.0",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "1.5",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : "0.5",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "0.0",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "00",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "01",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "1.00",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "2.0",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : "-1",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "+1",
+    "expect" : "one"
+  }, {
+    "lang" : "zu",
+    "count" : "1000000",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : "abc",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : "",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : "1e3",
+    "expect" : "other"
+  }, {
+    "lang" : "zu",
+    "count" : " 1 ",
+    "expect" : "one"
+  }, {
+    "lang" : "xx",
+    "count" : "0",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "1",
+    "expect" : "one"
+  }, {
+    "lang" : "xx",
+    "count" : "2",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "5",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "1.0",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "1.5",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "0.5",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "0.0",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "00",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "01",
+    "expect" : "one"
+  }, {
+    "lang" : "xx",
+    "count" : "1.00",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "2.0",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "-1",
+    "expect" : "one"
+  }, {
+    "lang" : "xx",
+    "count" : "+1",
+    "expect" : "one"
+  }, {
+    "lang" : "xx",
+    "count" : "1000000",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "abc",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : "1e3",
+    "expect" : "other"
+  }, {
+    "lang" : "xx",
+    "count" : " 1 ",
+    "expect" : "one"
+  } ],
+  "resolve" : [ {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : null,
+    "expect" : "en"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : "af",
+    "tenant" : null,
+    "acceptLanguage" : null,
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : "af-ZA",
+    "tenant" : null,
+    "acceptLanguage" : null,
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : "AF-za",
+    "tenant" : null,
+    "acceptLanguage" : null,
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : "fr",
+    "tenant" : "af",
+    "acceptLanguage" : "en",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : "",
+    "tenant" : "af",
+    "acceptLanguage" : "en",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : "xx",
+    "acceptLanguage" : "af",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af-ZA,af;q=0.9,en;q=0.8",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "fr-CA, af;q=0.5, en;q=0.4",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "en;q=0.4, af;q=0.8",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af;q=0, en;q=0.5",
+    "expect" : "en"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af;q=0",
+    "expect" : "en"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "*",
+    "expect" : "en"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "zu, af;q=0.1",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af;q=abc, en",
+    "expect" : "en"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af;q=2, en",
+    "expect" : "en"
+  }, {
+    "supported" : [ "en", "af", "zu" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "zu-ZA",
+    "expect" : "zu"
+  }, {
+    "supported" : [ "en", "af-ZA" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af",
+    "expect" : "af-ZA"
+  }, {
+    "supported" : [ "en", "af-ZA" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af-NA",
+    "expect" : "af-ZA"
+  }, {
+    "supported" : [ "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "xx",
+    "expect" : "en"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "not a tag, af",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : null,
+    "tenant" : null,
+    "acceptLanguage" : "af;q=0.5;level=1, en;q=0.5",
+    "expect" : "af"
+  }, {
+    "supported" : [ "en", "af" ],
+    "user" : "en",
+    "tenant" : "af",
+    "acceptLanguage" : "af",
+    "expect" : "en"
+  } ],
+  "validation" : [ {
+    "locale" : "en",
+    "code" : "TOO_SHORT",
+    "params" : {
+      "min" : 3
+    },
+    "message" : "must be at least 3 characters",
+    "expect" : "must be at least 3 characters"
+  }, {
+    "locale" : "af",
+    "code" : "TOO_SHORT",
+    "params" : {
+      "min" : 3
+    },
+    "message" : "must be at least 3 characters",
+    "expect" : "moet ten minste 3 karakters wees"
+  }, {
+    "locale" : "af-ZA",
+    "code" : "TOO_SHORT",
+    "params" : {
+      "min" : 12
+    },
+    "message" : "own",
+    "expect" : "moet ten minste 12 karakters wees"
+  }, {
+    "locale" : "af",
+    "code" : "TOO_SHORT",
+    "params" : { },
+    "message" : "own message",
+    "expect" : "own message"
+  }, {
+    "locale" : "af",
+    "code" : "NOT_NULL",
+    "params" : { },
+    "message" : "is required",
+    "expect" : "is required"
+  }, {
+    "locale" : "af",
+    "code" : "UNKNOWN_CODE",
+    "params" : {
+      "x" : 1
+    },
+    "message" : "an unknown rule",
+    "expect" : "an unknown rule"
+  }, {
+    "locale" : "fr",
+    "code" : "TOO_SHORT",
+    "params" : {
+      "min" : 2
+    },
+    "message" : "own",
+    "expect" : "must be at least 2 characters"
+  } ]
+}

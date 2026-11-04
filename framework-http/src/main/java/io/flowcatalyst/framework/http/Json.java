@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.http;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.flowcatalyst.framework.measure.MeasureException;
 import java.math.BigDecimal;
 import java.util.List;
 import tools.jackson.core.JacksonException;
@@ -29,7 +30,8 @@ public final class Json {
    * null record components omitted ({@code NON_NULL}), {@code BigDecimal} written as a JSON string
    * (and read from a string or a number), durations as ISO-8601, and the context id types ({@code
    * ClientId}, {@code PrincipalId}, {@code ApplicationCode}, {@code CorrelationId}) as plain
-   * strings.
+   * strings, and the measure types ({@code Money}, {@code Quantity}, {@code UnitPrice}, {@code
+   * Currency}, {@code Unit}) as the measure contract's wire forms.
    */
   private static final ObjectMapper OPERATIONS =
       strict()
@@ -38,6 +40,7 @@ public final class Json {
           .withConfigOverride(
               BigDecimal.class, o -> o.setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING)))
           .addModule(ContextIdsModule.create())
+          .addModule(MeasureModule.create())
           .build();
 
   private Json() {}
@@ -79,6 +82,9 @@ public final class Json {
    * @return the exception to throw
    */
   static ValidationException toValidation(JacksonException e) {
+    if (e.getCause() instanceof MeasureException m) {
+      return new ValidationException(List.of(new FieldError(pathOf(e), m.code(), String.valueOf(m.getMessage()))));
+    }
     String message;
     if (e instanceof UnrecognizedPropertyException) {
       message = "unknown property";

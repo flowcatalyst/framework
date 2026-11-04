@@ -25,6 +25,7 @@ end of [STATUS](../STATUS.md#where-the-guide-and-the-contracts-can-differ).
 | [HTTP client](../../contracts/http-client.md) | the client library on Vert.x, retries, auth, the framework adapter | [HTTP client](../http-client.md) |
 | [secrets](../../contracts/secrets.md) | per-client secret references, the `env` and `file` drivers, the threat model, the blocked platform driver | [Per-client secrets](../secrets.md) |
 | [client settings](../../contracts/client-settings.md) | per-client settings: definitions in code, values in `fw_client_settings`, one aggregate per client, written by ordinary use cases (M5 first slice, 2026-10-18) | [Per-client settings](../client-settings.md) |
+| [measure](../../contracts/measure.md) | money, currency and units of measure: decimals, allocation, conversions, packaging, unit prices, chargeable weight, with vectors in `conformance/measure/` (2026-11-03) | [Money and units](../measure.md), [Go](../go/measure.md) |
 | [build and publishing](../../contracts/build.md) | `framework-bom`, what an application needs, GitHub Packages, the publish workflow | [Getting started](../getting-started.md) |
 | [Rust build](../../contracts/rust-build.md) | the Rust workspace: toolchain, crates and features, lints, supply chain, CI | [The Rust framework](../rust/index.md) |
 | [FlowCatalyst module](../../contracts/flowcatalyst.md) | the platform client, definition sync, outbox delivery stance, receivers | [The FlowCatalyst module](../flowcatalyst-module.md), [Receivers](../receivers.md) |

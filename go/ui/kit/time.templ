@@ -1,6 +1,13 @@
 package kit
 
-import "time"
+import (
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
 
 // LocalTimeProps mirrors local-time.md's Props table.
 type LocalTimeProps struct {
@@ -11,9 +18,13 @@ type LocalTimeProps struct {
 	Empty string `json:"empty"`
 }
 
+// localeExpr is the language the browser formats with: the page's (<html lang>, the
+// locale the server resolved), else its own default.
+const localeExpr = "document.documentElement.lang || undefined"
+
 const (
-	localDateTimeExpr = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleString()"
-	localDateExpr     = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString()"
+	localDateTimeExpr = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(" + localeExpr + ")"
+	localDateExpr     = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString(" + localeExpr + ")"
 )
 
 func (p LocalTimeProps) expr() string {
@@ -71,7 +82,7 @@ templ DateRange(p DateRangeProps) {
 				id={ p.ID + "-from" }
 				name={ orDefault(p.FromName, "from") }
 				class="fc-input min-w-0 flex-1"
-				aria-label={ orDefault(p.FromLabel, "From") }
+				aria-label={ orDefault(p.FromLabel, i18n.T(ctx, "kit.date_range.from")) }
 				if p.From != "" {
 					value={ p.From }
 				}
@@ -87,7 +98,7 @@ templ DateRange(p DateRangeProps) {
 				id={ p.ID + "-to" }
 				name={ orDefault(p.ToName, "to") }
 				class="fc-input min-w-0 flex-1"
-				aria-label={ orDefault(p.ToLabel, "To") }
+				aria-label={ orDefault(p.ToLabel, i18n.T(ctx, "kit.date_range.to")) }
 				if p.To != "" {
 					value={ p.To }
 				}
@@ -99,4 +110,137 @@ templ DateRange(p DateRangeProps) {
 			/>
 		</div>
 	</div>
+}
+
+// plainDecimal is the value the Local* components accept: "-?[0-9]+(.[0-9]+)?".
+var plainDecimal = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
+
+// maxFractionDigits is the most fraction digits a number is formatted with
+// (the browsers' common limit for Intl.NumberFormat).
+const maxFractionDigits = 20
+
+// fractionDigits is the number of fraction digits of a plain decimal. It panics
+// for text that is not one, or that has too many digits (local-number.md).
+func fractionDigits(component, value string) int {
+	if !plainDecimal.MatchString(value) {
+		panic("kit: " + component + ": " + strconv.Quote(value) + " is not a plain decimal (-?[0-9]+(.[0-9]+)?)")
+	}
+	_, frac, _ := strings.Cut(value, ".")
+	if len(frac) > maxFractionDigits {
+		panic("kit: " + component + ": more than " + strconv.Itoa(maxFractionDigits) + " fraction digits")
+	}
+	return len(frac)
+}
+
+func digitsOptions(n int) string {
+	d := strconv.Itoa(n)
+	return "minimumFractionDigits: " + d + ", maximumFractionDigits: " + d
+}
+
+// numberFormatExpr builds the data-init expression around an Intl.NumberFormat call.
+func numberFormatExpr(options string) string {
+	return "el.textContent = new Intl.NumberFormat(" + localeExpr + ", {" + options + "}).format(el.value)"
+}
+
+// LocalNumberProps mirrors local-number.md's Props table.
+type LocalNumberProps struct {
+	// Value is plain decimal text; empty renders Empty.
+	Value string `json:"value"`
+	Empty string `json:"empty"`
+}
+
+// LocalNumber is local-number.md: a decimal the browser writes in the page's
+// language; the server-rendered text is the plain value.
+templ LocalNumber(p LocalNumberProps) {
+	if p.Value == "" {
+		{ orDefault(p.Empty, "-") }
+	} else {
+		<data value={ p.Value } data-init={ numberFormatExpr(digitsOptions(fractionDigits("LocalNumber", p.Value))) }>{ p.Value }</data>
+	}
+}
+
+// LocalMoneyProps mirrors local-money.md's Props table. The amount and the
+// currency are plain strings, so the component depends on no money type.
+type LocalMoneyProps struct {
+	// Amount is plain decimal text; empty renders Empty.
+	Amount string `json:"amount"`
+	// Currency is the ISO 4217 code, three capital letters.
+	Currency string `json:"currency"`
+	// Digits, when set, is the fraction digits shown; absent, the currency's
+	// own minor units.
+	Digits *int   `json:"digits"`
+	Empty  string `json:"empty"`
+}
+
+var currencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
+
+func (p LocalMoneyProps) expr() string {
+	opts := "style: 'currency', currency: el.dataset.currency"
+	if p.Digits != nil {
+		if *p.Digits < 0 || *p.Digits > maxFractionDigits {
+			panic("kit: LocalMoney: digits must be 0 to " + strconv.Itoa(maxFractionDigits))
+		}
+		opts += ", " + digitsOptions(*p.Digits)
+	}
+	return numberFormatExpr(opts)
+}
+
+// LocalMoney is local-money.md: an amount in a currency, written by the browser
+// in currency style in the page's language; the server-rendered text is
+// "amount CODE".
+templ LocalMoney(p LocalMoneyProps) {
+	if p.Amount == "" {
+		{ orDefault(p.Empty, "-") }
+	} else {
+		<data value={ p.checkedAmount() } data-currency={ p.checkedCurrency() } data-init={ p.expr() }>{ p.Amount + " " + p.Currency }</data>
+	}
+}
+
+func (p LocalMoneyProps) checkedAmount() string {
+	fractionDigits("LocalMoney", p.Amount)
+	return p.Amount
+}
+
+func (p LocalMoneyProps) checkedCurrency() string {
+	if !currencyCode.MatchString(p.Currency) {
+		panic("kit: LocalMoney: " + strconv.Quote(p.Currency) + " is not a currency code (three capital letters)")
+	}
+	return p.Currency
+}
+
+// LocalQuantityProps mirrors local-quantity.md's Props table. The value and the
+// unit symbol are plain strings, so the component depends on no units type.
+type LocalQuantityProps struct {
+	// Value is plain decimal text; empty renders Empty.
+	Value string `json:"value"`
+	// Unit is the unit symbol, shown after the number.
+	Unit  string `json:"unit"`
+	Empty string `json:"empty"`
+}
+
+func (p LocalQuantityProps) expr() string {
+	e := numberFormatExpr(digitsOptions(fractionDigits("LocalQuantity", p.Value)))
+	if p.Unit != "" {
+		e += " + ' ' + el.dataset.unit"
+	}
+	return e
+}
+
+func (p LocalQuantityProps) text() string {
+	if p.Unit == "" {
+		return p.Value
+	}
+	return p.Value + " " + p.Unit
+}
+
+// LocalQuantity is local-quantity.md: a measured value and its unit symbol; the
+// browser writes the number in the page's language, the symbol follows.
+templ LocalQuantity(p LocalQuantityProps) {
+	if p.Value == "" {
+		{ orDefault(p.Empty, "-") }
+	} else if p.Unit == "" {
+		<data value={ p.Value } data-init={ p.expr() }>{ p.text() }</data>
+	} else {
+		<data value={ p.Value } data-unit={ p.Unit } data-init={ p.expr() }>{ p.text() }</data>
+	}
 }

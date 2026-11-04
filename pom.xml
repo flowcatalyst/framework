@@ -38,6 +38,7 @@
   <modules>
     <module>framework-bom</module>
     <module>framework-core</module>
+    <module>framework-measure</module>
     <module>framework-database</module>
     <module>framework-redis</module>
     <module>framework-locks</module>

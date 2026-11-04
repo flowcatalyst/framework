@@ -1,0 +1,118 @@
+{
+  "kit.appshell.open_nav": "Open navigation",
+  "kit.appshell.close_nav": "Close navigation",
+  "kit.appshell.collapse": "Collapse sidebar",
+  "kit.appshell.main": "Main",
+  "kit.appshell.contains_current": "Contains the current page",
+  "kit.appshell.account_menu": "Account menu",
+  "kit.appshell.profile": "Profile",
+  "kit.appshell.reset_password": "Reset Password",
+  "kit.appshell.sign_out": "Sign Out",
+  "kit.appshell.version": "Version",
+
+  "kit.theme.label": "Theme",
+  "kit.theme.system": "System",
+  "kit.theme.light": "Light",
+  "kit.theme.dark": "Dark",
+
+  "kit.dialog.close": "Close",
+  "kit.dialog.cancel": "Cancel",
+  "kit.dialog.confirm": "Confirm",
+
+  "kit.form_dialog.discard_title": "Discard Changes",
+  "kit.form_dialog.discard_message": "You have unsaved changes. Discard them?",
+  "kit.form_dialog.keep_editing": "Keep Editing",
+  "kit.form_dialog.discard": "Discard",
+
+  "kit.dirty_form.save": "Save",
+  "kit.dirty_form.discard": "Discard",
+
+  "kit.flash.dismiss": "Dismiss notification",
+  "kit.flash_fallback.refused.summary": "The request was refused.",
+  "kit.flash_fallback.refused.detail": "Reload the page and try again.",
+  "kit.flash_fallback.failed.summary": "Something went wrong.",
+  "kit.flash_fallback.failed.detail": "The request failed. Try again, or reload the page.",
+  "kit.flash_fallback.offline.summary": "The server could not be reached.",
+  "kit.flash_fallback.offline.detail": "Check your connection and try again. A change you just made may not have been saved.",
+
+  "kit.spinner.loading": "Loading",
+  "kit.breadcrumb.label": "breadcrumb",
+  "kit.empty_state.clear_filters": "Clear filters",
+  "kit.diagram.source": "Diagram source",
+  "kit.diagram.source_label": "{label} source",
+
+  "kit.toolbar.result_size": "Result size",
+  "kit.toolbar.refresh": "Refresh",
+  "kit.toolbar.clear_all": "Clear All",
+  "kit.toolbar.filters": "Filters",
+
+  "kit.pagination.label": "pagination",
+  "kit.pagination.previous": "Previous",
+  "kit.pagination.next": "Next",
+  "kit.pagination.more_pages": "More pages",
+
+  "kit.cursor_pager.label": "Pagination",
+  "kit.cursor_pager.newest": "Newest",
+  "kit.cursor_pager.older": "Older",
+
+  "kit.paginator.label": "Pagination",
+  "kit.paginator.first": "First",
+  "kit.paginator.previous": "Previous",
+  "kit.paginator.next": "Next",
+  "kit.paginator.last": "Last",
+  "kit.paginator.rows_per_page": "Rows per page",
+  "kit.paginator.showing": "Showing {from} to {to} of {total} {noun}",
+
+  "kit.row_actions.more": "More actions",
+  "kit.row_actions.more_for": "More actions for {row}",
+
+  "kit.multiselect.search": "Search",
+  "kit.multiselect.search_for": "Search {label}",
+  "kit.multiselect.remove": "Remove {label}",
+  "kit.multiselect.selected": "{count} selected",
+  "kit.multiselect.no_options": "No options",
+
+  "kit.search_select.search": "Search",
+  "kit.search_select.search_for": "Search {label}",
+  "kit.search_select.no_options": "No options",
+
+  "kit.picklist.select_shown": "Select shown",
+  "kit.picklist.clear": "Clear",
+  "kit.picklist.selected": "Selected",
+  "kit.picklist.locked": "Cannot be changed",
+  "kit.picklist.locked_named": "{name} cannot be changed",
+  "kit.picklist.remove": "Remove",
+  "kit.picklist.remove_named": "Remove {name}",
+
+  "kit.password.show": "Show password",
+  "kit.password.hide": "Hide password",
+  "kit.password.weak": "Weak",
+  "kit.password.fair": "Fair",
+  "kit.password.good": "Good",
+  "kit.password.strong": "Strong",
+  "kit.password.help": "The meter is advice only; the password policy is checked when you save.",
+
+  "kit.secretref.placeholder": "my-secret-name",
+  "kit.secretref.title": "Lowercase letters, digits and single hyphens, with an optional store: prefix",
+  "kit.secretref.help": "The name of a secret held in the secret store, such as {example} or {vaultExample}. This is a reference, not the secret value: never type or paste the value here.",
+
+  "kit.permission_denied.expired_title": "Session Expired",
+  "kit.permission_denied.denied_title": "Permission Denied",
+  "kit.permission_denied.required": "Required permission: {permission}",
+  "kit.permission_denied.contact_admin": "Contact your administrator if you believe you should have access to this resource.",
+  "kit.permission_denied.log_in_again": "Log In Again",
+  "kit.permission_denied.go_back": "Go Back",
+  "kit.permission_denied.go_dashboard": "Go to Dashboard",
+
+  "kit.date_range.from": "From",
+  "kit.date_range.to": "To",
+
+  "validation.NOT_NULL": "is required",
+  "validation.NOT_BLANK": "must not be blank",
+  "validation.TOO_SHORT": "must be at least {min} characters",
+  "validation.TOO_LONG": "must be at most {max} characters",
+  "validation.PATTERN": "has an invalid format",
+  "validation.OUT_OF_RANGE": "must be between {min} and {max}",
+  "validation.SIZE": "must have between {min} and {max} items",
+  "validation.NOT_ONE_OF": "must be one of: {allowed}"
+}

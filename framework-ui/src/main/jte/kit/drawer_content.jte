@@ -4,7 +4,7 @@
 @param gg.jte.Content body = null
 @param gg.jte.Content extras = null
 @param gg.jte.Content footer = null
-<button type="button" class="fc-icon-btn absolute top-[1.1rem] right-[1.1rem] z-10" aria-label="Close" data-on:click="${p.closeExpr()}">@template.kit.icon(name = "x", cls = "size-[1.2rem]")</button>
+<button type="button" class="fc-icon-btn absolute top-[1.1rem] right-[1.1rem] z-10" aria-label="${Kit.t("kit.dialog.close")}" data-on:click="${p.closeExpr()}">@template.kit.icon(name = "x", cls = "size-[1.2rem]")</button>
 <header class="fc-drawer-header pr-14">
 <div class="fc-drawer-titles">
 <div class="min-w-0">

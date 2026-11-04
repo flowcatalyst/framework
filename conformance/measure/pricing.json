@@ -1,0 +1,2616 @@
+{
+  "description" : "Unit prices and chargeable weight (measure contract section 4). unitPrice: price per unit times a quantity, expect a money object at scale (times) or unrounded (exact); the conversion is computed exactly and rounded once, so a price per lb times kg is defined for times and CONVERSION_INEXACT for exact. chargeable: actual and volume quantities, factor {kind: kgPerCubicMetre|divisor, value}, result in KGM at scale with mode.",
+  "howToRun" : "Build the values, compute, compare plain text and codes (money: amount text and currency; quantity: value text and unit code), or the error code with error.",
+  "unitPrice" : [ {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7.8312",
+      "unit" : "TNE"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "3132.48",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7.8312",
+      "unit" : "TNE"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7.8312",
+      "unit" : "TNE"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "3132.48",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7.8312",
+      "unit" : "TNE"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7.8312",
+      "unit" : "TNE"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "3132.48",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7.8312",
+      "unit" : "TNE"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7831.2",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "3132.48",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7831.2",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7831.2",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "3132.48",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7831.2",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7831.2",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "3132.48",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "7831.2",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "3132.480",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "100",
+      "unit" : "GRM"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "0.04",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "100",
+      "unit" : "GRM"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "100",
+      "unit" : "GRM"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "0.04",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "100",
+      "unit" : "GRM"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "100",
+      "unit" : "GRM"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "0.04",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "0.40",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "100",
+      "unit" : "GRM"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "0.040",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "275.58",
+      "currency" : "USD"
+    },
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "275.578",
+      "currency" : "USD"
+    },
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "275.57",
+      "currency" : "USD"
+    },
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "275.577",
+      "currency" : "USD"
+    },
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "275.58",
+      "currency" : "USD"
+    },
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "275.578",
+      "currency" : "USD"
+    },
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "LBR"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    },
+    "exact" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    }
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "LBR"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "125.000",
+      "currency" : "USD"
+    },
+    "exact" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    }
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "LBR"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    },
+    "exact" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    }
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "LBR"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "125.000",
+      "currency" : "USD"
+    },
+    "exact" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    }
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "LBR"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    },
+    "exact" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    }
+  }, {
+    "price" : {
+      "amount" : "12.50",
+      "currency" : "USD"
+    },
+    "per" : "LBR",
+    "quantity" : {
+      "value" : "10",
+      "unit" : "LBR"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "125.000",
+      "currency" : "USD"
+    },
+    "exact" : {
+      "amount" : "125.00",
+      "currency" : "USD"
+    }
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "2.5",
+      "unit" : "KMT"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "7500.00",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "7500",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "2.5",
+      "unit" : "KMT"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "7500.000",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "7500",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "2.5",
+      "unit" : "KMT"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "7500.00",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "7500",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "2.5",
+      "unit" : "KMT"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "7500.000",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "7500",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "2.5",
+      "unit" : "KMT"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "7500.00",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "7500",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "2.5",
+      "unit" : "KMT"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "7500.000",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "7500",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "error" : "DIMENSION_MISMATCH",
+    "exactError" : "DIMENSION_MISMATCH"
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "DIMENSION_MISMATCH",
+    "exactError" : "DIMENSION_MISMATCH"
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "error" : "DIMENSION_MISMATCH",
+    "exactError" : "DIMENSION_MISMATCH"
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "error" : "DIMENSION_MISMATCH",
+    "exactError" : "DIMENSION_MISMATCH"
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "error" : "DIMENSION_MISMATCH",
+    "exactError" : "DIMENSION_MISMATCH"
+  }, {
+    "price" : {
+      "amount" : "3",
+      "currency" : "ZAR"
+    },
+    "per" : "MTR",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "DIMENSION_MISMATCH",
+    "exactError" : "DIMENSION_MISMATCH"
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "250",
+      "unit" : "LTR"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "250",
+      "unit" : "LTR"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "1.250",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "250",
+      "unit" : "LTR"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "250",
+      "unit" : "LTR"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "1.250",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "250",
+      "unit" : "LTR"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "250",
+      "unit" : "LTR"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "1.250",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "1.25",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "FTQ"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "0.21",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "0.212376349440",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "FTQ"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "0.212",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "0.212376349440",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "FTQ"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "0.21",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "0.212376349440",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "FTQ"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "0.212",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "0.212376349440",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "FTQ"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "0.22",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "0.212376349440",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "5",
+      "currency" : "EUR"
+    },
+    "per" : "MTQ",
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "FTQ"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "0.213",
+      "currency" : "EUR"
+    },
+    "exact" : {
+      "amount" : "0.212376349440",
+      "currency" : "EUR"
+    }
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "DZN"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "72.00",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "72",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "DZN"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "72.000",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "72",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "DZN"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "72.00",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "72",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "DZN"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "72.000",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "72",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "DZN"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "72.00",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "72",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "DZN"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "72.000",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "72",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "C62",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "XPX",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "XPX",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "XPX",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "XPX",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "XPX",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "XPX",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "NO_CONVERSION",
+    "exactError" : "NO_CONVERSION"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "CEL",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "CEL"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "error" : "TEMPERATURE_NOT_ADDITIVE",
+    "exactError" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "CEL",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "CEL"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "TEMPERATURE_NOT_ADDITIVE",
+    "exactError" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "CEL",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "CEL"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "error" : "TEMPERATURE_NOT_ADDITIVE",
+    "exactError" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "CEL",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "CEL"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "error" : "TEMPERATURE_NOT_ADDITIVE",
+    "exactError" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "CEL",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "CEL"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "error" : "TEMPERATURE_NOT_ADDITIVE",
+    "exactError" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "price" : {
+      "amount" : "2",
+      "currency" : "ZAR"
+    },
+    "per" : "CEL",
+    "quantity" : {
+      "value" : "3",
+      "unit" : "CEL"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "TEMPERATURE_NOT_ADDITIVE",
+    "exactError" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "price" : {
+      "amount" : "1.5",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "-2.5",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "1.5",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "-2.5",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "amount" : "-3.750",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "1.5",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "-2.5",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "1.5",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "-2.5",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "DOWN",
+    "expect" : {
+      "amount" : "-3.750",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "1.5",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "-2.5",
+      "unit" : "KGM"
+    },
+    "scale" : 2,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    }
+  }, {
+    "price" : {
+      "amount" : "1.5",
+      "currency" : "ZAR"
+    },
+    "per" : "KGM",
+    "quantity" : {
+      "value" : "-2.5",
+      "unit" : "KGM"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "amount" : "-3.750",
+      "currency" : "ZAR"
+    },
+    "exact" : {
+      "amount" : "-3.75",
+      "currency" : "ZAR"
+    }
+  } ],
+  "chargeable" : [ {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "167",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "167.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "167",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "167.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0.5",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "100",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0.5",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "100.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0.5",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "100",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0.5",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "100.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "500",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "999",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "500",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "999.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "500",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "999",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "500",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "999.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "1",
+      "unit" : "TNE"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "1",
+      "unit" : "TNE"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "1000.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "1",
+      "unit" : "TNE"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "1",
+      "unit" : "TNE"
+    },
+    "volume" : {
+      "value" : "3",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "333"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "1000.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "167",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "166.667",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "167",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "166.667",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1000000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "167",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1000000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "166.667",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1000000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "167",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1000000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "166.667",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "50",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "100000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "50",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "50",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "100000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "50.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "50",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "100000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "50",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "50",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "100000",
+      "unit" : "CMQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "50.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "220.462",
+      "unit" : "LBR"
+    },
+    "volume" : {
+      "value" : "35.3147",
+      "unit" : "FTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "167",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "220.462",
+      "unit" : "LBR"
+    },
+    "volume" : {
+      "value" : "35.3147",
+      "unit" : "FTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "167.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "220.462",
+      "unit" : "LBR"
+    },
+    "volume" : {
+      "value" : "35.3147",
+      "unit" : "FTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "168",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "220.462",
+      "unit" : "LBR"
+    },
+    "volume" : {
+      "value" : "35.3147",
+      "unit" : "FTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "167.001",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "1000"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "1000"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "1000.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "1000"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "10",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "1000"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "1000.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "333.33",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "2",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "333",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "333.33",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "2",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "333.333",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "333.33",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "2",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "334",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "333.33",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "2",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "333.334",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "0",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "expect" : {
+      "value" : "0.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "0",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "0",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "167"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "expect" : {
+      "value" : "0.000",
+      "unit" : "KGM"
+    }
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "MTR"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "MTR"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "MTR"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "MTR"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTK"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTK"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTK"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTK"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "6000"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "0"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "error" : "RATE_INVALID"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "0"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "RATE_INVALID"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "0"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "error" : "RATE_INVALID"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "divisor",
+      "value" : "0"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "RATE_INVALID"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "-1"
+    },
+    "scale" : 0,
+    "mode" : "HALF_EVEN",
+    "error" : "RATE_INVALID"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "-1"
+    },
+    "scale" : 3,
+    "mode" : "HALF_EVEN",
+    "error" : "RATE_INVALID"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "-1"
+    },
+    "scale" : 0,
+    "mode" : "UP",
+    "error" : "RATE_INVALID"
+  }, {
+    "actual" : {
+      "value" : "100",
+      "unit" : "KGM"
+    },
+    "volume" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "factor" : {
+      "kind" : "kgPerCubicMetre",
+      "value" : "-1"
+    },
+    "scale" : 3,
+    "mode" : "UP",
+    "error" : "RATE_INVALID"
+  } ]
+}

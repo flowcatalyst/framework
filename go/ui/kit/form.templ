@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"strings"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
 )
 
 // FormDialogProps mirrors form-dialog.md's Props table: a create/edit form in
@@ -111,21 +113,21 @@ templ FormDialog(p FormDialogProps) {
 			{ children... }
 		</form>
 		<dialog id={ p.ID + "-discard" } role="alertdialog" class="fc-dialog w-[28rem] max-w-[calc(100vw-2rem)]" aria-labelledby={ p.ID + "-discard-title" } aria-describedby={ p.ID + "-discard-desc" } data-on:click={ LightDismiss }>
-			<div class="fc-dialog-header"><span id={ p.ID + "-discard-title" }>Discard Changes</span></div>
+			<div class="fc-dialog-header"><span id={ p.ID + "-discard-title" }>{ i18n.T(ctx, "kit.form_dialog.discard_title") }</span></div>
 			<div class="fc-dialog-body flex items-start gap-3 text-subtle-foreground">
 				@Icon(IconProps{Name: "triangle-alert", Class: "size-6 mt-0.5 shrink-0 text-red-600"})
-				<p id={ p.ID + "-discard-desc" }>You have unsaved changes. Discard them?</p>
+				<p id={ p.ID + "-discard-desc" }>{ i18n.T(ctx, "kit.form_dialog.discard_message") }</p>
 			</div>
 			<div class="fc-dialog-footer">
-				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click={ CloseDialog }>Keep Editing</button>
-				<button type="button" class="fc-btn fc-btn-danger" data-on:click={ "el.closest('dialog').close(); document.getElementById('" + ID(p.ID) + "').close()" }>Discard</button>
+				<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click={ CloseDialog }>{ i18n.T(ctx, "kit.form_dialog.keep_editing") }</button>
+				<button type="button" class="fc-btn fc-btn-danger" data-on:click={ "el.closest('dialog').close(); document.getElementById('" + ID(p.ID) + "').close()" }>{ i18n.T(ctx, "kit.form_dialog.discard") }</button>
 			</div>
 		</dialog>
 	}
 }
 
 templ formDialogFooter(p FormDialogProps) {
-	<button type="button" class={ ButtonClasses(ButtonGhost, ButtonMd) } data-attr:disabled={ p.busy() } data-on:click={ p.dismissExpr() }>Cancel</button>
+	<button type="button" class={ ButtonClasses(ButtonGhost, ButtonMd) } data-attr:disabled={ p.busy() } data-on:click={ p.dismissExpr() }>{ i18n.T(ctx, "kit.dialog.cancel") }</button>
 	<button
 		type="submit"
 		form={ FormDialogFormID(p.ID) }

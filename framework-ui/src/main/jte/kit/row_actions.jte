@@ -11,7 +11,7 @@
 @else<button type="button" class="${inline}" title="${a.label()}" aria-label="${p.withRow(a.label())}"$unsafe{attrs(a.attrs())}>@template.kit.icon(name = a.icon(), cls = "size-[1rem]")</button>
 @endif
 @endfor
-@if(!menu.isEmpty())<button type="button" class="fc-icon-btn" title="More actions" aria-label="${p.moreLabel()}" popovertarget="${p.menuId()}">@template.kit.icon(name = "ellipsis", cls = "size-[1rem]")</button>
+@if(!menu.isEmpty())<button type="button" class="fc-icon-btn" title="${Kit.t("kit.row_actions.more")}" aria-label="${p.moreLabel()}" popovertarget="${p.menuId()}">@template.kit.icon(name = "ellipsis", cls = "size-[1rem]")</button>
 <div id="${p.menuId()}" popover class="fc-row-menu" data-on:toggle__capture="${POPOVER_ANCHOR}">
 @for(int i = 0; i < menu.size(); i++)!{var a = menu.get(i); var item = a.destructive() ? "fc-menu-item danger" : "fc-menu-item";}
 @if(p.separatorBefore(i))<div role="separator" class="fc-menu-separator"></div>@endif

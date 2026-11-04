@@ -15,6 +15,11 @@ import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import io.flowcatalyst.framework.measure.money.Currency;
+import io.flowcatalyst.framework.measure.money.Money;
+import io.flowcatalyst.framework.measure.units.Quantity;
+import io.flowcatalyst.framework.measure.units.Unit;
+import io.flowcatalyst.framework.measure.units.UnitPrice;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -152,6 +157,9 @@ final class TypeWalker {
     if (builtIn != null) {
       return builtIn;
     }
+    if (raw == Money.class || raw == Quantity.class || raw == UnitPrice.class) {
+      return component(t, path, () -> measureBody(raw, path));
+    }
     if (raw.isEnum()) {
       for (String p : JacksonCheck.enumType(raw)) {
         problems.add(path + ": " + p);
@@ -247,6 +255,14 @@ final class TypeWalker {
     }
     if (raw == JsonNode.class) {
       return new LinkedHashMap<>();
+    }
+    if (raw == Currency.class) {
+      Map<String, Object> m = typed("string");
+      m.put("pattern", "^[A-Z]{3}$");
+      return m;
+    }
+    if (raw == Unit.class) {
+      return typed("string");
     }
     if (raw == ClientId.class) {
       Map<String, Object> m = typed("string");
@@ -551,6 +567,28 @@ final class TypeWalker {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("oneOf", List.copyOf(oneOf));
     body.put("discriminator", discriminator);
+    return body;
+  }
+
+  // ---- measure types (measure contract section 5) ----------------------------------------------
+
+  /** The component body of {@code Money}, {@code Quantity} or {@code UnitPrice}: a closed object. */
+  private Map<String, Object> measureBody(Class<?> raw, String path) {
+    Map<String, Object> props = new LinkedHashMap<>();
+    if (raw == Money.class) {
+      props.put("amount", formatted("string", "decimal"));
+      props.put("currency", builtIn(Currency.class));
+    } else if (raw == Quantity.class) {
+      props.put("value", formatted("string", "decimal"));
+      props.put("unit", builtIn(Unit.class));
+    } else {
+      props.put("price", schemaOf(JType.of(Money.class), path + ".price"));
+      props.put("per", builtIn(Unit.class));
+    }
+    Map<String, Object> body = typed("object");
+    body.put("properties", props);
+    body.put("required", List.copyOf(props.keySet()));
+    body.put("additionalProperties", false);
     return body;
   }
 

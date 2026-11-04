@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.flowcatalyst.framework</groupId>
+    <artifactId>framework-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+  <artifactId>framework-measure</artifactId>
+  <name>framework-measure</name>
+  <description>Exact values for logistics: decimals, currencies and money, units of measure, quantities, packaging, unit prices and chargeable weight.</description>
+
+  <dependencies>
+    <!-- Tests only: the shared conformance vectors (conformance/measure) -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <!-- The two data tables are shared with the Go packages (Go embeds a byte-identical copy,
+           go/internal/conformance/shared-files.txt): the Java build reads the shared files. -->
+      <resource>
+        <directory>${project.basedir}/../conformance/measure</directory>
+        <includes>
+          <include>iso4217.json</include>
+          <include>units.json</include>
+        </includes>
+        <targetPath>io/flowcatalyst/framework/measure</targetPath>
+      </resource>
+    </resources>
+  </build>
+</project>

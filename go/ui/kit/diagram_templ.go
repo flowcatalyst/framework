@@ -8,6 +8,10 @@ package kit
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import (
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
+
 // DiagramProps mirrors diagram.md's Props table. The default slot is the
 // Mermaid source (plain text, escaped by templ).
 type DiagramProps struct {
@@ -68,7 +72,7 @@ func Diagram(p DiagramProps) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(URL(p.Bundle))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/diagram.templ`, Line: 18, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/diagram.templ`, Line: 22, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -81,26 +85,39 @@ func Diagram(p DiagramProps) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/diagram.templ`, Line: 19, Col: 184}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/diagram.templ`, Line: 23, Col: 184}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hidden data-ignore></div><details class=\"mt-3 text-sm\"><summary class=\"cursor-pointer text-muted-foreground\">Diagram source</summary><pre class=\"fc-code-block mt-2\" tabindex=\"0\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" hidden data-ignore></div><details class=\"mt-3 text-sm\"><summary class=\"cursor-pointer text-muted-foreground\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Label + " source")
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "kit.diagram.source"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/diagram.templ`, Line: 22, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/diagram.templ`, Line: 25, Col: 92}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"><code>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</summary><pre class=\"fc-code-block mt-2\" tabindex=\"0\" aria-label=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(i18n.T(ctx, "kit.diagram.source_label", i18n.Args{"label": p.Label}))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/diagram.templ`, Line: 26, Col: 129}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\"><code>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -108,7 +125,7 @@ func Diagram(p DiagramProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</code></pre></details></fc-diagram>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</code></pre></details></fc-diagram>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

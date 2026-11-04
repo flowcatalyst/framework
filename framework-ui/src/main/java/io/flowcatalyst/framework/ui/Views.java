@@ -4,6 +4,9 @@ import gg.jte.Content;
 import io.flowcatalyst.framework.http.Request;
 import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.datastar.Datastar;
+import io.flowcatalyst.framework.ui.i18n.Bundle;
+import io.flowcatalyst.framework.ui.i18n.LocaleResolver;
+import io.flowcatalyst.framework.ui.i18n.Messages;
 import io.flowcatalyst.framework.ui.kit.Kit;
 import io.flowcatalyst.framework.ui.kit.Markup;
 import io.flowcatalyst.framework.ui.kit.Props;
@@ -58,8 +61,12 @@ public final class Views {
   private final Map<String, Props.FlashMessage> flashes;
   private final boolean plainCookies;
   private final String csp;
+  private final LocaleResolver locales;
+  private final Bundle bundle;
 
   private Views(Builder b) {
+    this.locales = b.locales;
+    this.bundle = b.bundle;
     this.assets = b.assets;
     this.titleSuffix = b.titleSuffix;
     this.shell = b.shell;
@@ -90,6 +97,8 @@ public final class Views {
     private final Map<String, Props.FlashMessage> flashes = new LinkedHashMap<>();
     private boolean plainCookies;
     private final List<String> scriptHashes = new ArrayList<>();
+    private LocaleResolver locales = LocaleResolver.englishOnly();
+    private Bundle bundle = Bundle.kit();
 
     private Builder(UiAssets assets) {
       this.assets = assets;
@@ -165,6 +174,30 @@ public final class Views {
     }
 
     /**
+     * Resolves the locale of every request the views render (contract i18n.md section 3): the
+     * document's {@code lang} and the kit's texts follow it. Without this, pages are English.
+     *
+     * @param locales the resolver, with the languages the application supports
+     * @return this
+     */
+    public Builder locales(LocaleResolver locales) {
+      this.locales = locales;
+      return this;
+    }
+
+    /**
+     * The catalogs the pages use: the kit's, with the application's layered on top ({@link
+     * Bundle#with}). Default: the kit's own.
+     *
+     * @param bundle the bundle
+     * @return this
+     */
+    public Builder catalogs(Bundle bundle) {
+      this.bundle = bundle;
+      return this;
+    }
+
+    /**
      * Lets the flash cookie go without {@code Secure}. Only for an application running over plain
      * HTTP in local or test (the same condition as an {@code http://} public base URL): this
      * module cannot see the connection (TLS ends in front of the server), so without this call the
@@ -196,6 +229,17 @@ public final class Views {
     public Views build() {
       return new Views(this);
     }
+  }
+
+  /**
+   * The messages for a request: its resolved locale over the views' catalogs. An application
+   * translating its own texts in a handler uses {@code views.messages(request).t(key)}.
+   *
+   * @param request the request
+   * @return the messages
+   */
+  public Messages messages(Request request) {
+    return bundle.messages(locales.resolve(request));
   }
 
   /**
@@ -353,7 +397,16 @@ public final class Views {
    * @return the streamed response
    */
   public Response stream(Request request, Events events) {
-    return Datastar.stream(request, sse -> events.run(new Patches(sse, FLASH_STACK_ID)));
+    Messages messages = messages(request);
+    return Datastar.stream(
+        request,
+        sse ->
+            Messages.where(
+                messages,
+                () -> {
+                  events.run(new Patches(sse, FLASH_STACK_ID));
+                  return null;
+                }));
   }
 
   /** Writes the patches of one answer. */
@@ -397,8 +450,9 @@ public final class Views {
     // the message the flash cookie's key names (none for an unknown or malformed key); the cookie is cleared either way
     String flashKey = cookies.get(FLASH_COOKIE);
     List<Props.FlashMessage> flashes = new ArrayList<>();
+    Messages messages = messages(request);
     if (flashKey != null && FLASH_KEY.matcher(flashKey).matches() && this.flashes.containsKey(flashKey)) {
-      flashes.add(this.flashes.get(flashKey));
+      flashes.add(localize(messages, flashKey, this.flashes.get(flashKey)));
     }
     flashes.addAll(pageFlashes);
     String theme = Theme.normalize(cookies.get(Theme.THEME_COOKIE));
@@ -444,8 +498,9 @@ public final class Views {
             assets.url("datastar.js"),
             loginPath,
             loginParam,
-            scripts);
-    String markup = Markup.render(Kit.document(doc, body));
+            scripts,
+            messages.locale());
+    String markup = render(messages, Kit.document(doc, body));
     Response answer = Response.html(status, markup)
         .header("Content-Security-Policy", csp)
         .header("Cross-Origin-Opener-Policy", "same-origin")
@@ -453,6 +508,23 @@ public final class Views {
         .header("X-Content-Type-Options", "nosniff")
         .header("Cache-Control", "private, no-cache");
     return flashKey == null ? answer : answer.addHeader("Set-Cookie", flashCookie("", 0));
+  }
+
+  /** The registered message with its summary from {@code flash.<key>} and its detail from {@code flash.<key>.detail} when the catalogs have them. */
+  private static Props.FlashMessage localize(Messages messages, String key, Props.FlashMessage m) {
+    String summary = messages.has("flash." + key) ? messages.t("flash." + key) : m.summary();
+    String detail = messages.has("flash." + key + ".detail") ? messages.t("flash." + key + ".detail") : m.detail();
+    return new Props.FlashMessage(m.kind(), summary, detail, m.persistent(), m.attrs());
+  }
+
+  private static String render(Messages messages, Content content) {
+    try {
+      return Messages.where(messages, () -> Markup.render(content));
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IllegalStateException("rendering failed", e);
+    }
   }
 
   private static Map<String, String> cookies(@Nullable String header) {

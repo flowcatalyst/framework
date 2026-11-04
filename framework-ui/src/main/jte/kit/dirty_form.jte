@@ -5,7 +5,7 @@
 <form id="${id(p.id())}" class="${cx("flex flex-col gap-3", p.cls())}"$unsafe{attrs(p.formAttrs())}>
 @if(body != null)${body}@endif
 <div class="flex gap-2">
-<button type="submit" data-attr:disabled="${"!" + p.dirty()}" disabled class="${Classes.button("primary", "md")}">${or(p.saveLabel(), "Save")}</button>
-<button type="reset" data-show="${p.dirty()}" style="display: none" class="${Classes.button("ghost", "md")}">${or(p.discardLabel(), "Discard")}</button>
+<button type="submit" data-attr:disabled="${"!" + p.dirty()}" disabled class="${Classes.button("primary", "md")}">${or(p.saveLabel(), Kit.t("kit.dirty_form.save"))}</button>
+<button type="reset" data-show="${p.dirty()}" style="display: none" class="${Classes.button("ghost", "md")}">${or(p.discardLabel(), Kit.t("kit.dirty_form.discard"))}</button>
 </div>
 </form>

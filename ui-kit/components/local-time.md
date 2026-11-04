@@ -5,12 +5,12 @@
 
 ## Purpose
 
-A timestamp rendered by the server in UTC and rewritten in the viewer's locale and time zone (the SPA's `toLocaleString()`).
+A timestamp rendered by the server in UTC and rewritten in the viewer's time zone and in the language of the page (`<html lang>`, the locale the server resolved: docs/contracts/i18n.md); a page without a `lang` falls back to the browser's locale.
 
 ## Structure
 
 ```html
-<time datetime="2026-10-06T08:30:00Z" data-init="el.textContent = new Date(el.getAttribute('datetime')).toLocaleString()">2026-10-06 08:30:00 UTC</time>
+<time datetime="2026-10-06T08:30:00Z" data-init="el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(document.documentElement.lang || undefined)">2026-10-06 08:30:00 UTC</time>
 ```
 
 ## Parts
@@ -27,8 +27,8 @@ Each row maps one option value to the classes (or attributes) it adds. Exactly o
 
 | Value | Expression in `data-init` |
 |---|---|
-| date and time (default) | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleString()` |
-| date only | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString()` |
+| date and time (default) | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(document.documentElement.lang || undefined)` |
+| date only | `el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString(document.documentElement.lang || undefined)` |
 
 ## Props
 

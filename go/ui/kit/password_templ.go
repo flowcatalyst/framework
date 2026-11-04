@@ -8,7 +8,11 @@ package kit
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
 
 // PasswordInputProps mirrors password-input.md's Props table.
 type PasswordInputProps struct {
@@ -104,7 +108,7 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.signals())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 54, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 58, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -139,7 +143,7 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 59, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 63, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -157,7 +161,7 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 61, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 65, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -175,7 +179,7 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.Autocomplete, "new-password"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 63, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 67, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -193,7 +197,7 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Placeholder)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 65, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 69, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -230,7 +234,7 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.describedBy())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 73, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 77, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -245,69 +249,82 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "> <button type=\"button\" class=\"fc-password-toggle\" aria-label=\"Show password\" aria-controls=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "> <button type=\"button\" class=\"fc-password-toggle\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(i18n.T(ctx, "kit.password.show"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 81, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 84, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if p.Disabled {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " disabled")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " data-attr:aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" aria-controls=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue("$" + Signal(p.Signal) + "Show ? 'Hide password' : 'Show password'")
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 83, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 85, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" data-on:click=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if p.Disabled {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " disabled")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " data-attr:aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("$" + Signal(p.Signal) + "Show = !$" + Signal(p.Signal) + "Show")
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("$" + Signal(p.Signal) + "Show ? " + jsq(i18n.T(ctx, "kit.password.hide")) + " : " + jsq(i18n.T(ctx, "kit.password.show")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 84, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 87, Col: 149}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\"><span data-show=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" data-on:click=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("!$" + Signal(p.Signal) + "Show")
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("$" + Signal(p.Signal) + "Show = !$" + Signal(p.Signal) + "Show")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 86, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 88, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"><span data-show=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var16 string
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue("!$" + Signal(p.Signal) + "Show")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 90, Col: 54}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -315,20 +332,20 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</span> <span data-show=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span> <span data-show=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue("$" + Signal(p.Signal) + "Show")
+		var templ_7745c5c3_Var17 string
+		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue("$" + Signal(p.Signal) + "Show")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 89, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 93, Col: 53}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" style=\"display: none\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" style=\"display: none\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -336,56 +353,69 @@ func PasswordInput(p PasswordInputProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</span></button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span></button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if p.Meter {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"fc-password-meter\" aria-hidden=\"true\" data-score=\"0\" data-attr:data-score=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue("String($" + Signal(p.Signal) + "Score)")
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 95, Col: 131}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\"><span></span><span></span><span></span><span></span></div><p id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"fc-password-meter\" aria-hidden=\"true\" data-score=\"0\" data-attr:data-score=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID) + "-strength")
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue("String($" + Signal(p.Signal) + "Score)")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 98, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 99, Col: 131}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"fc-password-strength\" aria-live=\"polite\" data-text=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\"><span></span><span></span><span></span><span></span></div><p id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
-			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue("['', 'Weak', 'Fair', 'Good', 'Strong'][$" + Signal(p.Signal) + "Score]")
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID) + "-strength")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 98, Col: 168}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 102, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\"></p><p class=\"fc-password-help\">The meter is advice only; the password policy is checked when you save.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" class=\"fc-password-strength\" aria-live=\"polite\" data-text=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue("['', " + jsq(i18n.T(ctx, "kit.password.weak")) + ", " + jsq(i18n.T(ctx, "kit.password.fair")) + ", " + jsq(i18n.T(ctx, "kit.password.good")) + ", " + jsq(i18n.T(ctx, "kit.password.strong")) + "][$" + Signal(p.Signal) + "Score]")
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 102, Col: 324}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\"></p><p class=\"fc-password-help\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var21 string
+			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "kit.password.help"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/password.templ`, Line: 103, Col: 65}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

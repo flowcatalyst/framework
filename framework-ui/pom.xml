@@ -69,9 +69,26 @@
       <artifactId>jsoup</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- the conformance vector helper (Conformance) -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-core</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <!-- The kit's message catalogs are shared with the Go kit: ui-kit/messages is their one source. -->
+      <resource>
+        <directory>${project.basedir}/../ui-kit/messages</directory>
+        <targetPath>fw-ui/messages</targetPath>
+      </resource>
+    </resources>
     <plugins>
       <!-- Templates are compiled to Java at build time (generate-sources); nothing is compiled at run time. -->
       <plugin>

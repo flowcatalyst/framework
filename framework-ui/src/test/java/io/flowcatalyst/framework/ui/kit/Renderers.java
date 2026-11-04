@@ -111,6 +111,9 @@ final class Renderers {
     r("cursor-pager", Props.CursorPager.class, (p, s) -> Kit.cursorPager(p));
     r("paginator", Props.Paginator.class, (p, s) -> Kit.paginator(p));
     r("local-time", Props.LocalTime.class, (p, s) -> Kit.localTime(p));
+    r("local-number", Props.LocalNumber.class, (p, s) -> Kit.localNumber(p));
+    r("local-money", Props.LocalMoney.class, (p, s) -> Kit.localMoney(p));
+    r("local-quantity", Props.LocalQuantity.class, (p, s) -> Kit.localQuantity(p));
     r("date-range", Props.DateRange.class, (p, s) -> Kit.dateRange(p));
     r(
         "tabs",

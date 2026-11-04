@@ -8,6 +8,12 @@ package kit
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import (
+	"context"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
+
 // ThemeChoice is the user's theme: follow the system, or always light/dark
 // (app-shell.md, Theme).
 type ThemeChoice string
@@ -66,16 +72,18 @@ func validTheme(c ThemeChoice) ThemeChoice {
 // themeOption is one button of the theme picker.
 type themeOption struct {
 	choice ThemeChoice
-	label  string
+	key    string // catalog key of the label
 	icon   string
 	click  string
 }
 
 var themeOptions = []themeOption{
-	{ThemeSystem, "System", "monitor", "$theme = 'system'; $dark = window.matchMedia('(prefers-color-scheme: dark)').matches; document.cookie = 'fc_theme=;path=/;max-age=0;samesite=lax'; document.cookie = 'fc_scheme=' + ($dark ? 'dark' : 'light') + '" + cookieTail + "'"},
-	{ThemeLight, "Light", "sun", "$theme = 'light'; $dark = false; document.cookie = 'fc_theme=light" + cookieTail + "'"},
-	{ThemeDark, "Dark", "moon", "$theme = 'dark'; $dark = true; document.cookie = 'fc_theme=dark" + cookieTail + "'"},
+	{ThemeSystem, "kit.theme.system", "monitor", "$theme = 'system'; $dark = window.matchMedia('(prefers-color-scheme: dark)').matches; document.cookie = 'fc_theme=;path=/;max-age=0;samesite=lax'; document.cookie = 'fc_scheme=' + ($dark ? 'dark' : 'light') + '" + cookieTail + "'"},
+	{ThemeLight, "kit.theme.light", "sun", "$theme = 'light'; $dark = false; document.cookie = 'fc_theme=light" + cookieTail + "'"},
+	{ThemeDark, "kit.theme.dark", "moon", "$theme = 'dark'; $dark = true; document.cookie = 'fc_theme=dark" + cookieTail + "'"},
 }
+
+func (o themeOption) label(ctx context.Context) string { return i18n.T(ctx, o.key) }
 
 func (o themeOption) pressed(current ThemeChoice) string {
 	if validTheme(current) == o.choice {
@@ -111,51 +119,64 @@ func ThemeChoices(current ThemeChoice) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"fc-theme-choice\" role=\"group\" aria-label=\"Theme\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"fc-theme-choice\" role=\"group\" aria-label=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(i18n.T(ctx, "kit.theme.label"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 94, Col: 86}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, o := range themeOptions {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<button type=\"button\" class=\"fc-theme-option\" aria-pressed=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var2 string
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.pressed(current))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 88, Col: 82}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-attr:aria-pressed=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<button type=\"button\" class=\"fc-theme-option\" aria-pressed=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.pressedExpr())
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.pressed(current))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 88, Col: 125}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 96, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-on:click=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-attr:aria-pressed=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.click)
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.pressedExpr())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 88, Col: 151}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 96, Col: 125}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" data-on:click=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var5 string
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.click)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 96, Col: 151}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -163,21 +184,21 @@ func ThemeChoices(current ThemeChoice) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(o.label)
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(o.label(ctx))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 90, Col: 13}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/theme.templ`, Line: 98, Col: 18}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</button>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</button>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.ui.kit;
 
 import io.flowcatalyst.framework.http.Json;
+import io.flowcatalyst.framework.ui.i18n.Messages;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -859,7 +860,7 @@ public final class Props {
      * @return the label
      */
     public String moreLabel() {
-      return Markup.nz(rowLabel) == null ? "More actions" : "More actions for " + rowLabel;
+      return Markup.nz(rowLabel) == null ? Kit.t("kit.row_actions.more") : Kit.t("kit.row_actions.more_for", "row", rowLabel);
     }
 
     /**
@@ -1160,7 +1161,7 @@ public final class Props {
         first = (currentPage() - 1) * rowCount() + 1;
         last = Math.min(currentPage() * rowCount(), total);
       }
-      return "Showing " + first + " to " + last + " of " + total + " " + (noun == null ? "" : noun);
+      return Messages.current().t("kit.paginator.showing", Map.of("from", first, "to", last, "total", total, "noun", noun == null ? "" : noun));
     }
   }
 
@@ -1240,6 +1241,131 @@ public final class Props {
    */
   public record LocalTime(
       @Nullable Instant at, boolean dateOnly, @Nullable String empty) {}
+
+  /** The language the browser formats with: the page's ({@code <html lang>}), else its default. */
+  public static final String LOCALE_EXPR = "document.documentElement.lang || undefined";
+
+  private static final java.util.regex.Pattern PLAIN_DECIMAL = java.util.regex.Pattern.compile("-?[0-9]+(\\.[0-9]+)?");
+  private static final java.util.regex.Pattern CURRENCY_CODE = java.util.regex.Pattern.compile("[A-Z]{3}");
+  private static final int MAX_FRACTION_DIGITS = 20;
+
+  /**
+   * The number of fraction digits of a plain decimal.
+   *
+   * @param component the component's name, for the refusal
+   * @param value the text
+   * @return the number of digits after the point
+   * @throws IllegalArgumentException when the text is not {@code -?[0-9]+(.[0-9]+)?} or has more
+   *     than 20 fraction digits
+   */
+  static int fractionDigits(String component, String value) {
+    if (!PLAIN_DECIMAL.matcher(value).matches()) {
+      throw new IllegalArgumentException("kit: " + component + ": \"" + Markup.escape(value) + "\" is not a plain decimal (-?[0-9]+(.[0-9]+)?)");
+    }
+    int dot = value.indexOf('.');
+    int n = dot < 0 ? 0 : value.length() - dot - 1;
+    if (n > MAX_FRACTION_DIGITS) {
+      throw new IllegalArgumentException("kit: " + component + ": more than " + MAX_FRACTION_DIGITS + " fraction digits");
+    }
+    return n;
+  }
+
+  private static String digitsOptions(int n) {
+    return "minimumFractionDigits: " + n + ", maximumFractionDigits: " + n;
+  }
+
+  private static String numberFormatExpr(String options) {
+    return "el.textContent = new Intl.NumberFormat(" + LOCALE_EXPR + ", {" + options + "}).format(el.value)";
+  }
+
+  /**
+   * local-number.md: a decimal the browser writes in the page's language; the server-rendered text
+   * is the plain value.
+   *
+   * @param value plain decimal text; null or empty renders the empty text
+   * @param empty the text for no value, default a dash
+   */
+  public record LocalNumber(@Nullable String value, @Nullable String empty) {
+    /**
+     * The {@code data-init} expression.
+     *
+     * @return the expression
+     */
+    public String expr() {
+      return numberFormatExpr(digitsOptions(fractionDigits("LocalNumber", Markup.or(value, ""))));
+    }
+  }
+
+  /**
+   * local-money.md: an amount in a currency, written by the browser in currency style in the page's
+   * language; the server-rendered text is "amount CODE". Plain strings: no money type.
+   *
+   * @param amount plain decimal text; null or empty renders the empty text
+   * @param currency the ISO 4217 code, three capital letters
+   * @param digits the fraction digits shown, or null for the currency's own minor units
+   * @param empty the text for no amount, default a dash
+   */
+  public record LocalMoney(
+      @Nullable String amount, @Nullable String currency, @Nullable Integer digits, @Nullable String empty) {
+    /**
+     * The {@code data-init} expression.
+     *
+     * @return the expression
+     */
+    public String expr() {
+      fractionDigits("LocalMoney", Markup.or(amount, ""));
+      String opts = "style: 'currency', currency: el.dataset.currency";
+      if (digits != null) {
+        if (digits < 0 || digits > MAX_FRACTION_DIGITS) {
+          throw new IllegalArgumentException("kit: LocalMoney: digits must be 0 to " + MAX_FRACTION_DIGITS);
+        }
+        opts += ", " + digitsOptions(digits);
+      }
+      return numberFormatExpr(opts);
+    }
+
+    /**
+     * The currency code, checked.
+     *
+     * @return the code
+     */
+    public String code() {
+      if (currency == null || !CURRENCY_CODE.matcher(currency).matches()) {
+        throw new IllegalArgumentException("kit: LocalMoney: " + Markup.escape(String.valueOf(currency)) + " is not a currency code (three capital letters)");
+      }
+      return currency;
+    }
+  }
+
+  /**
+   * local-quantity.md: a measured value and its unit symbol; the browser writes the number in the
+   * page's language, the symbol follows. Plain strings: no units type.
+   *
+   * @param value plain decimal text; null or empty renders the empty text
+   * @param unit the unit symbol, shown after the number; null or empty shows the number alone
+   * @param empty the text for no value, default a dash
+   */
+  public record LocalQuantity(@Nullable String value, @Nullable String unit, @Nullable String empty) {
+    /**
+     * The {@code data-init} expression.
+     *
+     * @return the expression
+     */
+    public String expr() {
+      String e = numberFormatExpr(digitsOptions(fractionDigits("LocalQuantity", Markup.or(value, ""))));
+      return Markup.nz(unit) == null ? e : e + " + ' ' + el.dataset.unit";
+    }
+
+    /**
+     * The server-rendered text.
+     *
+     * @return the value and the unit
+     */
+    public String text() {
+      String v = Markup.or(value, "");
+      return Markup.nz(unit) == null ? v : v + " " + unit;
+    }
+  }
 
   /**
    * date-range.md.
@@ -2038,9 +2164,17 @@ public final class Props {
     public static final String SUMMARY_EXPR =
         "const c = [...el.querySelectorAll('.fc-multiselect-option input:checked')].map(i => i.nextElementSibling.textContent); el.querySelector('.fc-multiselect-summary').textContent = c.length === 0 ? el.dataset.placeholder : c.length <= +el.dataset.maxLabels ? c.join(', ') : el.dataset.manyLabel.replace('{0}', c.length)";
 
-    /** Rebuilds the chips from the checked options; the labels are text, never markup. */
-    public static final String CHIPS_EXPR =
-        "; const ch = el.closest('.fc-form-field').querySelector('.fc-multiselect-chips'); ch.replaceChildren(...[...el.querySelectorAll('.fc-multiselect-option input:checked')].map(i => { const s = document.createElement('span'); s.className = 'fc-multiselect-chip'; s.dataset.value = i.value; const t = document.createElement('span'); t.textContent = i.nextElementSibling.textContent; const b = document.createElement('button'); b.type = 'button'; b.className = 'fc-multiselect-chip-remove'; b.setAttribute('aria-label', 'Remove ' + t.textContent); b.textContent = '\u00d7'; s.append(t, b); return s }))";
+    /**
+     * Rebuilds the chips from the checked options; the labels are text, never markup. The remove
+     * button's label is the {@code kit.multiselect.remove} message of the current language.
+     *
+     * @return the expression
+     */
+    public static String chipsExpr() {
+      return "; const ch = el.closest('.fc-form-field').querySelector('.fc-multiselect-chips'); ch.replaceChildren(...[...el.querySelectorAll('.fc-multiselect-option input:checked')].map(i => { const s = document.createElement('span'); s.className = 'fc-multiselect-chip'; s.dataset.value = i.value; const t = document.createElement('span'); t.textContent = i.nextElementSibling.textContent; const b = document.createElement('button'); b.type = 'button'; b.className = 'fc-multiselect-chip-remove'; b.setAttribute('aria-label', "
+          + Kit.jsMessage("kit.multiselect.remove", "label", "t.textContent")
+          + "); b.textContent = '\u00d7'; s.append(t, b); return s }))";
+    }
 
     /** Unchecks a removed chip's option and fires its change, so the summary and chips update. */
     public static final String REMOVE_CHIP_EXPR =
@@ -2154,7 +2288,7 @@ public final class Props {
       if (labels.size() <= labelLimit()) {
         return String.join(", ", labels);
       }
-      return Markup.or(manyLabel, "{0} selected").replace("{0}", Integer.toString(labels.size()));
+      return Markup.or(manyLabel, Kit.t("kit.multiselect.selected", "count", "{0}")).replace("{0}", Integer.toString(labels.size()));
     }
 
     /**
@@ -2166,8 +2300,8 @@ public final class Props {
       Map<String, Object> a = new java.util.LinkedHashMap<>();
       a.put("data-placeholder", placeholder == null ? "" : placeholder);
       a.put("data-max-labels", Integer.toString(labelLimit()));
-      a.put("data-many-label", Markup.or(manyLabel, "{0} selected"));
-      a.put("data-on:change", chips ? SUMMARY_EXPR + CHIPS_EXPR : SUMMARY_EXPR);
+      a.put("data-many-label", Markup.or(manyLabel, Kit.t("kit.multiselect.selected", "count", "{0}")));
+      a.put("data-on:change", chips ? SUMMARY_EXPR + chipsExpr() : SUMMARY_EXPR);
       if (open) {
         a.put("open", true);
       }
@@ -2440,7 +2574,17 @@ public final class Props {
      * @return the expression
      */
     public String strengthText() {
-      return "['', 'Weak', 'Fair', 'Good', 'Strong'][$" + Markup.signal(signal) + "Score]";
+      return "['', "
+          + Kit.jsq(Kit.t("kit.password.weak"))
+          + ", "
+          + Kit.jsq(Kit.t("kit.password.fair"))
+          + ", "
+          + Kit.jsq(Kit.t("kit.password.good"))
+          + ", "
+          + Kit.jsq(Kit.t("kit.password.strong"))
+          + "][$"
+          + Markup.signal(signal)
+          + "Score]";
     }
 
     /**
@@ -2779,6 +2923,8 @@ public final class Props {
    *     path
    * @param loginParam the query parameter that carries the return path, default {@code returnTo}
    * @param scripts the page's island scripts (URLs), each loaded as a module after Datastar
+   * @param lang the {@code lang} of the html element: the request's resolved locale; null is the
+   *     language of the messages being rendered ({@link Messages#current()}, English by default)
    */
   public record Document(
       String title,
@@ -2787,7 +2933,30 @@ public final class Props {
       String jsUrl,
       @Nullable String loginPath,
       @Nullable String loginParam,
-      List<String> scripts) {
+      List<String> scripts,
+      @Nullable String lang) {
+
+    /**
+     * A document in the language of the current messages.
+     *
+     * @param title the page title
+     * @param htmlAttrs attributes of the html element
+     * @param cssUrl the stylesheet
+     * @param jsUrl the Datastar script
+     * @param loginPath when set, where a 401 sends the user
+     * @param loginParam the query parameter that carries the return path
+     * @param scripts the page's island scripts
+     */
+    public Document(
+        String title,
+        @Nullable Map<String, Object> htmlAttrs,
+        String cssUrl,
+        String jsUrl,
+        @Nullable String loginPath,
+        @Nullable String loginParam,
+        List<String> scripts) {
+      this(title, htmlAttrs, cssUrl, jsUrl, loginPath, loginParam, scripts, null);
+    }
 
     /** The default name of the return-path parameter (sessions contract 4.1). */
     public static final String DEFAULT_LOGIN_PARAM = "returnTo";
@@ -2809,7 +2978,7 @@ public final class Props {
         String cssUrl,
         String jsUrl,
         @Nullable String loginPath) {
-      this(title, htmlAttrs, cssUrl, jsUrl, loginPath, null, List.of());
+      this(title, htmlAttrs, cssUrl, jsUrl, loginPath, null, List.of(), null);
     }
 
     /**

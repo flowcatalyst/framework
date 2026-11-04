@@ -1,5 +1,11 @@
 package kit
 
+import (
+	"context"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
+
 // ThemeChoice is the user's theme: follow the system, or always light/dark
 // (app-shell.md, Theme).
 type ThemeChoice string
@@ -58,16 +64,18 @@ func validTheme(c ThemeChoice) ThemeChoice {
 // themeOption is one button of the theme picker.
 type themeOption struct {
 	choice ThemeChoice
-	label  string
+	key    string // catalog key of the label
 	icon   string
 	click  string
 }
 
 var themeOptions = []themeOption{
-	{ThemeSystem, "System", "monitor", "$theme = 'system'; $dark = window.matchMedia('(prefers-color-scheme: dark)').matches; document.cookie = 'fc_theme=;path=/;max-age=0;samesite=lax'; document.cookie = 'fc_scheme=' + ($dark ? 'dark' : 'light') + '" + cookieTail + "'"},
-	{ThemeLight, "Light", "sun", "$theme = 'light'; $dark = false; document.cookie = 'fc_theme=light" + cookieTail + "'"},
-	{ThemeDark, "Dark", "moon", "$theme = 'dark'; $dark = true; document.cookie = 'fc_theme=dark" + cookieTail + "'"},
+	{ThemeSystem, "kit.theme.system", "monitor", "$theme = 'system'; $dark = window.matchMedia('(prefers-color-scheme: dark)').matches; document.cookie = 'fc_theme=;path=/;max-age=0;samesite=lax'; document.cookie = 'fc_scheme=' + ($dark ? 'dark' : 'light') + '" + cookieTail + "'"},
+	{ThemeLight, "kit.theme.light", "sun", "$theme = 'light'; $dark = false; document.cookie = 'fc_theme=light" + cookieTail + "'"},
+	{ThemeDark, "kit.theme.dark", "moon", "$theme = 'dark'; $dark = true; document.cookie = 'fc_theme=dark" + cookieTail + "'"},
 }
+
+func (o themeOption) label(ctx context.Context) string { return i18n.T(ctx, o.key) }
 
 func (o themeOption) pressed(current ThemeChoice) string {
 	if validTheme(current) == o.choice {
@@ -83,11 +91,11 @@ func (o themeOption) pressedExpr() string {
 // ThemeChoices is the user menu's theme picker (app-shell.md, Theme): three
 // toggle buttons; the pressed state starts from the server's value.
 templ ThemeChoices(current ThemeChoice) {
-	<div class="fc-theme-choice" role="group" aria-label="Theme">
+	<div class="fc-theme-choice" role="group" aria-label={ i18n.T(ctx, "kit.theme.label") }>
 		for _, o := range themeOptions {
 			<button type="button" class="fc-theme-option" aria-pressed={ o.pressed(current) } data-attr:aria-pressed={ o.pressedExpr() } data-on:click={ o.click }>
 				@Icon(IconProps{Name: o.icon, Class: "size-[0.95rem]"})
-				{ o.label }
+				{ o.label(ctx) }
 			</button>
 		}
 	</div>

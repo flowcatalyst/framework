@@ -32,6 +32,7 @@ import (
 
 	"github.com/flowcatalyst/framework/go/ui/assets"
 	"github.com/flowcatalyst/framework/go/ui/ds"
+	"github.com/flowcatalyst/framework/go/ui/i18n"
 	"github.com/flowcatalyst/framework/go/ui/kit"
 )
 
@@ -48,9 +49,12 @@ type Views struct {
 	csp          string
 	flashes      map[string]kit.FlashMessageProps
 	plainCookies bool
+	locales      *i18n.Resolver
+	bundle       *i18n.Bundle
 }
 
 type config struct {
+	locales      *i18n.Config
 	titleSuffix  string
 	shell        func(*http.Request) kit.AppShellProps
 	loginPath    string
@@ -94,6 +98,12 @@ func WithFlashes(messages map[string]kit.FlashMessageProps) Option {
 	return func(c *config) { c.flashes = messages }
 }
 
+// WithLocales resolves the locale of every request the views render (contract
+// i18n.md section 3) when no [i18n.Middleware] did: the document's lang and the
+// kit's texts follow it, and the config's bundle (the application's catalogs over
+// the kit's) is used. Without it, and without the middleware, pages are English.
+func WithLocales(cfg i18n.Config) Option { return func(c *config) { c.locales = &cfg } }
+
 // WithPlainHTTPCookies lets the flash cookie go without Secure on a request that arrived over plain
 // HTTP. Only for an application running in local or test; without this option the cookie is always
 // Secure.
@@ -124,6 +134,9 @@ func New(a *assets.Assets, opts ...Option) (*Views, error) {
 	v := &Views{
 		assets: a, titleSuffix: c.titleSuffix, shell: c.shell, csp: csp,
 		flashes: c.flashes, plainCookies: c.plainCookies,
+	}
+	if c.locales != nil {
+		v.locales, v.bundle = i18n.NewResolver(*c.locales), c.locales.Bundle
 	}
 	if c.loginPath != "" || c.loginParam != "" {
 		param := c.loginParam
@@ -191,10 +204,21 @@ func (v *Views) pageConfig(opts []PageOption) (pageConfig, error) {
 	return c, nil
 }
 
-// context is the request's context with the sprite URL the kit's icons reference.
-func (v *Views) context(r *http.Request) context.Context {
-	return kit.WithSpriteURL(r.Context(), v.assets.SpriteURL())
+// Context is the request's context as the views render with it: the sprite URL the kit's icons
+// reference, and the resolved locale and bundle (the [i18n.Middleware]'s, else those of
+// [WithLocales]). An application translating its own texts in a handler uses [i18n.T] with it.
+func (v *Views) Context(r *http.Request) context.Context {
+	ctx := kit.WithSpriteURL(r.Context(), v.assets.SpriteURL())
+	if v.locales != nil && !i18n.Resolved(ctx) {
+		ctx = i18n.WithLocale(ctx, v.locales.Resolve(r))
+		if v.bundle != nil {
+			ctx = i18n.WithBundle(ctx, v.bundle)
+		}
+	}
+	return ctx
 }
+
+func (v *Views) context(r *http.Request) context.Context { return v.Context(r) }
 
 // Page answers with a page: the full document for a navigation, a patch of #fw-page for a request
 // with Datastar-Request: true. title is without the configured suffix. It returns an error (and
@@ -213,7 +237,7 @@ func (v *Views) Page(w http.ResponseWriter, r *http.Request, title string, conte
 
 func (v *Views) document(w http.ResponseWriter, r *http.Request, c pageConfig, title string, content templ.Component) error {
 	attrs, choice := htmlAttrs(r, v.shell != nil)
-	flashes, hadFlashCookie := v.takeFlash(r)
+	flashes, hadFlashCookie := v.takeFlash(r, v.context(r))
 	p := documentProps{
 		title:          title + v.titleSuffix,
 		htmlAttrs:      attrs,

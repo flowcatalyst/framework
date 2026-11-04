@@ -1,6 +1,11 @@
 package kit
 
-import "strconv"
+import (
+	"context"
+	"strconv"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
 
 // Class lists from table.md (parts and the users-list per-use overrides).
 const (
@@ -296,11 +301,11 @@ func (p RowActionsProps) withRow(label string) string {
 	return label + " " + p.RowLabel
 }
 
-func (p RowActionsProps) moreLabel() string {
+func (p RowActionsProps) moreLabel(ctx context.Context) string {
 	if p.RowLabel == "" {
-		return "More actions"
+		return i18n.T(ctx, "kit.row_actions.more")
 	}
-	return "More actions for " + p.RowLabel
+	return i18n.T(ctx, "kit.row_actions.more_for", i18n.Args{"row": p.RowLabel})
 }
 
 func (p RowActionsProps) partID(kind string, i int) string {
@@ -362,7 +367,7 @@ templ RowActions(p RowActionsProps) {
 				}
 			}
 			if len(p.Menu) > 0 {
-				<button type="button" class="fc-icon-btn" title="More actions" aria-label={ p.moreLabel() } popovertarget={ p.menuID() }>
+				<button type="button" class="fc-icon-btn" title={ i18n.T(ctx, "kit.row_actions.more") } aria-label={ p.moreLabel(ctx) } popovertarget={ p.menuID() }>
 					@Icon(IconProps{Name: "ellipsis", Class: "size-[1rem]"})
 				</button>
 				<div id={ p.menuID() } popover class="fc-row-menu" data-on:toggle__capture={ popoverAnchorExpr }>

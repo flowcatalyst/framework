@@ -1,5 +1,9 @@
 package kit
 
+import (
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
+
 // Class lists from alert-dialog.md, radio-group.md and dirty-form.md.
 const (
 	radioInputClasses = "peer size-4 shrink-0 appearance-none rounded-full border border-input bg-background transition-colors outline-none checked:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none"
@@ -60,8 +64,8 @@ templ AlertDialog(p AlertDialogProps) {
 
 templ alertDialogFooter(p AlertDialogProps) {
 	<div class={ dialogFooter }>
-		<button class={ ButtonClasses(ButtonGhost, ButtonMd) } type="button" autofocus data-on:click={ CloseDialog }>{ orDefault(p.CancelLabel, "Cancel") }</button>
-		<button class={ ButtonClasses(oneOf("alert dialog confirm variant", p.ConfirmVariant, ButtonDestructive, ButtonDestructive, ButtonPrimary), ButtonMd) } type="submit">{ orDefault(p.ConfirmLabel, "Confirm") }</button>
+		<button class={ ButtonClasses(ButtonGhost, ButtonMd) } type="button" autofocus data-on:click={ CloseDialog }>{ orDefault(p.CancelLabel, i18n.T(ctx, "kit.dialog.cancel")) }</button>
+		<button class={ ButtonClasses(oneOf("alert dialog confirm variant", p.ConfirmVariant, ButtonDestructive, ButtonDestructive, ButtonPrimary), ButtonMd) } type="submit">{ orDefault(p.ConfirmLabel, i18n.T(ctx, "kit.dialog.confirm")) }</button>
 	</div>
 }
 
@@ -149,8 +153,8 @@ templ DirtyForm(p DirtyFormProps) {
 	<form id={ ID(p.ID) } class={ cx(dirtyClass, p.Class) } { p.signalAttrs()... } { Attrs(p.Attrs)... }>
 		{ children... }
 		<div class="flex gap-2">
-			<button type="submit" class={ ButtonClasses(ButtonPrimary, ButtonMd) } data-attr:disabled={ "!$" + Signal(p.Signal) } disabled>{ orDefault(p.SaveLabel, "Save") }</button>
-			<button type="reset" class={ ButtonClasses(ButtonGhost, ButtonMd) } data-show={ "$" + Signal(p.Signal) } style="display: none">{ orDefault(p.DiscardLabel, "Discard") }</button>
+			<button type="submit" class={ ButtonClasses(ButtonPrimary, ButtonMd) } data-attr:disabled={ "!$" + Signal(p.Signal) } disabled>{ orDefault(p.SaveLabel, i18n.T(ctx, "kit.dirty_form.save")) }</button>
+			<button type="reset" class={ ButtonClasses(ButtonGhost, ButtonMd) } data-show={ "$" + Signal(p.Signal) } style="display: none">{ orDefault(p.DiscardLabel, i18n.T(ctx, "kit.dirty_form.discard")) }</button>
 		</div>
 	</form>
 }

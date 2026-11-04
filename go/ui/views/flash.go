@@ -1,6 +1,7 @@
 package views
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/flowcatalyst/framework/go/ui/ds"
+	"github.com/flowcatalyst/framework/go/ui/i18n"
 	"github.com/flowcatalyst/framework/go/ui/kit"
 )
 
@@ -75,9 +77,21 @@ func (v *Views) SeeOther(w http.ResponseWriter, r *http.Request, path, flashKey 
 	return nil
 }
 
+// localizeFlash is the registered message with its summary from flash.<key> and its detail from
+// flash.<key>.detail when the catalogs have them (contract i18n.md section 4).
+func localizeFlash(ctx context.Context, key string, m kit.FlashMessageProps) kit.FlashMessageProps {
+	if i18n.Has(ctx, "flash."+key) {
+		m.Summary = i18n.T(ctx, "flash."+key)
+	}
+	if i18n.Has(ctx, "flash."+key+".detail") {
+		m.Detail = i18n.T(ctx, "flash."+key+".detail")
+	}
+	return m
+}
+
 // takeFlash returns the message the flash cookie's key names (none for an unknown or malformed
 // key) and whether the cookie was present, in which case the caller clears it.
-func (v *Views) takeFlash(r *http.Request) (msgs []kit.FlashMessageProps, present bool) {
+func (v *Views) takeFlash(r *http.Request, ctx context.Context) (msgs []kit.FlashMessageProps, present bool) {
 	c, err := r.Cookie(FlashCookie)
 	if err != nil {
 		return nil, false
@@ -86,7 +100,7 @@ func (v *Views) takeFlash(r *http.Request) (msgs []kit.FlashMessageProps, presen
 		return nil, true
 	}
 	if m, ok := v.flashes[c.Value]; ok {
-		return []kit.FlashMessageProps{m}, true
+		return []kit.FlashMessageProps{localizeFlash(ctx, c.Value, m)}, true
 	}
 	return nil, true
 }

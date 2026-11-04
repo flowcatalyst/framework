@@ -10,10 +10,10 @@
 </div>@endif
 </div>
 <div class="fc-toolbar-end">
-@if(p.size() != null)<select name="size" class="fc-select w-24" title="Result size" aria-label="Result size" data-on:change="${SUBMIT_ON_CHANGE}">
+@if(p.size() != null)<select name="size" class="fc-select w-24" title="${Kit.t("kit.toolbar.result_size")}" aria-label="${Kit.t("kit.toolbar.result_size")}" data-on:change="${SUBMIT_ON_CHANGE}">
 @if(p.size().options() != null)@for(int n : p.size().options())<option value="${n}" selected="${n == p.size().selected()}">${n}</option>@endfor@endif
 </select>@endif
-@if(!p.hideRefresh())<button type="submit" class="fc-icon-btn" title="Refresh" aria-label="Refresh">@template.kit.icon(name = "refresh-cw", cls = "size-[1rem]")</button>@endif
+@if(!p.hideRefresh())<button type="submit" class="fc-icon-btn" title="${Kit.t("kit.toolbar.refresh")}" aria-label="${Kit.t("kit.toolbar.refresh")}">@template.kit.icon(name = "refresh-cw", cls = "size-[1rem]")</button>@endif
 @template.kit.table_toolbar_state(p = p.state(filters != null))
 @if(filters != null)<div id="${p.id() + "-filters"}" popover class="fc-filter-popover" data-on:toggle__capture="${POPOVER_ANCHOR}">
 <div class="fc-filter-popover-body">${filters}</div>

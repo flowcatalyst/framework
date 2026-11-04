@@ -1,5 +1,9 @@
 package kit
 
+import (
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
+
 // NavItem is one sidebar entry: a link, or (with Children) an expandable
 // <details> group.
 type NavItem struct {
@@ -97,7 +101,7 @@ templ AppShell(p AppShellProps) {
 	<div class="fc-sidebar-backdrop" aria-hidden="true" data-on:click={ mobileCloseExpr } data-on:keydown__window={ mobileEscapeExpr }></div>
 	<div class="fc-main">
 		<header class="fc-topbar">
-			<button type="button" id="fc-topbar-menu" class="fc-topbar-menu" aria-label="Open navigation" aria-controls="fc-sidebar" aria-expanded="false" data-attr:aria-expanded="$sidebarMobileOpen ? 'true' : 'false'" data-on:click={ mobileOpenExpr }>
+			<button type="button" id="fc-topbar-menu" class="fc-topbar-menu" aria-label={ i18n.T(ctx, "kit.appshell.open_nav") } aria-controls="fc-sidebar" aria-expanded="false" data-attr:aria-expanded="$sidebarMobileOpen ? 'true' : 'false'" data-on:click={ mobileOpenExpr }>
 				@Icon(IconProps{Name: "menu", Class: "size-[1.25rem]"})
 			</button>
 			<a href={ SafeURL(p.LogoHref) } class="fc-topbar-logo">
@@ -119,13 +123,13 @@ templ AppSidebar(p AppShellProps) {
 					@logoSVG()
 				</span>
 			</a>
-			<button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label="Close navigation" data-on:click={ mobileCloseExpr }>
+			<button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label={ i18n.T(ctx, "kit.appshell.close_nav") } data-on:click={ mobileCloseExpr }>
 				@Icon(IconProps{Name: "x", Class: "size-[1.25rem]"})
 			</button>
 			<button
 				type="button"
 				class="fc-collapse-btn"
-				aria-label="Collapse sidebar"
+				aria-label={ i18n.T(ctx, "kit.appshell.collapse") }
 				aria-expanded="true"
 				data-attr:aria-expanded="$sidebarCollapsed ? 'false' : 'true'"
 				data-on:click={ collapseClickExpr }
@@ -135,7 +139,7 @@ templ AppSidebar(p AppShellProps) {
 		</div>
 		<nav
 			class="fc-sidebar-nav"
-			aria-label="Main"
+			aria-label={ i18n.T(ctx, "kit.appshell.main") }
 			if len(collapsibleGroups(p.Nav)) > 0 {
 				data-signals={ NavSignalsJSON(p.Nav) }
 			}
@@ -154,7 +158,7 @@ templ AppSidebar(p AppShellProps) {
 							if NavGroupHasCurrent(g) {
 								aria-expanded="true"
 								aria-disabled="true"
-								title="Contains the current page"
+								title={ i18n.T(ctx, "kit.appshell.contains_current") }
 							} else {
 								aria-expanded="true"
 								data-attr:aria-expanded={ "$" + NavSignal(g.Key) + " ? 'false' : 'true'" }
@@ -183,7 +187,7 @@ templ AppSidebar(p AppShellProps) {
 			}
 		</nav>
 		<div class="fc-sidebar-footer">
-			<button type="button" class="fc-user-trigger" popovertarget="fc-user-menu" aria-label="Account menu">
+			<button type="button" class="fc-user-trigger" popovertarget="fc-user-menu" aria-label={ i18n.T(ctx, "kit.appshell.account_menu") }>
 				<span class="fc-avatar">{ p.User.Initials }</span>
 				<span class="fc-user-text min-w-0 flex-1"><span class="fc-user-name">{ p.User.Name }</span><span class="fc-user-email">{ p.User.Email }</span></span>
 				@Icon(IconProps{Name: "chevron-up", Class: "shrink-0 text-white/50 fc-user-text size-[11px]"})
@@ -202,12 +206,12 @@ templ UserMenu(p AppShellProps) {
 		<div class="border-t border-border p-2">
 			<a href={ SafeURL(p.ProfileHref) } class="fc-menu-item">
 				@Icon(IconProps{Name: "user", Class: "size-[1.1rem]"})
-				Profile
+				{ i18n.T(ctx, "kit.appshell.profile") }
 			</a>
 			if p.ResetPasswordHref != "" {
 				<a href={ SafeURL(p.ResetPasswordHref) } class="fc-menu-item">
 					@Icon(IconProps{Name: "key-round", Class: "size-[1.1rem]"})
-					Reset Password
+					{ i18n.T(ctx, "kit.appshell.reset_password") }
 				</a>
 			}
 		</div>
@@ -220,11 +224,11 @@ templ UserMenu(p AppShellProps) {
 			<form method="post" action={ SafeURL(p.SignOutAction) } { Attrs(p.SignOutAttrs)... }>
 				<button type="submit" class="fc-menu-item danger">
 					@Icon(IconProps{Name: "log-out", Class: "size-[1.1rem]"})
-					Sign Out
+					{ i18n.T(ctx, "kit.appshell.sign_out") }
 				</button>
 			</form>
 		</div>
-		<div class="flex justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground"><span>Version</span><span>{ p.Version }</span></div>
+		<div class="flex justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground"><span>{ i18n.T(ctx, "kit.appshell.version") }</span><span>{ p.Version }</span></div>
 	</div>
 }
 

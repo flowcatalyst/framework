@@ -1,0 +1,4 @@
+{
+  "props": { "empty": "n/a" },
+  "source": "components/local-number.md: Props, empty value renders the empty text"
+}

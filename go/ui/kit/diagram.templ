@@ -1,5 +1,9 @@
 package kit
 
+import (
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
+
 // DiagramProps mirrors diagram.md's Props table. The default slot is the
 // Mermaid source (plain text, escaped by templ).
 type DiagramProps struct {
@@ -18,8 +22,8 @@ templ Diagram(p DiagramProps) {
 	<fc-diagram class={ cx("block", p.Class) } data-bundle={ URL(p.Bundle) }>
 		<div class="fc-diagram-view overflow-auto rounded-md border border-border bg-card p-4 [&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:max-w-full" role="img" aria-label={ p.Label } hidden data-ignore></div>
 		<details class="mt-3 text-sm">
-			<summary class="cursor-pointer text-muted-foreground">Diagram source</summary>
-			<pre class="fc-code-block mt-2" tabindex="0" aria-label={ p.Label + " source" }>
+			<summary class="cursor-pointer text-muted-foreground">{ i18n.T(ctx, "kit.diagram.source") }</summary>
+			<pre class="fc-code-block mt-2" tabindex="0" aria-label={ i18n.T(ctx, "kit.diagram.source_label", i18n.Args{"label": p.Label}) }>
 				<code>
 					{ children... }
 				</code>

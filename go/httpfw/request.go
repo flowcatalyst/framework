@@ -209,10 +209,15 @@ func DecodeJSON[T any](r *http.Request) (T, error) {
 // invalidJSON turns a decode failure into a 400 with one INVALID_JSON detail whose message never
 // echoes the offending value.
 func invalidJSON(err error) *Error {
-	field, message := "body", "invalid JSON"
+	field, message, code := "body", "invalid JSON", "INVALID_JSON"
 	if se, ok := errors.AsType[*json.SemanticError](err); ok {
 		field = pointerPath(string(se.JSONPointer))
 		switch {
+		case se.Err != nil && hasCode(se.Err):
+			// a value type refused its text with a code of its own (the measure types): report that
+			// code and message at the property's path, as Java's Json.toValidation does
+			ce, _ := errors.AsType[codedError](se.Err)
+			code, message = ce.Code(), ce.Message()
 		case errors.Is(se.Err, json.ErrUnknownName):
 			message = "unknown property"
 		case se.Err != nil && strings.Contains(se.Err.Error(), "cannot be null"):
@@ -227,7 +232,20 @@ func invalidJSON(err error) *Error {
 			message = "unexpected end of input"
 		}
 	}
-	return NewError(http.StatusBadRequest, "VALIDATION", "request is invalid", Detail{field, "INVALID_JSON: " + message})
+	return NewError(http.StatusBadRequest, "VALIDATION", "request is invalid", Detail{field, code + ": " + message})
+}
+
+// codedError is what a value type returns from UnmarshalJSON or UnmarshalText when it refuses its
+// input with a code of its own (the measure packages' *decimal.Error).
+type codedError interface {
+	error
+	Code() string
+	Message() string
+}
+
+func hasCode(err error) bool {
+	_, ok := errors.AsType[codedError](err)
+	return ok
 }
 
 // pointerPath turns a JSON Pointer (/a/b/1) into the framework's field path (a.b[1]); the root is

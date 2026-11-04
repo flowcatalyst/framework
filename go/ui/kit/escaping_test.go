@@ -1,6 +1,7 @@
 package kit
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -151,7 +152,7 @@ func TestMultiSelectWithoutChipsHasNoChipListAndNoChipHandler(t *testing.T) {
 	if out := render(t, MultiSelect(p), nil); strings.Contains(out, "fc-multiselect-chip") {
 		t.Error("chip markup without Chips")
 	}
-	if got := p.detailsAttrs()["data-on:change"]; got != summaryExpr {
+	if got := p.detailsAttrs(context.Background())["data-on:change"]; got != summaryExpr {
 		t.Errorf("data-on:change = %v, want the summary expression only", got)
 	}
 }

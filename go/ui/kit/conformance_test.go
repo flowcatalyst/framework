@@ -140,6 +140,9 @@ var renderers = map[string]renderer{
 	"toggle-group":         simple(ToggleGroup),
 	"pick-list":            simple(PickList),
 	"local-time":           simple(LocalTime),
+	"local-number":         simple(LocalNumber),
+	"local-money":          simple(LocalMoney),
+	"local-quantity":       simple(LocalQuantity),
 	"date-range":           simple(DateRange),
 	"tabs": func(f *fixture) (templ.Component, error) {
 		p, err := decode[TabsProps](f)

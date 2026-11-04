@@ -27,33 +27,25 @@ public final class Flash {
    */
   public record Fallback(String key, Props.FlashMessage message) {}
 
-  private static final List<Fallback> FALLBACKS =
-      List.of(
-          fallback("refused", "error", "The request was refused.", "Reload the page and try again."),
-          fallback(
-              "failed",
-              "error",
-              "Something went wrong.",
-              "The request failed. Try again, or reload the page."),
-          fallback(
-              "offline",
-              "warn",
-              "The server could not be reached.",
-              "Check your connection and try again. A change you just made may not have been saved."));
-
-  private static Fallback fallback(String key, String kind, String summary, String detail) {
+  private static Fallback fallback(String key, String kind) {
     return new Fallback(
         key,
-        new Props.FlashMessage(kind, summary, detail, false, Map.of("data-flash-fallback", key)));
+        new Props.FlashMessage(
+            kind,
+            Kit.t("kit.flash_fallback." + key + ".summary"),
+            Kit.t("kit.flash_fallback." + key + ".detail"),
+            false,
+            Map.of("data-flash-fallback", key)));
   }
 
   /**
-   * The generic messages, in the order the stack carries them.
+   * The generic messages, in the order the stack carries them, in the current rendering's
+   * language (the catalog keys {@code kit.flash_fallback.<key>.summary} and {@code .detail}).
    *
    * @return the fallbacks
    */
   public static List<Fallback> fallbacks() {
-    return FALLBACKS;
+    return List.of(fallback("refused", "error"), fallback("failed", "error"), fallback("offline", "warn"));
   }
 
   /**

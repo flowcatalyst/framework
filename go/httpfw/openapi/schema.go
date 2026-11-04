@@ -53,6 +53,27 @@ func Bool() Schema { return newSchema("boolean") }
 // Array is an array of items.
 func Array(items Schema) Schema { return Schema{kw: typed("array").set("items", items)} }
 
+// Prop is one property of an [Object].
+type Prop struct {
+	// Name is the property's name.
+	Name string
+	// Schema is the property's schema.
+	Schema Schema
+}
+
+// Object is a closed object schema for a type that writes its own JSON (a SchemaProvider whose JSON is
+// an object, such as money.Money): every property is required and no other property is allowed, in the
+// order given. Java's emitter writes the same document for its Money, Quantity and UnitPrice.
+func Object(props ...Prop) Schema {
+	properties := newNode()
+	required := make([]any, len(props))
+	for i, p := range props {
+		properties.set(p.Name, p.Schema)
+		required[i] = p.Name
+	}
+	return Schema{kw: typed("object").set("properties", Schema{kw: properties}).set("required", required).set("additionalProperties", false)}
+}
+
 // Of is the schema of another type, as the emitter derives it: a record schema becomes a $ref.
 func Of(t reflect.Type) Schema { return Schema{kw: newNode().set("$type", t)} }
 

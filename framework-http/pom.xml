@@ -16,6 +16,11 @@
       <groupId>io.flowcatalyst.framework</groupId>
       <artifactId>framework-core</artifactId>
     </dependency>
+    <!-- The measure types on the wire and in the OpenAPI document (measure contract section 5). -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-measure</artifactId>
+    </dependency>
     <dependency>
       <groupId>tools.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>

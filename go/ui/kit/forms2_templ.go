@@ -8,6 +8,10 @@ package kit
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import (
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
+
 // Class lists from alert-dialog.md, radio-group.md and dirty-form.md.
 const (
 	radioInputClasses = "peer size-4 shrink-0 appearance-none rounded-full border border-input bg-background transition-colors outline-none checked:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none"
@@ -72,7 +76,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 37, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 41, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -85,7 +89,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-title")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 38, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 42, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +102,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-desc")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 39, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 43, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -177,7 +181,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-title")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 44, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 48, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -203,7 +207,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 44, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 48, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -225,7 +229,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-desc")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 45, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 49, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -251,7 +255,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(p.Message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 45, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 49, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -269,7 +273,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 			var templ_7745c5c3_Var19 templ.SafeURL
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(p.Action))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 48, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 52, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -287,7 +291,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(h.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 50, Col: 40}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 54, Col: 40}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 				if templ_7745c5c3_Err != nil {
@@ -300,7 +304,7 @@ func AlertDialog(p AlertDialogProps) templ.Component {
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(h.Value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 50, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 54, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 				if templ_7745c5c3_Err != nil {
@@ -401,7 +405,7 @@ func alertDialogFooter(p AlertDialogProps) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(CloseDialog)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 63, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 67, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
@@ -412,9 +416,9 @@ func alertDialogFooter(p AlertDialogProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.CancelLabel, "Cancel"))
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.CancelLabel, i18n.T(ctx, "kit.dialog.cancel")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 63, Col: 147}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 67, Col: 171}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -447,9 +451,9 @@ func alertDialogFooter(p AlertDialogProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.ConfirmLabel, "Confirm"))
+		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.ConfirmLabel, i18n.T(ctx, "kit.dialog.confirm")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 64, Col: 206}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 68, Col: 230}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -524,7 +528,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 95, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 99, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 			if templ_7745c5c3_Err != nil {
@@ -543,7 +547,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.LabelledBy))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 98, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 102, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
 			if templ_7745c5c3_Err != nil {
@@ -623,7 +627,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var41 string
 			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 108, Col: 15}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 112, Col: 15}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 			if templ_7745c5c3_Err != nil {
@@ -636,7 +640,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var42 string
 			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 109, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 113, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
 			if templ_7745c5c3_Err != nil {
@@ -649,7 +653,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var43 string
 			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 110, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 114, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 			if templ_7745c5c3_Err != nil {
@@ -722,7 +726,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 116, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 120, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 			if templ_7745c5c3_Err != nil {
@@ -735,7 +739,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var49 string
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(o.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 116, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 120, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 			if templ_7745c5c3_Err != nil {
@@ -813,7 +817,7 @@ func DirtyForm(p DirtyFormProps) templ.Component {
 		var templ_7745c5c3_Var52 string
 		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 149, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 153, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var52)
 		if templ_7745c5c3_Err != nil {
@@ -881,7 +885,7 @@ func DirtyForm(p DirtyFormProps) templ.Component {
 		var templ_7745c5c3_Var56 string
 		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.ResolveAttributeValue("!$" + Signal(p.Signal))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 152, Col: 118}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 156, Col: 118}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var56)
 		if templ_7745c5c3_Err != nil {
@@ -892,9 +896,9 @@ func DirtyForm(p DirtyFormProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var57 string
-		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.SaveLabel, "Save"))
+		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.SaveLabel, i18n.T(ctx, "kit.dirty_form.save")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 152, Col: 162}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 156, Col: 190}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 		if templ_7745c5c3_Err != nil {
@@ -929,7 +933,7 @@ func DirtyForm(p DirtyFormProps) templ.Component {
 		var templ_7745c5c3_Var60 string
 		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.ResolveAttributeValue("$" + Signal(p.Signal))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 153, Col: 105}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 157, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var60)
 		if templ_7745c5c3_Err != nil {
@@ -940,9 +944,9 @@ func DirtyForm(p DirtyFormProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var61 string
-		templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.DiscardLabel, "Discard"))
+		templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.DiscardLabel, i18n.T(ctx, "kit.dirty_form.discard")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 153, Col: 168}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/forms2.templ`, Line: 157, Col: 196}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var61))
 		if templ_7745c5c3_Err != nil {

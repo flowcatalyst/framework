@@ -35,6 +35,8 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
 )
 
 // DefaultSpriteURL is the icon sprite path the specs and fixtures use. Pages
@@ -295,4 +297,86 @@ func oneOf[T ~string](what string, v, def T, allowed ...T) T {
 		panic(fmt.Sprintf("kit: unknown %s %q (contract section 3 rule 5: an unknown variant or size is refused)", what, string(v)))
 	}
 	return v
+}
+
+// jsq quotes s as a JavaScript single-quoted string literal, for a catalog
+// message that goes into a Datastar expression.
+func jsq(s string) string {
+	var sb strings.Builder
+	sb.WriteByte('\'')
+	for _, r := range s {
+		switch r {
+		case '\\':
+			sb.WriteString(`\\`)
+		case '\'':
+			sb.WriteString(`\'`)
+		case '\n':
+			sb.WriteString(`\n`)
+		case '\r':
+			sb.WriteString(`\r`)
+		case ' ':
+			sb.WriteString(` `)
+		case ' ':
+			sb.WriteString(` `)
+		default:
+			sb.WriteRune(r)
+		}
+	}
+	sb.WriteByte('\'')
+	return sb.String()
+}
+
+// jsMessage is the JavaScript expression for a catalog message whose
+// placeholder arg is the JavaScript expression expr: the message's text as
+// quoted string terms joined with + around expr, empty terms left out
+// ("Remove {label}" with expr "t.textContent" is `'Remove ' + t.textContent`).
+func jsMessage(ctx context.Context, key, arg, expr string) string {
+	const mark = "\x00"
+	parts := strings.Split(i18n.T(ctx, key, i18n.Args{arg: mark}), mark)
+	var terms []string
+	for i, part := range parts {
+		if i > 0 {
+			terms = append(terms, expr)
+		}
+		if part != "" {
+			terms = append(terms, jsq(part))
+		}
+	}
+	if len(terms) == 0 {
+		return "''"
+	}
+	return strings.Join(terms, " + ")
+}
+
+// htmlMessage is a catalog message written as markup: the text is escaped,
+// and each placeholder named in raw is replaced by that trusted markup (which
+// the caller built from escaped values). A placeholder not in raw stays text.
+func htmlMessage(ctx context.Context, key string, raw map[string]string) templ.Component {
+	const mark = "\x00"
+	args := i18n.Args{}
+	for name := range raw {
+		args[name] = mark + name + mark
+	}
+	text := templ.EscapeString(i18n.T(ctx, key, args))
+	for name, html := range raw {
+		text = strings.ReplaceAll(text, mark+name+mark, html)
+	}
+	return Raw(text)
+}
+
+// secretRefHelp is the secret reference input's help text: the catalog
+// message with its two examples as <code> elements.
+func secretRefHelp(ctx context.Context) templ.Component {
+	return htmlMessage(ctx, "kit.secretref.help", map[string]string{
+		"example":      "<code>billing-api-key</code>",
+		"vaultExample": "<code>vault:billing-api-key</code>",
+	})
+}
+
+// permissionRequired is the permission-denied dialog's "required permission"
+// line: the catalog message with the permission as a <code> element.
+func permissionRequired(ctx context.Context, permission string) templ.Component {
+	return htmlMessage(ctx, "kit.permission_denied.required", map[string]string{
+		"permission": `<code class="rounded bg-foreground/10 px-1.5 py-0.5 text-xs">` + templ.EscapeString(permission) + "</code>",
+	})
 }

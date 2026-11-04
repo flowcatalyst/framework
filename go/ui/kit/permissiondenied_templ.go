@@ -8,7 +8,12 @@ package kit
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "strings"
+import (
+	"context"
+	"strings"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
 
 // PermissionDeniedKind is which of the two cases the dialog shows.
 type PermissionDeniedKind string
@@ -65,11 +70,11 @@ func required(rule, value string) string {
 	return value
 }
 
-func (p PermissionDeniedDialogProps) title() string {
+func (p PermissionDeniedDialogProps) title(ctx context.Context) string {
 	if p.expired() {
-		return "Session Expired"
+		return i18n.T(ctx, "kit.permission_denied.expired_title")
 	}
-	return "Permission Denied"
+	return i18n.T(ctx, "kit.permission_denied.denied_title")
 }
 
 func (p PermissionDeniedDialogProps) dialogAttrs() templ.Attributes {
@@ -117,7 +122,7 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 85, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 90, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -130,7 +135,7 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-title")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 85, Col: 130}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 90, Col: 130}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -143,7 +148,7 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-desc")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 85, Col: 166}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 90, Col: 166}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -164,7 +169,7 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-title")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 86, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 91, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -175,9 +180,9 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(p.title())
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(p.title(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 86, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 91, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -221,7 +226,7 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-desc")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 97, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 102, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -234,7 +239,7 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(p.Message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 97, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 102, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -245,72 +250,119 @@ func PermissionDeniedDialog(p PermissionDeniedDialogProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !p.expired() && p.RequiredPermission != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-[13px] text-muted-foreground\">Required permission: <code class=\"rounded bg-foreground/10 px-1.5 py-0.5 text-xs\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-[13px] text-muted-foreground\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(p.RequiredPermission)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 99, Col: 153}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+			templ_7745c5c3_Err = permissionRequired(ctx, p.RequiredPermission).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</code></p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if !p.expired() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-[13px] text-muted-foreground\">Contact your administrator if you believe you should have access to this resource.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-[13px] text-muted-foreground\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var9 string
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "kit.permission_denied.contact_admin"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 109, Col: 101}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div><div class=\"fc-dialog-footer\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div><div class=\"fc-dialog-footer\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if p.expired() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<a class=\"fc-btn fc-btn-primary\" autofocus href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<a class=\"fc-btn fc-btn-primary\" autofocus href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 templ.SafeURL
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(required("PermissionDeniedDialogProps.LoginURL (loginUrl) is required when kind is session", p.LoginURL)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 107, Col: 167}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 114, Col: 167}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\">Log In Again</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<button type=\"button\" class=\"fc-btn fc-btn-text\" autofocus data-on:click=\"history.back()\">Go Back</button> <a class=\"fc-btn fc-btn-primary\" href=\"")
+			var templ_7745c5c3_Var11 string
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "kit.permission_denied.log_in_again"))
 			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var11 templ.SafeURL
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(required("PermissionDeniedDialogProps.HomeURL (homeUrl) is required when kind is denied", p.HomeURL)))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 110, Col: 153}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 114, Col: 221}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\">Go to Dashboard</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</a>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<button type=\"button\" class=\"fc-btn fc-btn-text\" autofocus data-on:click=\"history.back()\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "kit.permission_denied.go_back"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 116, Col: 140}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</button> <a class=\"fc-btn fc-btn-primary\" href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var13 templ.SafeURL
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(required("PermissionDeniedDialogProps.HomeURL (homeUrl) is required when kind is denied", p.HomeURL)))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 117, Col: 153}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var14 string
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "kit.permission_denied.go_dashboard"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/permissiondenied.templ`, Line: 117, Col: 207}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</div></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

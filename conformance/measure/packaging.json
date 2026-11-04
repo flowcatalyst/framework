@@ -1,0 +1,6182 @@
+{
+  "description" : "Packaging (measure contract section 3.3). Each case has levels: [unit, ...] and counts: [n, ...] (counts[0] is 1, counts[i] says how many of level i-1 level i holds). new: the packaging is built or fails PACKAGING_INVALID. convert: quantity converted to a unit at scale 6 HALF_EVEN and exact. breakdown: the quantity as whole units from the largest level down (expect an array of quantity objects).",
+  "howToRun" : "Build the packaging from the levels, then run each operation; compare quantities as plain text and unit code, or the error code with error.",
+  "new" : [ {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "expect" : "ok"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "expect" : "ok"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "expect" : "ok"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "expect" : "ok"
+  }, {
+    "levels" : [ "XPX" ],
+    "counts" : [ "1" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "levels" : [ "C62", "KGM" ],
+    "counts" : [ "1", "2" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "levels" : [ "C62", "XCT", "XCT" ],
+    "counts" : [ "1", "24", "2" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "levels" : [ "C62", "XCT" ],
+    "counts" : [ "1", "0" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "levels" : [ "C62", "XCT" ],
+    "counts" : [ "1", "-3" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "levels" : [ "MTR" ],
+    "counts" : [ "1" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "levels" : [ "LTR", "XDR" ],
+    "counts" : [ "1", "200" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "expect" : "ok"
+  } ],
+  "convert" : [ {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "0.041667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "41.666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "0.020833",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "0.062500",
+    "exact" : "0.0625"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "40.000000",
+    "exact" : "40"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "-41.666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "0.114583",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "C62"
+    },
+    "to" : "XCT",
+    "round6" : "416.677083",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "0.001042",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "1.041667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "0.025000",
+    "exact" : "0.025"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "0.000521",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "0.001562",
+    "exact" : "0.0015625"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "-1.041667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "0.002865",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "C62"
+    },
+    "to" : "XPX",
+    "round6" : "10.416927",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "24000.000000",
+    "exact" : "24000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "576.000000",
+    "exact" : "576"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "12.000000",
+    "exact" : "12"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "36.000000",
+    "exact" : "36"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "23040.000000",
+    "exact" : "23040"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "-24000.000000",
+    "exact" : "-24000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "66.000000",
+    "exact" : "66"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "to" : "C62",
+    "round6" : "240006.000000",
+    "exact" : "240006"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.025000",
+    "exact" : "0.025"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "25.000000",
+    "exact" : "25"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.600000",
+    "exact" : "0.6"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.012500",
+    "exact" : "0.0125"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.037500",
+    "exact" : "0.0375"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "-25.000000",
+    "exact" : "-25"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.068750",
+    "exact" : "0.06875"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "250.006250",
+    "exact" : "250.00625"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "960000.000000",
+    "exact" : "960000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "23040.000000",
+    "exact" : "23040"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "480.000000",
+    "exact" : "480"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "1440.000000",
+    "exact" : "1440"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "921600.000000",
+    "exact" : "921600"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "-960000.000000",
+    "exact" : "-960000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "2640.000000",
+    "exact" : "2640"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "round6" : "9600240.000000",
+    "exact" : "9600240"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "40.000000",
+    "exact" : "40"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "40000.000000",
+    "exact" : "40000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "20.000000",
+    "exact" : "20"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "60.000000",
+    "exact" : "60"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "38400.000000",
+    "exact" : "38400"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "-40000.000000",
+    "exact" : "-40000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "110.000000",
+    "exact" : "110"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "400010.000000",
+    "exact" : "400010"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "KGM"
+    },
+    "to" : "KGM",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "0.040000",
+    "exact" : "0.04"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "40.000000",
+    "exact" : "40"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "0.960000",
+    "exact" : "0.96"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "0.020000",
+    "exact" : "0.02"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "0.060000",
+    "exact" : "0.06"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "38.400000",
+    "exact" : "38.4"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "-40.000000",
+    "exact" : "-40"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "0.110000",
+    "exact" : "0.11"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "KGM"
+    },
+    "to" : "XBG",
+    "round6" : "400.010000",
+    "exact" : "400.01"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.000833",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.833333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.020000",
+    "exact" : "0.02"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.000417",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.001250",
+    "exact" : "0.00125"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.800000",
+    "exact" : "0.8"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "-0.833333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "0.002292",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "round6" : "8.333542",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "25.000000",
+    "exact" : "25"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "25000.000000",
+    "exact" : "25000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "600.000000",
+    "exact" : "600"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "12.500000",
+    "exact" : "12.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "37.500000",
+    "exact" : "37.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "24000.000000",
+    "exact" : "24000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "-25000.000000",
+    "exact" : "-25000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "68.750000",
+    "exact" : "68.75"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XBG"
+    },
+    "to" : "KGM",
+    "round6" : "250006.250000",
+    "exact" : "250006.25"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XBG"
+    },
+    "to" : "XBG",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "0.020833",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "20.833333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "0.010417",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "0.031250",
+    "exact" : "0.03125"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "20.000000",
+    "exact" : "20"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "-20.833333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "0.057292",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XBG"
+    },
+    "to" : "XPX",
+    "round6" : "208.338542",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "1200.000000",
+    "exact" : "1200"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "1200000.000000",
+    "exact" : "1200000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "28800.000000",
+    "exact" : "28800"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "600.000000",
+    "exact" : "600"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "1800.000000",
+    "exact" : "1800"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "1152000.000000",
+    "exact" : "1152000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "-1200000.000000",
+    "exact" : "-1200000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "3300.000000",
+    "exact" : "3300"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "round6" : "12000300.000000",
+    "exact" : "12000300"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "48.000000",
+    "exact" : "48"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "48000.000000",
+    "exact" : "48000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "1152.000000",
+    "exact" : "1152"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "72.000000",
+    "exact" : "72"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "46080.000000",
+    "exact" : "46080"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "-48000.000000",
+    "exact" : "-48000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "132.000000",
+    "exact" : "132"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "XBG",
+    "round6" : "480012.000000",
+    "exact" : "480012"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "EA"
+    },
+    "to" : "EA",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "0.166667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "166.666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "4.000000",
+    "exact" : "4"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "0.083333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "0.250000",
+    "exact" : "0.25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "160.000000",
+    "exact" : "160"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "-166.666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "0.458333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "EA"
+    },
+    "to" : "XCS",
+    "round6" : "1666.708333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "0.041667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "41.666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "0.020833",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "0.062500",
+    "exact" : "0.0625"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "40.000000",
+    "exact" : "40"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "-41.666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "0.114583",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "EA"
+    },
+    "to" : "XCT",
+    "round6" : "416.677083",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "0.004167",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "4.166667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "0.100000",
+    "exact" : "0.1"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "0.002083",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "0.006250",
+    "exact" : "0.00625"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "4.000000",
+    "exact" : "4"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "-4.166667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "0.011458",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "EA"
+    },
+    "to" : "XPX",
+    "round6" : "41.667708",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "6.000000",
+    "exact" : "6"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "6000.000000",
+    "exact" : "6000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "144.000000",
+    "exact" : "144"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "3.000000",
+    "exact" : "3"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "9.000000",
+    "exact" : "9"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "5760.000000",
+    "exact" : "5760"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "-6000.000000",
+    "exact" : "-6000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "16.500000",
+    "exact" : "16.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCS"
+    },
+    "to" : "EA",
+    "round6" : "60001.500000",
+    "exact" : "60001.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCS"
+    },
+    "to" : "XCS",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "0.250000",
+    "exact" : "0.25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "250.000000",
+    "exact" : "250"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "6.000000",
+    "exact" : "6"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "0.125000",
+    "exact" : "0.125"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "0.375000",
+    "exact" : "0.375"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "240.000000",
+    "exact" : "240"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "-250.000000",
+    "exact" : "-250"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "0.687500",
+    "exact" : "0.6875"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCS"
+    },
+    "to" : "XCT",
+    "round6" : "2500.062500",
+    "exact" : "2500.0625"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "0.025000",
+    "exact" : "0.025"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "25.000000",
+    "exact" : "25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "0.600000",
+    "exact" : "0.6"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "0.012500",
+    "exact" : "0.0125"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "0.037500",
+    "exact" : "0.0375"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "-25.000000",
+    "exact" : "-25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "0.068750",
+    "exact" : "0.06875"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCS"
+    },
+    "to" : "XPX",
+    "round6" : "250.006250",
+    "exact" : "250.00625"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "24000.000000",
+    "exact" : "24000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "576.000000",
+    "exact" : "576"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "12.000000",
+    "exact" : "12"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "36.000000",
+    "exact" : "36"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "23040.000000",
+    "exact" : "23040"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "-24000.000000",
+    "exact" : "-24000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "66.000000",
+    "exact" : "66"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "to" : "EA",
+    "round6" : "240006.000000",
+    "exact" : "240006"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "4.000000",
+    "exact" : "4"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "4000.000000",
+    "exact" : "4000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "96.000000",
+    "exact" : "96"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "2.000000",
+    "exact" : "2"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "6.000000",
+    "exact" : "6"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "3840.000000",
+    "exact" : "3840"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "-4000.000000",
+    "exact" : "-4000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "11.000000",
+    "exact" : "11"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "to" : "XCS",
+    "round6" : "40001.000000",
+    "exact" : "40001"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "to" : "XCT",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.100000",
+    "exact" : "0.1"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "100.000000",
+    "exact" : "100"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "2.400000",
+    "exact" : "2.4"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.050000",
+    "exact" : "0.05"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.150000",
+    "exact" : "0.15"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "96.000000",
+    "exact" : "96"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "-100.000000",
+    "exact" : "-100"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "0.275000",
+    "exact" : "0.275"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "to" : "XPX",
+    "round6" : "1000.025000",
+    "exact" : "1000.025"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "240.000000",
+    "exact" : "240"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "240000.000000",
+    "exact" : "240000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "5760.000000",
+    "exact" : "5760"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "120.000000",
+    "exact" : "120"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "360.000000",
+    "exact" : "360"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "230400.000000",
+    "exact" : "230400"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "-240000.000000",
+    "exact" : "-240000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "660.000000",
+    "exact" : "660"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "EA",
+    "round6" : "2400060.000000",
+    "exact" : "2400060"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "40.000000",
+    "exact" : "40"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "40000.000000",
+    "exact" : "40000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "20.000000",
+    "exact" : "20"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "60.000000",
+    "exact" : "60"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "38400.000000",
+    "exact" : "38400"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "-40000.000000",
+    "exact" : "-40000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "110.000000",
+    "exact" : "110"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "XCS",
+    "round6" : "400010.000000",
+    "exact" : "400010"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "10.000000",
+    "exact" : "10"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "10000.000000",
+    "exact" : "10000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "240.000000",
+    "exact" : "240"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "5.000000",
+    "exact" : "5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "15.000000",
+    "exact" : "15"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "9600.000000",
+    "exact" : "9600"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "-10000.000000",
+    "exact" : "-10000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "27.500000",
+    "exact" : "27.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "round6" : "100002.500000",
+    "exact" : "100002.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "to" : "XPX",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "DZN"
+    },
+    "to" : "DZN",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "0.100000",
+    "exact" : "0.1"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "100.000000",
+    "exact" : "100"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "2.400000",
+    "exact" : "2.4"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "0.050000",
+    "exact" : "0.05"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "0.150000",
+    "exact" : "0.15"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "96.000000",
+    "exact" : "96"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "-100.000000",
+    "exact" : "-100"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "0.275000",
+    "exact" : "0.275"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "DZN"
+    },
+    "to" : "XBX",
+    "round6" : "1000.025000",
+    "exact" : "1000.025"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "10.000000",
+    "exact" : "10"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "10000.000000",
+    "exact" : "10000"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "240.000000",
+    "exact" : "240"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "5.000000",
+    "exact" : "5"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "15.000000",
+    "exact" : "15"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "9600.000000",
+    "exact" : "9600"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "-10000.000000",
+    "exact" : "-10000"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "27.500000",
+    "exact" : "27.5"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XBX"
+    },
+    "to" : "DZN",
+    "round6" : "100002.500000",
+    "exact" : "100002.5"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XBX"
+    },
+    "to" : "XBX",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "1.000000",
+    "exact" : "1"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "1000.000000",
+    "exact" : "1000"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "24.000000",
+    "exact" : "24"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "0.500000",
+    "exact" : "0.5"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "1.500000",
+    "exact" : "1.5"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "960.000000",
+    "exact" : "960"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "-1000.000000",
+    "exact" : "-1000"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "0.000000",
+    "exact" : "0"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "2.750000",
+    "exact" : "2.75"
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "C62"
+    },
+    "to" : "C62",
+    "round6" : "10000.250000",
+    "exact" : "10000.25"
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBX"
+    },
+    "to" : "C62",
+    "error" : "UNIT_NOT_IN_PACKAGING"
+  } ],
+  "breakdown" : [ {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "1",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "16",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0.5",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "1.5",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "-1",
+      "unit" : "XPX"
+    }, {
+      "value" : "-1",
+      "unit" : "XCT"
+    }, {
+      "value" : "-16",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "2.75",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "10",
+      "unit" : "XPX"
+    }, {
+      "value" : "16",
+      "unit" : "XCT"
+    }, {
+      "value" : "16.25",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "25",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "24",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "12.0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "12.0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "24",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "-25",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "2",
+      "unit" : "XCT"
+    }, {
+      "value" : "18.00",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "250",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "6.00",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1000",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "24",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "20",
+      "unit" : "XCT"
+    }, {
+      "value" : "0.0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "20",
+      "unit" : "XCT"
+    }, {
+      "value" : "0.0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "960",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "-1000",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "2",
+      "unit" : "XPX"
+    }, {
+      "value" : "30",
+      "unit" : "XCT"
+    }, {
+      "value" : "0.00",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "10000",
+      "unit" : "XPX"
+    }, {
+      "value" : "10",
+      "unit" : "XCT"
+    }, {
+      "value" : "0.00",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "1",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "40",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "24",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0.5",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "1.5",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "38",
+      "unit" : "XBG"
+    }, {
+      "value" : "10",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "-40",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "2.75",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "KGM"
+    },
+    "expect" : [ {
+      "value" : "8",
+      "unit" : "XPX"
+    }, {
+      "value" : "16",
+      "unit" : "XBG"
+    }, {
+      "value" : "0.25",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "20",
+      "unit" : "XPX"
+    }, {
+      "value" : "40",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "24",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "12.5",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XBG"
+    }, {
+      "value" : "12.5",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "20",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "-20",
+      "unit" : "XPX"
+    }, {
+      "value" : "-40",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "2",
+      "unit" : "XBG"
+    }, {
+      "value" : "18.75",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XBG"
+    },
+    "expect" : [ {
+      "value" : "208",
+      "unit" : "XPX"
+    }, {
+      "value" : "16",
+      "unit" : "XBG"
+    }, {
+      "value" : "6.25",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1000",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "24",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "24",
+      "unit" : "XBG"
+    }, {
+      "value" : "0.0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "24",
+      "unit" : "XBG"
+    }, {
+      "value" : "0.0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "960",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "-1000",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XBG"
+    }, {
+      "value" : "0",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "2",
+      "unit" : "XPX"
+    }, {
+      "value" : "36",
+      "unit" : "XBG"
+    }, {
+      "value" : "0.00",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "KGM", "XBG", "XPX" ],
+    "counts" : [ "1", "25", "48" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "10000",
+      "unit" : "XPX"
+    }, {
+      "value" : "12",
+      "unit" : "XBG"
+    }, {
+      "value" : "0.00",
+      "unit" : "KGM"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "1",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "4",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "2",
+      "unit" : "XCS"
+    }, {
+      "value" : "4",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.5",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "1.5",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "4",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "-4",
+      "unit" : "XPX"
+    }, {
+      "value" : "-1",
+      "unit" : "XCT"
+    }, {
+      "value" : "-2",
+      "unit" : "XCS"
+    }, {
+      "value" : "-4",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "2.75",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "EA"
+    },
+    "expect" : [ {
+      "value" : "41",
+      "unit" : "XPX"
+    }, {
+      "value" : "6",
+      "unit" : "XCT"
+    }, {
+      "value" : "2",
+      "unit" : "XCS"
+    }, {
+      "value" : "4.25",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "1",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "25",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "6",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "3.0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "1",
+      "unit" : "XCS"
+    }, {
+      "value" : "3.0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "24",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "-25",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "2",
+      "unit" : "XCS"
+    }, {
+      "value" : "4.50",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCS"
+    },
+    "expect" : [ {
+      "value" : "250",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "1.50",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "100",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "2",
+      "unit" : "XPX"
+    }, {
+      "value" : "4",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "2",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "1",
+      "unit" : "XCT"
+    }, {
+      "value" : "2",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "96",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "-100",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "2",
+      "unit" : "XCT"
+    }, {
+      "value" : "3",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.00",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XCT"
+    },
+    "expect" : [ {
+      "value" : "1000",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "1",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.00",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1000",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "24",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "5",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XPX"
+    }, {
+      "value" : "5",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "960",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "-1000",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XPX"
+    }, {
+      "value" : "0",
+      "unit" : "XCT"
+    }, {
+      "value" : "0",
+      "unit" : "XCS"
+    }, {
+      "value" : "0",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "2",
+      "unit" : "XPX"
+    }, {
+      "value" : "7",
+      "unit" : "XCT"
+    }, {
+      "value" : "2",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.00",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "EA", "XCS", "XCT", "XPX" ],
+    "counts" : [ "1", "6", "4", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XPX"
+    },
+    "expect" : [ {
+      "value" : "10000",
+      "unit" : "XPX"
+    }, {
+      "value" : "2",
+      "unit" : "XCT"
+    }, {
+      "value" : "2",
+      "unit" : "XCS"
+    }, {
+      "value" : "0.00",
+      "unit" : "EA"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XBX"
+    }, {
+      "value" : "1",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "100",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "2",
+      "unit" : "XBX"
+    }, {
+      "value" : "4",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XBX"
+    }, {
+      "value" : "0.5",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XBX"
+    }, {
+      "value" : "1.5",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "96",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "-100",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XBX"
+    }, {
+      "value" : "2.75",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "DZN"
+    },
+    "expect" : [ {
+      "value" : "1000",
+      "unit" : "XBX"
+    }, {
+      "value" : "0.25",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "1000",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "24",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XBX"
+    }, {
+      "value" : "5.0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "XBX"
+    }, {
+      "value" : "5.0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "960",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "-1000",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "XBX"
+    }, {
+      "value" : "0",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "2",
+      "unit" : "XBX"
+    }, {
+      "value" : "7.50",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "DZN", "XBX" ],
+    "counts" : [ "1", "10" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "XBX"
+    },
+    "expect" : [ {
+      "value" : "10000",
+      "unit" : "XBX"
+    }, {
+      "value" : "2.50",
+      "unit" : "DZN"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "1",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "1000",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "1000",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "24",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "24",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "0.5",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0.5",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "1.5",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "1.5",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "960",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "960",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "-1000",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "-1000",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "0",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "0",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "2.75",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "2.75",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62" ],
+    "counts" : [ "1" ],
+    "quantity" : {
+      "value" : "10000.25",
+      "unit" : "C62"
+    },
+    "expect" : [ {
+      "value" : "10000.25",
+      "unit" : "C62"
+    } ]
+  }, {
+    "levels" : [ "C62", "XCT", "XPX" ],
+    "counts" : [ "1", "24", "40" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "error" : "UNIT_NOT_IN_PACKAGING"
+  } ]
+}

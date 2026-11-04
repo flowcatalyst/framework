@@ -88,7 +88,7 @@ The Go module's packages that are plain `net/http` (`kit`, `ds`, `assets`, `view
    `datastar-patch-elements` event carries the wrapped content in the default mode (morph by id). **A Datastar
    answer is always `200`** (Datastar applies no other status), and carries no CSP header (it is not a document).
 3. Any other request gets the full document with the given status (`200`, or `422` for a re-rendered form):
-   - `<html>` with the theme attributes (section 10) and, with a shell, the shell attributes;
+   - `<html lang>` (the request's resolved locale, [i18n.md](i18n.md); `en` without a resolver) with the theme attributes (section 10) and, with a shell, the shell attributes;
    - a head with the title (page title + the configured suffix), the stylesheet `url("kit.css")`, Datastar
      `url("datastar.js")` as `<script type="module">`, and the page's island scripts (section 6 rule 5);
    - with a shell: the app shell (section 7) around the flash stack and the content; without one:
@@ -225,3 +225,4 @@ check, the flash cookie and, for Go, compression.
   a body above 1 MiB is refused `413`.
 - sessions-and-login 7.2 rule 5: form routes, section 8 rule 2.
 - static-assets-and-spa 12 ruling 6: section 12.
+- *Added 2026-11-03* ([i18n.md](i18n.md)): every user-visible kit string is a `kit.` catalog message (the English text is unchanged); `local-time` formats with the page's `lang`, and `local-number`, `local-money`, `local-quantity` join the kit with their fixtures; flashes and field errors may come from the catalogs.

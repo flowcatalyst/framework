@@ -1,0 +1,6640 @@
+{
+  "description" : "Unit parsing and quantity conversion (measure contract section 3.1 and 3.2). parse: the text, expect the unit code or UNIT_UNKNOWN. convert: every ordered pair of units within each dimension for several values; round12 is value.to(unit, 12, HALF_EVEN) as plain text, exact is toExact (an error CONVERSION_INEXACT where the result does not terminate). arithmetic: plus, minus and compare between quantities; expect a quantity object or a number for compare.",
+  "howToRun" : "Parse value and unit codes; compute to(to, 12, HALF_EVEN) and toExact(to); compare plain text with round12 and exact (or the error code with exactError).",
+  "parse" : [ {
+    "input" : "KGM",
+    "expect" : "KGM"
+  }, {
+    "input" : "kg",
+    "expect" : "KGM"
+  }, {
+    "input" : "KG",
+    "expect" : "KGM"
+  }, {
+    "input" : "kgm",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : "Kg",
+    "expect" : "KGM"
+  }, {
+    "input" : "kgs",
+    "expect" : "KGM"
+  }, {
+    "input" : "lbs",
+    "expect" : "LBR"
+  }, {
+    "input" : "LBS",
+    "expect" : "LBR"
+  }, {
+    "input" : "L",
+    "expect" : "LTR"
+  }, {
+    "input" : "l",
+    "expect" : "LTR"
+  }, {
+    "input" : "ltr",
+    "expect" : "LTR"
+  }, {
+    "input" : "pcs",
+    "expect" : "H87"
+  }, {
+    "input" : "ea",
+    "expect" : "EA"
+  }, {
+    "input" : "each",
+    "expect" : "C62"
+  }, {
+    "input" : "EA",
+    "expect" : "EA"
+  }, {
+    "input" : "EACH",
+    "expect" : "C62"
+  }, {
+    "input" : "m2",
+    "expect" : "MTK"
+  }, {
+    "input" : "M2",
+    "expect" : "MTK"
+  }, {
+    "input" : "m3",
+    "expect" : "MTQ"
+  }, {
+    "input" : "cm3",
+    "expect" : "CMQ"
+  }, {
+    "input" : "in3",
+    "expect" : "INQ"
+  }, {
+    "input" : "ft2",
+    "expect" : "FTK"
+  }, {
+    "input" : "ft3",
+    "expect" : "FTQ"
+  }, {
+    "input" : "degC",
+    "expect" : "CEL"
+  }, {
+    "input" : "degc",
+    "expect" : "CEL"
+  }, {
+    "input" : "DEGF",
+    "expect" : "FAH"
+  }, {
+    "input" : "PX",
+    "expect" : "XPX"
+  }, {
+    "input" : "px",
+    "expect" : "XPX"
+  }, {
+    "input" : "CT",
+    "expect" : "XCT"
+  }, {
+    "input" : "CS",
+    "expect" : "XCS"
+  }, {
+    "input" : "BX",
+    "expect" : "XBX"
+  }, {
+    "input" : "PK",
+    "expect" : "XPK"
+  }, {
+    "input" : "BG",
+    "expect" : "XBG"
+  }, {
+    "input" : "CR",
+    "expect" : "XCR"
+  }, {
+    "input" : "DR",
+    "expect" : "XDR"
+  }, {
+    "input" : "short ton",
+    "expect" : "STN"
+  }, {
+    "input" : "SHORT TON",
+    "expect" : "STN"
+  }, {
+    "input" : "US gal",
+    "expect" : "GLL"
+  }, {
+    "input" : "us gal",
+    "expect" : "GLL"
+  }, {
+    "input" : "imp gal",
+    "expect" : "GLI"
+  }, {
+    "input" : "pallet",
+    "expect" : "XPX"
+  }, {
+    "input" : "carton",
+    "expect" : "XCT"
+  }, {
+    "input" : "nmi",
+    "expect" : "NMI"
+  }, {
+    "input" : "mi",
+    "expect" : "SMI"
+  }, {
+    "input" : "MI",
+    "expect" : "SMI"
+  }, {
+    "input" : "dozen",
+    "expect" : "DZN"
+  }, {
+    "input" : "",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : " ",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : "KGM ",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : "xyz",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : "m²",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : "°C",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : "mtr",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "input" : "MGM",
+    "expect" : "MGM"
+  }, {
+    "input" : "GRM",
+    "expect" : "GRM"
+  }, {
+    "input" : "KGM",
+    "expect" : "KGM"
+  }, {
+    "input" : "TNE",
+    "expect" : "TNE"
+  }, {
+    "input" : "LBR",
+    "expect" : "LBR"
+  }, {
+    "input" : "ONZ",
+    "expect" : "ONZ"
+  }, {
+    "input" : "STN",
+    "expect" : "STN"
+  }, {
+    "input" : "LTN",
+    "expect" : "LTN"
+  }, {
+    "input" : "MMT",
+    "expect" : "MMT"
+  }, {
+    "input" : "CMT",
+    "expect" : "CMT"
+  }, {
+    "input" : "MTR",
+    "expect" : "MTR"
+  }, {
+    "input" : "KMT",
+    "expect" : "KMT"
+  }, {
+    "input" : "INH",
+    "expect" : "INH"
+  }, {
+    "input" : "FOT",
+    "expect" : "FOT"
+  }, {
+    "input" : "YRD",
+    "expect" : "YRD"
+  }, {
+    "input" : "SMI",
+    "expect" : "SMI"
+  }, {
+    "input" : "NMI",
+    "expect" : "NMI"
+  }, {
+    "input" : "MTK",
+    "expect" : "MTK"
+  }, {
+    "input" : "FTK",
+    "expect" : "FTK"
+  }, {
+    "input" : "CMQ",
+    "expect" : "CMQ"
+  }, {
+    "input" : "MLT",
+    "expect" : "MLT"
+  }, {
+    "input" : "LTR",
+    "expect" : "LTR"
+  }, {
+    "input" : "MTQ",
+    "expect" : "MTQ"
+  }, {
+    "input" : "INQ",
+    "expect" : "INQ"
+  }, {
+    "input" : "FTQ",
+    "expect" : "FTQ"
+  }, {
+    "input" : "GLL",
+    "expect" : "GLL"
+  }, {
+    "input" : "GLI",
+    "expect" : "GLI"
+  }, {
+    "input" : "C62",
+    "expect" : "C62"
+  }, {
+    "input" : "EA",
+    "expect" : "EA"
+  }, {
+    "input" : "H87",
+    "expect" : "H87"
+  }, {
+    "input" : "DZN",
+    "expect" : "DZN"
+  }, {
+    "input" : "KEL",
+    "expect" : "KEL"
+  }, {
+    "input" : "CEL",
+    "expect" : "CEL"
+  }, {
+    "input" : "FAH",
+    "expect" : "FAH"
+  }, {
+    "input" : "XPX",
+    "expect" : "XPX"
+  }, {
+    "input" : "XCT",
+    "expect" : "XCT"
+  }, {
+    "input" : "XCS",
+    "expect" : "XCS"
+  }, {
+    "input" : "XBX",
+    "expect" : "XBX"
+  }, {
+    "input" : "XPK",
+    "expect" : "XPK"
+  }, {
+    "input" : "XBG",
+    "expect" : "XBG"
+  }, {
+    "input" : "XCR",
+    "expect" : "XCR"
+  }, {
+    "input" : "XDR",
+    "expect" : "XDR"
+  } ],
+  "convert" : [ {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "MGM",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "MGM",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "MGM",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "MGM",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "GRM",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "GRM",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "GRM",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "GRM",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "KGM",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "KGM",
+    "round12" : "0.007831200000",
+    "exact" : "0.0078312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "KGM",
+    "round12" : "-0.000003500000",
+    "exact" : "-0.0000035"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "KGM",
+    "round12" : "0.000000001000",
+    "exact" : "0.000000001"
+  }, {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "TNE",
+    "round12" : "0.000000001000",
+    "exact" : "0.000000001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "TNE",
+    "round12" : "0.000007831200",
+    "exact" : "0.0000078312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "TNE",
+    "round12" : "-0.000000003500",
+    "exact" : "-0.0000000035"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "TNE",
+    "round12" : "0.000000000001",
+    "exact" : "0.000000000001"
+  }, {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "LBR",
+    "round12" : "0.000002204623",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "LBR",
+    "round12" : "0.017264840676",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "LBR",
+    "round12" : "-0.000007716179",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "LBR",
+    "round12" : "0.000000002205",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "ONZ",
+    "round12" : "0.000035273962",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "ONZ",
+    "round12" : "0.276237450820",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "ONZ",
+    "round12" : "-0.000123458867",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "ONZ",
+    "round12" : "0.000000035274",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "STN",
+    "round12" : "0.000000001102",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "STN",
+    "round12" : "0.000008632420",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "STN",
+    "round12" : "-0.000000003858",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "STN",
+    "round12" : "0.000000000001",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MGM",
+    "to" : "LTN",
+    "round12" : "0.000000000984",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MGM",
+    "to" : "LTN",
+    "round12" : "0.000007707518",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MGM",
+    "to" : "LTN",
+    "round12" : "-0.000000003445",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MGM",
+    "to" : "LTN",
+    "round12" : "0.000000000001",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "MGM",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "MGM",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "MGM",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "MGM",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "GRM",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "GRM",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "GRM",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "GRM",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "KGM",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "KGM",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "KGM",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "KGM",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "TNE",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "TNE",
+    "round12" : "0.007831200000",
+    "exact" : "0.0078312"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "TNE",
+    "round12" : "-0.000003500000",
+    "exact" : "-0.0000035"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "TNE",
+    "round12" : "0.000000001000",
+    "exact" : "0.000000001"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "LBR",
+    "round12" : "0.002204622622",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "LBR",
+    "round12" : "17.264840676222",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "LBR",
+    "round12" : "-0.007716179176",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "LBR",
+    "round12" : "0.000002204623",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "ONZ",
+    "round12" : "0.035273961950",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "ONZ",
+    "round12" : "276.237450819554",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "ONZ",
+    "round12" : "-0.123458866824",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "ONZ",
+    "round12" : "0.000035273962",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "STN",
+    "round12" : "0.000001102311",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "STN",
+    "round12" : "0.008632420338",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "STN",
+    "round12" : "-0.000003858090",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "STN",
+    "round12" : "0.000000001102",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GRM",
+    "to" : "LTN",
+    "round12" : "0.000000984207",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GRM",
+    "to" : "LTN",
+    "round12" : "0.007707518159",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GRM",
+    "to" : "LTN",
+    "round12" : "-0.000003444723",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GRM",
+    "to" : "LTN",
+    "round12" : "0.000000000984",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "MGM",
+    "round12" : "1000000.000000000000",
+    "exact" : "1000000"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "MGM",
+    "round12" : "7831200000.000000000000",
+    "exact" : "7831200000"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "MGM",
+    "round12" : "-3500000.000000000000",
+    "exact" : "-3500000"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "MGM",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "GRM",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "GRM",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "GRM",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "GRM",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "KGM",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "KGM",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "KGM",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "KGM",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "TNE",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "TNE",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "TNE",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "TNE",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "LBR",
+    "round12" : "2.204622621849",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "LBR",
+    "round12" : "17264.840676222133",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "LBR",
+    "round12" : "-7.716179176471",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "LBR",
+    "round12" : "0.002204622622",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "ONZ",
+    "round12" : "35.273961949580",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "ONZ",
+    "round12" : "276237.450819554130",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "ONZ",
+    "round12" : "-123.458866823531",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "ONZ",
+    "round12" : "0.035273961950",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "STN",
+    "round12" : "0.001102311311",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "STN",
+    "round12" : "8.632420338111",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "STN",
+    "round12" : "-0.003858089588",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "STN",
+    "round12" : "0.000001102311",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KGM",
+    "to" : "LTN",
+    "round12" : "0.000984206528",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KGM",
+    "to" : "LTN",
+    "round12" : "7.707518159028",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KGM",
+    "to" : "LTN",
+    "round12" : "-0.003444722847",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KGM",
+    "to" : "LTN",
+    "round12" : "0.000000984207",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "MGM",
+    "round12" : "1000000000.000000000000",
+    "exact" : "1000000000"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "MGM",
+    "round12" : "7831200000000.000000000000",
+    "exact" : "7831200000000"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "MGM",
+    "round12" : "-3500000000.000000000000",
+    "exact" : "-3500000000"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "MGM",
+    "round12" : "1000000.000000000000",
+    "exact" : "1000000"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "GRM",
+    "round12" : "1000000.000000000000",
+    "exact" : "1000000"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "GRM",
+    "round12" : "7831200000.000000000000",
+    "exact" : "7831200000"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "GRM",
+    "round12" : "-3500000.000000000000",
+    "exact" : "-3500000"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "GRM",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "KGM",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "KGM",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "KGM",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "KGM",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "TNE",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "TNE",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "TNE",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "TNE",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "LBR",
+    "round12" : "2204.622621848776",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "LBR",
+    "round12" : "17264840.676222133102",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "LBR",
+    "round12" : "-7716.179176470715",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "LBR",
+    "round12" : "2.204622621849",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "ONZ",
+    "round12" : "35273.961949580413",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "ONZ",
+    "round12" : "276237450.819554129625",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "ONZ",
+    "round12" : "-123458.866823531445",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "ONZ",
+    "round12" : "35.273961949580",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "STN",
+    "round12" : "1.102311310924",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "STN",
+    "round12" : "8632.420338111067",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "STN",
+    "round12" : "-3.858089588235",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "STN",
+    "round12" : "0.001102311311",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "TNE",
+    "to" : "LTN",
+    "round12" : "0.984206527611",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "TNE",
+    "to" : "LTN",
+    "round12" : "7707.518159027738",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "TNE",
+    "to" : "LTN",
+    "round12" : "-3.444722846639",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "TNE",
+    "to" : "LTN",
+    "round12" : "0.000984206528",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "MGM",
+    "round12" : "453592.370000000000",
+    "exact" : "453592.37"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "MGM",
+    "round12" : "3552172567.944000000000",
+    "exact" : "3552172567.944"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "MGM",
+    "round12" : "-1587573.295000000000",
+    "exact" : "-1587573.295"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "MGM",
+    "round12" : "453.592370000000",
+    "exact" : "453.59237"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "GRM",
+    "round12" : "453.592370000000",
+    "exact" : "453.59237"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "GRM",
+    "round12" : "3552172.567944000000",
+    "exact" : "3552172.567944"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "GRM",
+    "round12" : "-1587.573295000000",
+    "exact" : "-1587.573295"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "GRM",
+    "round12" : "0.453592370000",
+    "exact" : "0.45359237"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "KGM",
+    "round12" : "0.453592370000",
+    "exact" : "0.45359237"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "KGM",
+    "round12" : "3552.172567944000",
+    "exact" : "3552.172567944"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "KGM",
+    "round12" : "-1.587573295000",
+    "exact" : "-1.587573295"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "KGM",
+    "round12" : "0.000453592370",
+    "exact" : "0.00045359237"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "TNE",
+    "round12" : "0.000453592370",
+    "exact" : "0.00045359237"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "TNE",
+    "round12" : "3.552172567944",
+    "exact" : "3.552172567944"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "TNE",
+    "round12" : "-0.001587573295",
+    "exact" : "-0.001587573295"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "TNE",
+    "round12" : "0.000000453592",
+    "exact" : "0.00000045359237"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "LBR",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "LBR",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "LBR",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "LBR",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "ONZ",
+    "round12" : "16.000000000000",
+    "exact" : "16"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "ONZ",
+    "round12" : "125299.200000000000",
+    "exact" : "125299.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "ONZ",
+    "round12" : "-56.000000000000",
+    "exact" : "-56"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "ONZ",
+    "round12" : "0.016000000000",
+    "exact" : "0.016"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "STN",
+    "round12" : "0.000500000000",
+    "exact" : "0.0005"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "STN",
+    "round12" : "3.915600000000",
+    "exact" : "3.9156"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "STN",
+    "round12" : "-0.001750000000",
+    "exact" : "-0.00175"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "STN",
+    "round12" : "0.000000500000",
+    "exact" : "0.0000005"
+  }, {
+    "value" : "1",
+    "from" : "LBR",
+    "to" : "LTN",
+    "round12" : "0.000446428571",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "LBR",
+    "to" : "LTN",
+    "round12" : "3.496071428571",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "LBR",
+    "to" : "LTN",
+    "round12" : "-0.001562500000",
+    "exact" : "-0.0015625"
+  }, {
+    "value" : "0.001",
+    "from" : "LBR",
+    "to" : "LTN",
+    "round12" : "0.000000446429",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "MGM",
+    "round12" : "28349.523125000000",
+    "exact" : "28349.523125"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "MGM",
+    "round12" : "222010785.496500000000",
+    "exact" : "222010785.4965"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "MGM",
+    "round12" : "-99223.330937500000",
+    "exact" : "-99223.3309375"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "MGM",
+    "round12" : "28.349523125000",
+    "exact" : "28.349523125"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "GRM",
+    "round12" : "28.349523125000",
+    "exact" : "28.349523125"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "GRM",
+    "round12" : "222010.785496500000",
+    "exact" : "222010.7854965"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "GRM",
+    "round12" : "-99.223330937500",
+    "exact" : "-99.2233309375"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "GRM",
+    "round12" : "0.028349523125",
+    "exact" : "0.028349523125"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "KGM",
+    "round12" : "0.028349523125",
+    "exact" : "0.028349523125"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "KGM",
+    "round12" : "222.010785496500",
+    "exact" : "222.0107854965"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "KGM",
+    "round12" : "-0.099223330938",
+    "exact" : "-0.0992233309375"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "KGM",
+    "round12" : "0.000028349523",
+    "exact" : "0.000028349523125"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "TNE",
+    "round12" : "0.000028349523",
+    "exact" : "0.000028349523125"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "TNE",
+    "round12" : "0.222010785496",
+    "exact" : "0.2220107854965"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "TNE",
+    "round12" : "-0.000099223331",
+    "exact" : "-0.0000992233309375"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "TNE",
+    "round12" : "0.000000028350",
+    "exact" : "0.000000028349523125"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "LBR",
+    "round12" : "0.062500000000",
+    "exact" : "0.0625"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "LBR",
+    "round12" : "489.450000000000",
+    "exact" : "489.45"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "LBR",
+    "round12" : "-0.218750000000",
+    "exact" : "-0.21875"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "LBR",
+    "round12" : "0.000062500000",
+    "exact" : "0.0000625"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "ONZ",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "ONZ",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "ONZ",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "ONZ",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "STN",
+    "round12" : "0.000031250000",
+    "exact" : "0.00003125"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "STN",
+    "round12" : "0.244725000000",
+    "exact" : "0.244725"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "STN",
+    "round12" : "-0.000109375000",
+    "exact" : "-0.000109375"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "STN",
+    "round12" : "0.000000031250",
+    "exact" : "0.00000003125"
+  }, {
+    "value" : "1",
+    "from" : "ONZ",
+    "to" : "LTN",
+    "round12" : "0.000027901786",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "ONZ",
+    "to" : "LTN",
+    "round12" : "0.218504464286",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "ONZ",
+    "to" : "LTN",
+    "round12" : "-0.000097656250",
+    "exact" : "-0.00009765625"
+  }, {
+    "value" : "0.001",
+    "from" : "ONZ",
+    "to" : "LTN",
+    "round12" : "0.000000027902",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "MGM",
+    "round12" : "907184740.000000000000",
+    "exact" : "907184740"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "MGM",
+    "round12" : "7104345135888.000000000000",
+    "exact" : "7104345135888"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "MGM",
+    "round12" : "-3175146590.000000000000",
+    "exact" : "-3175146590"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "MGM",
+    "round12" : "907184.740000000000",
+    "exact" : "907184.74"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "GRM",
+    "round12" : "907184.740000000000",
+    "exact" : "907184.74"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "GRM",
+    "round12" : "7104345135.888000000000",
+    "exact" : "7104345135.888"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "GRM",
+    "round12" : "-3175146.590000000000",
+    "exact" : "-3175146.59"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "GRM",
+    "round12" : "907.184740000000",
+    "exact" : "907.18474"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "KGM",
+    "round12" : "907.184740000000",
+    "exact" : "907.18474"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "KGM",
+    "round12" : "7104345.135888000000",
+    "exact" : "7104345.135888"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "KGM",
+    "round12" : "-3175.146590000000",
+    "exact" : "-3175.14659"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "KGM",
+    "round12" : "0.907184740000",
+    "exact" : "0.90718474"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "TNE",
+    "round12" : "0.907184740000",
+    "exact" : "0.90718474"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "TNE",
+    "round12" : "7104.345135888000",
+    "exact" : "7104.345135888"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "TNE",
+    "round12" : "-3.175146590000",
+    "exact" : "-3.17514659"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "TNE",
+    "round12" : "0.000907184740",
+    "exact" : "0.00090718474"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "LBR",
+    "round12" : "2000.000000000000",
+    "exact" : "2000"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "LBR",
+    "round12" : "15662400.000000000000",
+    "exact" : "15662400"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "LBR",
+    "round12" : "-7000.000000000000",
+    "exact" : "-7000"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "LBR",
+    "round12" : "2.000000000000",
+    "exact" : "2"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "ONZ",
+    "round12" : "32000.000000000000",
+    "exact" : "32000"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "ONZ",
+    "round12" : "250598400.000000000000",
+    "exact" : "250598400"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "ONZ",
+    "round12" : "-112000.000000000000",
+    "exact" : "-112000"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "ONZ",
+    "round12" : "32.000000000000",
+    "exact" : "32"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "STN",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "STN",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "STN",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "STN",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "STN",
+    "to" : "LTN",
+    "round12" : "0.892857142857",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "STN",
+    "to" : "LTN",
+    "round12" : "6992.142857142857",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "STN",
+    "to" : "LTN",
+    "round12" : "-3.125000000000",
+    "exact" : "-3.125"
+  }, {
+    "value" : "0.001",
+    "from" : "STN",
+    "to" : "LTN",
+    "round12" : "0.000892857143",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "MGM",
+    "round12" : "1016046908.800000000000",
+    "exact" : "1016046908.8"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "MGM",
+    "round12" : "7956866552194.560000000000",
+    "exact" : "7956866552194.56"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "MGM",
+    "round12" : "-3556164180.800000000000",
+    "exact" : "-3556164180.8"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "MGM",
+    "round12" : "1016046.908800000000",
+    "exact" : "1016046.9088"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "GRM",
+    "round12" : "1016046.908800000000",
+    "exact" : "1016046.9088"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "GRM",
+    "round12" : "7956866552.194560000000",
+    "exact" : "7956866552.19456"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "GRM",
+    "round12" : "-3556164.180800000000",
+    "exact" : "-3556164.1808"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "GRM",
+    "round12" : "1016.046908800000",
+    "exact" : "1016.0469088"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "KGM",
+    "round12" : "1016.046908800000",
+    "exact" : "1016.0469088"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "KGM",
+    "round12" : "7956866.552194560000",
+    "exact" : "7956866.55219456"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "KGM",
+    "round12" : "-3556.164180800000",
+    "exact" : "-3556.1641808"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "KGM",
+    "round12" : "1.016046908800",
+    "exact" : "1.0160469088"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "TNE",
+    "round12" : "1.016046908800",
+    "exact" : "1.0160469088"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "TNE",
+    "round12" : "7956.866552194560",
+    "exact" : "7956.86655219456"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "TNE",
+    "round12" : "-3.556164180800",
+    "exact" : "-3.5561641808"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "TNE",
+    "round12" : "0.001016046909",
+    "exact" : "0.0010160469088"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "LBR",
+    "round12" : "2240.000000000000",
+    "exact" : "2240"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "LBR",
+    "round12" : "17541888.000000000000",
+    "exact" : "17541888"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "LBR",
+    "round12" : "-7840.000000000000",
+    "exact" : "-7840"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "LBR",
+    "round12" : "2.240000000000",
+    "exact" : "2.24"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "ONZ",
+    "round12" : "35840.000000000000",
+    "exact" : "35840"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "ONZ",
+    "round12" : "280670208.000000000000",
+    "exact" : "280670208"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "ONZ",
+    "round12" : "-125440.000000000000",
+    "exact" : "-125440"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "ONZ",
+    "round12" : "35.840000000000",
+    "exact" : "35.84"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "STN",
+    "round12" : "1.120000000000",
+    "exact" : "1.12"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "STN",
+    "round12" : "8770.944000000000",
+    "exact" : "8770.944"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "STN",
+    "round12" : "-3.920000000000",
+    "exact" : "-3.92"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "STN",
+    "round12" : "0.001120000000",
+    "exact" : "0.00112"
+  }, {
+    "value" : "1",
+    "from" : "LTN",
+    "to" : "LTN",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTN",
+    "to" : "LTN",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTN",
+    "to" : "LTN",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "LTN",
+    "to" : "LTN",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "MMT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "MMT",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "MMT",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "MMT",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "CMT",
+    "round12" : "0.100000000000",
+    "exact" : "0.1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "CMT",
+    "round12" : "783.120000000000",
+    "exact" : "783.12"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "CMT",
+    "round12" : "-0.350000000000",
+    "exact" : "-0.35"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "CMT",
+    "round12" : "0.000100000000",
+    "exact" : "0.0001"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "MTR",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "MTR",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "MTR",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "MTR",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "KMT",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "KMT",
+    "round12" : "0.007831200000",
+    "exact" : "0.0078312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "KMT",
+    "round12" : "-0.000003500000",
+    "exact" : "-0.0000035"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "KMT",
+    "round12" : "0.000000001000",
+    "exact" : "0.000000001"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "INH",
+    "round12" : "0.039370078740",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "INH",
+    "round12" : "308.314960629921",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "INH",
+    "round12" : "-0.137795275591",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "INH",
+    "round12" : "0.000039370079",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "FOT",
+    "round12" : "0.003280839895",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "FOT",
+    "round12" : "25.692913385827",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "FOT",
+    "round12" : "-0.011482939633",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "FOT",
+    "round12" : "0.000003280840",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "YRD",
+    "round12" : "0.001093613298",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "YRD",
+    "round12" : "8.564304461942",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "YRD",
+    "round12" : "-0.003827646544",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "YRD",
+    "round12" : "0.000001093613",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "SMI",
+    "round12" : "0.000000621371",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "SMI",
+    "round12" : "0.004866082081",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "SMI",
+    "round12" : "-0.000002174799",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "SMI",
+    "round12" : "0.000000000621",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MMT",
+    "to" : "NMI",
+    "round12" : "0.000000539957",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MMT",
+    "to" : "NMI",
+    "round12" : "0.004228509719",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MMT",
+    "to" : "NMI",
+    "round12" : "-0.000001889849",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MMT",
+    "to" : "NMI",
+    "round12" : "0.000000000540",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "MMT",
+    "round12" : "10.000000000000",
+    "exact" : "10"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "MMT",
+    "round12" : "78312.000000000000",
+    "exact" : "78312"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "MMT",
+    "round12" : "-35.000000000000",
+    "exact" : "-35"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "MMT",
+    "round12" : "0.010000000000",
+    "exact" : "0.01"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "CMT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "CMT",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "CMT",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "CMT",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "MTR",
+    "round12" : "0.010000000000",
+    "exact" : "0.01"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "MTR",
+    "round12" : "78.312000000000",
+    "exact" : "78.312"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "MTR",
+    "round12" : "-0.035000000000",
+    "exact" : "-0.035"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "MTR",
+    "round12" : "0.000010000000",
+    "exact" : "0.00001"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "KMT",
+    "round12" : "0.000010000000",
+    "exact" : "0.00001"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "KMT",
+    "round12" : "0.078312000000",
+    "exact" : "0.078312"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "KMT",
+    "round12" : "-0.000035000000",
+    "exact" : "-0.000035"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "KMT",
+    "round12" : "0.000000010000",
+    "exact" : "0.00000001"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "INH",
+    "round12" : "0.393700787402",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "INH",
+    "round12" : "3083.149606299213",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "INH",
+    "round12" : "-1.377952755906",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "INH",
+    "round12" : "0.000393700787",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "FOT",
+    "round12" : "0.032808398950",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "FOT",
+    "round12" : "256.929133858268",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "FOT",
+    "round12" : "-0.114829396325",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "FOT",
+    "round12" : "0.000032808399",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "YRD",
+    "round12" : "0.010936132983",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "YRD",
+    "round12" : "85.643044619423",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "YRD",
+    "round12" : "-0.038276465442",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "YRD",
+    "round12" : "0.000010936133",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "SMI",
+    "round12" : "0.000006213712",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "SMI",
+    "round12" : "0.048660820806",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "SMI",
+    "round12" : "-0.000021747992",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "SMI",
+    "round12" : "0.000000006214",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMT",
+    "to" : "NMI",
+    "round12" : "0.000005399568",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMT",
+    "to" : "NMI",
+    "round12" : "0.042285097192",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMT",
+    "to" : "NMI",
+    "round12" : "-0.000018898488",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMT",
+    "to" : "NMI",
+    "round12" : "0.000000005400",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "MMT",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "MMT",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "MMT",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "MMT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "CMT",
+    "round12" : "100.000000000000",
+    "exact" : "100"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "CMT",
+    "round12" : "783120.000000000000",
+    "exact" : "783120"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "CMT",
+    "round12" : "-350.000000000000",
+    "exact" : "-350"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "CMT",
+    "round12" : "0.100000000000",
+    "exact" : "0.1"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "MTR",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "MTR",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "MTR",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "MTR",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "KMT",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "KMT",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "KMT",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "KMT",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "INH",
+    "round12" : "39.370078740157",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "INH",
+    "round12" : "308314.960629921260",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "INH",
+    "round12" : "-137.795275590551",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "INH",
+    "round12" : "0.039370078740",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "FOT",
+    "round12" : "3.280839895013",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "FOT",
+    "round12" : "25692.913385826772",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "FOT",
+    "round12" : "-11.482939632546",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "FOT",
+    "round12" : "0.003280839895",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "YRD",
+    "round12" : "1.093613298338",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "YRD",
+    "round12" : "8564.304461942257",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "YRD",
+    "round12" : "-3.827646544182",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "YRD",
+    "round12" : "0.001093613298",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "SMI",
+    "round12" : "0.000621371192",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "SMI",
+    "round12" : "4.866082080649",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "SMI",
+    "round12" : "-0.002174799173",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "SMI",
+    "round12" : "0.000000621371",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTR",
+    "to" : "NMI",
+    "round12" : "0.000539956803",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTR",
+    "to" : "NMI",
+    "round12" : "4.228509719222",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTR",
+    "to" : "NMI",
+    "round12" : "-0.001889848812",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTR",
+    "to" : "NMI",
+    "round12" : "0.000000539957",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "MMT",
+    "round12" : "1000000.000000000000",
+    "exact" : "1000000"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "MMT",
+    "round12" : "7831200000.000000000000",
+    "exact" : "7831200000"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "MMT",
+    "round12" : "-3500000.000000000000",
+    "exact" : "-3500000"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "MMT",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "CMT",
+    "round12" : "100000.000000000000",
+    "exact" : "100000"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "CMT",
+    "round12" : "783120000.000000000000",
+    "exact" : "783120000"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "CMT",
+    "round12" : "-350000.000000000000",
+    "exact" : "-350000"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "CMT",
+    "round12" : "100.000000000000",
+    "exact" : "100"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "MTR",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "MTR",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "MTR",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "MTR",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "KMT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "KMT",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "KMT",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "KMT",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "INH",
+    "round12" : "39370.078740157480",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "INH",
+    "round12" : "308314960.629921259843",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "INH",
+    "round12" : "-137795.275590551181",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "INH",
+    "round12" : "39.370078740157",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "FOT",
+    "round12" : "3280.839895013123",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "FOT",
+    "round12" : "25692913.385826771654",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "FOT",
+    "round12" : "-11482.939632545932",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "FOT",
+    "round12" : "3.280839895013",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "YRD",
+    "round12" : "1093.613298337708",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "YRD",
+    "round12" : "8564304.461942257218",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "YRD",
+    "round12" : "-3827.646544181977",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "YRD",
+    "round12" : "1.093613298338",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "SMI",
+    "round12" : "0.621371192237",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "SMI",
+    "round12" : "4866.082080649010",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "SMI",
+    "round12" : "-2.174799172831",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "SMI",
+    "round12" : "0.000621371192",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "KMT",
+    "to" : "NMI",
+    "round12" : "0.539956803456",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "KMT",
+    "to" : "NMI",
+    "round12" : "4228.509719222462",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "KMT",
+    "to" : "NMI",
+    "round12" : "-1.889848812095",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "KMT",
+    "to" : "NMI",
+    "round12" : "0.000539956803",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "MMT",
+    "round12" : "25.400000000000",
+    "exact" : "25.4"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "MMT",
+    "round12" : "198912.480000000000",
+    "exact" : "198912.48"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "MMT",
+    "round12" : "-88.900000000000",
+    "exact" : "-88.9"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "MMT",
+    "round12" : "0.025400000000",
+    "exact" : "0.0254"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "CMT",
+    "round12" : "2.540000000000",
+    "exact" : "2.54"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "CMT",
+    "round12" : "19891.248000000000",
+    "exact" : "19891.248"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "CMT",
+    "round12" : "-8.890000000000",
+    "exact" : "-8.89"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "CMT",
+    "round12" : "0.002540000000",
+    "exact" : "0.00254"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "MTR",
+    "round12" : "0.025400000000",
+    "exact" : "0.0254"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "MTR",
+    "round12" : "198.912480000000",
+    "exact" : "198.91248"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "MTR",
+    "round12" : "-0.088900000000",
+    "exact" : "-0.0889"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "MTR",
+    "round12" : "0.000025400000",
+    "exact" : "0.0000254"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "KMT",
+    "round12" : "0.000025400000",
+    "exact" : "0.0000254"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "KMT",
+    "round12" : "0.198912480000",
+    "exact" : "0.19891248"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "KMT",
+    "round12" : "-0.000088900000",
+    "exact" : "-0.0000889"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "KMT",
+    "round12" : "0.000000025400",
+    "exact" : "0.0000000254"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "INH",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "INH",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "INH",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "INH",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "FOT",
+    "round12" : "0.083333333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "FOT",
+    "round12" : "652.600000000000",
+    "exact" : "652.6"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "FOT",
+    "round12" : "-0.291666666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "FOT",
+    "round12" : "0.000083333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "YRD",
+    "round12" : "0.027777777778",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "YRD",
+    "round12" : "217.533333333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "YRD",
+    "round12" : "-0.097222222222",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "YRD",
+    "round12" : "0.000027777778",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "SMI",
+    "round12" : "0.000015782828",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "SMI",
+    "round12" : "0.123598484848",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "SMI",
+    "round12" : "-0.000055239899",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "SMI",
+    "round12" : "0.000000015783",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "INH",
+    "to" : "NMI",
+    "round12" : "0.000013714903",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "INH",
+    "to" : "NMI",
+    "round12" : "0.107404146868",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "INH",
+    "to" : "NMI",
+    "round12" : "-0.000048002160",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "INH",
+    "to" : "NMI",
+    "round12" : "0.000000013715",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "MMT",
+    "round12" : "304.800000000000",
+    "exact" : "304.8"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "MMT",
+    "round12" : "2386949.760000000000",
+    "exact" : "2386949.76"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "MMT",
+    "round12" : "-1066.800000000000",
+    "exact" : "-1066.8"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "MMT",
+    "round12" : "0.304800000000",
+    "exact" : "0.3048"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "CMT",
+    "round12" : "30.480000000000",
+    "exact" : "30.48"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "CMT",
+    "round12" : "238694.976000000000",
+    "exact" : "238694.976"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "CMT",
+    "round12" : "-106.680000000000",
+    "exact" : "-106.68"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "CMT",
+    "round12" : "0.030480000000",
+    "exact" : "0.03048"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "MTR",
+    "round12" : "0.304800000000",
+    "exact" : "0.3048"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "MTR",
+    "round12" : "2386.949760000000",
+    "exact" : "2386.94976"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "MTR",
+    "round12" : "-1.066800000000",
+    "exact" : "-1.0668"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "MTR",
+    "round12" : "0.000304800000",
+    "exact" : "0.0003048"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "KMT",
+    "round12" : "0.000304800000",
+    "exact" : "0.0003048"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "KMT",
+    "round12" : "2.386949760000",
+    "exact" : "2.38694976"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "KMT",
+    "round12" : "-0.001066800000",
+    "exact" : "-0.0010668"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "KMT",
+    "round12" : "0.000000304800",
+    "exact" : "0.0000003048"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "INH",
+    "round12" : "12.000000000000",
+    "exact" : "12"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "INH",
+    "round12" : "93974.400000000000",
+    "exact" : "93974.4"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "INH",
+    "round12" : "-42.000000000000",
+    "exact" : "-42"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "INH",
+    "round12" : "0.012000000000",
+    "exact" : "0.012"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "FOT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "FOT",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "FOT",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "FOT",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "YRD",
+    "round12" : "0.333333333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "YRD",
+    "round12" : "2610.400000000000",
+    "exact" : "2610.4"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "YRD",
+    "round12" : "-1.166666666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "YRD",
+    "round12" : "0.000333333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "SMI",
+    "round12" : "0.000189393939",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "SMI",
+    "round12" : "1.483181818182",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "SMI",
+    "round12" : "-0.000662878788",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "SMI",
+    "round12" : "0.000000189394",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "FOT",
+    "to" : "NMI",
+    "round12" : "0.000164578834",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "FOT",
+    "to" : "NMI",
+    "round12" : "1.288849762419",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "FOT",
+    "to" : "NMI",
+    "round12" : "-0.000576025918",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "FOT",
+    "to" : "NMI",
+    "round12" : "0.000000164579",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "MMT",
+    "round12" : "914.400000000000",
+    "exact" : "914.4"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "MMT",
+    "round12" : "7160849.280000000000",
+    "exact" : "7160849.28"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "MMT",
+    "round12" : "-3200.400000000000",
+    "exact" : "-3200.4"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "MMT",
+    "round12" : "0.914400000000",
+    "exact" : "0.9144"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "CMT",
+    "round12" : "91.440000000000",
+    "exact" : "91.44"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "CMT",
+    "round12" : "716084.928000000000",
+    "exact" : "716084.928"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "CMT",
+    "round12" : "-320.040000000000",
+    "exact" : "-320.04"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "CMT",
+    "round12" : "0.091440000000",
+    "exact" : "0.09144"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "MTR",
+    "round12" : "0.914400000000",
+    "exact" : "0.9144"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "MTR",
+    "round12" : "7160.849280000000",
+    "exact" : "7160.84928"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "MTR",
+    "round12" : "-3.200400000000",
+    "exact" : "-3.2004"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "MTR",
+    "round12" : "0.000914400000",
+    "exact" : "0.0009144"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "KMT",
+    "round12" : "0.000914400000",
+    "exact" : "0.0009144"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "KMT",
+    "round12" : "7.160849280000",
+    "exact" : "7.16084928"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "KMT",
+    "round12" : "-0.003200400000",
+    "exact" : "-0.0032004"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "KMT",
+    "round12" : "0.000000914400",
+    "exact" : "0.0000009144"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "INH",
+    "round12" : "36.000000000000",
+    "exact" : "36"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "INH",
+    "round12" : "281923.200000000000",
+    "exact" : "281923.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "INH",
+    "round12" : "-126.000000000000",
+    "exact" : "-126"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "INH",
+    "round12" : "0.036000000000",
+    "exact" : "0.036"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "FOT",
+    "round12" : "3.000000000000",
+    "exact" : "3"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "FOT",
+    "round12" : "23493.600000000000",
+    "exact" : "23493.6"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "FOT",
+    "round12" : "-10.500000000000",
+    "exact" : "-10.5"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "FOT",
+    "round12" : "0.003000000000",
+    "exact" : "0.003"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "YRD",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "YRD",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "YRD",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "YRD",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "SMI",
+    "round12" : "0.000568181818",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "SMI",
+    "round12" : "4.449545454545",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "SMI",
+    "round12" : "-0.001988636364",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "SMI",
+    "round12" : "0.000000568182",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "YRD",
+    "to" : "NMI",
+    "round12" : "0.000493736501",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "YRD",
+    "to" : "NMI",
+    "round12" : "3.866549287257",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "YRD",
+    "to" : "NMI",
+    "round12" : "-0.001728077754",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "YRD",
+    "to" : "NMI",
+    "round12" : "0.000000493737",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "MMT",
+    "round12" : "1609344.000000000000",
+    "exact" : "1609344"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "MMT",
+    "round12" : "12603094732.800000000000",
+    "exact" : "12603094732.8"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "MMT",
+    "round12" : "-5632704.000000000000",
+    "exact" : "-5632704"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "MMT",
+    "round12" : "1609.344000000000",
+    "exact" : "1609.344"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "CMT",
+    "round12" : "160934.400000000000",
+    "exact" : "160934.4"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "CMT",
+    "round12" : "1260309473.280000000000",
+    "exact" : "1260309473.28"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "CMT",
+    "round12" : "-563270.400000000000",
+    "exact" : "-563270.4"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "CMT",
+    "round12" : "160.934400000000",
+    "exact" : "160.9344"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "MTR",
+    "round12" : "1609.344000000000",
+    "exact" : "1609.344"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "MTR",
+    "round12" : "12603094.732800000000",
+    "exact" : "12603094.7328"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "MTR",
+    "round12" : "-5632.704000000000",
+    "exact" : "-5632.704"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "MTR",
+    "round12" : "1.609344000000",
+    "exact" : "1.609344"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "KMT",
+    "round12" : "1.609344000000",
+    "exact" : "1.609344"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "KMT",
+    "round12" : "12603.094732800000",
+    "exact" : "12603.0947328"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "KMT",
+    "round12" : "-5.632704000000",
+    "exact" : "-5.632704"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "KMT",
+    "round12" : "0.001609344000",
+    "exact" : "0.001609344"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "INH",
+    "round12" : "63360.000000000000",
+    "exact" : "63360"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "INH",
+    "round12" : "496184832.000000000000",
+    "exact" : "496184832"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "INH",
+    "round12" : "-221760.000000000000",
+    "exact" : "-221760"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "INH",
+    "round12" : "63.360000000000",
+    "exact" : "63.36"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "FOT",
+    "round12" : "5280.000000000000",
+    "exact" : "5280"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "FOT",
+    "round12" : "41348736.000000000000",
+    "exact" : "41348736"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "FOT",
+    "round12" : "-18480.000000000000",
+    "exact" : "-18480"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "FOT",
+    "round12" : "5.280000000000",
+    "exact" : "5.28"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "YRD",
+    "round12" : "1760.000000000000",
+    "exact" : "1760"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "YRD",
+    "round12" : "13782912.000000000000",
+    "exact" : "13782912"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "YRD",
+    "round12" : "-6160.000000000000",
+    "exact" : "-6160"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "YRD",
+    "round12" : "1.760000000000",
+    "exact" : "1.76"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "SMI",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "SMI",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "SMI",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "SMI",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "SMI",
+    "to" : "NMI",
+    "round12" : "0.868976241901",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "SMI",
+    "to" : "NMI",
+    "round12" : "6805.126745572354",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "SMI",
+    "to" : "NMI",
+    "round12" : "-3.041416846652",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "SMI",
+    "to" : "NMI",
+    "round12" : "0.000868976242",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "MMT",
+    "round12" : "1852000.000000000000",
+    "exact" : "1852000"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "MMT",
+    "round12" : "14503382400.000000000000",
+    "exact" : "14503382400"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "MMT",
+    "round12" : "-6482000.000000000000",
+    "exact" : "-6482000"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "MMT",
+    "round12" : "1852.000000000000",
+    "exact" : "1852"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "CMT",
+    "round12" : "185200.000000000000",
+    "exact" : "185200"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "CMT",
+    "round12" : "1450338240.000000000000",
+    "exact" : "1450338240"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "CMT",
+    "round12" : "-648200.000000000000",
+    "exact" : "-648200"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "CMT",
+    "round12" : "185.200000000000",
+    "exact" : "185.2"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "MTR",
+    "round12" : "1852.000000000000",
+    "exact" : "1852"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "MTR",
+    "round12" : "14503382.400000000000",
+    "exact" : "14503382.4"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "MTR",
+    "round12" : "-6482.000000000000",
+    "exact" : "-6482"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "MTR",
+    "round12" : "1.852000000000",
+    "exact" : "1.852"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "KMT",
+    "round12" : "1.852000000000",
+    "exact" : "1.852"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "KMT",
+    "round12" : "14503.382400000000",
+    "exact" : "14503.3824"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "KMT",
+    "round12" : "-6.482000000000",
+    "exact" : "-6.482"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "KMT",
+    "round12" : "0.001852000000",
+    "exact" : "0.001852"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "INH",
+    "round12" : "72913.385826771654",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "INH",
+    "round12" : "570999307.086614173228",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "INH",
+    "round12" : "-255196.850393700787",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "INH",
+    "round12" : "72.913385826772",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "FOT",
+    "round12" : "6076.115485564304",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "FOT",
+    "round12" : "47583275.590551181102",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "FOT",
+    "round12" : "-21266.404199475066",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "FOT",
+    "round12" : "6.076115485564",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "YRD",
+    "round12" : "2025.371828521435",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "YRD",
+    "round12" : "15861091.863517060367",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "YRD",
+    "round12" : "-7088.801399825022",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "YRD",
+    "round12" : "2.025371828521",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "SMI",
+    "round12" : "1.150779448024",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "SMI",
+    "round12" : "9011.984013361966",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "SMI",
+    "round12" : "-4.027728068082",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "SMI",
+    "round12" : "0.001150779448",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "NMI",
+    "to" : "NMI",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "NMI",
+    "to" : "NMI",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "NMI",
+    "to" : "NMI",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "NMI",
+    "to" : "NMI",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MTK",
+    "to" : "MTK",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTK",
+    "to" : "MTK",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTK",
+    "to" : "MTK",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "MTK",
+    "to" : "MTK",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MTK",
+    "to" : "FTK",
+    "round12" : "10.763910416710",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTK",
+    "to" : "FTK",
+    "round12" : "84294.335255337177",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTK",
+    "to" : "FTK",
+    "round12" : "-37.673686458484",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTK",
+    "to" : "FTK",
+    "round12" : "0.010763910417",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "FTK",
+    "to" : "MTK",
+    "round12" : "0.092903040000",
+    "exact" : "0.09290304"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTK",
+    "to" : "MTK",
+    "round12" : "727.542286848000",
+    "exact" : "727.542286848"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTK",
+    "to" : "MTK",
+    "round12" : "-0.325160640000",
+    "exact" : "-0.32516064"
+  }, {
+    "value" : "0.001",
+    "from" : "FTK",
+    "to" : "MTK",
+    "round12" : "0.000092903040",
+    "exact" : "0.00009290304"
+  }, {
+    "value" : "1",
+    "from" : "FTK",
+    "to" : "FTK",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTK",
+    "to" : "FTK",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTK",
+    "to" : "FTK",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "FTK",
+    "to" : "FTK",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "CMQ",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "CMQ",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "CMQ",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "CMQ",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "MLT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "MLT",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "MLT",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "MLT",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "LTR",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "LTR",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "LTR",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "LTR",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "MTQ",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "MTQ",
+    "round12" : "0.007831200000",
+    "exact" : "0.0078312"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "MTQ",
+    "round12" : "-0.000003500000",
+    "exact" : "-0.0000035"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "MTQ",
+    "round12" : "0.000000001000",
+    "exact" : "0.000000001"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "INQ",
+    "round12" : "0.061023744095",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "INQ",
+    "round12" : "477.889144754667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "INQ",
+    "round12" : "-0.213583104332",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "INQ",
+    "round12" : "0.000061023744",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "FTQ",
+    "round12" : "0.000035314667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "FTQ",
+    "round12" : "0.276556218029",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "FTQ",
+    "round12" : "-0.000123601334",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "FTQ",
+    "round12" : "0.000000035315",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "GLL",
+    "round12" : "0.000264172052",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "GLL",
+    "round12" : "2.068784176427",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "GLL",
+    "round12" : "-0.000924602183",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "GLL",
+    "round12" : "0.000000264172",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "CMQ",
+    "to" : "GLI",
+    "round12" : "0.000219969248",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "CMQ",
+    "to" : "GLI",
+    "round12" : "1.722623177280",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "CMQ",
+    "to" : "GLI",
+    "round12" : "-0.000769892369",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "CMQ",
+    "to" : "GLI",
+    "round12" : "0.000000219969",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "CMQ",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "CMQ",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "CMQ",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "CMQ",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "MLT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "MLT",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "MLT",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "MLT",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "LTR",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "LTR",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "LTR",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "LTR",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "MTQ",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "MTQ",
+    "round12" : "0.007831200000",
+    "exact" : "0.0078312"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "MTQ",
+    "round12" : "-0.000003500000",
+    "exact" : "-0.0000035"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "MTQ",
+    "round12" : "0.000000001000",
+    "exact" : "0.000000001"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "INQ",
+    "round12" : "0.061023744095",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "INQ",
+    "round12" : "477.889144754667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "INQ",
+    "round12" : "-0.213583104332",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "INQ",
+    "round12" : "0.000061023744",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "FTQ",
+    "round12" : "0.000035314667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "FTQ",
+    "round12" : "0.276556218029",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "FTQ",
+    "round12" : "-0.000123601334",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "FTQ",
+    "round12" : "0.000000035315",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "GLL",
+    "round12" : "0.000264172052",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "GLL",
+    "round12" : "2.068784176427",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "GLL",
+    "round12" : "-0.000924602183",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "GLL",
+    "round12" : "0.000000264172",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MLT",
+    "to" : "GLI",
+    "round12" : "0.000219969248",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MLT",
+    "to" : "GLI",
+    "round12" : "1.722623177280",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MLT",
+    "to" : "GLI",
+    "round12" : "-0.000769892369",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MLT",
+    "to" : "GLI",
+    "round12" : "0.000000219969",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "CMQ",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "CMQ",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "CMQ",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "CMQ",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "MLT",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "MLT",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "MLT",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "MLT",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "LTR",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "LTR",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "LTR",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "LTR",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "MTQ",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "MTQ",
+    "round12" : "7.831200000000",
+    "exact" : "7.8312"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "MTQ",
+    "round12" : "-0.003500000000",
+    "exact" : "-0.0035"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "MTQ",
+    "round12" : "0.000001000000",
+    "exact" : "0.000001"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "INQ",
+    "round12" : "61.023744094732",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "INQ",
+    "round12" : "477889.144754667462",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "INQ",
+    "round12" : "-213.583104331563",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "INQ",
+    "round12" : "0.061023744095",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "FTQ",
+    "round12" : "0.035314666721",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "FTQ",
+    "round12" : "276.556218029321",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "FTQ",
+    "round12" : "-0.123601333525",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "FTQ",
+    "round12" : "0.000035314667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "GLL",
+    "round12" : "0.264172052358",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "GLL",
+    "round12" : "2068.784176427132",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "GLL",
+    "round12" : "-0.924602183254",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "GLL",
+    "round12" : "0.000264172052",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "LTR",
+    "to" : "GLI",
+    "round12" : "0.219969248299",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "LTR",
+    "to" : "GLI",
+    "round12" : "1722.623177279816",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "LTR",
+    "to" : "GLI",
+    "round12" : "-0.769892369047",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "LTR",
+    "to" : "GLI",
+    "round12" : "0.000219969248",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "CMQ",
+    "round12" : "1000000.000000000000",
+    "exact" : "1000000"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "CMQ",
+    "round12" : "7831200000.000000000000",
+    "exact" : "7831200000"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "CMQ",
+    "round12" : "-3500000.000000000000",
+    "exact" : "-3500000"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "CMQ",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "MLT",
+    "round12" : "1000000.000000000000",
+    "exact" : "1000000"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "MLT",
+    "round12" : "7831200000.000000000000",
+    "exact" : "7831200000"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "MLT",
+    "round12" : "-3500000.000000000000",
+    "exact" : "-3500000"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "MLT",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "LTR",
+    "round12" : "1000.000000000000",
+    "exact" : "1000"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "LTR",
+    "round12" : "7831200.000000000000",
+    "exact" : "7831200"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "LTR",
+    "round12" : "-3500.000000000000",
+    "exact" : "-3500"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "LTR",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "MTQ",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "MTQ",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "MTQ",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "MTQ",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "INQ",
+    "round12" : "61023.744094732284",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "INQ",
+    "round12" : "477889144.754667462091",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "INQ",
+    "round12" : "-213583.104331562994",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "INQ",
+    "round12" : "61.023744094732",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "FTQ",
+    "round12" : "35.314666721489",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "FTQ",
+    "round12" : "276556.218029321448",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "FTQ",
+    "round12" : "-123.601333525210",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "FTQ",
+    "round12" : "0.035314666721",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "GLL",
+    "round12" : "264.172052358148",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "GLL",
+    "round12" : "2068784.176427131871",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "GLL",
+    "round12" : "-924.602183253519",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "GLL",
+    "round12" : "0.264172052358",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "MTQ",
+    "to" : "GLI",
+    "round12" : "219.969248299088",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "MTQ",
+    "to" : "GLI",
+    "round12" : "1722623.177279816282",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "MTQ",
+    "to" : "GLI",
+    "round12" : "-769.892369046807",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "MTQ",
+    "to" : "GLI",
+    "round12" : "0.219969248299",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "CMQ",
+    "round12" : "16.387064000000",
+    "exact" : "16.387064"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "CMQ",
+    "round12" : "128330.375596800000",
+    "exact" : "128330.3755968"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "CMQ",
+    "round12" : "-57.354724000000",
+    "exact" : "-57.354724"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "CMQ",
+    "round12" : "0.016387064000",
+    "exact" : "0.016387064"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "MLT",
+    "round12" : "16.387064000000",
+    "exact" : "16.387064"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "MLT",
+    "round12" : "128330.375596800000",
+    "exact" : "128330.3755968"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "MLT",
+    "round12" : "-57.354724000000",
+    "exact" : "-57.354724"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "MLT",
+    "round12" : "0.016387064000",
+    "exact" : "0.016387064"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "LTR",
+    "round12" : "0.016387064000",
+    "exact" : "0.016387064"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "LTR",
+    "round12" : "128.330375596800",
+    "exact" : "128.3303755968"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "LTR",
+    "round12" : "-0.057354724000",
+    "exact" : "-0.057354724"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "LTR",
+    "round12" : "0.000016387064",
+    "exact" : "0.000016387064"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "MTQ",
+    "round12" : "0.000016387064",
+    "exact" : "0.000016387064"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "MTQ",
+    "round12" : "0.128330375597",
+    "exact" : "0.1283303755968"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "MTQ",
+    "round12" : "-0.000057354724",
+    "exact" : "-0.000057354724"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "MTQ",
+    "round12" : "0.000000016387",
+    "exact" : "0.000000016387064"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "INQ",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "INQ",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "INQ",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "INQ",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "FTQ",
+    "round12" : "0.000578703704",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "FTQ",
+    "round12" : "4.531944444444",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "FTQ",
+    "round12" : "-0.002025462963",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "FTQ",
+    "round12" : "0.000000578704",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "GLL",
+    "round12" : "0.004329004329",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "GLL",
+    "round12" : "33.901298701299",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "GLL",
+    "round12" : "-0.015151515152",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "GLL",
+    "round12" : "0.000004329004",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "INQ",
+    "to" : "GLI",
+    "round12" : "0.003604650150",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "INQ",
+    "to" : "GLI",
+    "round12" : "28.228736253968",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "INQ",
+    "to" : "GLI",
+    "round12" : "-0.012616275525",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "INQ",
+    "to" : "GLI",
+    "round12" : "0.000003604650",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "CMQ",
+    "round12" : "28316.846592000000",
+    "exact" : "28316.846592"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "CMQ",
+    "round12" : "221754889.031270400000",
+    "exact" : "221754889.0312704"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "CMQ",
+    "round12" : "-99108.963072000000",
+    "exact" : "-99108.963072"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "CMQ",
+    "round12" : "28.316846592000",
+    "exact" : "28.316846592"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "MLT",
+    "round12" : "28316.846592000000",
+    "exact" : "28316.846592"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "MLT",
+    "round12" : "221754889.031270400000",
+    "exact" : "221754889.0312704"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "MLT",
+    "round12" : "-99108.963072000000",
+    "exact" : "-99108.963072"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "MLT",
+    "round12" : "28.316846592000",
+    "exact" : "28.316846592"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "LTR",
+    "round12" : "28.316846592000",
+    "exact" : "28.316846592"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "LTR",
+    "round12" : "221754.889031270400",
+    "exact" : "221754.8890312704"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "LTR",
+    "round12" : "-99.108963072000",
+    "exact" : "-99.108963072"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "LTR",
+    "round12" : "0.028316846592",
+    "exact" : "0.028316846592"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "MTQ",
+    "round12" : "0.028316846592",
+    "exact" : "0.028316846592"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "MTQ",
+    "round12" : "221.754889031270",
+    "exact" : "221.7548890312704"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "MTQ",
+    "round12" : "-0.099108963072",
+    "exact" : "-0.099108963072"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "MTQ",
+    "round12" : "0.000028316847",
+    "exact" : "0.000028316846592"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "INQ",
+    "round12" : "1728.000000000000",
+    "exact" : "1728"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "INQ",
+    "round12" : "13532313.600000000000",
+    "exact" : "13532313.6"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "INQ",
+    "round12" : "-6048.000000000000",
+    "exact" : "-6048"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "INQ",
+    "round12" : "1.728000000000",
+    "exact" : "1.728"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "FTQ",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "FTQ",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "FTQ",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "FTQ",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "GLL",
+    "round12" : "7.480519480519",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "GLL",
+    "round12" : "58581.444155844156",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "GLL",
+    "round12" : "-26.181818181818",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "GLL",
+    "round12" : "0.007480519481",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "FTQ",
+    "to" : "GLI",
+    "round12" : "6.228835459043",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "FTQ",
+    "to" : "GLI",
+    "round12" : "48779.256246856178",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "FTQ",
+    "to" : "GLI",
+    "round12" : "-21.800924106650",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "FTQ",
+    "to" : "GLI",
+    "round12" : "0.006228835459",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "CMQ",
+    "round12" : "3785.411784000000",
+    "exact" : "3785.411784"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "CMQ",
+    "round12" : "29644316.762860800000",
+    "exact" : "29644316.7628608"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "CMQ",
+    "round12" : "-13248.941244000000",
+    "exact" : "-13248.941244"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "CMQ",
+    "round12" : "3.785411784000",
+    "exact" : "3.785411784"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "MLT",
+    "round12" : "3785.411784000000",
+    "exact" : "3785.411784"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "MLT",
+    "round12" : "29644316.762860800000",
+    "exact" : "29644316.7628608"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "MLT",
+    "round12" : "-13248.941244000000",
+    "exact" : "-13248.941244"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "MLT",
+    "round12" : "3.785411784000",
+    "exact" : "3.785411784"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "LTR",
+    "round12" : "3.785411784000",
+    "exact" : "3.785411784"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "LTR",
+    "round12" : "29644.316762860800",
+    "exact" : "29644.3167628608"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "LTR",
+    "round12" : "-13.248941244000",
+    "exact" : "-13.248941244"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "LTR",
+    "round12" : "0.003785411784",
+    "exact" : "0.003785411784"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "MTQ",
+    "round12" : "0.003785411784",
+    "exact" : "0.003785411784"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "MTQ",
+    "round12" : "29.644316762861",
+    "exact" : "29.6443167628608"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "MTQ",
+    "round12" : "-0.013248941244",
+    "exact" : "-0.013248941244"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "MTQ",
+    "round12" : "0.000003785412",
+    "exact" : "0.000003785411784"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "INQ",
+    "round12" : "231.000000000000",
+    "exact" : "231"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "INQ",
+    "round12" : "1809007.200000000000",
+    "exact" : "1809007.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "INQ",
+    "round12" : "-808.500000000000",
+    "exact" : "-808.5"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "INQ",
+    "round12" : "0.231000000000",
+    "exact" : "0.231"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "FTQ",
+    "round12" : "0.133680555556",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "FTQ",
+    "round12" : "1046.879166666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "FTQ",
+    "round12" : "-0.467881944444",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "FTQ",
+    "round12" : "0.000133680556",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "GLL",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "GLL",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "GLL",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "GLL",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "GLL",
+    "to" : "GLI",
+    "round12" : "0.832674184629",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLL",
+    "to" : "GLI",
+    "round12" : "6520.838074666538",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLL",
+    "to" : "GLI",
+    "round12" : "-2.914359646201",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GLL",
+    "to" : "GLI",
+    "round12" : "0.000832674185",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "CMQ",
+    "round12" : "4546.090000000000",
+    "exact" : "4546.09"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "CMQ",
+    "round12" : "35601340.008000000000",
+    "exact" : "35601340.008"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "CMQ",
+    "round12" : "-15911.315000000000",
+    "exact" : "-15911.315"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "CMQ",
+    "round12" : "4.546090000000",
+    "exact" : "4.54609"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "MLT",
+    "round12" : "4546.090000000000",
+    "exact" : "4546.09"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "MLT",
+    "round12" : "35601340.008000000000",
+    "exact" : "35601340.008"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "MLT",
+    "round12" : "-15911.315000000000",
+    "exact" : "-15911.315"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "MLT",
+    "round12" : "4.546090000000",
+    "exact" : "4.54609"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "LTR",
+    "round12" : "4.546090000000",
+    "exact" : "4.54609"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "LTR",
+    "round12" : "35601.340008000000",
+    "exact" : "35601.340008"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "LTR",
+    "round12" : "-15.911315000000",
+    "exact" : "-15.911315"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "LTR",
+    "round12" : "0.004546090000",
+    "exact" : "0.00454609"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "MTQ",
+    "round12" : "0.004546090000",
+    "exact" : "0.00454609"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "MTQ",
+    "round12" : "35.601340008000",
+    "exact" : "35.601340008"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "MTQ",
+    "round12" : "-0.015911315000",
+    "exact" : "-0.015911315"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "MTQ",
+    "round12" : "0.000004546090",
+    "exact" : "0.00000454609"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "INQ",
+    "round12" : "277.419432791621",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "INQ",
+    "round12" : "2172527.062077746203",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "INQ",
+    "round12" : "-970.968014770675",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "INQ",
+    "round12" : "0.277419432792",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "FTQ",
+    "round12" : "0.160543653236",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "FTQ",
+    "round12" : "1257.249457220918",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "FTQ",
+    "round12" : "-0.561902786326",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "FTQ",
+    "round12" : "0.000160543653",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "GLL",
+    "round12" : "1.200949925505",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "GLL",
+    "round12" : "9404.879056613620",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "GLL",
+    "round12" : "-4.203324739267",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "GLL",
+    "round12" : "0.001200949926",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "GLI",
+    "to" : "GLI",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "GLI",
+    "to" : "GLI",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "GLI",
+    "to" : "GLI",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "GLI",
+    "to" : "GLI",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "C62",
+    "to" : "C62",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "C62",
+    "to" : "C62",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "C62",
+    "to" : "C62",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "C62",
+    "to" : "C62",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "C62",
+    "to" : "EA",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "C62",
+    "to" : "EA",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "C62",
+    "to" : "EA",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "C62",
+    "to" : "EA",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "C62",
+    "to" : "H87",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "C62",
+    "to" : "H87",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "C62",
+    "to" : "H87",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "C62",
+    "to" : "H87",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "C62",
+    "to" : "DZN",
+    "round12" : "0.083333333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "C62",
+    "to" : "DZN",
+    "round12" : "652.600000000000",
+    "exact" : "652.6"
+  }, {
+    "value" : "-3.5",
+    "from" : "C62",
+    "to" : "DZN",
+    "round12" : "-0.291666666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "C62",
+    "to" : "DZN",
+    "round12" : "0.000083333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "EA",
+    "to" : "C62",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "EA",
+    "to" : "C62",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "EA",
+    "to" : "C62",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "EA",
+    "to" : "C62",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "EA",
+    "to" : "EA",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "EA",
+    "to" : "EA",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "EA",
+    "to" : "EA",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "EA",
+    "to" : "EA",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "EA",
+    "to" : "H87",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "EA",
+    "to" : "H87",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "EA",
+    "to" : "H87",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "EA",
+    "to" : "H87",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "EA",
+    "to" : "DZN",
+    "round12" : "0.083333333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "EA",
+    "to" : "DZN",
+    "round12" : "652.600000000000",
+    "exact" : "652.6"
+  }, {
+    "value" : "-3.5",
+    "from" : "EA",
+    "to" : "DZN",
+    "round12" : "-0.291666666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "EA",
+    "to" : "DZN",
+    "round12" : "0.000083333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "H87",
+    "to" : "C62",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "H87",
+    "to" : "C62",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "H87",
+    "to" : "C62",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "H87",
+    "to" : "C62",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "H87",
+    "to" : "EA",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "H87",
+    "to" : "EA",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "H87",
+    "to" : "EA",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "H87",
+    "to" : "EA",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "H87",
+    "to" : "H87",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "H87",
+    "to" : "H87",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "H87",
+    "to" : "H87",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "H87",
+    "to" : "H87",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "1",
+    "from" : "H87",
+    "to" : "DZN",
+    "round12" : "0.083333333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "7831.2",
+    "from" : "H87",
+    "to" : "DZN",
+    "round12" : "652.600000000000",
+    "exact" : "652.6"
+  }, {
+    "value" : "-3.5",
+    "from" : "H87",
+    "to" : "DZN",
+    "round12" : "-0.291666666667",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0.001",
+    "from" : "H87",
+    "to" : "DZN",
+    "round12" : "0.000083333333",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "1",
+    "from" : "DZN",
+    "to" : "C62",
+    "round12" : "12.000000000000",
+    "exact" : "12"
+  }, {
+    "value" : "7831.2",
+    "from" : "DZN",
+    "to" : "C62",
+    "round12" : "93974.400000000000",
+    "exact" : "93974.4"
+  }, {
+    "value" : "-3.5",
+    "from" : "DZN",
+    "to" : "C62",
+    "round12" : "-42.000000000000",
+    "exact" : "-42"
+  }, {
+    "value" : "0.001",
+    "from" : "DZN",
+    "to" : "C62",
+    "round12" : "0.012000000000",
+    "exact" : "0.012"
+  }, {
+    "value" : "1",
+    "from" : "DZN",
+    "to" : "EA",
+    "round12" : "12.000000000000",
+    "exact" : "12"
+  }, {
+    "value" : "7831.2",
+    "from" : "DZN",
+    "to" : "EA",
+    "round12" : "93974.400000000000",
+    "exact" : "93974.4"
+  }, {
+    "value" : "-3.5",
+    "from" : "DZN",
+    "to" : "EA",
+    "round12" : "-42.000000000000",
+    "exact" : "-42"
+  }, {
+    "value" : "0.001",
+    "from" : "DZN",
+    "to" : "EA",
+    "round12" : "0.012000000000",
+    "exact" : "0.012"
+  }, {
+    "value" : "1",
+    "from" : "DZN",
+    "to" : "H87",
+    "round12" : "12.000000000000",
+    "exact" : "12"
+  }, {
+    "value" : "7831.2",
+    "from" : "DZN",
+    "to" : "H87",
+    "round12" : "93974.400000000000",
+    "exact" : "93974.4"
+  }, {
+    "value" : "-3.5",
+    "from" : "DZN",
+    "to" : "H87",
+    "round12" : "-42.000000000000",
+    "exact" : "-42"
+  }, {
+    "value" : "0.001",
+    "from" : "DZN",
+    "to" : "H87",
+    "round12" : "0.012000000000",
+    "exact" : "0.012"
+  }, {
+    "value" : "1",
+    "from" : "DZN",
+    "to" : "DZN",
+    "round12" : "1.000000000000",
+    "exact" : "1"
+  }, {
+    "value" : "7831.2",
+    "from" : "DZN",
+    "to" : "DZN",
+    "round12" : "7831.200000000000",
+    "exact" : "7831.2"
+  }, {
+    "value" : "-3.5",
+    "from" : "DZN",
+    "to" : "DZN",
+    "round12" : "-3.500000000000",
+    "exact" : "-3.5"
+  }, {
+    "value" : "0.001",
+    "from" : "DZN",
+    "to" : "DZN",
+    "round12" : "0.001000000000",
+    "exact" : "0.001"
+  }, {
+    "value" : "0",
+    "from" : "KEL",
+    "to" : "KEL",
+    "round12" : "0.000000000000",
+    "exact" : "0"
+  }, {
+    "value" : "-40",
+    "from" : "KEL",
+    "to" : "KEL",
+    "round12" : "-40.000000000000",
+    "exact" : "-40"
+  }, {
+    "value" : "100.5",
+    "from" : "KEL",
+    "to" : "KEL",
+    "round12" : "100.500000000000",
+    "exact" : "100.5"
+  }, {
+    "value" : "36.6",
+    "from" : "KEL",
+    "to" : "KEL",
+    "round12" : "36.600000000000",
+    "exact" : "36.6"
+  }, {
+    "value" : "0",
+    "from" : "KEL",
+    "to" : "CEL",
+    "round12" : "-273.150000000000",
+    "exact" : "-273.15"
+  }, {
+    "value" : "-40",
+    "from" : "KEL",
+    "to" : "CEL",
+    "round12" : "-313.150000000000",
+    "exact" : "-313.15"
+  }, {
+    "value" : "100.5",
+    "from" : "KEL",
+    "to" : "CEL",
+    "round12" : "-172.650000000000",
+    "exact" : "-172.65"
+  }, {
+    "value" : "36.6",
+    "from" : "KEL",
+    "to" : "CEL",
+    "round12" : "-236.550000000000",
+    "exact" : "-236.55"
+  }, {
+    "value" : "0",
+    "from" : "KEL",
+    "to" : "FAH",
+    "round12" : "-459.670000000000",
+    "exact" : "-459.67"
+  }, {
+    "value" : "-40",
+    "from" : "KEL",
+    "to" : "FAH",
+    "round12" : "-531.670000000000",
+    "exact" : "-531.67"
+  }, {
+    "value" : "100.5",
+    "from" : "KEL",
+    "to" : "FAH",
+    "round12" : "-278.770000000000",
+    "exact" : "-278.77"
+  }, {
+    "value" : "36.6",
+    "from" : "KEL",
+    "to" : "FAH",
+    "round12" : "-393.790000000000",
+    "exact" : "-393.79"
+  }, {
+    "value" : "0",
+    "from" : "CEL",
+    "to" : "KEL",
+    "round12" : "273.150000000000",
+    "exact" : "273.15"
+  }, {
+    "value" : "-40",
+    "from" : "CEL",
+    "to" : "KEL",
+    "round12" : "233.150000000000",
+    "exact" : "233.15"
+  }, {
+    "value" : "100.5",
+    "from" : "CEL",
+    "to" : "KEL",
+    "round12" : "373.650000000000",
+    "exact" : "373.65"
+  }, {
+    "value" : "36.6",
+    "from" : "CEL",
+    "to" : "KEL",
+    "round12" : "309.750000000000",
+    "exact" : "309.75"
+  }, {
+    "value" : "0",
+    "from" : "CEL",
+    "to" : "CEL",
+    "round12" : "0.000000000000",
+    "exact" : "0"
+  }, {
+    "value" : "-40",
+    "from" : "CEL",
+    "to" : "CEL",
+    "round12" : "-40.000000000000",
+    "exact" : "-40"
+  }, {
+    "value" : "100.5",
+    "from" : "CEL",
+    "to" : "CEL",
+    "round12" : "100.500000000000",
+    "exact" : "100.5"
+  }, {
+    "value" : "36.6",
+    "from" : "CEL",
+    "to" : "CEL",
+    "round12" : "36.600000000000",
+    "exact" : "36.6"
+  }, {
+    "value" : "0",
+    "from" : "CEL",
+    "to" : "FAH",
+    "round12" : "32.000000000000",
+    "exact" : "32"
+  }, {
+    "value" : "-40",
+    "from" : "CEL",
+    "to" : "FAH",
+    "round12" : "-40.000000000000",
+    "exact" : "-40"
+  }, {
+    "value" : "100.5",
+    "from" : "CEL",
+    "to" : "FAH",
+    "round12" : "212.900000000000",
+    "exact" : "212.9"
+  }, {
+    "value" : "36.6",
+    "from" : "CEL",
+    "to" : "FAH",
+    "round12" : "97.880000000000",
+    "exact" : "97.88"
+  }, {
+    "value" : "0",
+    "from" : "FAH",
+    "to" : "KEL",
+    "round12" : "255.372222222222",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-40",
+    "from" : "FAH",
+    "to" : "KEL",
+    "round12" : "233.150000000000",
+    "exact" : "233.15"
+  }, {
+    "value" : "100.5",
+    "from" : "FAH",
+    "to" : "KEL",
+    "round12" : "311.205555555556",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "36.6",
+    "from" : "FAH",
+    "to" : "KEL",
+    "round12" : "275.705555555556",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0",
+    "from" : "FAH",
+    "to" : "CEL",
+    "round12" : "-17.777777777778",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "-40",
+    "from" : "FAH",
+    "to" : "CEL",
+    "round12" : "-40.000000000000",
+    "exact" : "-40"
+  }, {
+    "value" : "100.5",
+    "from" : "FAH",
+    "to" : "CEL",
+    "round12" : "38.055555555556",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "36.6",
+    "from" : "FAH",
+    "to" : "CEL",
+    "round12" : "2.555555555556",
+    "exactError" : "CONVERSION_INEXACT"
+  }, {
+    "value" : "0",
+    "from" : "FAH",
+    "to" : "FAH",
+    "round12" : "0.000000000000",
+    "exact" : "0"
+  }, {
+    "value" : "-40",
+    "from" : "FAH",
+    "to" : "FAH",
+    "round12" : "-40.000000000000",
+    "exact" : "-40"
+  }, {
+    "value" : "100.5",
+    "from" : "FAH",
+    "to" : "FAH",
+    "round12" : "100.500000000000",
+    "exact" : "100.5"
+  }, {
+    "value" : "36.6",
+    "from" : "FAH",
+    "to" : "FAH",
+    "round12" : "36.600000000000",
+    "exact" : "36.6"
+  } ],
+  "arithmetic" : [ {
+    "op" : "plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "500",
+      "unit" : "GRM"
+    },
+    "expect" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "500",
+      "unit" : "GRM"
+    },
+    "expect" : {
+      "value" : "0.5",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "500",
+      "unit" : "GRM"
+    },
+    "expect" : 1
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "2",
+      "unit" : "LBR"
+    },
+    "expect" : {
+      "value" : "2.40718474",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "2",
+      "unit" : "LBR"
+    },
+    "expect" : {
+      "value" : "0.59281526",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "2",
+      "unit" : "LBR"
+    },
+    "expect" : 1
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "2",
+      "unit" : "TNE"
+    },
+    "b" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    },
+    "expect" : {
+      "value" : "3",
+      "unit" : "TNE"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "2",
+      "unit" : "TNE"
+    },
+    "b" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    },
+    "expect" : {
+      "value" : "1",
+      "unit" : "TNE"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "2",
+      "unit" : "TNE"
+    },
+    "b" : {
+      "value" : "1000",
+      "unit" : "KGM"
+    },
+    "expect" : 1
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "MTR"
+    },
+    "b" : {
+      "value" : "3",
+      "unit" : "FOT"
+    },
+    "expect" : {
+      "value" : "1.9144",
+      "unit" : "MTR"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1",
+      "unit" : "MTR"
+    },
+    "b" : {
+      "value" : "3",
+      "unit" : "FOT"
+    },
+    "expect" : {
+      "value" : "0.0856",
+      "unit" : "MTR"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1",
+      "unit" : "MTR"
+    },
+    "b" : {
+      "value" : "3",
+      "unit" : "FOT"
+    },
+    "expect" : 1
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "MTR"
+    },
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "MTR"
+    },
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "MTR"
+    },
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "10",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "5",
+      "unit" : "CEL"
+    },
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "10",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "5",
+      "unit" : "CEL"
+    },
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "10",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "5",
+      "unit" : "CEL"
+    },
+    "expect" : 1
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "10",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "5",
+      "unit" : "KEL"
+    },
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "10",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "5",
+      "unit" : "KEL"
+    },
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "10",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "5",
+      "unit" : "KEL"
+    },
+    "expect" : 1
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "20",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "68",
+      "unit" : "FAH"
+    },
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "20",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "68",
+      "unit" : "FAH"
+    },
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "20",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "68",
+      "unit" : "FAH"
+    },
+    "expect" : 0
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "expect" : {
+      "value" : "2",
+      "unit" : "XPX"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "expect" : {
+      "value" : "0",
+      "unit" : "XPX"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "expect" : 0
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "error" : "NO_CONVERSION"
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "error" : "NO_CONVERSION"
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "XCT"
+    },
+    "error" : "NO_CONVERSION"
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "DZN"
+    },
+    "expect" : {
+      "value" : "13",
+      "unit" : "C62"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "DZN"
+    },
+    "expect" : {
+      "value" : "-11",
+      "unit" : "C62"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1",
+      "unit" : "C62"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "DZN"
+    },
+    "expect" : -1
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1000",
+      "unit" : "GRM"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "expect" : {
+      "value" : "2000",
+      "unit" : "GRM"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1000",
+      "unit" : "GRM"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "expect" : {
+      "value" : "0",
+      "unit" : "GRM"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1000",
+      "unit" : "GRM"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "expect" : 0
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "-1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "-1000",
+      "unit" : "GRM"
+    },
+    "expect" : {
+      "value" : "-2",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "-1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "-1000",
+      "unit" : "GRM"
+    },
+    "expect" : {
+      "value" : "0",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "-1",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "-1000",
+      "unit" : "GRM"
+    },
+    "expect" : 0
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1.50",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "expect" : {
+      "value" : "3.00",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1.50",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "expect" : {
+      "value" : "0.00",
+      "unit" : "KGM"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1.50",
+      "unit" : "KGM"
+    },
+    "b" : {
+      "value" : "1.5",
+      "unit" : "KGM"
+    },
+    "expect" : 0
+  }, {
+    "op" : "plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "LTR"
+    },
+    "b" : {
+      "value" : "1000",
+      "unit" : "CMQ"
+    },
+    "expect" : {
+      "value" : "2",
+      "unit" : "LTR"
+    }
+  }, {
+    "op" : "minus",
+    "a" : {
+      "value" : "1",
+      "unit" : "LTR"
+    },
+    "b" : {
+      "value" : "1000",
+      "unit" : "CMQ"
+    },
+    "expect" : {
+      "value" : "0",
+      "unit" : "LTR"
+    }
+  }, {
+    "op" : "compare",
+    "a" : {
+      "value" : "1",
+      "unit" : "LTR"
+    },
+    "b" : {
+      "value" : "1000",
+      "unit" : "CMQ"
+    },
+    "expect" : 0
+  } ],
+  "times" : [ {
+    "a" : {
+      "value" : "2.5",
+      "unit" : "KGM"
+    },
+    "factor" : "4",
+    "expect" : {
+      "value" : "10.0",
+      "unit" : "KGM"
+    }
+  }, {
+    "a" : {
+      "value" : "10",
+      "unit" : "CEL"
+    },
+    "factor" : "2",
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "a" : {
+      "value" : "3",
+      "unit" : "XPX"
+    },
+    "factor" : "1.5",
+    "expect" : {
+      "value" : "4.5",
+      "unit" : "XPX"
+    }
+  }, {
+    "a" : {
+      "value" : "1.10",
+      "unit" : "MTR"
+    },
+    "factor" : "0.10",
+    "expect" : {
+      "value" : "0.1100",
+      "unit" : "MTR"
+    }
+  } ],
+  "to" : [ {
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "to" : "MTR",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "error" : "NO_CONVERSION"
+  }, {
+    "a" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "KGM",
+    "error" : "NO_CONVERSION"
+  }, {
+    "a" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "to" : "XPX",
+    "error" : "NO_CONVERSION"
+  }, {
+    "a" : {
+      "value" : "1",
+      "unit" : "CEL"
+    },
+    "to" : "KGM",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "a" : {
+      "value" : "1",
+      "unit" : "MTQ"
+    },
+    "to" : "MTK",
+    "error" : "DIMENSION_MISMATCH"
+  } ]
+}

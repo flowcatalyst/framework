@@ -3,6 +3,8 @@ package kit
 import (
 	"slices"
 	"strconv"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
 )
 
 // SearchSelectProps is a single-choice select with a search box: a
@@ -76,10 +78,10 @@ templ SearchSelect(p SearchSelectProps) {
 				<span id={ SearchSelectSummaryID(p.ID) } class="fc-multiselect-summary">{ p.Summary() }</span>
 			</summary>
 			<div class="fc-multiselect-panel" { templ.Attributes{"data-signals:" + SignalAttr(p.Signal): "''"}... }>
-				<input type="search" class="fc-input fc-multiselect-search" placeholder="Search" aria-label={ "Search " + p.Label } autocomplete="off" { templ.Attributes{"data-bind:" + SignalAttr(p.Signal): true}... }/>
+				<input type="search" class="fc-input fc-multiselect-search" placeholder={ i18n.T(ctx, "kit.search_select.search") } aria-label={ i18n.T(ctx, "kit.search_select.search_for", i18n.Args{"label": p.Label}) } autocomplete="off" { templ.Attributes{"data-bind:" + SignalAttr(p.Signal): true}... }/>
 				<div id={ ID(p.ID) + "-options" } class="fc-multiselect-options" role="listbox" aria-labelledby={ p.ID + "-label" }>
 					if len(p.Options) == 0 {
-						<p class="fc-multiselect-empty">{ orDefault(p.EmptyText, "No options") }</p>
+						<p class="fc-multiselect-empty">{ orDefault(p.EmptyText, i18n.T(ctx, "kit.search_select.no_options")) }</p>
 					}
 					for _, o := range p.Options {
 						<a

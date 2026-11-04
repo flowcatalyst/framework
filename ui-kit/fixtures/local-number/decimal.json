@@ -1,0 +1,5 @@
+{
+  "props": { "value": "-1234567.890" },
+  "source": "components/local-number.md: Options, fraction digits (not in the gallery)",
+  "notes": "the digits of the value are kept: the browser shows all three fraction digits, never rounds to its default of three or drops a trailing zero"
+}

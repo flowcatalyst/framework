@@ -1,0 +1,125 @@
+{
+  "description" : "One case per error code of the measure contract (section 6), by operation. op names the call and the other members its inputs as text; every case fails with error. Operations: decimal.parse {input}, decimal.divide {a, b}, currency.of {code}, money.plus {a, b}, money.sum {values}, money.allocate {amount, ratios}, exchange.new {from, to, rate}, unit.of {input}, quantity.to {quantity, to}, quantity.toExact {quantity, to}, quantity.plus {a, b}, quantity.times {quantity, factor}, packaging.new {levels, counts}, packaging.convert {levels, counts, quantity, to}, unitPrice.new {price, per}.",
+  "howToRun" : "Run the operation with the inputs; it must fail with a validation error whose code is error.",
+  "cases" : [ {
+    "op" : "decimal.parse",
+    "input" : "1e3",
+    "error" : "DECIMAL_INVALID"
+  }, {
+    "op" : "decimal.divide",
+    "a" : "1",
+    "b" : "0.0",
+    "error" : "DIVISION_BY_ZERO"
+  }, {
+    "op" : "currency.of",
+    "code" : "ZZZ",
+    "error" : "CURRENCY_UNKNOWN"
+  }, {
+    "op" : "money.plus",
+    "a" : {
+      "amount" : "1",
+      "currency" : "ZAR"
+    },
+    "b" : {
+      "amount" : "1",
+      "currency" : "USD"
+    },
+    "error" : "CURRENCY_MISMATCH"
+  }, {
+    "op" : "money.allocate",
+    "amount" : {
+      "amount" : "1",
+      "currency" : "ZAR"
+    },
+    "ratios" : [ "0", "0" ],
+    "error" : "ALLOCATION_INVALID"
+  }, {
+    "op" : "unit.of",
+    "input" : "furlong",
+    "error" : "UNIT_UNKNOWN"
+  }, {
+    "op" : "quantity.to",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "to" : "MTR",
+    "error" : "DIMENSION_MISMATCH"
+  }, {
+    "op" : "quantity.to",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "XCT",
+    "error" : "NO_CONVERSION"
+  }, {
+    "op" : "quantity.toExact",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "KGM"
+    },
+    "to" : "LBR",
+    "error" : "CONVERSION_INEXACT"
+  }, {
+    "op" : "quantity.plus",
+    "a" : {
+      "value" : "1",
+      "unit" : "CEL"
+    },
+    "b" : {
+      "value" : "1",
+      "unit" : "CEL"
+    },
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "packaging.convert",
+    "levels" : [ "C62", "XCT" ],
+    "counts" : [ "1", "24" ],
+    "quantity" : {
+      "value" : "1",
+      "unit" : "XPX"
+    },
+    "to" : "C62",
+    "error" : "UNIT_NOT_IN_PACKAGING"
+  }, {
+    "op" : "packaging.new",
+    "levels" : [ "C62", "XCT" ],
+    "counts" : [ "1", "0" ],
+    "error" : "PACKAGING_INVALID"
+  }, {
+    "op" : "exchange.new",
+    "from" : "USD",
+    "to" : "ZAR",
+    "rate" : "0",
+    "error" : "RATE_INVALID"
+  }, {
+    "op" : "money.sum",
+    "values" : [ ],
+    "error" : "SUM_EMPTY"
+  }, {
+    "op" : "quantity.times",
+    "quantity" : {
+      "value" : "1",
+      "unit" : "CEL"
+    },
+    "factor" : "2",
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  }, {
+    "op" : "unitPrice.new",
+    "price" : {
+      "amount" : "1",
+      "currency" : "ZAR"
+    },
+    "per" : "XPX",
+    "error" : "NO_CONVERSION"
+  }, {
+    "op" : "unitPrice.new",
+    "price" : {
+      "amount" : "1",
+      "currency" : "ZAR"
+    },
+    "per" : "CEL",
+    "error" : "TEMPERATURE_NOT_ADDITIVE"
+  } ]
+}

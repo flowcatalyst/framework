@@ -29,6 +29,7 @@ A language-neutral port of the FlowCatalyst server-rendered UI components (the T
 | `gallery/CHECKS.md` | Result of the scripted interaction checks (69 pass) |
 | `gallery/screenshots/` | Desktop screenshots, light and dark, plus open overlays |
 | `fixtures/` | Conformance fixtures (props JSON + golden HTML) every template implementation must render identically; format and normalisation in `fixtures/README.md` |
+| `messages/` | The kit's message catalogs, `en.json` (the source) and `af.json`: every user-visible string of both kits, `validation.<CODE>` texts; embedded by the Java kit (a resource directory of `framework-ui`) and the Go kit (copied to `go/ui/i18n/messages` by `make -C go go-sync-shared`); contract `docs/contracts/i18n.md` |
 | `PORTING-NOTES.md` | Per-component status and differences, how Topcoat concepts map to Datastar, what did not fit |
 | `THIRD-PARTY-NOTICES.md` | Topcoat UI (MIT) notice and the other licences |
 

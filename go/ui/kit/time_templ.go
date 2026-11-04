@@ -8,7 +8,14 @@ package kit
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "time"
+import (
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+)
 
 // LocalTimeProps mirrors local-time.md's Props table.
 type LocalTimeProps struct {
@@ -19,9 +26,13 @@ type LocalTimeProps struct {
 	Empty string `json:"empty"`
 }
 
+// localeExpr is the language the browser formats with: the page's (<html lang>, the
+// locale the server resolved), else its own default.
+const localeExpr = "document.documentElement.lang || undefined"
+
 const (
-	localDateTimeExpr = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleString()"
-	localDateExpr     = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString()"
+	localDateTimeExpr = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleString(" + localeExpr + ")"
+	localDateExpr     = "el.textContent = new Date(el.getAttribute('datetime')).toLocaleDateString(" + localeExpr + ")"
 )
 
 func (p LocalTimeProps) expr() string {
@@ -66,7 +77,7 @@ func LocalTime(p LocalTimeProps) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.Empty, "-"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 38, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 49, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -80,7 +91,7 @@ func LocalTime(p LocalTimeProps) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.At.UTC().Truncate(time.Second).Format(time.RFC3339))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 40, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 51, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -93,7 +104,7 @@ func LocalTime(p LocalTimeProps) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.expr())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 40, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 51, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -106,7 +117,7 @@ func LocalTime(p LocalTimeProps) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.fallback())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 40, Col: 112}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 51, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -170,7 +181,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 66, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 77, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -183,7 +194,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-label")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 66, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 77, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -196,7 +207,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-label")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 67, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 78, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -209,7 +220,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 67, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 78, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -222,7 +233,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-from")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 71, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 82, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
@@ -235,7 +246,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.FromName, "from"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 72, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 83, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -246,9 +257,9 @@ func DateRange(p DateRangeProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.FromLabel, "From"))
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.FromLabel, i18n.T(ctx, "kit.date_range.from")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 74, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 85, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -266,7 +277,7 @@ func DateRange(p DateRangeProps) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.From)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 76, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 87, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 			if templ_7745c5c3_Err != nil {
@@ -285,7 +296,7 @@ func DateRange(p DateRangeProps) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.To)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 79, Col: 15}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 90, Col: 15}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -303,7 +314,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(boundExpr("max", p.ID+"-to"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 81, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 92, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -324,7 +335,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID + "-to")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 87, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 98, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -337,7 +348,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.ToName, "to"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 88, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 99, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -348,9 +359,9 @@ func DateRange(p DateRangeProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.ToLabel, "To"))
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(orDefault(p.ToLabel, i18n.T(ctx, "kit.date_range.to")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 90, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 101, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -368,7 +379,7 @@ func DateRange(p DateRangeProps) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.To)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 92, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 103, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 			if templ_7745c5c3_Err != nil {
@@ -387,7 +398,7 @@ func DateRange(p DateRangeProps) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.From)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 95, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 106, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 			if templ_7745c5c3_Err != nil {
@@ -405,7 +416,7 @@ func DateRange(p DateRangeProps) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(boundExpr("min", p.ID+"-from"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 97, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 108, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 		if templ_7745c5c3_Err != nil {
@@ -422,6 +433,423 @@ func DateRange(p DateRangeProps) templ.Component {
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// plainDecimal is the value the Local* components accept: "-?[0-9]+(.[0-9]+)?".
+var plainDecimal = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
+
+// maxFractionDigits is the most fraction digits a number is formatted with
+// (the browsers' common limit for Intl.NumberFormat).
+const maxFractionDigits = 20
+
+// fractionDigits is the number of fraction digits of a plain decimal. It panics
+// for text that is not one, or that has too many digits (local-number.md).
+func fractionDigits(component, value string) int {
+	if !plainDecimal.MatchString(value) {
+		panic("kit: " + component + ": " + strconv.Quote(value) + " is not a plain decimal (-?[0-9]+(.[0-9]+)?)")
+	}
+	_, frac, _ := strings.Cut(value, ".")
+	if len(frac) > maxFractionDigits {
+		panic("kit: " + component + ": more than " + strconv.Itoa(maxFractionDigits) + " fraction digits")
+	}
+	return len(frac)
+}
+
+func digitsOptions(n int) string {
+	d := strconv.Itoa(n)
+	return "minimumFractionDigits: " + d + ", maximumFractionDigits: " + d
+}
+
+// numberFormatExpr builds the data-init expression around an Intl.NumberFormat call.
+func numberFormatExpr(options string) string {
+	return "el.textContent = new Intl.NumberFormat(" + localeExpr + ", {" + options + "}).format(el.value)"
+}
+
+// LocalNumberProps mirrors local-number.md's Props table.
+type LocalNumberProps struct {
+	// Value is plain decimal text; empty renders Empty.
+	Value string `json:"value"`
+	Empty string `json:"empty"`
+}
+
+// LocalNumber is local-number.md: a decimal the browser writes in the page's
+// language; the server-rendered text is the plain value.
+func LocalNumber(p LocalNumberProps) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var23 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var23 == nil {
+			templ_7745c5c3_Var23 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if p.Value == "" {
+			var templ_7745c5c3_Var24 string
+			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.Empty, "-"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 156, Col: 27}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<data value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var25 string
+			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Value)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 158, Col: 23}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" data-init=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var26 string
+			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(numberFormatExpr(digitsOptions(fractionDigits("LocalNumber", p.Value))))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 158, Col: 109}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var27 string
+			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(p.Value)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 158, Col: 121}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</data>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		return nil
+	})
+}
+
+// LocalMoneyProps mirrors local-money.md's Props table. The amount and the
+// currency are plain strings, so the component depends on no money type.
+type LocalMoneyProps struct {
+	// Amount is plain decimal text; empty renders Empty.
+	Amount string `json:"amount"`
+	// Currency is the ISO 4217 code, three capital letters.
+	Currency string `json:"currency"`
+	// Digits, when set, is the fraction digits shown; absent, the currency's
+	// own minor units.
+	Digits *int   `json:"digits"`
+	Empty  string `json:"empty"`
+}
+
+var currencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
+
+func (p LocalMoneyProps) expr() string {
+	opts := "style: 'currency', currency: el.dataset.currency"
+	if p.Digits != nil {
+		if *p.Digits < 0 || *p.Digits > maxFractionDigits {
+			panic("kit: LocalMoney: digits must be 0 to " + strconv.Itoa(maxFractionDigits))
+		}
+		opts += ", " + digitsOptions(*p.Digits)
+	}
+	return numberFormatExpr(opts)
+}
+
+// LocalMoney is local-money.md: an amount in a currency, written by the browser
+// in currency style in the page's language; the server-rendered text is
+// "amount CODE".
+func LocalMoney(p LocalMoneyProps) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var28 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var28 == nil {
+			templ_7745c5c3_Var28 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if p.Amount == "" {
+			var templ_7745c5c3_Var29 string
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.Empty, "-"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 193, Col: 27}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<data value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var30 string
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.checkedAmount())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 195, Col: 33}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" data-currency=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var31 string
+			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.checkedCurrency())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 195, Col: 71}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" data-init=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var32 string
+			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.expr())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 195, Col: 94}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var33 string
+			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(p.Amount + " " + p.Currency)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 195, Col: 126}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</data>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		return nil
+	})
+}
+
+func (p LocalMoneyProps) checkedAmount() string {
+	fractionDigits("LocalMoney", p.Amount)
+	return p.Amount
+}
+
+func (p LocalMoneyProps) checkedCurrency() string {
+	if !currencyCode.MatchString(p.Currency) {
+		panic("kit: LocalMoney: " + strconv.Quote(p.Currency) + " is not a currency code (three capital letters)")
+	}
+	return p.Currency
+}
+
+// LocalQuantityProps mirrors local-quantity.md's Props table. The value and the
+// unit symbol are plain strings, so the component depends on no units type.
+type LocalQuantityProps struct {
+	// Value is plain decimal text; empty renders Empty.
+	Value string `json:"value"`
+	// Unit is the unit symbol, shown after the number.
+	Unit  string `json:"unit"`
+	Empty string `json:"empty"`
+}
+
+func (p LocalQuantityProps) expr() string {
+	e := numberFormatExpr(digitsOptions(fractionDigits("LocalQuantity", p.Value)))
+	if p.Unit != "" {
+		e += " + ' ' + el.dataset.unit"
+	}
+	return e
+}
+
+func (p LocalQuantityProps) text() string {
+	if p.Unit == "" {
+		return p.Value
+	}
+	return p.Value + " " + p.Unit
+}
+
+// LocalQuantity is local-quantity.md: a measured value and its unit symbol; the
+// browser writes the number in the page's language, the symbol follows.
+func LocalQuantity(p LocalQuantityProps) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var34 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var34 == nil {
+			templ_7745c5c3_Var34 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if p.Value == "" {
+			var templ_7745c5c3_Var35 string
+			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(orDefault(p.Empty, "-"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 240, Col: 27}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else if p.Unit == "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<data value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var36 string
+			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Value)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 242, Col: 23}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" data-init=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var37 string
+			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.expr())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 242, Col: 46}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var38 string
+			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(p.text())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 242, Col: 59}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</data>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<data value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var39 string
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Value)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 244, Col: 23}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" data-unit=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var40 string
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Unit)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 244, Col: 44}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" data-init=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var41 string
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.expr())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 244, Col: 67}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var42 string
+			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(p.text())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/time.templ`, Line: 244, Col: 80}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</data>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		return nil
 	})

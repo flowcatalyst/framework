@@ -11,7 +11,7 @@
 </div>
 @if(p.hidden() != null)@for(var h : p.hidden())<input type="hidden" name="${h.name()}" value="${h.value()}"$unsafe{attrs(h.attrs())}>@endfor@endif
 <div class="fc-dialog-footer">
-<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="${CLOSE_DIALOG}">Cancel</button>
+<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="${CLOSE_DIALOG}">${Kit.t("kit.dialog.cancel")}</button>
 <button type="submit" class="${tone.equals("danger") ? "fc-btn fc-btn-danger" : tone.equals("warn") ? "fc-btn fc-btn-warn" : "fc-btn fc-btn-primary"}">${p.confirmLabel()}</button>
 </div>
 </form>

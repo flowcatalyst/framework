@@ -1,0 +1,4 @@
+{
+  "props": { "amount": "12.500", "currency": "BHD", "digits": 3 },
+  "source": "components/local-money.md: Options, digits (not in the gallery)"
+}

@@ -1,6 +1,9 @@
 package views
 
-import "github.com/flowcatalyst/framework/go/ui/kit"
+import (
+	"github.com/flowcatalyst/framework/go/ui/i18n"
+	"github.com/flowcatalyst/framework/go/ui/kit"
+)
 
 // documentProps is everything the document needs; Views builds it for one request.
 type documentProps struct {
@@ -22,7 +25,7 @@ type documentProps struct {
 // script, no style element and no on* attribute. page is the wrapped page content.
 templ document(p documentProps, page templ.Component) {
 	@templ.Raw("<!DOCTYPE html>")
-	<html lang="en" { kit.Attrs(p.htmlAttrs)... }>
+	<html lang={ i18n.FromContext(ctx) } { kit.Attrs(p.htmlAttrs)... }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>

@@ -4,10 +4,10 @@
 <aside id="fc-sidebar" class="fc-sidebar">
 <div class="fc-sidebar-header">
 <a href="${url(p.logoHref())}" class="fc-sidebar-logo" style="height: 32px"><span style="width: 32px; height: 32px">@template.kit.logo()</span></a>
-<button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label="Close navigation" data-on:click="${AppShells.MOBILE_CLOSE}">@template.kit.icon(name = "x", cls = "size-[1.25rem]")</button>
-<button type="button" class="fc-collapse-btn" aria-label="Collapse sidebar" aria-expanded="true" data-attr:aria-expanded="$sidebarCollapsed ? 'false' : 'true'" data-on:click="${AppShells.COLLAPSE}">@template.kit.icon(name = "chevron-left", cls = "size-[1rem]")</button>
+<button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label="${Kit.t("kit.appshell.close_nav")}" data-on:click="${AppShells.MOBILE_CLOSE}">@template.kit.icon(name = "x", cls = "size-[1.25rem]")</button>
+<button type="button" class="fc-collapse-btn" aria-label="${Kit.t("kit.appshell.collapse")}" aria-expanded="true" data-attr:aria-expanded="$sidebarCollapsed ? 'false' : 'true'" data-on:click="${AppShells.COLLAPSE}">@template.kit.icon(name = "chevron-left", cls = "size-[1rem]")</button>
 </div>
-<nav class="fc-sidebar-nav" aria-label="Main">
+<nav class="fc-sidebar-nav" aria-label="${Kit.t("kit.appshell.main")}">
 @if(p.nav() != null)@for(var g : p.nav())<div class="fc-nav-group">
 <span class="fc-nav-group-label">${g.label()}</span>
 @if(g.items() != null)@for(var it : g.items())@if(it.children() != null && !it.children().isEmpty())<details open="${it.open()}">
@@ -19,7 +19,7 @@
 </div>@endfor@endif
 </nav>
 <div class="fc-sidebar-footer">
-<button type="button" class="fc-user-trigger" popovertarget="fc-user-menu" aria-label="Account menu">
+<button type="button" class="fc-user-trigger" popovertarget="fc-user-menu" aria-label="${Kit.t("kit.appshell.account_menu")}">
 <span class="fc-avatar">${p.user().initials()}</span>
 <span class="fc-user-text min-w-0 flex-1"><span class="fc-user-name">${p.user().name()}</span><span class="fc-user-email">${p.user().email()}</span></span>
 @template.kit.icon(name = "chevron-up", cls = "shrink-0 text-white/50 fc-user-text size-[11px]")

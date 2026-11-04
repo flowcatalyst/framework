@@ -25,6 +25,7 @@
     - { title: Background and metrics, path: guide/background-and-metrics.md }
     - { title: Per-client secrets, path: guide/secrets.md }
     - { title: Per-client settings, path: guide/client-settings.md }
+    - { title: Money and units of measure, path: guide/measure.md }
 - group: Web
   items:
     - { title: HTTP, path: guide/http.md }
@@ -33,6 +34,7 @@
     - { title: Static assets and the SPA, path: guide/static-assets-and-spa.md }
     - { title: Forms in the shared UI package, path: guide/ui-forms.md }
     - { title: Server-rendered pages (JTE), path: guide/ui-jte.md }
+    - { title: Languages and locale formatting, path: guide/i18n.md }
     - { title: Typed operations and OpenAPI, path: guide/openapi.md }
     - { title: The admin area, path: guide/admin.md }
     - { title: Sessions and login, path: guide/sessions-and-login.md }
@@ -73,7 +75,9 @@
     - { title: "Go: field workers", path: guide/go/field-workers.md }
     - { title: "Go: the application admin", path: guide/go/admin.md }
     - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
+    - { title: "Go: money and units", path: guide/go/measure.md }
     - { title: "Go: server-rendered pages (templ)", path: guide/go/ui-templ.md }
+    - { title: "Go: languages and locale formatting", path: guide/go/i18n.md }
 - group: Reference and status
   items:
     - { title: Testing, path: guide/testing.md }
@@ -102,6 +106,7 @@
     - { title: OpenAPI contract, path: contracts/openapi.md }
     - { title: Admin skeleton contract, path: contracts/admin.md }
     - { title: Client settings contract, path: contracts/client-settings.md }
+    - { title: Money and units contract, path: contracts/measure.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }

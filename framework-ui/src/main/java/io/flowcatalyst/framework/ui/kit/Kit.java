@@ -3,6 +3,7 @@ package io.flowcatalyst.framework.ui.kit;
 import gg.jte.Content;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
+import io.flowcatalyst.framework.ui.i18n.Messages;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -54,6 +55,110 @@ public final class Kit {
   public static String iconHref(String name) {
     String base = SPRITE_URL.isBound() ? SPRITE_URL.get() : Markup.DEFAULT_SPRITE_URL;
     return base + "#i-" + name;
+  }
+
+  // ---- messages (docs/contracts/i18n.md)
+
+  /**
+   * The kit message for a key in the current rendering's language ({@link Messages#current()}).
+   * Templates call this for every user-visible text; a prop that sets the text wins before it.
+   *
+   * @param key a {@code kit.} key
+   * @return the text
+   */
+  public static String t(String key) {
+    return Messages.current().t(key);
+  }
+
+  /**
+   * As {@link #t(String)} with one argument.
+   *
+   * @param key a {@code kit.} key
+   * @param name the placeholder name
+   * @param value its value; null is the empty text
+   * @return the text
+   */
+  public static String t(String key, String name, @Nullable Object value) {
+    return Messages.current().t(key, Map.of(name, value == null ? "" : value));
+  }
+
+  /**
+   * The locale of the current rendering ({@link Messages#current()}): what {@code <html lang>}
+   * carries.
+   *
+   * @return a BCP 47 tag
+   */
+  public static String locale() {
+    return Messages.current().locale();
+  }
+
+  /**
+   * Quotes text as a JavaScript single-quoted string literal, for a message that goes into a
+   * Datastar expression.
+   *
+   * @param s the text
+   * @return the literal
+   */
+  public static String jsq(String s) {
+    StringBuilder sb = new StringBuilder("'");
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      switch (c) {
+        case '\\' -> sb.append("\\\\");
+        case '\'' -> sb.append("\\'");
+        case '\n' -> sb.append("\\n");
+        case '\r' -> sb.append("\\r");
+        case '\u2028' -> sb.append("\\u2028");
+        case '\u2029' -> sb.append("\\u2029");
+        default -> sb.append(c);
+      }
+    }
+    return sb.append('\'').toString();
+  }
+
+  /**
+   * The JavaScript expression for a message whose placeholder {@code arg} is the JavaScript
+   * expression {@code expr}: the message's text as quoted string terms joined with {@code +} around
+   * the expression, empty terms left out ({@code "Remove {label}"} with {@code t.textContent} is
+   * {@code 'Remove ' + t.textContent}).
+   *
+   * @param key a {@code kit.} key
+   * @param arg the placeholder name
+   * @param expr the JavaScript expression
+   * @return the expression
+   */
+  public static String jsMessage(String key, String arg, String expr) {
+    String mark = "\u0000";
+    String[] parts = Messages.current().t(key, Map.of(arg, mark)).split(mark, -1);
+    java.util.List<String> terms = new java.util.ArrayList<>();
+    for (int i = 0; i < parts.length; i++) {
+      if (i > 0) {
+        terms.add(expr);
+      }
+      if (!parts[i].isEmpty()) {
+        terms.add(jsq(parts[i]));
+      }
+    }
+    return terms.isEmpty() ? "''" : String.join(" + ", terms);
+  }
+
+  /**
+   * A message written as markup: the text is escaped, and each placeholder named in {@code raw} is
+   * replaced by that trusted markup (which the caller built from escaped values).
+   *
+   * @param key a {@code kit.} key
+   * @param raw placeholder name to trusted markup
+   * @return the markup content
+   */
+  public static Content htmlMessage(String key, Map<String, String> raw) {
+    String mark = "\u0000";
+    Map<String, String> args = new HashMap<>();
+    raw.keySet().forEach(n -> args.put(n, mark + n + mark));
+    String text = Markup.escape(Messages.current().t(key, args));
+    for (Map.Entry<String, String> e : raw.entrySet()) {
+      text = text.replace(mark + e.getKey() + mark, e.getValue());
+    }
+    return Markup.raw(text);
   }
 
   static Content component(String template, Map<String, Object> params) {
@@ -505,6 +610,36 @@ public final class Kit {
    */
   public static Content localTime(Props.LocalTime p) {
     return component("local_time", params(p));
+  }
+
+  /**
+   * localNumber component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content localNumber(Props.LocalNumber p) {
+    return component("local_number", params(p));
+  }
+
+  /**
+   * localMoney component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content localMoney(Props.LocalMoney p) {
+    return component("local_money", params(p));
+  }
+
+  /**
+   * localQuantity component (see its spec).
+   *
+   * @param p props
+   * @return the component
+   */
+  public static Content localQuantity(Props.LocalQuantity p) {
+    return component("local_quantity", params(p));
   }
 
   /**

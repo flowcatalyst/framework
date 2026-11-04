@@ -1,9 +1,12 @@
 package mustliteral
 
 import (
+	"github.com/flowcatalyst/framework/go/decimal"
 	"github.com/flowcatalyst/framework/go/event"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/locks"
+	"github.com/flowcatalyst/framework/go/money"
+	"github.com/flowcatalyst/framework/go/units"
 	"github.com/flowcatalyst/framework/go/usecase"
 )
 
@@ -22,6 +25,9 @@ var checks = map[string]func(string) error{
 	"github.com/flowcatalyst/framework/go/usecase.MustName":       errOf(usecase.ParseName),
 	"github.com/flowcatalyst/framework/go/usecase.MustErrorCode":  errOf(usecase.ParseErrorCode),
 	"github.com/flowcatalyst/framework/go/locks.MustServiceKey":   errOf(locks.ServiceKey),
+	"github.com/flowcatalyst/framework/go/decimal.MustParse":      errOf(decimal.Parse),
+	"github.com/flowcatalyst/framework/go/money.MustCurrency":     errOf(money.CurrencyOf),
+	"github.com/flowcatalyst/framework/go/units.MustParse":        errOf(units.Parse),
 }
 
 func errOf[T any](parse func(string) (T, error)) func(string) error {

@@ -1,8 +1,11 @@
 package kit
 
 import (
+	"context"
 	"strconv"
 	"strings"
+
+	"github.com/flowcatalyst/framework/go/ui/i18n"
 )
 
 // popoverAnchorExpr is table-toolbar.md's positioning expression: the popover
@@ -76,14 +79,14 @@ templ TableToolbar(p TableToolbarProps) {
 		</div>
 		<div class="fc-toolbar-end">
 			if p.Size != nil {
-				<select name="size" class="fc-select w-24" title="Result size" aria-label="Result size" data-on:change={ submitOnChangeExpr }>
+				<select name="size" class="fc-select w-24" title={ i18n.T(ctx, "kit.toolbar.result_size") } aria-label={ i18n.T(ctx, "kit.toolbar.result_size") } data-on:change={ submitOnChangeExpr }>
 					for _, n := range p.Size.Options {
 						<option value={ strconv.Itoa(n) } selected?={ n == p.Size.Selected }>{ strconv.Itoa(n) }</option>
 					}
 				</select>
 			}
 			if !p.HideRefresh {
-				<button type="submit" class="fc-icon-btn" title="Refresh" aria-label="Refresh">
+				<button type="submit" class="fc-icon-btn" title={ i18n.T(ctx, "kit.toolbar.refresh") } aria-label={ i18n.T(ctx, "kit.toolbar.refresh") }>
 					@Icon(IconProps{Name: "refresh-cw", Class: "size-[1rem]"})
 				</button>
 			}
@@ -144,13 +147,13 @@ templ TableToolbarState(p TableToolbarStateProps) {
 		if p.ClearHref != "" {
 			<a href={ SafeURL(p.ClearHref) } class="fc-btn fc-btn-text" { Attrs(p.ClearAttrs)... }>
 				@Icon(IconProps{Name: "funnel-x", Class: "size-[1rem]"})
-				Clear All
+				{ i18n.T(ctx, "kit.toolbar.clear_all") }
 			</a>
 		}
 		if p.Filters {
 			<button type="button" class="fc-btn fc-btn-primary-outline" popovertarget={ ID(p.FormID) + "-filters" }>
 				@Icon(IconProps{Name: "funnel", Class: "size-[1rem]"})
-				Filters
+				{ i18n.T(ctx, "kit.toolbar.filters") }
 				if p.ActiveFilterCount > 0 {
 					<span class="fc-badge">{ strconv.Itoa(p.ActiveFilterCount) }</span>
 				}
@@ -195,18 +198,18 @@ func (p PaginationProps) currentClasses() string {
 
 // Pagination is pagination.md: previous, numbered pages, ellipsis, next.
 templ Pagination(p PaginationProps) {
-	<nav aria-label="pagination" class="@container mx-auto flex w-full justify-center">
+	<nav aria-label={ i18n.T(ctx, "kit.pagination.label") } class="@container mx-auto flex w-full justify-center">
 		<ul class="flex flex-row flex-wrap items-center justify-center gap-1">
 			<li>
 				if p.PrevHref != "" {
 					<a href={ SafeURL(p.PrevHref) } class={ ButtonClasses(ButtonGhost, ButtonMd) } { Attrs(p.LinkAttrs)... }>
 						@Icon(IconProps{Name: "chevron-left"})
-						<span class="sr-only @xs:not-sr-only">Previous</span>
+						<span class="sr-only @xs:not-sr-only">{ i18n.T(ctx, "kit.pagination.previous") }</span>
 					</a>
 				} else {
 					<a aria-disabled="true" class={ cx(ButtonClasses(ButtonGhost, ButtonMd), pagerDisabled) }>
 						@Icon(IconProps{Name: "chevron-left"})
-						<span class="sr-only @xs:not-sr-only">Previous</span>
+						<span class="sr-only @xs:not-sr-only">{ i18n.T(ctx, "kit.pagination.previous") }</span>
 					</a>
 				}
 			</li>
@@ -215,7 +218,7 @@ templ Pagination(p PaginationProps) {
 					if it.Ellipsis {
 						<span class="flex size-9 items-center justify-center text-muted-foreground">
 							@Icon(IconProps{Name: "ellipsis", Class: "size-4"})
-							<span class="sr-only">More pages</span>
+							<span class="sr-only">{ i18n.T(ctx, "kit.pagination.more_pages") }</span>
 						</span>
 					} else if it.Page == p.Current {
 						<a href={ SafeURL(it.Href) } aria-current="page" class={ p.currentClasses() } { Attrs(p.LinkAttrs)... }>{ strconv.Itoa(it.Page) }</a>
@@ -227,12 +230,12 @@ templ Pagination(p PaginationProps) {
 			<li>
 				if p.NextHref != "" {
 					<a href={ SafeURL(p.NextHref) } class={ ButtonClasses(ButtonGhost, ButtonMd) } { Attrs(p.LinkAttrs)... }>
-						<span class="sr-only @xs:not-sr-only">Next</span>
+						<span class="sr-only @xs:not-sr-only">{ i18n.T(ctx, "kit.pagination.next") }</span>
 						@Icon(IconProps{Name: "chevron-right"})
 					</a>
 				} else {
 					<a aria-disabled="true" class={ cx(ButtonClasses(ButtonGhost, ButtonMd), pagerDisabled) }>
-						<span class="sr-only @xs:not-sr-only">Next</span>
+						<span class="sr-only @xs:not-sr-only">{ i18n.T(ctx, "kit.pagination.next") }</span>
 						@Icon(IconProps{Name: "chevron-right"})
 					</a>
 				}
@@ -261,27 +264,27 @@ templ CursorPager(p CursorPagerProps) {
 		class="fc-table-footer"
 	>
 		<span>{ p.Summary }</span>
-		<nav class="flex items-center gap-2" aria-label="Pagination">
+		<nav class="flex items-center gap-2" aria-label={ i18n.T(ctx, "kit.cursor_pager.label") }>
 			if p.NewestHref != "" {
 				<a class="fc-btn fc-btn-outline fc-btn-sm" href={ SafeURL(p.NewestHref) } { Attrs(p.LinkAttrs)... }>
 					@Icon(IconProps{Name: "chevrons-left"})
-					Newest
+					{ i18n.T(ctx, "kit.cursor_pager.newest") }
 				</a>
 			} else {
 				<span class="fc-btn fc-btn-outline fc-btn-sm" aria-disabled="true">
 					@Icon(IconProps{Name: "chevrons-left"})
-					Newest
+					{ i18n.T(ctx, "kit.cursor_pager.newest") }
 				</span>
 			}
 			if p.OlderHref != "" {
 				<a class="fc-btn fc-btn-outline fc-btn-sm" href={ SafeURL(p.OlderHref) } { Attrs(p.LinkAttrs)... }>
 					@Icon(IconProps{Name: "chevron-right"})
-					Older
+					{ i18n.T(ctx, "kit.cursor_pager.older") }
 				</a>
 			} else {
 				<span class="fc-btn fc-btn-outline fc-btn-sm" aria-disabled="true">
 					@Icon(IconProps{Name: "chevron-right"})
-					Older
+					{ i18n.T(ctx, "kit.cursor_pager.older") }
 				</span>
 			}
 		</nav>
@@ -343,13 +346,13 @@ func (p PaginatorProps) window() []int {
 	return out
 }
 
-func (p PaginatorProps) report() string {
+func (p PaginatorProps) report(ctx context.Context) string {
 	first, last := 0, 0
 	if p.Total > 0 {
 		first = (p.page()-1)*p.rows() + 1
 		last = min(p.page()*p.rows(), p.Total)
 	}
-	return "Showing " + strconv.Itoa(first) + " to " + strconv.Itoa(last) + " of " + strconv.Itoa(p.Total) + " " + p.Noun
+	return i18n.T(ctx, "kit.paginator.showing", i18n.Args{"from": first, "to": last, "total": p.Total, "noun": p.Noun})
 }
 
 // Paginator is paginator.md.
@@ -359,14 +362,14 @@ templ Paginator(p PaginatorProps) {
 			id={ p.ID }
 		}
 		class="fc-paginator"
-		aria-label="Pagination"
+		aria-label={ i18n.T(ctx, "kit.paginator.label") }
 	>
 		if p.page() > 1 {
-			@paginatorLink(p, 1, "First", "chevrons-left")
-			@paginatorLink(p, p.page()-1, "Previous", "chevron-left")
+			@paginatorLink(p, 1, i18n.T(ctx, "kit.paginator.first"), "chevrons-left")
+			@paginatorLink(p, p.page()-1, i18n.T(ctx, "kit.paginator.previous"), "chevron-left")
 		} else {
-			@paginatorDisabled("First", "chevrons-left")
-			@paginatorDisabled("Previous", "chevron-left")
+			@paginatorDisabled(i18n.T(ctx, "kit.paginator.first"), "chevrons-left")
+			@paginatorDisabled(i18n.T(ctx, "kit.paginator.previous"), "chevron-left")
 		}
 		for _, n := range p.window() {
 			if n == p.page() {
@@ -376,20 +379,20 @@ templ Paginator(p PaginatorProps) {
 			}
 		}
 		if p.page() < p.pages() {
-			@paginatorLink(p, p.page()+1, "Next", "chevron-right")
-			@paginatorLink(p, p.pages(), "Last", "chevrons-right")
+			@paginatorLink(p, p.page()+1, i18n.T(ctx, "kit.paginator.next"), "chevron-right")
+			@paginatorLink(p, p.pages(), i18n.T(ctx, "kit.paginator.last"), "chevrons-right")
 		} else {
-			@paginatorDisabled("Next", "chevron-right")
-			@paginatorDisabled("Last", "chevrons-right")
+			@paginatorDisabled(i18n.T(ctx, "kit.paginator.next"), "chevron-right")
+			@paginatorDisabled(i18n.T(ctx, "kit.paginator.last"), "chevrons-right")
 		}
 		if p.FormID != "" {
-			<select name="rows" form={ p.FormID } class="fc-select ml-2" aria-label="Rows per page" data-on:change="el.form.requestSubmit()">
+			<select name="rows" form={ p.FormID } class="fc-select ml-2" aria-label={ i18n.T(ctx, "kit.paginator.rows_per_page") } data-on:change="el.form.requestSubmit()">
 				for _, n := range p.rowsOptions() {
 					<option value={ strconv.Itoa(n) } selected?={ n == p.rows() }>{ strconv.Itoa(n) }</option>
 				}
 			</select>
 		}
-		<span class="fc-page-report">{ p.report() }</span>
+		<span class="fc-page-report">{ p.report(ctx) }</span>
 	</nav>
 }
 

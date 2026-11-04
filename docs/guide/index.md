@@ -29,6 +29,7 @@ describes what is built and says plainly where something is not.
 | [The write path](write-path.md) | Aggregates, repositories, use cases, plans, optimistic locking, the outbox |
 | [Checked SQL](checked-sql.md) | Queries in `.sql` files, checked at build time |
 | [Per-client secrets](secrets.md) | Resolving a client's credential from a reference: `file` and `env` stores, caching, the threat model |
+| [Money and units](measure.md) | Exact decimals, money and allocation, units and conversions, packaging, unit prices, chargeable weight |
 | [Background and metrics](background-and-metrics.md) | Managed loops (lock-gated, health-visible), counters, gauges, timers, the Prometheus endpoint |
 | [HTTP](http.md) | Routes, validation, errors, middleware, Datastar, the Jetty module |
 | [HTTP client](http-client.md) | Calling other services: a client per service, auth, retries, `Context` propagation |

@@ -9,17 +9,17 @@
 @if(body != null)${body}@endif
 </form>
 <dialog id="${p.id() + "-discard"}" role="alertdialog" class="fc-dialog w-[28rem] max-w-[calc(100vw-2rem)]" aria-labelledby="${p.id() + "-discard-title"}" aria-describedby="${p.id() + "-discard-desc"}" data-on:click="${LIGHT_DISMISS}">
-<div class="fc-dialog-header"><span id="${p.id() + "-discard-title"}">Discard Changes</span></div>
+<div class="fc-dialog-header"><span id="${p.id() + "-discard-title"}">${Kit.t("kit.form_dialog.discard_title")}</span></div>
 <div class="fc-dialog-body flex items-start gap-3 text-subtle-foreground">
 @template.kit.icon(name = "triangle-alert", cls = "size-6 mt-0.5 shrink-0 text-red-600")
-<p id="${p.id() + "-discard-desc"}">You have unsaved changes. Discard them?</p>
+<p id="${p.id() + "-discard-desc"}">${Kit.t("kit.form_dialog.discard_message")}</p>
 </div>
 <div class="fc-dialog-footer">
-<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="${CLOSE_DIALOG}">Keep Editing</button>
-<button type="button" class="fc-btn fc-btn-danger" data-on:click="${"el.closest('dialog').close(); document.getElementById('" + id(p.id()) + "').close()"}">Discard</button>
+<button type="button" class="fc-btn fc-btn-text" autofocus data-on:click="${CLOSE_DIALOG}">${Kit.t("kit.form_dialog.keep_editing")}</button>
+<button type="button" class="fc-btn fc-btn-danger" data-on:click="${"el.closest('dialog').close(); document.getElementById('" + id(p.id()) + "').close()"}">${Kit.t("kit.form_dialog.discard")}</button>
 </div>
 </dialog>
 `, footer = @`
-<button type="button" class="${Classes.button("ghost", "md")}" data-attr:disabled="${p.busy()}" data-on:click="${p.dismissExpr()}">Cancel</button>
+<button type="button" class="${Classes.button("ghost", "md")}" data-attr:disabled="${p.busy()}" data-on:click="${p.dismissExpr()}">${Kit.t("kit.dialog.cancel")}</button>
 <button type="submit" form="${Props.FormDialog.formId(p.id())}" class="${Classes.button("primary", "md")}" disabled="${p.requireChange()}" data-attr:disabled="${p.submitDisabledExpr()}">${p.submitLabel()}</button>
 `)
