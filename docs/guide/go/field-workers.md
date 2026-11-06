@@ -48,7 +48,9 @@ the document is unchanged.
 The token must be RS256 from the platform's keys (the same key cache as `PlatformTokens`), with
 JOSE `typ` `fc-field+jwt`, `iss` the platform, `aud` your application code, `token_use` `field`,
 a `sub` starting `fwu_` and the claims `client_id`, `client_identifier`, `sid` and
-`cnf.jkt` (`device_id` too, except on a device that is not enrolled: `device_mode` `UNENROLLED`). A token with `pcr: true` (a temporary PIN: it works only on the platform's
+`cnf.jkt` (`device_id` too, except on a device that is not enrolled: `device_mode` `UNENROLLED`). The optional
+`linked_principal_id` claim is read into `FieldPrincipal.LinkedPrincipalID` (empty when the worker is not linked to a platform user); it is for audit
+correlation only and grants nothing. A token with `pcr: true` (a temporary PIN: it works only on the platform's
 `/field/auth/pin`) is answered `403 PIN_CHANGE_REQUIRED`. The proof must be an ES256 JWS whose
 `jwk` is a public P-256 key with the thumbprint `cnf.jkt`, with `htm` the method, `htu` your
 `auth.public-base-url` plus the request's escaped path (never the `Host` header, no query),
@@ -186,6 +188,7 @@ device := authtest.NewFieldDevice(authtest.DeviceClock(clock))
 provider.FieldAudience("orders")
 headers, _ := tt.FieldRequest(provider, device, "POST", "/api/echo", auth.FieldPrincipal{DeviceMode: "SHARED"})
 // headers carry Authorization and DPoP; zero FieldPrincipal fields get defaults
+// (set LinkedPrincipalID to mint the linked_principal_id claim; it grants nothing)
 ```
 
 - `authtest.Provider.FieldToken(claims)` mints a field access token (RS256, `typ` `fc-field+jwt`,

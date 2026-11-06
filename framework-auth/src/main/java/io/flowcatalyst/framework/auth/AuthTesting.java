@@ -169,6 +169,9 @@ public final class AuthTesting {
     if (worker.test()) {
       claims.put("test", true);
     }
+    if (worker.linkedPrincipalId() != null) {
+      claims.put("linked_principal_id", worker.linkedPrincipalId());
+    }
     claims.put("amr", worker.amr());
     claims.put("auth_time", (worker.authTime() == null ? now : worker.authTime()).getEpochSecond());
     claims.put("cnf", Map.of("jkt", device.jkt()));

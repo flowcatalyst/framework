@@ -63,10 +63,10 @@ class FieldConformanceTest {
       }
       names.add(c.path("name").asString());
     }
-    assertThat(names).hasSize(21)
+    assertThat(names).hasSize(22)
         .contains(
             "valid", "stale_proof", "missing_exp", "alg_not_rs256", "pcr_pin_change_only", "valid_unenrolled", "valid_impersonated_supervisor",
-            "valid_impersonated_principal", "valid_test");
+            "valid_impersonated_principal", "valid_test", "valid_linked");
   }
 
   /** A case's {@code principal} says what the verified principal carries (15.9); other valid cases carry the defaults. */
@@ -77,12 +77,15 @@ class FieldConformanceTest {
       assertThat(got.deviceMode()).as(name).isEqualTo(FieldPrincipal.DeviceMode.PERSONAL);
       assertThat(got.actor()).as(name).isNull();
       assertThat(got.test()).as(name).isFalse();
+      assertThat(got.linkedPrincipalId()).as(name).isNull();
       return;
     }
     String deviceId = expected.path("deviceId").asString();
     assertThat(got.deviceId()).as(name + " deviceId").isEqualTo(deviceId.isEmpty() ? null : deviceId);
     assertThat(got.deviceMode().name()).as(name + " deviceMode").isEqualTo(expected.path("deviceMode").asString());
     assertThat(got.amr()).as(name + " amr").containsExactlyElementsOf(JSON.convertValue(expected.path("amr"), List.class));
+    String linked = expected.path("linkedPrincipalId").asString();
+    assertThat(got.linkedPrincipalId()).as(name + " linkedPrincipalId").isEqualTo(linked.isEmpty() ? null : linked);
     assertThat(got.test()).as(name + " test").isEqualTo(expected.path("test").asBoolean());
     JsonNode actor = expected.get("actor");
     if (actor == null) {

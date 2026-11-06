@@ -837,6 +837,12 @@ a supervisor or `prn_...` for a platform user), `typ` (`field_worker` or `princi
 other claim is still the **worker's**. **Test identities** carry `test: true`. Neither claim is
 required, and neither changes any refusal in the table.
 
+*Added 2026-11-06 (linked platform user):* a field worker may be linked to a platform user. The
+token then carries `linked_principal_id` (`prn_...`); it is **absent** when the worker is not linked.
+The claim is optional and changes no refusal. It is **for audit correlation only and grants
+nothing**: it is not a session, adds no role, permission, application, client or tier, and the
+`principal` stays the worker. `FieldPrincipal.linkedPrincipalId` is empty (Go) or null (Java) when absent.
+
 A platform API token (`fc` access token, `token_use: api`) presented with the `DPoP` scheme is
 refused (`wrong_typ`), and a field token presented as `Bearer` is refused by 5.6 (`aud` or `token_use`).
 Keys unreadable: `503 UNAVAILABLE`, as in 5.6.
@@ -913,7 +919,8 @@ also needs the access token (`ath`), and is limited to the same method and URL.
 `workerCode`, `name`, `clientId` (`clt_...`), `clientIdentifier`, `appCode`, `deviceId`,
 `deviceMode` (`PERSONAL`, `SHARED` or `UNENROLLED`; `deviceId` is empty/null when `UNENROLLED`), `amr`
 (list), `authTime`, `sessionId` (`sid`), `expiresAt`, `actor` (`id`, `type` `field_worker` or
-`principal`, `name`; from `act`; absent when the worker signed in as themselves) and `test` (boolean). Its roles, applications, clients and tier are empty. A field worker has no platform
+`principal`, `name`; from `act`; absent when the worker signed in as themselves) `test` (boolean) and `linkedPrincipalId` (`prn_...`, from `linked_principal_id`; empty/null when the
+worker is not linked; audit correlation only, it grants nothing). Its roles, applications, clients and tier are empty. A field worker has no platform
 authority.
 
 **Permission mapping** is code, separate from the session and bearer mapping:
@@ -993,6 +1000,8 @@ the receiver.
 - **A test device**: Go `authtest.NewFieldDevice()`, Java `TestFieldDevice`. It holds an ES256 key,
   gives its `jkt`, and `Proof(method, url, nonce, token)` returns a valid proof, with options to
   break each rule. A helper fetches an application nonce from a first `401`.
+- `fieldRequest` mints `linked_principal_id` when the principal's `linkedPrincipalId` is set (Go
+  `FieldPrincipal.LinkedPrincipalID`), and leaves the claim out otherwise.
 - `AuthTesting` gains `fieldRequest(principal)`, which returns the `Authorization` and `DPoP`
   headers for a route under test. It is refused unless `APP_ENV` is `test`. *Go:*
   `auth.Testing.FieldRequest(provider, device, method, path, auth.FieldPrincipal{})` (the provider and
@@ -1015,8 +1024,10 @@ the framework refuses it as `expired` (5.5 rule 8), and the conformance run coun
 *Added 2026-11-06:* four more `valid` cases carry a `principal` object that says what the verified
 principal holds: `valid_unenrolled` (no `device_id`, `UNENROLLED`), `valid_impersonated_supervisor`
 (`act` type `field_worker`), `valid_impersonated_principal` (`act` type `principal`, unenrolled) and
-`valid_test` (`test: true`). Go and Java assert `deviceId`, `deviceMode`, `amr`, `actor` and `test`
-against it (21 cases in all). Nonces are covered
+`valid_test` (`test: true`). *Added 2026-11-06 (platform commit `976515c2`):* `valid_linked` (a
+worker linked to a platform user), and every `principal` object carries `linkedPrincipalId` (empty
+when absent). Go and Java assert `deviceId`, `deviceMode`, `amr`, `actor`, `test` and
+`linkedPrincipalId` against it (22 cases in all). Nonces are covered
 by their own tests (15.10). Go and Java both run every case.
 
 ### 15.10 Tests

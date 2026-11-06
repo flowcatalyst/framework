@@ -57,6 +57,10 @@ type FieldPrincipal struct {
 	Actor *FieldActor
 	// Test marks a test identity (the test claim).
 	Test bool
+	// LinkedPrincipalID is the platform user (prn_...) the worker is linked to (the
+	// linked_principal_id claim); empty when the worker is not linked. For audit correlation only:
+	// it grants nothing, and no permission, role or tier derives from it.
+	LinkedPrincipalID string
 }
 
 // FieldActor is who acts as a field worker (the act claim). Type is "field_worker" (a supervisor
@@ -237,6 +241,7 @@ func (t *FieldTokens) checkClaims(claims claimSet, now time.Time) (p FieldPrinci
 		ClientID: text(claims, "client_id"), ClientIdentifier: text(claims, "client_identifier"),
 		AppCode: t.appCode, DeviceID: text(claims, "device_id"), DeviceMode: text(claims, "device_mode"),
 		AMR: texts(claims["amr"]), SessionID: text(claims, "sid"),
+		LinkedPrincipalID: text(claims, "linked_principal_id"), // absent when the worker is not linked
 	}
 	// device_id is absent on an unenrolled token (device_mode UNENROLLED); everything else is required.
 	if p.ClientID == "" || p.ClientIdentifier == "" || p.SessionID == "" || jkt == "" ||

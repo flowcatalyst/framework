@@ -86,7 +86,7 @@ Optional<FieldPrincipal> worker = Auth.current(request).orElseThrow().field();
 ```
 
 `FieldPrincipal` holds `workerId`, `workerCode`, `name`, `clientId`, `clientIdentifier`, `appCode`,
-`deviceId` (empty/null when unenrolled), `deviceMode` (`PERSONAL`, `SHARED` or `UNENROLLED`), `actor` (who is signed in as the worker, from `act`), `test`, `amr`, `authTime`, `sessionId` and `expiresAt`. A
+`deviceId` (empty/null when unenrolled), `deviceMode` (`PERSONAL`, `SHARED` or `UNENROLLED`), `actor` (who is signed in as the worker, from `act`), `test`, `linkedPrincipalId` (the platform user the worker is linked to, from `linked_principal_id`; null when not linked. It is for audit correlation only and grants nothing: no permission, role or tier comes from it), `amr`, `authTime`, `sessionId` and `expiresAt`. A
 field worker has no roles, applications, clients or tier: no platform authority.
 
 **Permissions are yours to map**, separately from sessions and bearer tokens

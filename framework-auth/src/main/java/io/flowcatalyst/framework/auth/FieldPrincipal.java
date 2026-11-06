@@ -27,6 +27,9 @@ import org.jspecify.annotations.Nullable;
  *     a platform user, {@code principal}), or null when the worker signed in as themselves; every
  *     other field is still the worker's
  * @param test whether this is a test identity ({@code test})
+ * @param linkedPrincipalId the platform user this worker is linked to ({@code linked_principal_id},
+ *     {@code prn_...}), or null when the worker is not linked (the claim is then absent). For audit
+ *     correlation only: it grants nothing, and no permission, role or tier derives from it
  */
 public record FieldPrincipal(
     String workerId,
@@ -42,7 +45,8 @@ public record FieldPrincipal(
     String sessionId,
     Instant expiresAt,
     @Nullable Actor actor,
-    boolean test) {
+    boolean test,
+    @Nullable String linkedPrincipalId) {
 
   /**
    * A worker who signed in as themselves and is not a test identity.
@@ -73,7 +77,43 @@ public record FieldPrincipal(
       @Nullable Instant authTime,
       String sessionId,
       Instant expiresAt) {
-    this(workerId, workerCode, name, clientId, clientIdentifier, appCode, deviceId, deviceMode, amr, authTime, sessionId, expiresAt, null, false);
+    this(workerId, workerCode, name, clientId, clientIdentifier, appCode, deviceId, deviceMode, amr, authTime, sessionId, expiresAt, null, false, null);
+  }
+
+  /**
+   * A worker not linked to a platform user.
+   *
+   * @param workerId the worker's principal id
+   * @param workerCode the worker code, or null
+   * @param name the display name, or null
+   * @param clientId the client's platform id
+   * @param clientIdentifier the client's identifier
+   * @param appCode the application
+   * @param deviceId the enrolled device, or null when unenrolled
+   * @param deviceMode the device mode
+   * @param amr how the worker authenticated
+   * @param authTime when the worker signed in, or null
+   * @param sessionId the login family
+   * @param expiresAt when the token expires
+   * @param actor who is signed in as the worker, or null
+   * @param test whether this is a test identity
+   */
+  public FieldPrincipal(
+      String workerId,
+      @Nullable String workerCode,
+      @Nullable String name,
+      String clientId,
+      String clientIdentifier,
+      String appCode,
+      @Nullable String deviceId,
+      DeviceMode deviceMode,
+      List<String> amr,
+      @Nullable Instant authTime,
+      String sessionId,
+      Instant expiresAt,
+      @Nullable Actor actor,
+      boolean test) {
+    this(workerId, workerCode, name, clientId, clientIdentifier, appCode, deviceId, deviceMode, amr, authTime, sessionId, expiresAt, actor, test, null);
   }
 
   /** Whether the device belongs to one worker or is shared. */

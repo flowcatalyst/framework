@@ -118,6 +118,9 @@ func (t *Testing) FieldRequest(minter FieldTokenMinter, device FieldProofSigner,
 	if f.Test {
 		claims["test"] = true
 	}
+	if f.LinkedPrincipalID != "" { // the claim is absent when the worker is not linked
+		claims["linked_principal_id"] = f.LinkedPrincipalID
+	}
 	token := minter.FieldToken(claims)
 	target, _, _ := strings.Cut(path, "?")
 	h := http.Header{}
