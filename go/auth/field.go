@@ -70,6 +70,14 @@ type FieldActor struct {
 // workers until the application maps them.
 type FieldPermissionMapper func(FieldPrincipal) []string
 
+// FieldPermissionResolver finds a field worker's permissions where the application holds them (its
+// database, a cache, a role table), per request (contract section 15.5). ctx is the request's
+// context, so request-scoped values and the application's own transaction are at hand. An empty
+// result grants nothing (a route that requires a permission refuses). An error is not "no
+// permissions": the request answers 503 UNAVAILABLE, so the device retries instead of being told
+// it may not. Return an error only when the answer could not be found.
+type FieldPermissionResolver func(ctx context.Context, p FieldPrincipal) ([]string, error)
+
 // FieldNoPermissions grants nothing (the default).
 func FieldNoPermissions() FieldPermissionMapper { return func(FieldPrincipal) []string { return nil } }
 
@@ -108,14 +116,23 @@ func FieldPermissionsByDeviceModes(byMode map[string][]string) FieldPermissionMa
 type FieldOption func(*fieldOptions)
 
 type fieldOptions struct {
-	permissions FieldPermissionMapper
+	permissions FieldPermissionResolver
 	replay      FieldReplayCache
 }
 
 // MapFieldPermissions sets how a field worker's permissions are found. Default
 // [FieldNoPermissions].
 func MapFieldPermissions(m FieldPermissionMapper) FieldOption {
-	return func(o *fieldOptions) { o.permissions = m }
+	return func(o *fieldOptions) {
+		o.permissions = func(_ context.Context, p FieldPrincipal) ([]string, error) { return m(p), nil }
+	}
+}
+
+// FieldPermissionsFrom sets a resolver that looks a field worker's permissions up per request, for
+// an application that holds them itself (see [FieldPermissionResolver]). It replaces
+// [MapFieldPermissions]; the last of the two given wins. An error from it answers 503.
+func FieldPermissionsFrom(r FieldPermissionResolver) FieldOption {
+	return func(o *fieldOptions) { o.permissions = r }
 }
 
 // FieldReplay sets the replay cache. Default: a memory cache, which logs one warning at start-up
@@ -362,7 +379,7 @@ func proofKey(v any) (*ecdsa.PublicKey, string, bool) {
 // fieldRuntime is what the resolver and the middleware need when field workers are enabled.
 type fieldRuntime struct {
 	tokens      *FieldTokens
-	permissions FieldPermissionMapper
+	permissions FieldPermissionResolver
 }
 
 var errFieldNeedsApplication = errors.New("FieldWorkers needs auth.Application: field tokens are addressed to the application's code")

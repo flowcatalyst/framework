@@ -23,7 +23,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class FieldOptions {
 
-  private final FieldPermissions permissions;
+  private final FieldPermissionResolver permissions;
   private final @Nullable Provider<? extends FieldReplayCache> replayCache;
   private final Duration proofWindow;
 
@@ -51,7 +51,7 @@ public final class FieldOptions {
     return new Builder();
   }
 
-  FieldPermissions permissions() {
+  FieldPermissionResolver permissions() {
     return permissions;
   }
 
@@ -66,7 +66,7 @@ public final class FieldOptions {
   /** Builds {@link FieldOptions}. */
   public static final class Builder {
 
-    private FieldPermissions permissions = FieldPermissions.none();
+    private FieldPermissionResolver permissions = FieldPermissionResolver.of(FieldPermissions.none());
     private @Nullable Provider<? extends FieldReplayCache> replayCache;
     private Duration proofWindow = Duration.ofHours(24);
 
@@ -80,6 +80,19 @@ public final class FieldOptions {
      * @return this builder
      */
     public Builder permissions(FieldPermissions value) {
+      this.permissions = FieldPermissionResolver.of(value);
+      return this;
+    }
+
+    /**
+     * What a field worker may do, looked up per request where the application holds it (a
+     * database, a cache). Replaces {@link #permissions(FieldPermissions)}; the last of the two
+     * given wins. A thrown exception answers 503, never "no permissions".
+     *
+     * @param value the resolver
+     * @return this builder
+     */
+    public Builder permissionResolver(FieldPermissionResolver value) {
       this.permissions = value;
       return this;
     }

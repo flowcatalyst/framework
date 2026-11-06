@@ -1,4 +1,4 @@
-<!-- types: FieldPrincipal, FieldPermissionMapper, FieldOption, FieldResult, FieldValid, FieldInvalid, FieldNonceRequired, FieldUnavailable, FieldTokens, FieldReplayCache, MemoryFieldReplayCache, ReplayCache, FieldRevocation, WorkerSuspended, DeviceRevoked, SessionRevoked, FieldDevice, FieldTokenMinter, FieldProofSigner, DeviceOption, ProofOption, Source -->
+<!-- types: FieldPrincipal, FieldPermissionMapper, FieldPermissionResolver, FieldOption, FieldResult, FieldValid, FieldInvalid, FieldNonceRequired, FieldUnavailable, FieldTokens, FieldReplayCache, MemoryFieldReplayCache, ReplayCache, FieldRevocation, WorkerSuspended, DeviceRevoked, SessionRevoked, FieldDevice, FieldTokenMinter, FieldProofSigner, DeviceOption, ProofOption, Source -->
 # Go: field workers
 
 Drivers, pickers and yard-gate staff sign in to the **platform** with a worker code and a PIN, from
@@ -111,6 +111,22 @@ default grants none, so a route that requires a permission refuses field workers
 them. `auth.FieldPermissionsAll(...)` grants one set, `auth.FieldPermissionsByDeviceMode(personal,
 shared)` one set per device mode (a device whose mode is neither is treated as `SHARED`, the
 lesser), or write a `FieldPermissionMapper`.
+
+If the application keeps a worker's roles in its own store, use a resolver instead:
+
+```go
+auth.FieldWorkers(auth.FieldPermissionsFrom(
+	func(ctx context.Context, p auth.FieldPrincipal) ([]string, error) {
+		return roles.PermissionsOf(ctx, p.WorkerID, p.ClientIdentifier) // your database
+	}))
+```
+
+It runs on every authenticated field request, after the token and proof are verified, with the
+request's own `ctx` (so request-scoped values and your transaction are at hand). A nil or empty
+slice grants nothing. An **error answers `503 UNAVAILABLE`** (with a fresh `DPoP-Nonce`), never "no
+permissions" and never `401`/`403`: return an error only when the answer could not be found, and
+the device retries. `FieldPermissionsFrom` and `MapFieldPermissions` set the same thing; the last
+one given wins.
 
 A route that must be field-only, or never field, says so:
 

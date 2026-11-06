@@ -20,6 +20,7 @@ import (
 	"github.com/flowcatalyst/framework/go/auth/authtest"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/fwtest"
+	"github.com/flowcatalyst/framework/go/httpfw"
 	"github.com/flowcatalyst/framework/go/redisfw"
 )
 
@@ -197,6 +198,73 @@ func TestFieldPermissionMapping(t *testing.T) {
 	t.Run("the session and bearer mapping is not used", func(t *testing.T) {
 		f := startField(t, config{options: []auth.Option{auth.Permissions(auth.NoPermissions().And(func(auth.Principal) []string { return []string{"orders:thing:create"} }))}})
 		if r := f.call("POST", "/api/things", auth.FieldPrincipal{}); r.status != 403 {
+			t.Fatalf("%d %s", r.status, r.body)
+		}
+	})
+}
+
+type tenantKey struct{}
+
+// tenantResolver puts the X-Tenant header into the request context before the module's resolver
+// runs, as an application's middleware would.
+type tenantResolver struct{ next httpfw.ContextResolver }
+
+func (t tenantResolver) Resolve(r *http.Request) (fw.Context, error) {
+	return t.next.Resolve(r.WithContext(context.WithValue(r.Context(), tenantKey{}, "acme-db")))
+}
+
+func TestFieldPermissionResolver(t *testing.T) {
+	wrap := func(n httpfw.ContextResolver) httpfw.ContextResolver { return tenantResolver{n} }
+	who := auth.FieldPrincipal{WorkerCode: "W1"}
+	t.Run("the request context reaches the resolver and its permissions apply", func(t *testing.T) {
+		var seen string
+		f := startField(t, config{wrap: wrap}, auth.FieldPermissionsFrom(func(ctx context.Context, p auth.FieldPrincipal) ([]string, error) {
+			seen, _ = ctx.Value(tenantKey{}).(string)
+			if p.WorkerCode != "W1" {
+				return nil, errors.New("wrong principal")
+			}
+			return []string{"orders:thing:create"}, nil
+		}))
+		if r := f.call("POST", "/api/things", who); r.status != 201 {
+			t.Fatalf("%d %s", r.status, r.body)
+		}
+		if seen != "acme-db" {
+			t.Fatalf("the resolver saw ctx value %q", seen)
+		}
+	})
+	t.Run("an error answers 503, not no-permissions and not 401 or 403", func(t *testing.T) {
+		f := startField(t, config{}, auth.FieldPermissionsFrom(func(context.Context, auth.FieldPrincipal) ([]string, error) {
+			return []string{"orders:thing:create"}, errors.New("db is down")
+		}))
+		r := f.call("POST", "/api/things", who)
+		if r.status != 503 || r.str("error") != "UNAVAILABLE" {
+			t.Fatalf("%d %s", r.status, r.body)
+		}
+		if r.header.Get("DPoP-Nonce") == "" {
+			t.Error("a DPoP response carries a fresh nonce even when it is an error")
+		}
+		if r.header.Get("WWW-Authenticate") != "" {
+			t.Errorf("a 503 is not a challenge: %v", r.header)
+		}
+	})
+	t.Run("an empty result grants nothing", func(t *testing.T) {
+		for name, got := range map[string][]string{"nil": nil, "empty": {}} {
+			f := startField(t, config{}, auth.FieldPermissionsFrom(func(context.Context, auth.FieldPrincipal) ([]string, error) { return got, nil }))
+			if r := f.call("POST", "/api/things", who); r.status != 403 || r.str("error") != "FORBIDDEN" {
+				t.Fatalf("%s: %d %s", name, r.status, r.body)
+			}
+		}
+	})
+	t.Run("the mapper still works", func(t *testing.T) {
+		f := startField(t, config{}, auth.MapFieldPermissions(auth.FieldPermissionsAll("orders:thing:create")))
+		if r := f.call("POST", "/api/things", who); r.status != 201 {
+			t.Fatalf("%d %s", r.status, r.body)
+		}
+	})
+	t.Run("the last option given wins", func(t *testing.T) {
+		f := startField(t, config{}, auth.FieldPermissionsFrom(func(context.Context, auth.FieldPrincipal) ([]string, error) { return nil, errors.New("x") }),
+			auth.MapFieldPermissions(auth.FieldPermissionsAll("orders:thing:create")))
+		if r := f.call("POST", "/api/things", who); r.status != 201 {
 			t.Fatalf("%d %s", r.status, r.body)
 		}
 	})

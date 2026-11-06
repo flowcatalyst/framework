@@ -205,11 +205,12 @@ func HTTPTimeout(d time.Duration) Option { return func(o *options) { o.httpTimeo
 // FieldWorkers turns on field-worker authentication (contract section 15): the DPoP scheme is
 // accepted beside Bearer, with application nonces derived from auth.cookie-keys (required) and a
 // replay cache ([FieldReplay]; default memory). It needs [Application]: field tokens are addressed
-// to the application's code. A field worker's permissions come from [MapFieldPermissions] (default
+// to the application's code. A field worker's permissions come from [MapFieldPermissions] or [FieldPermissionsFrom] (default
 // none), never from the session and bearer mapping.
 func FieldWorkers(opts ...FieldOption) Option {
 	return func(o *options) {
-		f := &fieldOptions{permissions: FieldNoPermissions()}
+		none := FieldNoPermissions()
+		f := &fieldOptions{permissions: func(_ context.Context, p FieldPrincipal) ([]string, error) { return none(p), nil }}
 		for _, opt := range opts {
 			opt(f)
 		}

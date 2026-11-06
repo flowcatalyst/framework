@@ -1,4 +1,4 @@
-<!-- types: FieldOptions, FieldPermissions, FieldPrincipal, FieldTokens, FieldTokenResult, FieldReplayCache, RedisFieldReplayCache, TestFieldDevice, RequireLiveField, FieldRevocation, FieldIntrospection, Receivers, PlatformClient, AuthModule, Authenticated, Auth, AuthTesting, TestOidcProvider, PrincipalKind, Context -->
+<!-- types: FieldOptions, FieldPermissions, FieldPermissionResolver, FieldPrincipal, FieldTokens, FieldTokenResult, FieldReplayCache, RedisFieldReplayCache, TestFieldDevice, RequireLiveField, FieldRevocation, FieldIntrospection, Receivers, PlatformClient, AuthModule, Authenticated, Auth, AuthTesting, TestOidcProvider, PrincipalKind, Context -->
 # Field workers
 
 Drivers, pickers and yard-gate staff do not have platform accounts. They sign in to the **platform**
@@ -93,6 +93,14 @@ field worker has no roles, applications, clients or tier: no platform authority.
 (`FieldPermissions`). The default grants **none**, so a route that requires a permission refuses field
 workers until you map them. `FieldPermissions.all(...)` gives a fixed set; `byDeviceMode(personal,
 shared)` gives shared kiosks less.
+
+If the application keeps a worker's roles in its own store, give `FieldOptions.builder()
+.permissionResolver((request, worker) -> ...)` instead (a `FieldPermissionResolver`). It is called on
+every authenticated field request with the `Request` (headers, attributes) and the verified
+`FieldPrincipal`, and returns the permissions; empty or `null` grants nothing. If it **throws**, the
+request answers `503 UNAVAILABLE` (with a fresh `DPoP-Nonce`), never "no permissions" and never
+`401`/`403`, so a store outage makes the device retry. It replaces `permissions(...)`; the last of
+the two given wins.
 
 `Auth.requireSource(...)` makes a route field-only (`Source.FIELD`) or never-field (`SESSION` and
 `BEARER`).

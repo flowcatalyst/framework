@@ -90,7 +90,7 @@ func (c *ContextResolver) authenticateField(r *http.Request, token string) (Auth
 	}
 	switch res := c.field.tokens.Verify(r.Context(), token, proof, r.Method, r.URL.EscapedPath()).(type) {
 	case FieldValid:
-		return fieldAuthenticated(res.Principal, c.field.permissions)
+		return fieldAuthenticated(r.Context(), res.Principal, c.field.permissions, c.log)
 	case FieldInvalid:
 		c.log.Debug("refused a field credential", "reason", res.Reason)
 		if res.Reason == "pcr" {

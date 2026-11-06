@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"slices"
@@ -211,17 +213,22 @@ var errNoClient = httpfw.NewError(http.StatusInternalServerError, "INTERNAL", "i
 
 // fieldAuthenticated is who a verified field token and proof describe (contract section 15.5). The
 // client is the token's client_identifier; the application's client selector is not consulted.
-func fieldAuthenticated(f FieldPrincipal, permissions FieldPermissionMapper) (Authenticated, error) {
+func fieldAuthenticated(ctx context.Context, f FieldPrincipal, resolve FieldPermissionResolver, log *slog.Logger) (Authenticated, error) {
 	client, err := fw.ParseClientID(f.ClientIdentifier)
 	if err != nil {
 		return Authenticated{}, errNoClient
+	}
+	granted, err := resolve(ctx, f)
+	if err != nil { // not "no permissions": the device retries
+		log.Warn("a field worker's permissions could not be found", "worker", f.WorkerID, "error", err)
+		return Authenticated{}, httpfw.NewError(http.StatusServiceUnavailable, "UNAVAILABLE", "tokens cannot be checked right now; try again")
 	}
 	return Authenticated{
 		Principal: Principal{
 			ID: f.WorkerID, Kind: fw.PrincipalFieldWorker, Name: f.Name,
 			Clients: []string{}, Applications: []string{}, Roles: []string{}, Scopes: []string{},
 		},
-		Client: client, Permissions: slices.Clone(permissions(f)), Source: SourceField, Field: &f,
+		Client: client, Permissions: slices.Clone(granted), Source: SourceField, Field: &f,
 		ExpiresAt: f.ExpiresAt, AuthTime: f.AuthTime,
 	}, nil
 }

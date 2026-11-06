@@ -429,6 +429,82 @@ class FieldWorkersTest {
     assertThat(create.status()).isEqualTo(403);
   }
 
+  /** A POST to the route that needs {@code orders:thing:create}, with an optional X-Tenant header. */
+  TestResponse createThing(String tenant) {
+    String token = token(Map.of());
+    var request = t.client.post("/api/things").header("Authorization", "DPoP " + token)
+        .header("DPoP", device.proof("POST", AuthApp.ORIGIN + "/api/things", nonce(), token));
+    if (tenant != null) {
+      request = request.header("X-Tenant", tenant);
+    }
+    return request.jsonBody("{}").send();
+  }
+
+  @Test
+  void aResolverSeesTheRequestAndItsPermissionsApply() {
+    java.util.List<String> seen = new java.util.ArrayList<>();
+    start(
+        b ->
+            b.fieldWorkers(
+                FieldOptions.builder()
+                    .permissionResolver(
+                        (request, worker) -> {
+                          seen.add(request.header("X-Tenant") + "|" + worker.workerId());
+                          return Set.of("orders:thing:create");
+                        })
+                    .build()),
+        KEY_1);
+    assertThat(createThing("acme-db").status()).isEqualTo(201);
+    assertThat(seen).containsExactly("acme-db|fwu_0TESTWORKER");
+  }
+
+  @Test
+  void aResolverThatFailsAnswers503NotNoPermissions() {
+    start(
+        b ->
+            b.fieldWorkers(
+                FieldOptions.builder()
+                    .permissionResolver(
+                        (request, worker) -> {
+                          throw new java.io.IOException("db is down");
+                        })
+                    .build()),
+        KEY_1);
+    TestResponse r = createThing(null);
+    assertThat(r.status()).isEqualTo(503);
+    assertThat(r.tree().path("error").asString()).isEqualTo("UNAVAILABLE");
+    assertThat(r.header("DPoP-Nonce")).isNotBlank();
+    assertThat(r.header("WWW-Authenticate")).isNull();
+    // a runtime failure is the same
+    TestResponse me = get("/api/me", token(Map.of()));
+    assertThat(me.status()).isEqualTo(503);
+  }
+
+  @Test
+  void aResolverThatReturnsNothingGrantsNothing() {
+    start(b -> b.fieldWorkers(FieldOptions.builder().permissionResolver((request, worker) -> Set.of()).build()), KEY_1);
+    assertThat(createThing(null).status()).isEqualTo(403);
+    stop();
+    start(b -> b.fieldWorkers(FieldOptions.builder().permissionResolver((request, worker) -> null).build()), KEY_1);
+    assertThat(createThing(null).status()).isEqualTo(403);
+  }
+
+  @Test
+  void theMappingStillWorksAndTheLastOfTheTwoGivenWins() {
+    start(b -> b.fieldWorkers(FieldOptions.builder().permissions(FieldPermissions.all("orders:thing:create")).build()), KEY_1);
+    assertThat(createThing(null).status()).isEqualTo(201);
+    stop();
+    start(
+        b ->
+            b.fieldWorkers(
+                FieldOptions.builder()
+                    .permissionResolver((request, worker) -> { throw new IllegalStateException("x"); })
+                    .permissions(FieldPermissions.all("orders:thing:create"))
+                    .build()),
+        KEY_1);
+    assertThat(createThing(null).status()).isEqualTo(201);
+  }
+
   @Test
   void byDeviceModeGivesSharedKiosksLess() {
     start(

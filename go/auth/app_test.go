@@ -46,6 +46,8 @@ type config struct {
 	files   string // application.yaml
 	store   auth.StoreFactory
 	logger  *slog.Logger // default: discard
+	// wrap, when set, wraps the module's resolver (a test puts a value in the request context)
+	wrap func(httpfw.ContextResolver) httpfw.ContextResolver
 }
 
 // startApp starts the application; a start-up failure is returned.
@@ -95,7 +97,11 @@ func startApp(t *testing.T, c config) (*app, error) {
 			return nil, err
 		}
 		out.module = m
-		srv, err := httpfw.NewServer(b, web, []*httpfw.Routes{m.Routes(), testRoutes()}, httpfw.WithResolver(m.Resolver()))
+		var resolver httpfw.ContextResolver = m.Resolver()
+		if c.wrap != nil {
+			resolver = c.wrap(resolver)
+		}
+		srv, err := httpfw.NewServer(b, web, []*httpfw.Routes{m.Routes(), testRoutes()}, httpfw.WithResolver(resolver))
 		out.server = srv
 		return srv, err
 	})

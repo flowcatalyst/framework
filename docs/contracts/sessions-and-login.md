@@ -928,6 +928,22 @@ permissions (it fails closed): Go `auth.FieldPermissionsByDeviceModes`, Java
 `FieldPermissions.byDeviceMode(Map)`. The Go option that sets the mapping is `auth.MapFieldPermissions`.
 Field workers need `auth.Application` (the audience) and `auth.cookie-keys` (the nonces), and
 start-up fails naming whichever is missing.
+
+*Added 2026-11-06 (application-held permissions):* an application that keeps a worker's roles in its
+own store gives a **resolver** instead of (or beside) the mapping: Go `FieldPermissionResolver`,
+`func(ctx, FieldPrincipal) ([]string, error)`, set by `auth.FieldPermissionsFrom`; Java
+`FieldPermissionResolver.permissions(Request, FieldPrincipal)`, which may throw, set by
+`FieldOptions.Builder.permissionResolver`. It is called on every authenticated field request, after
+the token and proof check out, with the **request's own context** (Go: the request's `ctx`, so the
+application's request-scoped values and its database are at hand; Java: the `Request`). The result
+is the worker's permission set exactly as the mapping's would be; a nil or empty result grants
+nothing (fail closed, as for the mapping). An **error is not "no permissions"**: a resolver that
+fails (Go: returns an error; Java: throws) answers `503 UNAVAILABLE`, the same body and
+`DPoP-Nonce` header as the keys-unreadable answer in 15.1, never `401` or `403`, so the device
+retries rather than treating a store outage as a refusal. One of mapping and resolver is in force:
+the last one given wins, and the existing mapping helpers are unchanged (the mapping is adapted to
+a resolver that never fails).
+
 A route that must be field-only or never-field checks
 `Authenticated.source` (Go: `auth.RequireSource(auth.SourceField)`).
 

@@ -5,7 +5,9 @@ import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.http.ContextResolver;
 import io.flowcatalyst.framework.http.HttpException;
 import io.flowcatalyst.framework.http.Request;
+import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +40,7 @@ public final class AuthContextResolver implements ContextResolver {
 
   /** What the DPoP branch needs: the verifier, the nonces to issue and the field permission mapping. */
   record FieldAuth(
-      FieldVerifier verifier, FieldNonces nonces, FieldPermissions permissions, FieldTokens tokens, String publicBase, ApplicationCode application) {}
+      FieldVerifier verifier, FieldNonces nonces, FieldPermissionResolver permissions, FieldTokens tokens, String publicBase, ApplicationCode application) {}
 
   @Override
   public Context resolve(Request request) throws Exception {
@@ -87,7 +89,7 @@ public final class AuthContextResolver implements ContextResolver {
     RequestState.of(request).dpopNonce(nonce);
     FieldVerifier.Outcome outcome = fieldAuth.verifier().verify(token, request.headers("DPoP"), request.method().name(), request.path());
     return switch (outcome) {
-      case FieldVerifier.Outcome.Verified v -> authorities.field(v.worker(), fieldAuth.permissions());
+      case FieldVerifier.Outcome.Verified v -> authorities.field(v.worker(), fieldPermissions(request, v.worker(), fieldAuth, nonce));
       case FieldVerifier.Outcome.Refused r -> {
         LOG.debug("refused a field credential: {}", r.reason());
         throw new FieldAuthException(401, "UNAUTHENTICATED", "authentication is required", "DPoP error=\"invalid_token\"", nonce);
@@ -101,6 +103,20 @@ public final class AuthContextResolver implements ContextResolver {
         throw new FieldAuthException(503, "UNAVAILABLE", "tokens cannot be checked right now; try again", null, nonce);
       }
     };
+  }
+
+  /** The worker's permissions; a resolver that fails answers 503, never "no permissions". */
+  private static Collection<String> fieldPermissions(Request request, FieldPrincipal worker, FieldAuth fieldAuth, String nonce) {
+    try {
+      Collection<String> granted = fieldAuth.permissions().permissions(request, worker);
+      return granted == null ? Set.of() : granted;
+    } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      LOG.warn("a field worker's permissions could not be found: {}", worker.workerId(), e);
+      throw new FieldAuthException(503, "UNAVAILABLE", "tokens cannot be checked right now; try again", null, nonce);
+    }
   }
 
   private static HttpException unauthenticated() {
