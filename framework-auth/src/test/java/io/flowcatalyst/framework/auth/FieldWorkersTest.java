@@ -165,9 +165,6 @@ class FieldWorkersTest {
     noIdentifier.put("client_identifier", null);
     bad.put("no client_identifier", noIdentifier);
     bad.put("client_identifier with a colon", Map.of("client_identifier", "a:b"));
-    Map<String, Object> noDevice = new HashMap<>();
-    noDevice.put("device_id", null);
-    bad.put("no device_id", noDevice);
     Map<String, Object> noSid = new HashMap<>();
     noSid.put("sid", null);
     bad.put("no sid", noSid);
@@ -444,6 +441,37 @@ class FieldWorkersTest {
     // a mode that is neither gets the lesser set
     TestResponse unknown = get("/api/me", token(Map.of("device_mode", "KIOSK")));
     assertThat(unknown.tree().path("permissions").toString()).isEqualTo("[\"a:b:view\"]");
+  }
+
+  @Test
+  void anUnenrolledTokenHasNoDeviceAndAnActorIsTheOperator() {
+    start(
+        b ->
+            b.fieldWorkers(
+                FieldOptions.builder()
+                    .permissions(FieldPermissions.byDeviceMode(Map.of(FieldPrincipal.DeviceMode.UNENROLLED, Set.of("a:b:view"))))
+                    .build()),
+        KEY_1);
+    Map<String, Object> changes = new HashMap<>();
+    changes.put("device_id", null);
+    changes.put("device_mode", "UNENROLLED");
+    changes.put("act", Map.of("sub", "prn_ADMIN", "typ", "principal", "name", "Admin"));
+    TestResponse r = get("/api/me", token(changes));
+    assertThat(r.status()).isEqualTo(200);
+    assertThat(r.tree().path("principal").asString()).isEqualTo("fwu_0TESTWORKER");
+    assertThat(r.tree().path("actor").asString()).isEqualTo("prn_ADMIN|principal|Admin");
+    assertThat(r.tree().path("permissions").toString()).isEqualTo("[\"a:b:view\"]");
+    // a mode with no mapping fails closed
+    assertThat(get("/api/me", token(Map.of("device_mode", "PERSONAL"))).tree().path("permissions").toString()).isEqualTo("[]");
+    // without an act claim there is no actor
+    assertThat(get("/api/me", token(Map.of())).tree().path("actor").asString()).isEmpty();
+    FieldTokens tokens = t.app.get(FieldTokens.class);
+    assertThat(tokens.verify(token(changes))).isInstanceOfSatisfying(FieldTokenResult.Valid.class, v -> {
+      assertThat(v.worker().deviceId()).isNull();
+      assertThat(v.worker().deviceMode()).isEqualTo(FieldPrincipal.DeviceMode.UNENROLLED);
+      assertThat(v.worker().actor()).isNotNull();
+      assertThat(v.worker().test()).isFalse();
+    });
   }
 
   @Test

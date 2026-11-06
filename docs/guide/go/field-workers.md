@@ -47,8 +47,8 @@ the document is unchanged.
 
 The token must be RS256 from the platform's keys (the same key cache as `PlatformTokens`), with
 JOSE `typ` `fc-field+jwt`, `iss` the platform, `aud` your application code, `token_use` `field`,
-a `sub` starting `fwu_` and the claims `client_id`, `client_identifier`, `device_id`, `sid` and
-`cnf.jkt`. A token with `pcr: true` (a temporary PIN: it works only on the platform's
+a `sub` starting `fwu_` and the claims `client_id`, `client_identifier`, `sid` and
+`cnf.jkt` (`device_id` too, except on a device that is not enrolled: `device_mode` `UNENROLLED`). A token with `pcr: true` (a temporary PIN: it works only on the platform's
 `/field/auth/pin`) is answered `403 PIN_CHANGE_REQUIRED`. The proof must be an ES256 JWS whose
 `jwk` is a public P-256 key with the thumbprint `cnf.jkt`, with `htm` the method, `htu` your
 `auth.public-base-url` plus the request's escaped path (never the `Host` header, no query),

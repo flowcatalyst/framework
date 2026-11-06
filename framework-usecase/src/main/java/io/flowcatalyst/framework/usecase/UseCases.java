@@ -429,7 +429,9 @@ public final class UseCases {
         first.source(),
         context.correlationId().value(),
         context.application() == null ? null : context.application().value(),
-        context.client());
+        context.client(),
+        context.actor() == null ? null : context.actor().id(),
+        context.actor() == null ? null : context.actor().type());
   }
 
   // ---- failures ----------------------------------------------------------------------------

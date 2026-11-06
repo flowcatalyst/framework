@@ -1,8 +1,10 @@
 # Field-worker vectors
 
 `jwks.json` and `cases.json` are the platform's generated field-token vectors, copied unchanged from
-`flowcatalyst-go/api/field-fixtures/` at platform commit `7cf531dd` (field fixtures: access tokens
-RS256, proofs ES256; 17 cases, `missing_exp` added after `b8c04573`). Do not edit them here: regenerate them in the platform (`tools/field-fixtures`)
+`flowcatalyst-go/api/field-fixtures/` at platform commit `0f3f11ab` (branch `feat/field-sign-in-options`) (field fixtures:
+access tokens RS256, proofs ES256; 21 cases: `missing_exp` added after `b8c04573`; `valid_unenrolled`,
+`valid_impersonated_supervisor`, `valid_impersonated_principal` and `valid_test` added 2026-11-06, each with a
+`principal` object the tests assert). Do not edit them here: regenerate them in the platform (`tools/field-fixtures`)
 and copy again, noting the new commit in this file.
 
 Contract: [sessions-and-login section 15](../../docs/contracts/sessions-and-login.md) (15.9).

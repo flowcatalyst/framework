@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.auth;
 
+import io.flowcatalyst.framework.context.Actor;
 import io.flowcatalyst.framework.context.ApplicationCode;
 import java.time.Instant;
 import java.time.InstantSource;
@@ -70,8 +71,21 @@ public final class FieldTokens {
       return new FieldTokenResult.Invalid(refused.get());
     }
     String jkt = Jwt.text(claims.path("cnf"), "jkt");
-    // a mode that is neither PERSONAL nor SHARED gets the lesser (shared) permission set
-    FieldPrincipal.DeviceMode mode = "PERSONAL".equals(Jwt.text(claims, "device_mode")) ? FieldPrincipal.DeviceMode.PERSONAL : FieldPrincipal.DeviceMode.SHARED;
+    // a mode that is none of PERSONAL, SHARED and UNENROLLED gets the lesser (shared) one
+    String modeText = Jwt.text(claims, "device_mode");
+    FieldPrincipal.DeviceMode mode =
+        "PERSONAL".equals(modeText)
+            ? FieldPrincipal.DeviceMode.PERSONAL
+            : "UNENROLLED".equals(modeText) ? FieldPrincipal.DeviceMode.UNENROLLED : FieldPrincipal.DeviceMode.SHARED;
+    JsonNode act = claims.get("act");
+    @Nullable String actorId = act != null && act.isObject() ? Jwt.text(act, "sub") : null;
+    @Nullable Actor actor = null;
+    if (actorId != null) {
+      String actorType = Jwt.text(act, "typ");
+      actor = new Actor(actorId, actorType == null ? "" : actorType, Jwt.text(act, "name"));
+    }
+    JsonNode testClaim = claims.get("test");
+    boolean test = testClaim != null && testClaim.isBoolean() && testClaim.asBoolean();
     JsonNode authTime = claims.get("auth_time");
     @Nullable Instant signedIn = authTime != null && authTime.isNumber() ? Jwt.seconds(authTime) : null;
     List<String> amr = Jwt.texts(claims.get("amr"));
@@ -83,12 +97,14 @@ public final class FieldTokens {
             required(claims, "client_id"),
             required(claims, "client_identifier"),
             application.value(),
-            required(claims, "device_id"),
+            Jwt.text(claims, "device_id"), // absent on an unenrolled token
             mode,
             amr,
             signedIn,
             required(claims, "sid"),
-            Jwt.seconds(claims.get("exp")));
+            Jwt.seconds(claims.get("exp")),
+            actor,
+            test);
     return new FieldTokenResult.Valid(worker, jkt == null ? "" : jkt);
   }
 
@@ -127,7 +143,6 @@ public final class FieldTokens {
     if (Jwt.text(claims, "client_id") == null
         || clientIdentifier == null
         || !CLIENT_IDENTIFIER.matcher(clientIdentifier).matches()
-        || Jwt.text(claims, "device_id") == null
         || Jwt.text(claims, "sid") == null
         || cnf == null
         || !cnf.isObject()

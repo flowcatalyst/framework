@@ -77,6 +77,7 @@ type AuditEntry struct {
 	Data                            []AuditField
 	HasData                         bool
 	PrincipalID                     string // "" when none
+	OperatorID, OperatorType        string // who acted as the principal; "" when nobody
 	PerformedAt                     time.Time
 	Source, CorrelationID           string
 	ApplicationCode                 string // "" when none
@@ -221,6 +222,9 @@ func EventPayload(cx fw.Context, ev event.Event) (string, error) {
 	if p, ok := m.PrincipalID(); ok {
 		contextData = append(contextData, [2]string{"principalId", p})
 	}
+	if id, typ, ok := m.ActorID(); ok {
+		contextData = append(contextData, [2]string{"operatorId", id}, [2]string{"operatorType", typ})
+	}
 	if e, ok := m.ExecutionID(); ok {
 		contextData = append(contextData, [2]string{"executionId", e})
 	}
@@ -287,7 +291,7 @@ func AuditPayload(e AuditEntry) (string, error) {
 	o.str("entityType", e.EntityType)
 	o.str("entityId", e.EntityID)
 	o.str("operation", e.Operation)
-	if e.HasData {
+	if e.HasData || e.OperatorID != "" {
 		var data object
 		for _, f := range e.Data {
 			v, err := javafmt.MarshalJSON(f.Value)
@@ -295,6 +299,10 @@ func AuditPayload(e AuditEntry) (string, error) {
 				return "", fmt.Errorf("audit data %s: %w", f.Key, err)
 			}
 			data.raw(f.Key, v)
+		}
+		if e.OperatorID != "" { // the audit DTO has no operator field: it rides in operationData
+			data.str("operatorId", e.OperatorID)
+			data.str("operatorType", e.OperatorType)
 		}
 		o.str("operationData", data.done())
 	}

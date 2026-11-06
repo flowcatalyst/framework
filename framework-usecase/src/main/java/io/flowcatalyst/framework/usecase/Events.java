@@ -46,6 +46,8 @@ public final class Events {
         context.principal() == null ? null : context.principal().value(),
         context.causationId(),
         context.executionId(),
-        type.messageGroup(subject));
+        type.messageGroup(subject),
+        context.actor() == null ? null : context.actor().id(),
+        context.actor() == null ? null : context.actor().type());
   }
 }

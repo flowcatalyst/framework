@@ -142,6 +142,35 @@ func TestFieldRequestBuildsTheContext(t *testing.T) {
 	}
 }
 
+func TestFieldUnenrolledAndActor(t *testing.T) {
+	f := startField(t, config{}, auth.MapFieldPermissions(auth.FieldPermissionsByDeviceModes(map[string][]string{
+		"UNENROLLED": {"orders:thing:create"},
+	})))
+	// no device_id, mode UNENROLLED, an act claim: the worker stays the principal, the actor is the operator
+	r := f.call("GET", "/api/me", auth.FieldPrincipal{
+		WorkerID: "fwu_7", DeviceMode: "UNENROLLED", Test: true,
+		Actor: &auth.FieldActor{ID: "prn_ADMIN", Type: "principal", Name: "Admin"},
+	})
+	if r.status != 200 || r.str("principal") != "fwu_7" || r.str("actor") != "prn_ADMIN|principal|Admin" {
+		t.Fatalf("%d %s", r.status, r.body)
+	}
+	if got := r.tree()["permissions"].([]any); len(got) != 1 {
+		t.Fatalf("UNENROLLED permissions %v", got)
+	}
+	r = f.call("POST", "/api/field/only", auth.FieldPrincipal{DeviceMode: "UNENROLLED"})
+	if r.status != 200 || r.str("device") != "" {
+		t.Fatalf("%d %s", r.status, r.body)
+	}
+	// a mode with no entry fails closed
+	if r := f.call("POST", "/api/things", auth.FieldPrincipal{DeviceMode: "PERSONAL"}); r.status != 403 {
+		t.Fatalf("personal: %d %s", r.status, r.body)
+	}
+	// no actor without an act claim
+	if r := f.call("GET", "/api/me", auth.FieldPrincipal{}); r.str("actor") != "" {
+		t.Fatalf("%s", r.body)
+	}
+}
+
 func TestFieldPermissionMapping(t *testing.T) {
 	t.Run("the default grants none", func(t *testing.T) {
 		f := startField(t, config{})
@@ -243,7 +272,6 @@ func TestFieldRefusals(t *testing.T) {
 		"no client_id":     {"client_id": nil},
 		"no identifier":    {"client_identifier": nil},
 		"odd identifier":   {"client_identifier": "a b"},
-		"no device":        {"device_id": nil},
 		"no sid":           {"sid": nil},
 		"no cnf":           {"cnf": nil},
 	} {

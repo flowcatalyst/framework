@@ -102,6 +102,8 @@ type Metadata struct {
 	time         time.Time
 	correlation  string
 	principal    string
+	actor        string // operator id when someone acts as the principal
+	actorType    string
 	causation    string
 	execution    string
 	messageGroup string
@@ -128,6 +130,9 @@ func New(cx fw.Context, f Fields) Metadata {
 	}
 	if p, ok := cx.Principal(); ok {
 		m.principal = p.String()
+	}
+	if a, ok := cx.Actor(); ok {
+		m.actor, m.actorType = a.ID, a.Type
 	}
 	if c, ok := cx.Causation(); ok {
 		m.causation = c.String()
@@ -164,6 +169,10 @@ func (m Metadata) CorrelationID() string { return m.correlation }
 
 // PrincipalID returns the acting principal, if any.
 func (m Metadata) PrincipalID() (string, bool) { return m.principal, m.principal != "" }
+
+// ActorID returns who acted as the principal (the operator behind an impersonated field request),
+// and the actor's type, if any.
+func (m Metadata) ActorID() (id, typ string, ok bool) { return m.actor, m.actorType, m.actor != "" }
 
 // CausationID returns the Context's causation id, if any.
 func (m Metadata) CausationID() (string, bool) { return m.causation, m.causation != "" }

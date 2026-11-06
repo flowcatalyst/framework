@@ -18,6 +18,8 @@ import org.jspecify.annotations.Nullable;
  * @param causationId from the context, or null
  * @param executionId from the context, or null
  * @param messageGroup {@code domain:aggregate:id} unless changed
+ * @param operatorId who acted as the principal (an impersonated field request), or null
+ * @param operatorType the operator's type ({@code field_worker} or {@code principal}), or null
  */
 public record EventMetadata(
     String eventId,
@@ -30,7 +32,39 @@ public record EventMetadata(
     @Nullable String principalId,
     @Nullable String causationId,
     @Nullable String executionId,
-    String messageGroup) {
+    String messageGroup,
+    @Nullable String operatorId,
+    @Nullable String operatorType) {
+
+  /**
+   * Metadata with no operator.
+   *
+   * @param eventId a TSID
+   * @param specVersion {@code 1.0}
+   * @param type the event type
+   * @param source the source
+   * @param subject the subject
+   * @param time when
+   * @param correlationId from the context
+   * @param principalId the acting principal, or null
+   * @param causationId from the context, or null
+   * @param executionId from the context, or null
+   * @param messageGroup the message group
+   */
+  public EventMetadata(
+      String eventId,
+      String specVersion,
+      String type,
+      String source,
+      String subject,
+      Instant time,
+      String correlationId,
+      @Nullable String principalId,
+      @Nullable String causationId,
+      @Nullable String executionId,
+      String messageGroup) {
+    this(eventId, specVersion, type, source, subject, time, correlationId, principalId, causationId, executionId, messageGroup, null, null);
+  }
 
   /**
    * A copy with another message group.
@@ -50,6 +84,8 @@ public record EventMetadata(
         principalId,
         causationId,
         executionId,
-        group);
+        group,
+        operatorId,
+        operatorType);
   }
 }

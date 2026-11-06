@@ -58,9 +58,41 @@ class FieldConformanceTest {
         got = "invalid_token";
       }
       assertThat(got).as(c.path("name").asString()).isEqualTo(c.path("expect").asString());
+      if (outcome instanceof FieldVerifier.Outcome.Verified verified) {
+        assertPrincipal(c.path("name").asString(), c.get("principal"), verified.worker());
+      }
       names.add(c.path("name").asString());
     }
-    assertThat(names).hasSize(17).contains("valid", "stale_proof", "missing_exp", "alg_not_rs256", "pcr_pin_change_only");
+    assertThat(names).hasSize(21)
+        .contains(
+            "valid", "stale_proof", "missing_exp", "alg_not_rs256", "pcr_pin_change_only", "valid_unenrolled", "valid_impersonated_supervisor",
+            "valid_impersonated_principal", "valid_test");
+  }
+
+  /** A case's {@code principal} says what the verified principal carries (15.9); other valid cases carry the defaults. */
+  private static void assertPrincipal(String name, JsonNode expected, FieldPrincipal got) {
+    assertThat(got.workerId()).as(name).isEqualTo("fwu_0FIXTUREWORKER");
+    assertThat(got.clientIdentifier()).as(name).isEqualTo("fixture-client");
+    if (expected == null) {
+      assertThat(got.deviceMode()).as(name).isEqualTo(FieldPrincipal.DeviceMode.PERSONAL);
+      assertThat(got.actor()).as(name).isNull();
+      assertThat(got.test()).as(name).isFalse();
+      return;
+    }
+    String deviceId = expected.path("deviceId").asString();
+    assertThat(got.deviceId()).as(name + " deviceId").isEqualTo(deviceId.isEmpty() ? null : deviceId);
+    assertThat(got.deviceMode().name()).as(name + " deviceMode").isEqualTo(expected.path("deviceMode").asString());
+    assertThat(got.amr()).as(name + " amr").containsExactlyElementsOf(JSON.convertValue(expected.path("amr"), List.class));
+    assertThat(got.test()).as(name + " test").isEqualTo(expected.path("test").asBoolean());
+    JsonNode actor = expected.get("actor");
+    if (actor == null) {
+      assertThat(got.actor()).as(name + " actor").isNull();
+    } else {
+      assertThat(got.actor()).as(name + " actor").isNotNull();
+      assertThat(got.actor().id()).isEqualTo(actor.path("id").asString());
+      assertThat(got.actor().type()).isEqualTo(actor.path("type").asString());
+      assertThat(got.actor().name()).isEqualTo(actor.path("name").asString());
+    }
   }
 
   private static String answer(FieldVerifier.Outcome outcome) {

@@ -41,7 +41,8 @@ type FieldPrincipal struct {
 	ClientID, ClientIdentifier string
 	// AppCode is the application the token was issued for (aud).
 	AppCode string
-	// DeviceID is the enrolled device, DeviceMode its mode: PERSONAL or SHARED.
+	// DeviceID is the enrolled device, DeviceMode its mode: PERSONAL, SHARED or UNENROLLED. An
+	// unenrolled token (a key that is not an enrolled device) has no device_id: DeviceID is empty.
 	DeviceID, DeviceMode string
 	// AMR lists how the worker authenticated (for example "pin").
 	AMR []string
@@ -51,6 +52,17 @@ type FieldPrincipal struct {
 	SessionID string
 	// ExpiresAt is when the access token stops being valid.
 	ExpiresAt time.Time
+	// Actor is who is signed in as the worker (the act claim, RFC 8693), when someone is: the
+	// worker's other fields are still the worker's. Nil when the worker signed in as themselves.
+	Actor *FieldActor
+	// Test marks a test identity (the test claim).
+	Test bool
+}
+
+// FieldActor is who acts as a field worker (the act claim). Type is "field_worker" (a supervisor
+// signed in as the worker) or "principal" (a platform user did).
+type FieldActor struct {
+	ID, Type, Name string
 }
 
 // FieldPermissionMapper turns a field worker into the permissions its Context carries (contract
@@ -69,6 +81,9 @@ func FieldPermissionsAll(permissions ...string) FieldPermissionMapper {
 
 // FieldPermissionsByDeviceMode grants one set on a PERSONAL device and another on a SHARED one
 // (shared kiosks usually get less). Any other mode is treated as SHARED, the lesser.
+//
+// An UNENROLLED token (no enrolled device) is also such a mode: it gets the shared set, because the
+// device is not known. Use [FieldPermissionsByDeviceModes] to give it its own set.
 func FieldPermissionsByDeviceMode(personal, shared []string) FieldPermissionMapper {
 	personal, shared = slices.Clone(personal), slices.Clone(shared)
 	return func(p FieldPrincipal) []string {
@@ -77,6 +92,16 @@ func FieldPermissionsByDeviceMode(personal, shared []string) FieldPermissionMapp
 		}
 		return slices.Clone(shared)
 	}
+}
+
+// FieldPermissionsByDeviceModes grants one set per device mode, keyed by the mode name: PERSONAL,
+// SHARED or UNENROLLED. A mode with no entry gets no permissions (it fails closed).
+func FieldPermissionsByDeviceModes(byMode map[string][]string) FieldPermissionMapper {
+	frozen := make(map[string][]string, len(byMode))
+	for mode, ps := range byMode {
+		frozen[mode] = slices.Clone(ps)
+	}
+	return func(p FieldPrincipal) []string { return slices.Clone(frozen[p.DeviceMode]) }
 }
 
 // FieldOption configures [FieldWorkers].
@@ -196,13 +221,20 @@ func (t *FieldTokens) checkClaims(claims claimSet, now time.Time) (p FieldPrinci
 		AppCode: t.appCode, DeviceID: text(claims, "device_id"), DeviceMode: text(claims, "device_mode"),
 		AMR: texts(claims["amr"]), SessionID: text(claims, "sid"),
 	}
-	if p.ClientID == "" || p.ClientIdentifier == "" || p.DeviceID == "" || p.SessionID == "" || jkt == "" ||
+	// device_id is absent on an unenrolled token (device_mode UNENROLLED); everything else is required.
+	if p.ClientID == "" || p.ClientIdentifier == "" || p.SessionID == "" || jkt == "" ||
 		!clientIdentifier.MatchString(p.ClientIdentifier) {
 		return FieldPrincipal{}, "", "claims"
 	}
 	if pcr, has := claims["pcr"]; has && pcr == true {
 		return FieldPrincipal{}, "", "pcr"
 	}
+	if act, ok := claims["act"].(map[string]any); ok {
+		if id := text(act, "sub"); id != "" {
+			p.Actor = &FieldActor{ID: id, Type: text(act, "typ"), Name: text(act, "name")}
+		}
+	}
+	p.Test = claims["test"] == true
 	exp, _ := claims["exp"].(float64)
 	p.ExpiresAt = seconds(exp)
 	if at, ok := claims["auth_time"].(float64); ok {

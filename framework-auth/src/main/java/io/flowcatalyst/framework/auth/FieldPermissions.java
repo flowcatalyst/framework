@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.auth;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -57,7 +58,9 @@ public interface FieldPermissions {
 
   /**
    * One set for a worker's own device and one for a shared device, because shared kiosks usually
-   * get less.
+   * get less. A worker with no enrolled device ({@link FieldPrincipal.DeviceMode#UNENROLLED}) gets
+   * the shared set too, because the device is not known; use {@link #byDeviceMode(Map)} to give it
+   * its own.
    *
    * @param personal the permissions on a {@link FieldPrincipal.DeviceMode#PERSONAL} device
    * @param shared the permissions on a {@link FieldPrincipal.DeviceMode#SHARED} device
@@ -69,7 +72,19 @@ public interface FieldPermissions {
     return worker ->
         switch (worker.deviceMode()) {
           case PERSONAL -> own;
-          case SHARED -> kiosk;
+          case SHARED, UNENROLLED -> kiosk;
         };
+  }
+
+  /**
+   * One set per device mode. A mode with no entry gets no permissions (it fails closed).
+   *
+   * @param byMode the permissions of each mode: {@code PERSONAL}, {@code SHARED}, {@code UNENROLLED}
+   * @return the mapping
+   */
+  static FieldPermissions byDeviceMode(Map<FieldPrincipal.DeviceMode, ? extends Collection<String>> byMode) {
+    Map<FieldPrincipal.DeviceMode, Set<String>> fixed = new java.util.EnumMap<>(FieldPrincipal.DeviceMode.class);
+    byMode.forEach((mode, permissions) -> fixed.put(mode, Set.copyOf(permissions)));
+    return worker -> fixed.getOrDefault(worker.deviceMode(), Set.of());
   }
 }

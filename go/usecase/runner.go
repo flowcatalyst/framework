@@ -259,6 +259,9 @@ func auditEntry[C any, E event.Event](operation string, cx fw.Context, cmd C, pl
 	if p, ok := cx.Principal(); ok {
 		entry.PrincipalID = p.String()
 	}
+	if a, ok := cx.Actor(); ok {
+		entry.OperatorID, entry.OperatorType = a.ID, a.Type
+	}
 	if app, ok := cx.Application(); ok {
 		entry.ApplicationCode = app.String()
 	}

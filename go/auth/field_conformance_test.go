@@ -29,6 +29,17 @@ func TestFieldConformance(t *testing.T) {
 			URL         string `json:"url"`
 			Now         string `json:"now"`
 			Expect      string `json:"expect"`
+			Principal   *struct {
+				DeviceID   string   `json:"deviceId"`
+				DeviceMode string   `json:"deviceMode"`
+				AMR        []string `json:"amr"`
+				Test       bool     `json:"test"`
+				Actor      *struct {
+					ID   string `json:"id"`
+					Type string `json:"type"`
+					Name string `json:"name"`
+				} `json:"actor"`
+			} `json:"principal"`
 		} `json:"cases"`
 	}
 	for file, into := range map[string]any{"jwks.json": &jwks, "cases.json": &fixture} {
@@ -40,7 +51,7 @@ func TestFieldConformance(t *testing.T) {
 			t.Fatalf("%s: %v", file, err)
 		}
 	}
-	if len(fixture.Cases) < 16 {
+	if len(fixture.Cases) < 21 {
 		t.Fatalf("only %d cases: is the file the platform's?", len(fixture.Cases))
 	}
 	for _, c := range fixture.Cases {
@@ -68,7 +79,19 @@ func TestFieldConformance(t *testing.T) {
 			got := "valid"
 			switch r := tokens.verify(t.Context(), c.AccessToken, c.DPoPProof, c.Method, htu).(type) {
 			case FieldValid:
-				if r.Principal.WorkerID != "fwu_0FIXTUREWORKER" || r.Principal.ClientIdentifier != "fixture-client" || r.Principal.DeviceMode != "PERSONAL" {
+				want := "PERSONAL"
+				if c.Principal != nil { // the case says what the principal carries (15.9)
+					want = c.Principal.DeviceMode
+					got := r.Principal
+					if got.DeviceID != c.Principal.DeviceID || got.Test != c.Principal.Test || !slices.Equal(got.AMR, c.Principal.AMR) {
+						t.Fatalf("principal %+v, want %+v", got, *c.Principal)
+					}
+					switch a := c.Principal.Actor; {
+					case a == nil && got.Actor != nil, a != nil && (got.Actor == nil || *got.Actor != FieldActor{ID: a.ID, Type: a.Type, Name: a.Name}):
+						t.Fatalf("actor %+v, want %+v", got.Actor, a)
+					}
+				}
+				if r.Principal.WorkerID != "fwu_0FIXTUREWORKER" || r.Principal.ClientIdentifier != "fixture-client" || r.Principal.DeviceMode != want {
 					t.Fatalf("principal %+v", r.Principal)
 				}
 			case FieldInvalid:

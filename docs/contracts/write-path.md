@@ -212,6 +212,14 @@ processor reads them unchanged:
   migration, `V0002__widen_outbox_client_id.sql`, widens the column to `VARCHAR(100)`; the first
   stays byte-identical to the SDK file. The platform's outbox processor does not read `client_id`.
 
+- *Added 2026-11-06 (the operator):* when the `Context` has an actor (core contract section 3), the
+  platform's DTOs have no field for it, so it rides in what is open. The event row's `contextData`
+  gains `operatorId` and `operatorType` (after `principalId`, before `executionId`); the audit
+  row's `operationData` gains `operatorId` and `operatorType` after the command's own data (and the
+  audit row has an `operationData` even when the command has none). `principalId` stays the
+  subject (the worker). Without an actor nothing changes, byte for byte: the existing conformance
+  vectors are unchanged. An app's audit trail then reads "done by `operatorId` as worker `principalId`".
+
 Nothing in M2 reads the outbox; delivering it is the platform's job (M3).
 
 ## 7a. Dispatch-job rows (MA item 4, 2026-10-10)

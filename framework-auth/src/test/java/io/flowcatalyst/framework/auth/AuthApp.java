@@ -126,6 +126,7 @@ final class AuthApp implements AutoCloseable {
               body.put("principal", String.valueOf(request.context().principal()));
               body.put("principalKind", String.valueOf(request.context().principalKind()));
               body.put("client", request.context().client().value());
+              body.put("actor", request.context().findActor().map(a -> a.id() + "|" + a.type() + "|" + a.name()).orElse(""));
               body.put("application", String.valueOf(request.context().application()));
               body.put("permissions", new TreeSet<>(request.context().permissions()));
               body.put("source", Auth.current(request).map(a -> a.source().name()).orElse("none"));

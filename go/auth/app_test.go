@@ -134,9 +134,13 @@ func testRoutes() *httpfw.Routes {
 		if hasApp {
 			appText = application.String()
 		}
+		actor := ""
+		if a, ok := cx.Actor(); ok {
+			actor = a.ID + "|" + a.Type + "|" + a.Name
+		}
 		return httpfw.JSON(w, 200, map[string]any{
 			"principal": principal.String(), "principalKind": kind.String(), "client": cx.Client().String(),
-			"application": appText, "permissions": perms, "source": source,
+			"application": appText, "permissions": perms, "source": source, "actor": actor,
 		})
 	})
 	rt.HandleContext("GET /page", func(w http.ResponseWriter, _ *http.Request, _ fw.Context) error {

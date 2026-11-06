@@ -207,6 +207,14 @@ Code that switches on the kind must handle it: the Go linter's exhaustive check 
 case, and the Java enum switch must not use a default that treats it as `USER`. The kind is still not
 written to the outbox.
 
+*Amended 2026-11-06 (impersonated field requests, sessions-and-login contract section 15.5):* `Context`
+gains an optional **actor** (`id`, `type` `field_worker` or `principal`, `name`): who is signed in as
+the principal. Rules: the principal stays the **subject** (the worker) and the actor is the
+**operator**; an actor is present only on a request whose field token carries `act`, and only the
+request resolver sets it. `withPrincipal` clears it (an actor acts as one principal); `forClient` and
+the other copies keep it. It is added to the log attributes. Go `fw.Context.Actor()` /
+`WithActor(fw.Actor)`, Java `Context.findActor()` / `withActor(Actor)`.
+
 ### 3a. Work for one client after another (amendment 2026-10-18, friction F3 and F15)
 
 A scheduled-job firing and a background loop have no client of their own (the receiver's context is

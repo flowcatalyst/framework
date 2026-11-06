@@ -134,6 +134,10 @@ public final class OutboxWriter implements Sink {
     if (meta.principalId() != null) {
       contextData.add(entry("principalId", meta.principalId()));
     }
+    if (meta.operatorId() != null) {
+      contextData.add(entry("operatorId", meta.operatorId()));
+      contextData.add(entry("operatorType", meta.operatorType() == null ? "" : meta.operatorType()));
+    }
     if (meta.executionId() != null) {
       contextData.add(entry("executionId", meta.executionId()));
     }
@@ -195,8 +199,17 @@ public final class OutboxWriter implements Sink {
     payload.put("entityType", entry.entityType());
     payload.put("entityId", entry.entityId());
     payload.put("operation", entry.operation());
-    if (entry.data() != null) {
-      payload.put("operationData", mapper.writeValueAsString(entry.data()));
+    if (entry.data() != null || entry.operatorId() != null) {
+      // the audit DTO has no operator field: it rides in operationData, after the command's data
+      Map<String, Object> operation = new LinkedHashMap<>();
+      if (entry.data() != null) {
+        operation.putAll(entry.data());
+      }
+      if (entry.operatorId() != null) {
+        operation.put("operatorId", entry.operatorId());
+        operation.put("operatorType", entry.operatorType() == null ? "" : entry.operatorType());
+      }
+      payload.put("operationData", mapper.writeValueAsString(operation));
     }
     if (entry.principalId() != null) {
       payload.put("principalId", entry.principalId());

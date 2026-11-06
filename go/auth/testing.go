@@ -100,7 +100,7 @@ func (t *Testing) FieldRequest(minter FieldTokenMinter, device FieldProofSigner,
 	if len(amr) == 0 {
 		amr = []string{"pin"}
 	}
-	token := minter.FieldToken(map[string]any{
+	claims := map[string]any{
 		"iss": t.field.platform.issuer, "aud": orElse(f.AppCode, t.field.appCode),
 		"sub": orElse(f.WorkerID, "fwu_TEST1"), "worker_code": orElse(f.WorkerCode, "W001"), "name": orElse(f.Name, "Test Worker"),
 		"client_id": orElse(f.ClientID, "clt_TEST"), "client_identifier": orElse(f.ClientIdentifier, "test-client"),
@@ -108,7 +108,17 @@ func (t *Testing) FieldRequest(minter FieldTokenMinter, device FieldProofSigner,
 		"sid": orElse(f.SessionID, "fws_TEST1"), "amr": amr, "auth_time": authTime.Unix(),
 		"iat": now.Unix(), "nbf": now.Unix(), "exp": now.Add(10 * time.Minute).Unix(),
 		"cnf": map[string]any{"jkt": device.JKT()},
-	})
+	}
+	if f.DeviceMode == "UNENROLLED" && f.DeviceID == "" { // an unenrolled token has no device_id
+		claims["device_id"] = nil
+	}
+	if f.Actor != nil {
+		claims["act"] = map[string]any{"sub": f.Actor.ID, "typ": f.Actor.Type, "name": f.Actor.Name}
+	}
+	if f.Test {
+		claims["test"] = true
+	}
+	token := minter.FieldToken(claims)
 	target, _, _ := strings.Cut(path, "?")
 	h := http.Header{}
 	h.Set("Authorization", "DPoP "+token)

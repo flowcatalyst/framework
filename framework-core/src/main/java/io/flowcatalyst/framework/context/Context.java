@@ -16,6 +16,8 @@ import org.jspecify.annotations.Nullable;
  * @param correlationId follows the request into logs and jobs; always present
  * @param causationId the id of the event or message that caused this work, or null
  * @param executionId the id of the job or run this work belongs to, or null
+ * @param actor who is acting as the principal (an impersonated field request: the principal is the
+ *     worker, the actor the operator), or null
  * @param permissions what the principal may do; empty when nothing was granted. Entries follow the
  *     platform's form, {@code :}-separated segments where a held segment may be {@code *}; check
  *     them with {@link #hasPermission(String)}
@@ -28,7 +30,8 @@ public record Context(
     CorrelationId correlationId,
     @Nullable String causationId,
     @Nullable String executionId,
-    Set<String> permissions) {
+    Set<String> permissions,
+    @Nullable Actor actor) {
 
   /**
    * Copies the permissions.
@@ -40,6 +43,30 @@ public record Context(
       throw new IllegalArgumentException("a principal kind needs a principal");
     }
     permissions = Set.copyOf(permissions);
+  }
+
+  /**
+   * A context with no actor.
+   *
+   * @param client the client
+   * @param principal the acting principal, or null
+   * @param principalKind the principal's kind, or null
+   * @param application the application, or null
+   * @param correlationId the correlation id
+   * @param causationId the causation id, or null
+   * @param executionId the execution id, or null
+   * @param permissions what the principal may do
+   */
+  public Context(
+      ClientId client,
+      @Nullable PrincipalId principal,
+      @Nullable PrincipalKind principalKind,
+      @Nullable ApplicationCode application,
+      CorrelationId correlationId,
+      @Nullable String causationId,
+      @Nullable String executionId,
+      Set<String> permissions) {
+    this(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, null);
   }
 
   /**
@@ -61,7 +88,7 @@ public record Context(
       @Nullable String causationId,
       @Nullable String executionId,
       Set<String> permissions) {
-    this(client, principal, null, application, correlationId, causationId, executionId, permissions);
+    this(client, principal, null, application, correlationId, causationId, executionId, permissions, null);
   }
 
   /**
@@ -122,7 +149,7 @@ public record Context(
    * @return the new context
    */
   public Context forClient(ClientId value) {
-    return new Context(value, principal, principalKind, application, correlationId, causationId, executionId, permissions);
+    return new Context(value, principal, principalKind, application, correlationId, causationId, executionId, permissions, actor);
   }
 
   /**
@@ -133,7 +160,7 @@ public record Context(
    * @return the new context
    */
   public Context withPrincipal(PrincipalId value) {
-    return new Context(client, value, null, application, correlationId, causationId, executionId, permissions);
+    return new Context(client, value, null, application, correlationId, causationId, executionId, permissions, null);
   }
 
   /**
@@ -144,7 +171,18 @@ public record Context(
    * @return the new context
    */
   public Context withPrincipal(PrincipalId value, PrincipalKind kind) {
-    return new Context(client, value, kind, application, correlationId, causationId, executionId, permissions);
+    return new Context(client, value, kind, application, correlationId, causationId, executionId, permissions, null);
+  }
+
+  /**
+   * Copies with the actor who is acting as the principal. A new principal drops it ({@link
+   * #withPrincipal}): an actor acts as one principal.
+   *
+   * @param value the actor
+   * @return the new context
+   */
+  public Context withActor(Actor value) {
+    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, value);
   }
 
   /**
@@ -154,7 +192,7 @@ public record Context(
    * @return the new context
    */
   public Context withApplication(ApplicationCode value) {
-    return new Context(client, principal, principalKind, value, correlationId, causationId, executionId, permissions);
+    return new Context(client, principal, principalKind, value, correlationId, causationId, executionId, permissions, actor);
   }
 
   /**
@@ -164,7 +202,7 @@ public record Context(
    * @return the new context
    */
   public Context withCorrelationId(CorrelationId value) {
-    return new Context(client, principal, principalKind, application, value, causationId, executionId, permissions);
+    return new Context(client, principal, principalKind, application, value, causationId, executionId, permissions, actor);
   }
 
   /**
@@ -174,7 +212,7 @@ public record Context(
    * @return the new context
    */
   public Context withCausationId(String value) {
-    return new Context(client, principal, principalKind, application, correlationId, value, executionId, permissions);
+    return new Context(client, principal, principalKind, application, correlationId, value, executionId, permissions, actor);
   }
 
   /**
@@ -184,7 +222,7 @@ public record Context(
    * @return the new context
    */
   public Context withExecutionId(String value) {
-    return new Context(client, principal, principalKind, application, correlationId, causationId, value, permissions);
+    return new Context(client, principal, principalKind, application, correlationId, causationId, value, permissions, actor);
   }
 
   /**
@@ -194,7 +232,7 @@ public record Context(
    * @return the new context
    */
   public Context withPermissions(Set<String> value) {
-    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, value);
+    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, value, actor);
   }
 
   /**
@@ -246,6 +284,15 @@ public record Context(
    */
   public Optional<PrincipalKind> findPrincipalKind() {
     return Optional.ofNullable(principalKind);
+  }
+
+  /**
+   * The actor as an optional return value.
+   *
+   * @return the actor, if someone is acting as the principal
+   */
+  public Optional<Actor> findActor() {
+    return Optional.ofNullable(actor);
   }
 
   /**

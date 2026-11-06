@@ -35,8 +35,8 @@ order:
 
 1. **The token**, with the same keys, cache and issuer as bearer tokens, RS256 only: JOSE `typ`
    `fc-field+jwt`, `iss`, `aud` equal to your application code (a string), `exp`/`nbf`/`iat`,
-   `token_use` `field`, `sub` starting `fwu_`, and `client_id`, `client_identifier`, `device_id`,
-   `sid` and `cnf.jkt` present, and `client_identifier` a valid client identifier. A `device_mode` that is neither `PERSONAL` nor `SHARED` is treated as `SHARED` (the lesser permission set). A `pcr` claim (a temporary-PIN token, valid only on the
+   `token_use` `field`, `sub` starting `fwu_`, and `client_id`, `client_identifier`,
+   `sid` and `cnf.jkt` present, and `client_identifier` a valid client identifier. `device_id` is absent on a device that is not enrolled (`device_mode` `UNENROLLED`). A `device_mode` that is neither `PERSONAL` nor `SHARED` is treated as `SHARED` (the lesser permission set). A `pcr` claim (a temporary-PIN token, valid only on the
    platform's PIN change) is answered `403 PIN_CHANGE_REQUIRED`.
 2. **The proof**: signed by the key named in its header (ES256 only), whose RFC 7638 thumbprint equals
    the token's `cnf.jkt`; `htm` equals the method; `htu` equals `auth.public-base-url` plus the request
@@ -86,7 +86,7 @@ Optional<FieldPrincipal> worker = Auth.current(request).orElseThrow().field();
 ```
 
 `FieldPrincipal` holds `workerId`, `workerCode`, `name`, `clientId`, `clientIdentifier`, `appCode`,
-`deviceId`, `deviceMode` (`PERSONAL` or `SHARED`), `amr`, `authTime`, `sessionId` and `expiresAt`. A
+`deviceId` (empty/null when unenrolled), `deviceMode` (`PERSONAL`, `SHARED` or `UNENROLLED`), `actor` (who is signed in as the worker, from `act`), `test`, `amr`, `authTime`, `sessionId` and `expiresAt`. A
 field worker has no roles, applications, clients or tier: no platform authority.
 
 **Permissions are yours to map**, separately from sessions and bearer tokens

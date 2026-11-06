@@ -18,6 +18,8 @@ import org.jspecify.annotations.Nullable;
  * @param correlationId from the context
  * @param applicationCode the context's application, or null
  * @param client the client
+ * @param operatorId who acted as the principal (an impersonated field request), or null
+ * @param operatorType the operator's type, or null
  */
 public record AuditEntry(
     String entityType,
@@ -29,4 +31,35 @@ public record AuditEntry(
     String source,
     String correlationId,
     @Nullable String applicationCode,
-    ClientId client) {}
+    ClientId client,
+    @Nullable String operatorId,
+    @Nullable String operatorType) {
+
+  /**
+   * An entry with no operator.
+   *
+   * @param entityType the aggregate type
+   * @param entityId the aggregate id
+   * @param operation the use case name
+   * @param data the command's audit data, or null
+   * @param principalId the acting principal, or null
+   * @param performedAt when
+   * @param source the result event's source
+   * @param correlationId from the context
+   * @param applicationCode the application, or null
+   * @param client the client
+   */
+  public AuditEntry(
+      String entityType,
+      String entityId,
+      String operation,
+      @Nullable Map<String, Object> data,
+      @Nullable String principalId,
+      Instant performedAt,
+      String source,
+      String correlationId,
+      @Nullable String applicationCode,
+      ClientId client) {
+    this(entityType, entityId, operation, data, principalId, performedAt, source, correlationId, applicationCode, client, null, null);
+  }
+}

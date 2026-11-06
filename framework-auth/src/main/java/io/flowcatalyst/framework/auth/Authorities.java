@@ -65,7 +65,8 @@ final class Authorities {
   }
 
   Context context(Authenticated a, Request request) {
-    return new Context(
+    FieldPrincipal worker = a.fieldPrincipal();
+    Context context = new Context(
         a.client(),
         a.principal().id(),
         a.principal().kind(),
@@ -74,5 +75,7 @@ final class Authorities {
         null,
         null,
         a.permissions());
+    // the worker is the subject (the principal), the actor the operator
+    return worker != null && worker.actor() != null ? context.withActor(worker.actor()) : context;
   }
 }

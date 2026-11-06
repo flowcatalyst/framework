@@ -818,7 +818,7 @@ platform's JWKS, the same cache), then:
 | `aud` equals the application code (`flowcatalyst.application-code`), a string | `wrong_aud` |
 | `exp`, `nbf`, `iat` as in 5.5 | `expired`, `not_yet_valid`, `iat` |
 | `token_use` is exactly `field` | `wrong_token_use` |
-| `sub` starts with `fwu_`; `client_id`, `client_identifier`, `device_id`, `sid`, `cnf.jkt` present | `sub`, `claims` |
+| `sub` starts with `fwu_`; `client_id`, `client_identifier`, `sid`, `cnf.jkt` present (`device_id` too, unless the token is unenrolled: below) | `sub`, `claims` |
 | no `pcr: true` claim (a temporary-PIN token works only on the platform's `/field/auth/pin`) | `pcr`, answered `403 PIN_CHANGE_REQUIRED` |
 
 *Added by the Go build (2026-11-03):* the refusals of the parse, header, key and signature rules keep
@@ -826,6 +826,16 @@ their 5.5 names (`malformed`, `alg`, `crit`, `kid`, `unknown_kid`, `signature`);
 (15.9) call all of them `invalid_token`. `typ` is read after the signature has been checked, and the
 checks of the table run in its order. `claims` also covers a `client_identifier` that is not a valid
 client identifier (`[A-Za-z0-9._-]{1,100}`), because it becomes the `Context`'s client.
+
+*Amended 2026-11-06 (field sign-in options):* **an unenrolled token** is signed in on a key that is not
+an enrolled device. It has **no `device_id`** and `device_mode` is `UNENROLLED`; every other claim in
+the table is still required, and the proof (15.3) works unchanged because `cnf.jkt` is the key.
+`device_id` is therefore optional: absent, `FieldPrincipal.deviceId` is empty (Go) or null (Java). A
+token that does carry `device_id` is read as before. **Impersonation**: a token whose worker has been
+signed in by someone else carries `act` (RFC 8693) with `sub` (the actor's principal id, `fwu_...` for
+a supervisor or `prn_...` for a platform user), `typ` (`field_worker` or `principal`) and `name`. Every
+other claim is still the **worker's**. **Test identities** carry `test: true`. Neither claim is
+required, and neither changes any refusal in the table.
 
 A platform API token (`fc` access token, `token_use: api`) presented with the `DPoP` scheme is
 refused (`wrong_typ`), and a field token presented as `Bearer` is refused by 5.6 (`aud` or `token_use`).
@@ -897,11 +907,13 @@ also needs the access token (`ath`), and is limited to the same method and URL.
 | `application` | `aud` |
 | `permissions` | the field permission mapping (below) |
 | correlation id | the request's |
+| actor | `act`, when present (*added 2026-11-06*): the operator behind the worker. The `principal` stays the worker, the **subject** (core contract section 3 and write-path section 7 say where the operator is recorded) |
 
 `Authenticated` gains the source `FIELD` and a field part, `FieldPrincipal`: `workerId`,
 `workerCode`, `name`, `clientId` (`clt_...`), `clientIdentifier`, `appCode`, `deviceId`,
-`deviceMode` (`PERSONAL` or `SHARED`), `amr` (list), `authTime`, `sessionId` (`sid`) and
-`expiresAt`. Its roles, applications, clients and tier are empty. A field worker has no platform
+`deviceMode` (`PERSONAL`, `SHARED` or `UNENROLLED`; `deviceId` is empty/null when `UNENROLLED`), `amr`
+(list), `authTime`, `sessionId` (`sid`), `expiresAt`, `actor` (`id`, `type` `field_worker` or
+`principal`, `name`; from `act`; absent when the worker signed in as themselves) and `test` (boolean). Its roles, applications, clients and tier are empty. A field worker has no platform
 authority.
 
 **Permission mapping** is code, separate from the session and bearer mapping:
@@ -910,7 +922,10 @@ of 12 carries over), so a route that requires a permission refuses field workers
 application maps them. Helpers: a fixed set (`fieldPermissions.all(...)`; Go `auth.FieldPermissionsAll`) and one set per
 device mode (`fieldPermissions.byDeviceMode(personal, shared)`; Go `auth.FieldPermissionsByDeviceMode`),
 because shared kiosks usually get less. A device mode that is neither `PERSONAL` nor `SHARED` gets
-the `shared` set (the lesser). The Go option that sets the mapping is `auth.MapFieldPermissions`.
+the `shared` set (the lesser); that includes `UNENROLLED`. *Added 2026-11-06:* a map form gives each
+mode its own set, `PERSONAL`, `SHARED` and `UNENROLLED`, and a mode with no entry gets **no**
+permissions (it fails closed): Go `auth.FieldPermissionsByDeviceModes`, Java
+`FieldPermissions.byDeviceMode(Map)`. The Go option that sets the mapping is `auth.MapFieldPermissions`.
 Field workers need `auth.Application` (the audience) and `auth.cookie-keys` (the nonces), and
 start-up fails naming whichever is missing.
 A route that must be field-only or never-field checks
@@ -980,7 +995,12 @@ Go build:* the vectors' `stale_proof` case is a proof one hour old, which the 24
 accepts, so the same test-only option also narrows the proof window to the vectors' five minutes.
 And the vectors' `expect: invalid_token` stands for any refusal of the parse, header, key and
 signature rules (15.2). *Added 2026-11-03:* the vectors' `missing_exp` case (a token with no `exp`) expects `invalid_token`;
-the framework refuses it as `expired` (5.5 rule 8), and the conformance run counts that as a match. Nonces are covered
+the framework refuses it as `expired` (5.5 rule 8), and the conformance run counts that as a match.
+*Added 2026-11-06:* four more `valid` cases carry a `principal` object that says what the verified
+principal holds: `valid_unenrolled` (no `device_id`, `UNENROLLED`), `valid_impersonated_supervisor`
+(`act` type `field_worker`), `valid_impersonated_principal` (`act` type `principal`, unenrolled) and
+`valid_test` (`test: true`). Go and Java assert `deviceId`, `deviceMode`, `amr`, `actor` and `test`
+against it (21 cases in all). Nonces are covered
 by their own tests (15.10). Go and Java both run every case.
 
 ### 15.10 Tests

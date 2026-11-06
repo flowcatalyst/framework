@@ -181,6 +181,9 @@ func (a *authorities) context(au Authenticated, r *http.Request) (fw.Context, er
 		return fw.Context{}, err
 	}
 	cx := fw.ContextFor(au.Client).WithPrincipalOfKind(id, au.Principal.Kind).WithCorrelation(httpfw.CorrelationID(r))
+	if au.Field != nil && au.Field.Actor != nil { // the worker is the subject, the actor the operator
+		cx = cx.WithActor(fw.Actor{ID: au.Field.Actor.ID, Type: au.Field.Actor.Type, Name: au.Field.Actor.Name})
+	}
 	application := a.application
 	if au.Field != nil { // the application is the token's audience
 		if code, err := fw.ParseApplicationCode(au.Field.AppCode); err == nil {

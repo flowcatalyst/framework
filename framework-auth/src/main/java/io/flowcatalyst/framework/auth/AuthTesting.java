@@ -146,7 +146,9 @@ public final class AuthTesting {
     claims.put("token_use", "field");
     claims.put("client_id", worker.clientId());
     claims.put("client_identifier", worker.clientIdentifier());
-    claims.put("device_id", worker.deviceId());
+    if (worker.deviceId() != null) {
+      claims.put("device_id", worker.deviceId());
+    }
     claims.put("device_mode", worker.deviceMode().name());
     claims.put("sid", worker.sessionId());
     if (worker.workerCode() != null) {
@@ -154,6 +156,18 @@ public final class AuthTesting {
     }
     if (worker.name() != null) {
       claims.put("name", worker.name());
+    }
+    if (worker.actor() != null) {
+      Map<String, Object> act = new LinkedHashMap<>();
+      act.put("sub", worker.actor().id());
+      act.put("typ", worker.actor().type());
+      if (worker.actor().name() != null) {
+        act.put("name", worker.actor().name());
+      }
+      claims.put("act", act);
+    }
+    if (worker.test()) {
+      claims.put("test", true);
     }
     claims.put("amr", worker.amr());
     claims.put("auth_time", (worker.authTime() == null ? now : worker.authTime()).getEpochSecond());

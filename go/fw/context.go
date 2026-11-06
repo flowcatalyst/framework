@@ -21,6 +21,15 @@ type Context struct {
 	causation   CausationID
 	execution   ExecutionID
 	permissions []Permission
+	actor       Actor
+}
+
+// Actor is the operator behind a Context whose principal is someone else: a supervisor, or a
+// platform user, signed in as a field worker (sessions-and-login contract section 15.5). The
+// principal stays the subject (the worker); the actor is who actually did the work. Type is
+// "field_worker" or "principal".
+type Actor struct {
+	ID, Type, Name string
 }
 
 // ErrZeroContext is returned when a framework API is given the zero Context.
@@ -69,6 +78,9 @@ func (cx Context) Causation() (CausationID, bool) { return cx.causation, !cx.cau
 
 // Execution returns the id of the job or run this work belongs to, if any.
 func (cx Context) Execution() (ExecutionID, bool) { return cx.execution, !cx.execution.IsZero() }
+
+// Actor returns who is acting as the principal, when someone is (an impersonated field request).
+func (cx Context) Actor() (Actor, bool) { return cx.actor, cx.actor.ID != "" }
 
 // Permissions returns a copy of the permissions the principal holds.
 func (cx Context) Permissions() []Permission { return slices.Clone(cx.permissions) }
@@ -128,6 +140,7 @@ func (cx Context) WithPrincipal(p PrincipalID) Context {
 	}
 	cx.principal = p
 	cx.kind = 0
+	cx.actor = Actor{} // an actor acts as one principal: a new principal drops it
 	return cx
 }
 
@@ -144,6 +157,16 @@ func (cx Context) WithPrincipalOfKind(p PrincipalID, k PrincipalKind) Context {
 
 // PrincipalKind returns the principal's kind, when it is known.
 func (cx Context) PrincipalKind() (PrincipalKind, bool) { return cx.kind, cx.kind != 0 }
+
+// WithActor returns a copy recording who is acting as the principal. The principal is unchanged.
+// It panics on a blank id.
+func (cx Context) WithActor(a Actor) Context {
+	if strings.TrimSpace(a.ID) == "" {
+		panic("fw: Context.WithActor with a blank id")
+	}
+	cx.actor = a
+	return cx
+}
 
 // WithApplication returns a copy with the application set. It panics on the zero value.
 func (cx Context) WithApplication(a ApplicationCode) Context {
@@ -237,6 +260,9 @@ func (cx Context) LogAttrs() []slog.Attr {
 	}
 	if cx.kind != 0 {
 		attrs = append(attrs, slog.String("principal_kind", cx.kind.String()))
+	}
+	if cx.actor.ID != "" {
+		attrs = append(attrs, slog.String("actor", cx.actor.ID), slog.String("actor_type", cx.actor.Type))
 	}
 	if !cx.application.IsZero() {
 		attrs = append(attrs, slog.String("application", cx.application.v))
