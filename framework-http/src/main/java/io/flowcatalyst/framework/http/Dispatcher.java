@@ -34,13 +34,17 @@ public final class Dispatcher {
       MonotonicClock clock,
       Metrics metrics,
       List<String> routeLines,
-      @Nullable SpaHandler spa) {
+      @Nullable SpaHandler spa,
+      @Nullable CorsPolicy cors) {
     this.router = router;
     this.resolver = resolver;
     this.spa = spa;
     this.routeLines = List.copyOf(routeLines);
     List<Middleware<Request, Response>> all = new ArrayList<>();
     all.add(FrameworkMiddleware.correlationId());
+    if (cors != null) {
+      all.add(Cors.middleware(cors)); // outside the error mapping: errors carry the headers too
+    }
     all.add(FrameworkMiddleware.errorMapping());
     all.add(FrameworkMiddleware.accessLog(clock, metrics));
     all.addAll(global);
@@ -76,18 +80,27 @@ public final class Dispatcher {
   }
 
   private Response route(Request request) throws Exception {
-    if (request.declaredBodyTooLarge()) {
-      throw new HttpException(413, "PAYLOAD_TOO_LARGE", "request body is too large");
-    }
     String path = request.path();
     if (!path.startsWith("/")) {
+      tooLarge(request);
       throw new HttpException(404, "NOT_FOUND", "no route for this path");
     }
     List<String> segments = new ArrayList<>();
-    for (String raw : path.substring(1).split("/", -1)) {
-      segments.add(Percent.decode(raw, false));
+    try {
+      for (String raw : path.substring(1).split("/", -1)) {
+        segments.add(Percent.decode(raw, false));
+      }
+    } catch (HttpException e) {
+      tooLarge(request); // an oversized body is answered 413 before a malformed path, as before routing
+      throw e;
     }
-    switch (router.match(request.method(), segments)) {
+    Router.Match match = router.match(request.method(), segments);
+    if (match instanceof Router.Found f) {
+      // the matched route's own body limit, if it has one, replaces the server's from here on
+      request.bind(f.route().pattern().text(), f.params(), f.route().acceptsForms(), f.route().maxBodyBytes());
+    }
+    tooLarge(request);
+    switch (match) {
       case Router.NotFound n -> {
         // the SPA is the router's fallback: consulted only when no route has this path
         SpaHandler s = spa;
@@ -104,7 +117,6 @@ public final class Dispatcher {
         return Response.noContent().header("Allow", allow(o.allowed()));
       }
       case Router.Found f -> {
-        request.bind(f.route().pattern().text(), f.params(), f.route().acceptsForms());
         if (f.route().requiresContext()) {
           ContextResolver r = resolver;
           if (r == null) {
@@ -118,6 +130,12 @@ public final class Dispatcher {
         }
         return f.route().pipeline().handle(request);
       }
+    }
+  }
+
+  private static void tooLarge(Request request) {
+    if (request.declaredBodyTooLarge()) {
+      throw new HttpException(413, "PAYLOAD_TOO_LARGE", "request body is too large");
     }
   }
 

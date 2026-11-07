@@ -1,16 +1,41 @@
-<!-- types: ObjectStore, ObjectStores, ObjectKeys, ObjectStoreException, ObjectStoresModule, ObjectStoreFactory, ObjectStoreFactories, S3ObjectStores, ObjectStoreContract -->
+<!-- types: ObjectStore, StoredObject, ObjectStores, ObjectKeys, ObjectStoreException, ObjectStoresModule, ObjectStoreFactory, ObjectStoreFactories, S3ObjectStores, ObjectStoreContract -->
 # Object stores
 
 An object store keeps named byte values: an archive of what was applied, an uploaded file, a
-report. It does three things, and every driver does them the same way:
+report. It keeps a value and its content type, and every driver does it the same way:
 
 | Call | Does |
 |---|---|
-| `put(key, bytes)` | Stores the value, replacing any earlier one completely. A reader sees the old value or the new one, never a mixture |
+| `put(key, bytes)` | Stores the value, replacing any earlier one completely. A reader sees the old value or the new one, never a mixture. It reads back as `application/octet-stream` |
+| `put(key, bytes, contentType)` | The same, keeping the content type (`image/jpeg`) |
 | `get(key)` | The bytes, or empty when there is no value (absent is not an error) |
-| `delete(key)` | Removes the value; removing one that is not there is not an error |
+| `read(key)` | A `StoredObject(content, contentType)`, or empty |
+| `delete(key)` | Removes the value and its content type; removing one that is not there is not an error |
 
-There is no listing, no metadata and no partial read, so the same code works on a folder and on S3.
+There is no listing, no other metadata and no partial read, so the same code works on a folder and
+on S3.
+
+### Content types
+
+*Added 2026-11-07 (fulfil-go issue 6: proof photos were sniffed on read because the store kept
+bytes only).* Pass the media type on `put` and serve it from `read`:
+
+```java
+photos.put("proofs/" + jobId + ".jpg", jpeg, "image/jpeg");
+StoredObject photo = photos.read("proofs/" + jobId + ".jpg").orElseThrow();
+return Response.bytes(200, photo.contentType(), photo.content());
+```
+
+- A content type is 1 to 255 printable ASCII characters (it becomes a header, so no line break):
+  `StoredObject.checkContentType`; anything else is `IllegalArgumentException` and nothing is stored.
+- `memory` keeps it with the bytes; `s3` sets it as the object's `Content-Type` (an object put by
+  another tool without one, which S3 reports as `binary/octet-stream`, reads as
+  `application/octet-stream`); `folder` writes it to the hidden file `.<name>.content-type` beside
+  the value (keys never start a segment with a dot, so it cannot collide), before the value, so a
+  reader racing a `put` may for that instant see the new type with the old bytes. `delete` removes it.
+- A value put without a type, or by an `ObjectStore` implementation of your own written before
+  this (the interface's default methods), reads as `StoredObject.DEFAULT_CONTENT_TYPE`
+  (`application/octet-stream`).
 
 ## Setting up
 

@@ -488,6 +488,67 @@ class JettyHttpModuleTest {
     assertThat(t.getMessage()).contains("http.metrics.path");
   }
 
+  // ---- CORS from http.cors.* ----------------------------------------------------------------
+
+  private HttpResponse<String> withOrigin(App app, String method, String path, String origin, String... headers) throws Exception {
+    HttpRequest.Builder b =
+        HttpRequest.newBuilder(URI.create(Apps.url(app, path))).method(method, HttpRequest.BodyPublishers.noBody()).header("Origin", origin);
+    for (int i = 0; i < headers.length; i += 2) {
+      b.header(headers[i], headers[i + 1]);
+    }
+    return client.send(b.build(), HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void corsIsOffByDefault() throws Exception {
+    try (App app = Apps.start(dir, Apps.env(), r -> r.get("/ping", req -> Response.text(200, "pong")))) {
+      HttpResponse<String> r = withOrigin(app, "GET", "/ping", "https://app.example.com");
+      assertThat(r.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+    }
+  }
+
+  @Test
+  void corsFollowsTheHttpCorsSettings() throws Exception {
+    try (App app =
+        Apps.start(
+            dir,
+            Apps.env(
+                "HTTP_CORS_ALLOWED_ORIGINS", "https://app.example.com, https://admin.example.com",
+                "HTTP_CORS_ALLOWED_METHODS", "GET, POST",
+                "HTTP_CORS_ALLOWED_HEADERS", "Content-Type, X-Trace",
+                "HTTP_CORS_EXPOSED_HEADERS", "X-Correlation-Id, X-Total",
+                "HTTP_CORS_MAX_AGE", "1h"),
+            r -> r.get("/ping", req -> Response.text(200, "pong")))) {
+      HttpResponse<String> ok = withOrigin(app, "GET", "/ping", "https://admin.example.com");
+      assertThat(ok.headers().firstValue("Access-Control-Allow-Origin")).hasValue("https://admin.example.com");
+      assertThat(ok.headers().firstValue("Access-Control-Allow-Credentials")).isEmpty();
+      assertThat(ok.headers().firstValue("Access-Control-Expose-Headers")).hasValue("X-Correlation-Id, X-Total");
+      HttpResponse<String> pre =
+          withOrigin(app, "OPTIONS", "/ping", "https://app.example.com", "Access-Control-Request-Method", "POST",
+              "Access-Control-Request-Headers", "x-trace");
+      assertThat(pre.statusCode()).isEqualTo(204);
+      assertThat(pre.headers().firstValue("Access-Control-Allow-Methods")).hasValue("GET, POST");
+      assertThat(pre.headers().firstValue("Access-Control-Allow-Headers")).hasValue("Content-Type, X-Trace");
+      assertThat(pre.headers().firstValue("Access-Control-Max-Age")).hasValue("3600");
+      HttpResponse<String> put =
+          withOrigin(app, "OPTIONS", "/ping", "https://app.example.com", "Access-Control-Request-Method", "PUT");
+      assertThat(put.statusCode()).isEqualTo(403);
+    }
+  }
+
+  @Test
+  void aBadCorsOriginOrMethodFailsStartUp() {
+    Throwable mixed =
+        catchThrowable(() -> Apps.start(dir, Apps.env("HTTP_CORS_ALLOWED_ORIGINS", "*, https://a.example"), r -> {}).close());
+    assertThat(mixed).isInstanceOf(StartupException.class).hasMessageContaining("http.cors");
+    Throwable method =
+        catchThrowable(
+            () -> Apps.start(dir, Apps.env("HTTP_CORS_ALLOWED_ORIGINS", "https://a.example", "HTTP_CORS_ALLOWED_METHODS", "GET, FETCH"), r -> {}).close());
+    assertThat(method).isInstanceOf(StartupException.class).hasMessageContaining("http.cors.allowed-methods");
+    Throwable path = catchThrowable(() -> Apps.start(dir, Apps.env("HTTP_CORS_ALLOWED_ORIGINS", "https://a.example/x"), r -> {}).close());
+    assertThat(path).isInstanceOf(StartupException.class).hasMessageContaining("http.cors");
+  }
+
   // ---- service settings are configuration (config-and-code contract, section 3.4) ------------
 
   @Test

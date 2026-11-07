@@ -140,6 +140,28 @@ public final class OpenApi {
   }
 
   /**
+   * The start-up check (fulfil-go issue 14): builds the document from what the modules declared and
+   * returns its problems, so a type the document cannot describe (an {@code Optional} or {@code
+   * Object} component, a raw or wildcard type, an array other than {@code byte[]}, two types with
+   * one component name...) fails start-up instead of only the {@code openapi} command. A missing
+   * {@code OpenApi.info} and a missing security scheme are not checked here; the command and {@link
+   * OpenApiTesting} report them. The HTTP module runs it before it opens the port.
+   *
+   * @param lookup the service lookup
+   * @return every problem, or empty when no operation is declared or the document builds
+   */
+  public static List<String> check(Lookup lookup) {
+    List<Contribution> all = lookup.contributions(Contribution.class);
+    if (operations(all).isEmpty()) {
+      return List.of();
+    }
+    return switch (Emitter.emit(all, true)) {
+      case OpenApiDocument.Refused refused -> refused.problems();
+      case OpenApiDocument.Written written -> List.of();
+    };
+  }
+
+  /**
    * Writes the document from the declarations, or lists every problem.
    *
    * @param declarations what the modules declared

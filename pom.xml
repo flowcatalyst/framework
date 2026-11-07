@@ -51,6 +51,7 @@
     <module>framework-http</module>
     <module>framework-http-jetty</module>
     <module>framework-ratelimit-redis</module>
+    <module>framework-idempotency-database</module>
     <module>framework-httpclient</module>
     <module>framework-httpclient-module</module>
     <module>framework-admin</module>

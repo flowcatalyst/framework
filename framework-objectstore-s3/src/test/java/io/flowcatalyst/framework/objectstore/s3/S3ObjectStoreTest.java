@@ -10,6 +10,7 @@ import io.flowcatalyst.framework.objectstore.ObjectStoreContract;
 import io.flowcatalyst.framework.objectstore.ObjectStoreException;
 import io.flowcatalyst.framework.objectstore.ObjectStores;
 import io.flowcatalyst.framework.objectstore.ObjectStoresModule;
+import io.flowcatalyst.framework.objectstore.StoredObject;
 import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
@@ -63,6 +64,16 @@ class S3ObjectStoreTest extends ObjectStoreContract {
   void valuesLiveUnderThePrefixInTheBucket() {
     store.put("hello/world.json", new byte[] {1, 2});
     assertThat(s3.objects).containsKey("p/q/hello/world.json");
+  }
+
+  @Test
+  void theContentTypeIsTheObjectsContentTypeAndS3sOwnDefaultReadsAsOctetStream() {
+    store.put("typed/photo", new byte[] {1}, "image/jpeg");
+    assertThat(s3.types).containsEntry("p/q/typed/photo", "image/jpeg");
+    // an object put by another tool without a type: S3 answers binary/octet-stream
+    s3.objects.put("p/q/typed/foreign", new byte[] {2});
+    s3.types.put("p/q/typed/foreign", "binary/octet-stream");
+    assertThat(store.read("typed/foreign").orElseThrow().contentType()).isEqualTo(StoredObject.DEFAULT_CONTENT_TYPE);
   }
 
   @Test

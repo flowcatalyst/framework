@@ -567,6 +567,9 @@ session cookie:
 No synchronizer token: Fetch Metadata, the Origin check, `SameSite=Lax` and JSON-only bodies leave
 nothing for a token to add. **No CORS** is configured anywhere in the framework, so no credentialed
 cross-origin request is ever permitted.
+*Amended 2026-11-07 (http contract section 13):* CORS can now be turned on for chosen origins, but
+it never allows credentials, so this still holds: the cookie is never sent with a permitted
+cross-origin request, and an allowed origin can only send a bearer token it already holds.
 
 The public sign-in routes take no unsafe requests (`/auth/login` and `/auth/callback` are `GET`;
 the platform hosts the credential forms). An application that adds a public `POST` next to them

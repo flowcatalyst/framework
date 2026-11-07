@@ -4,8 +4,8 @@ import java.util.Optional;
 
 /**
  * A place to keep named byte values: an archive of what was applied, an uploaded file, a report. It
- * is deliberately small. A key names one value; there is no listing, no metadata and no
- * partial read, so every driver can honour it the same way.
+ * is deliberately small. A key names one value and its content type; there is no listing, no
+ * other metadata and no partial read, so every driver can honour it the same way.
  *
  * <p>Keys follow {@link ObjectKeys#check}: segments of letters, digits, dot, dash and underscore
  * separated by {@code /}. A key must not be both a value and the start of another key ({@code a}
@@ -24,7 +24,8 @@ public interface ObjectStore {
   String name();
 
   /**
-   * Stores a value, replacing any value under the key.
+   * Stores a value, replacing any value under the key; it reads back with {@link
+   * StoredObject#DEFAULT_CONTENT_TYPE}.
    *
    * @param key the key, see {@link ObjectKeys#check}
    * @param content the bytes; may be empty
@@ -33,6 +34,43 @@ public interface ObjectStore {
    * @throws ObjectStoreException when the store cannot be written
    */
   void put(String key, byte[] content);
+
+  /**
+   * Stores a value with its content type, replacing any value (and content type) under the key.
+   * {@link #read} returns the content type; the {@code s3} driver also sets it as the object's
+   * {@code Content-Type}, the {@code folder} driver keeps it in a hidden file beside the value.
+   *
+   * <p>The default (for an implementation written before content types) stores the bytes and drops
+   * the type; the framework's drivers keep it.
+   *
+   * @param key the key, see {@link ObjectKeys#check}
+   * @param content the bytes; may be empty
+   * @param contentType the media type, see {@link StoredObject#checkContentType}
+   * @throws IllegalArgumentException for a key or content type that is not allowed, or content over
+   *     the store's size limit
+   * @throws ObjectStoreException when the store cannot be written
+   */
+  default void put(String key, byte[] content, String contentType) {
+    StoredObject.checkContentType(contentType);
+    put(key, content);
+  }
+
+  /**
+   * Reads a value with its content type.
+   *
+   * <p>The default (for an implementation written before content types) reports {@link
+   * StoredObject#DEFAULT_CONTENT_TYPE}; the framework's drivers return what was stored.
+   *
+   * @param key the key
+   * @return the value and its content type ({@link StoredObject#DEFAULT_CONTENT_TYPE} when it was
+   *     stored without one), or empty when there is no value under the key
+   * @throws IllegalArgumentException for a key that is not allowed
+   * @throws ObjectStoreException when the store cannot be read, or the value is over the store's
+   *     size limit
+   */
+  default Optional<StoredObject> read(String key) {
+    return get(key).map(bytes -> new StoredObject(bytes, StoredObject.DEFAULT_CONTENT_TYPE));
+  }
 
   /**
    * Reads a value.

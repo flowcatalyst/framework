@@ -3,6 +3,7 @@ package io.flowcatalyst.framework.objectstore.s3;
 import io.flowcatalyst.framework.objectstore.ObjectKeys;
 import io.flowcatalyst.framework.objectstore.ObjectStore;
 import io.flowcatalyst.framework.objectstore.ObjectStoreException;
+import io.flowcatalyst.framework.objectstore.StoredObject;
 import java.io.IOException;
 import java.util.Optional;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -71,12 +72,18 @@ final class S3ObjectStore implements ObjectStore, AutoCloseable {
 
   @Override
   public void put(String key, byte[] content) {
+    put(key, content, StoredObject.DEFAULT_CONTENT_TYPE);
+  }
+
+  @Override
+  public void put(String key, byte[] content, String contentType) {
     ObjectKeys.check(key);
+    StoredObject.checkContentType(contentType);
     if (content.length > maxBytes) {
       throw new IllegalArgumentException("content is " + content.length + " bytes, over the store's limit of " + maxBytes);
     }
     try {
-      client.putObject(PutObjectRequest.builder().bucket(bucket).key(prefix + key).build(), RequestBody.fromBytes(content));
+      client.putObject(PutObjectRequest.builder().bucket(bucket).key(prefix + key).contentType(contentType).build(), RequestBody.fromBytes(content));
     } catch (SdkException e) {
       throw new ObjectStoreException("object store '" + name + "': cannot write '" + key + "': " + e.getMessage(), e);
     }
@@ -84,6 +91,15 @@ final class S3ObjectStore implements ObjectStore, AutoCloseable {
 
   @Override
   public Optional<byte[]> get(String key) {
+    return read(key).map(StoredObject::content);
+  }
+
+  /**
+   * The object's bytes and {@code Content-Type}. An object put by something else without a type
+   * (S3 answers {@code binary/octet-stream}) reads as {@link StoredObject#DEFAULT_CONTENT_TYPE}.
+   */
+  @Override
+  public Optional<StoredObject> read(String key) {
     ObjectKeys.check(key);
     try (ResponseInputStream<GetObjectResponse> in =
         client.getObject(GetObjectRequest.builder().bucket(bucket).key(prefix + key).build())) {
@@ -92,7 +108,12 @@ final class S3ObjectStore implements ObjectStore, AutoCloseable {
         throw new ObjectStoreException(
             "object store '" + name + "': '" + key + "' is " + length + " bytes, over the limit of " + maxBytes);
       }
-      return Optional.of(in.readAllBytes());
+      byte[] content = in.readAllBytes();
+      String type = in.response().contentType();
+      if (type == null || type.isBlank() || type.equals("binary/octet-stream")) {
+        type = StoredObject.DEFAULT_CONTENT_TYPE;
+      }
+      return Optional.of(new StoredObject(content, type));
     } catch (NoSuchKeyException e) {
       return Optional.empty();
     } catch (SdkException | IOException e) {

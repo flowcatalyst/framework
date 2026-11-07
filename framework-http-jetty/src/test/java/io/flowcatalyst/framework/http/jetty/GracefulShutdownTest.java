@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.http.Response;
+import io.flowcatalyst.framework.http.sse.EventStreams;
+import io.flowcatalyst.framework.http.sse.SseEvent;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -11,12 +13,16 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -207,6 +213,105 @@ class GracefulShutdownTest {
     app.close();
     await(interrupted::get, "interrupt after the drain period");
     inFlight.completeOnTimeout(null, 5, TimeUnit.SECONDS).exceptionally(e -> null).get();
+  }
+
+  @Test
+  void aBeforeDrainActionEndsALongLivedStreamSoTheDrainDoesNotWaitForTheGrace() throws Exception {
+    CountDownLatch streaming = new CountDownLatch(1);
+    AtomicBoolean stop = new AtomicBoolean();
+    AtomicBoolean drainingInHook = new AtomicBoolean();
+    AtomicBoolean listeningInHook = new AtomicBoolean();
+    AtomicBoolean interrupted = new AtomicBoolean();
+    App app =
+        Apps.start(
+            dir,
+            Apps.env("HTTP_SHUTDOWN_GRACE", "8s"),
+            r ->
+                r.get(
+                    "/events",
+                    req ->
+                        Response.stream(
+                            200,
+                            "text/event-stream",
+                            out -> {
+                              out.write(": open\n\n".getBytes(StandardCharsets.UTF_8));
+                              out.flush();
+                              streaming.countDown();
+                              while (!stop.get()) {
+                                try {
+                                  Thread.sleep(10);
+                                } catch (InterruptedException e) {
+                                  interrupted.set(true);
+                                  return;
+                                }
+                              }
+                              out.write(": bye\n\n".getBytes(StandardCharsets.UTF_8));
+                            })));
+    HttpServer server = app.get(HttpServer.class);
+    int port = server.port();
+    server.beforeDrain(
+        () -> {
+          drainingInHook.set(server.isDraining());
+          listeningInHook.set(listening(port));
+          stop.set(true);
+        });
+    CompletableFuture<HttpResponse<String>> stream =
+        HttpClient.newHttpClient()
+            .sendAsync(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/events")).build(),
+                HttpResponse.BodyHandlers.ofString());
+    assertThat(streaming.await(5, TimeUnit.SECONDS)).isTrue();
+    long start = System.nanoTime();
+    app.close();
+    assertThat(Duration.ofNanos(System.nanoTime() - start))
+        .as("the stream ended before the drain, not at the 8s grace")
+        .isLessThan(Duration.ofSeconds(4));
+    assertThat(interrupted.get()).isFalse();
+    assertThat(drainingInHook.get()).as("the hook runs once shutdown has begun").isTrue();
+    assertThat(listeningInHook.get()).as("and before the listener closes and the drain waits").isTrue();
+    HttpResponse<String> done = stream.get(5, TimeUnit.SECONDS);
+    assertThat(done.body()).isEqualTo(": open\n\n: bye\n\n");
+  }
+
+  @Test
+  void theModulesEventStreamsEndWhenShutdownBeginsAndUseTheConfiguredHeartbeat() throws Exception {
+    AtomicReference<EventStreams> streams = new AtomicReference<>();
+    App app =
+        Apps.start(
+            dir,
+            Apps.env("HTTP_SHUTDOWN_GRACE", "8s", "HTTP_SSE_HEARTBEAT", "50ms"),
+            r -> r.get("/events", req -> streams.get().serve(req, e -> true)));
+    streams.set(app.get(EventStreams.class));
+    int port = app.get(HttpServer.class).port();
+    CompletableFuture<HttpResponse<String>> stream =
+        HttpClient.newHttpClient()
+            .sendAsync(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/events")).build(),
+                HttpResponse.BodyHandlers.ofString());
+    await(() -> streams.get().open() == 1, "the stream to open");
+    streams.get().publish(new SseEvent(1, "hello", "{}"));
+    Thread.sleep(200); // a few heartbeats
+    long start = System.nanoTime();
+    app.close();
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(4));
+    String body = stream.get(5, TimeUnit.SECONDS).body();
+    assertThat(body).startsWith("retry: 3000\n\nid: 1\nevent: hello\ndata: {}\n\n: ping\n\n");
+  }
+
+  @Test
+  void aFailingBeforeDrainActionDoesNotStopTheOthersAndEachRunsOnce() throws Exception {
+    App app = Apps.start(dir, Apps.env(), r -> {});
+    HttpServer server = app.get(HttpServer.class);
+    List<String> ran = new CopyOnWriteArrayList<>();
+    server.beforeDrain(() -> ran.add("first"));
+    server.beforeDrain(
+        () -> {
+          throw new IllegalStateException("boom");
+        });
+    server.beforeDrain(() -> ran.add("third"));
+    app.close();
+    server.stop(); // a second stop (the module's shutdown ran once) runs nothing again
+    assertThat(ran).containsExactly("first", "third");
   }
 
   @Test

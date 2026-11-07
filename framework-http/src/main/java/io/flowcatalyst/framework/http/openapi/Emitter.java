@@ -45,6 +45,18 @@ final class Emitter {
   private Emitter() {}
 
   static OpenApiDocument emit(List<Contribution> contributions) {
+    return emit(contributions, false);
+  }
+
+  /**
+   * Writes the document or lists every problem.
+   *
+   * @param contributions what the modules contributed
+   * @param startup true for the start-up check: a missing {@code OpenApi.info} and an operation that
+   *     needs a context with no security scheme contributed are not problems there (the {@code
+   *     openapi} command and {@code OpenApiTesting} still report them)
+   */
+  static OpenApiDocument emit(List<Contribution> contributions, boolean startup) {
     List<String> problems = new ArrayList<>();
     List<Contribution.Info> infos = new ArrayList<>();
     List<Operation<?, ?>> operations = new ArrayList<>();
@@ -81,7 +93,10 @@ final class Emitter {
       }
     }
     Map<String, Object> info = new LinkedHashMap<>();
-    if (infos.isEmpty()) {
+    if (infos.isEmpty() && startup) {
+      info.put("title", "(start-up check)");
+      info.put("version", "0");
+    } else if (infos.isEmpty()) {
       problems.add("the document has no info: call OpenApi.info(app, title, version) once, in register");
     } else if (infos.size() > 1) {
       problems.add(
@@ -133,7 +148,7 @@ final class Emitter {
       if (!op.problems().isEmpty()) {
         continue;
       }
-      if (op.requiresContext() && security.isEmpty()) {
+      if (op.requiresContext() && security.isEmpty() && !startup) {
         problems.add(
             op.label() + ": the operation requires a context but no security scheme was contributed; say how"
                 + " callers authenticate (framework-auth contributes them, or OpenApi.securityScheme)");

@@ -67,6 +67,7 @@ public final class Request {
   private @Nullable Map<String, String> pathParams;
   private @Nullable String routePattern;
   private boolean acceptsForms;
+  private long routeMaxBodyBytes = -1;
   private @Nullable Context context;
   private byte @Nullable [] cachedBody;
   private boolean streamTaken;
@@ -232,6 +233,19 @@ public final class Request {
    * @param acceptsForms whether the route was declared with {@link RouteOptions#acceptForms()}
    */
   void bind(String pattern, Map<String, String> params, boolean acceptsForms) {
+    bind(pattern, params, acceptsForms, -1);
+  }
+
+  /**
+   * Binds the matched route with its own body limit.
+   *
+   * @param pattern the route pattern
+   * @param params the decoded parameters
+   * @param acceptsForms whether the route accepts form bodies
+   * @param maxBodyBytes the route's body limit, or -1 for the global one
+   */
+  void bind(String pattern, Map<String, String> params, boolean acceptsForms, long maxBodyBytes) {
+    this.routeMaxBodyBytes = maxBodyBytes;
     this.routePattern = pattern;
     this.pathParams = Map.copyOf(params);
     this.acceptsForms = acceptsForms;
@@ -433,7 +447,12 @@ public final class Request {
    * @return true when {@code Content-Length} exceeds the body limit
    */
   boolean declaredBodyTooLarge() {
-    return raw.contentLength() > raw.maxBodyBytes();
+    return raw.contentLength() > maxBodyBytes();
+  }
+
+  /** The body limit: the matched route's own, else the server's. */
+  private long maxBodyBytes() {
+    return routeMaxBodyBytes >= 0 ? routeMaxBodyBytes : raw.maxBodyBytes();
   }
 
   /**
@@ -452,7 +471,7 @@ public final class Request {
       throw new IllegalStateException("the request body can be read only once");
     }
     streamTaken = true;
-    return new LimitedStream(raw.body(), raw.maxBodyBytes());
+    return new LimitedStream(raw.body(), maxBodyBytes());
   }
 
   /**
@@ -471,7 +490,7 @@ public final class Request {
       throw new IllegalStateException("the request body was already taken as a stream");
     }
     streamTaken = true;
-    try (InputStream in = new LimitedStream(raw.body(), raw.maxBodyBytes())) {
+    try (InputStream in = new LimitedStream(raw.body(), maxBodyBytes())) {
       cached = in.readAllBytes();
     } catch (IOException e) {
       throw new HttpException(400, "VALIDATION", "the request body could not be read");

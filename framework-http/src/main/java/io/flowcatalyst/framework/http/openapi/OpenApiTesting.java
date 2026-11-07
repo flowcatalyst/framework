@@ -29,6 +29,34 @@ public final class OpenApiTesting {
   private OpenApiTesting() {}
 
   /**
+   * Fails unless the document the builder's modules declare can be written: every problem the
+   * {@code openapi} command would print, with no committed file needed. Start-up checks the schemas
+   * too ({@link OpenApi#check}); this also checks the info and the security schemes.
+   *
+   * <pre>{@code
+   * @Test
+   * void theOpenApiDocumentBuilds() {
+   *   OpenApiTesting.assertBuilds(MyApp.builder());
+   * }
+   * }</pre>
+   *
+   * @param app the application's builder, not started; it is used up
+   * @throws AssertionError with every problem
+   */
+  public static void assertBuilds(AppBuilder app) {
+    written(app);
+  }
+
+  private static String written(AppBuilder app) {
+    return switch (OpenApi.document(app.declarations())) {
+      case OpenApiDocument.Refused refused ->
+          throw new AssertionError(
+              "the OpenAPI document cannot be written:\n  - " + String.join("\n  - ", refused.problems()));
+      case OpenApiDocument.Written written -> written.json();
+    };
+  }
+
+  /**
    * Fails unless the committed document equals the one the builder's modules declare.
    *
    * @param app the application's builder, not started; it is used up
@@ -36,13 +64,7 @@ public final class OpenApiTesting {
    * @throws AssertionError with every problem, or with a line diff
    */
   public static void assertCommitted(AppBuilder app, Path committed) {
-    String json =
-        switch (OpenApi.document(app.declarations())) {
-          case OpenApiDocument.Refused refused ->
-              throw new AssertionError(
-                  "the OpenAPI document cannot be written:\n  - " + String.join("\n  - ", refused.problems()));
-          case OpenApiDocument.Written written -> written.json();
-        };
+    String json = written(app);
     try {
       if (Boolean.getBoolean("openapi.update")) {
         Path parent = committed.toAbsolutePath().getParent();

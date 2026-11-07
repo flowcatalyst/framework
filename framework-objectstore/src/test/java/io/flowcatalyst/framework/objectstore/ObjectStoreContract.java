@@ -43,6 +43,51 @@ public abstract class ObjectStoreContract {
   }
 
   @Test
+  public void theContentTypeIsStoredAndReturned() {
+    ObjectStore s = store();
+    String k = key("photo.jpg");
+    s.put(k, new byte[] {(byte) 0xFF, (byte) 0xD8}, "image/jpeg");
+    StoredObject got = s.read(k).orElseThrow();
+    assertThat(got.content()).containsExactly(0xFF, 0xD8);
+    assertThat(got.contentType()).isEqualTo("image/jpeg");
+    assertThat(s.get(k)).contains(new byte[] {(byte) 0xFF, (byte) 0xD8});
+  }
+
+  @Test
+  public void aPutReplacesTheContentTypeAndAPutWithoutOneReadsBackAsOctetStream() {
+    ObjectStore s = store();
+    String k = key("doc");
+    s.put(k, new byte[] {1}, "application/pdf");
+    s.put(k, new byte[] {2}, "text/plain; charset=utf-8");
+    assertThat(s.read(k).orElseThrow().contentType()).isEqualTo("text/plain; charset=utf-8");
+    s.put(k, new byte[] {3});
+    StoredObject plain = s.read(k).orElseThrow();
+    assertThat(plain.content()).containsExactly(3);
+    assertThat(plain.contentType()).isEqualTo(StoredObject.DEFAULT_CONTENT_TYPE);
+  }
+
+  @Test
+  public void deleteRemovesTheContentTypeToo() {
+    ObjectStore s = store();
+    String k = key("gone");
+    s.put(k, new byte[] {1}, "image/png");
+    s.delete(k);
+    assertThat(s.read(k)).isEmpty();
+    s.put(k, new byte[] {2});
+    assertThat(s.read(k).orElseThrow().contentType()).isEqualTo(StoredObject.DEFAULT_CONTENT_TYPE);
+  }
+
+  @Test
+  public void aBadContentTypeIsRefusedAndNothingIsStored() {
+    ObjectStore s = store();
+    String k = key("bad-type");
+    for (String bad : List.of("", " ", "text/plain\r\nX-Evil: 1", "a".repeat(StoredObject.MAX_CONTENT_TYPE_LENGTH + 1), "tëxt/plain")) {
+      assertThatIllegalArgumentException().as("'%s'", bad).isThrownBy(() -> s.put(k, new byte[] {1}, bad));
+    }
+    assertThat(s.read(k)).isEmpty();
+  }
+
+  @Test
   public void aMissingKeyIsEmptyNotAnError() {
     assertThat(store().get(key("nothing-here"))).isEmpty();
   }
@@ -121,6 +166,8 @@ public abstract class ObjectStoreContract {
         List.of("", "/abs", "a//b", "a/", "../x", "a/../b", "a/./b", ".hidden", "a/.hidden", "a b", "a\\b", "a\u0000b", "é")) {
       assertThatIllegalArgumentException().as("put '%s'", bad).isThrownBy(() -> s.put(bad, new byte[] {1}));
       assertThatIllegalArgumentException().as("get '%s'", bad).isThrownBy(() -> s.get(bad));
+      assertThatIllegalArgumentException().as("read '%s'", bad).isThrownBy(() -> s.read(bad));
+      assertThatIllegalArgumentException().as("typed put '%s'", bad).isThrownBy(() -> s.put(bad, new byte[] {1}, "text/plain"));
       assertThatIllegalArgumentException().as("delete '%s'", bad).isThrownBy(() -> s.delete(bad));
     }
     assertThatIllegalArgumentException().isThrownBy(() -> s.put("a".repeat(ObjectKeys.MAX_LENGTH + 1), new byte[] {1}));
