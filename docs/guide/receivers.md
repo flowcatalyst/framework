@@ -77,6 +77,12 @@ printable ASCII without spaces and at most 200 characters, else generated; the e
 dispatch job id, or the scheduled-job instance id. The principal is your application's service
 account, and the delivered message is the cause: next section.
 
+A dispatch job your own use case planned in a client's context comes back **as that client**: the
+outbox writes the context's client as the job's `clientCode`, the platform resolves it and sends the
+header, and the receiving handler's context (and so any use case it runs) is that client
+(`ReceiverOutboxTest` follows one job end to end; [write path](write-path.md#dispatch-jobs)). A job
+planned in the `_platform` context, or one with no client, arrives as `_platform`.
+
 ## Who runs the handler
 
 Every handler runs as the **application's service principal**, kind `PrincipalKind.SERVICE`, and the
@@ -374,8 +380,29 @@ TestResponse r =
 TestResponse fired = ReceiverTesting.scheduledJob(client, SECRET, now, firingJson);      // 202 when accepted
 ```
 
-`ReceiverTesting.signature(secret, timestamp, body)` and `timestamp(now)` are there when a test
-sends the request some other way (a real socket). Wrong secrets, missing signatures and the other
+You rarely need to write the envelope or the firing yourself. `ReceiverTesting.Delivery` builds what
+the platform sends, headers and body, from what your application wrote to its outbox:
+`Delivery.ofJob(payload)` from a `DISPATCH_JOB` row's payload (the batch item), and
+`Delivery.ofEvent(payload, jobId)` from an `EVENT` row's payload, as the platform delivers the event
+to a subscription. `deliver` signs and sends it; `firingBody(now, jobCode, instanceId)` and `fire(...)`
+do the same for a scheduled-job firing (a cron firing that tracks completion and is not concurrent).
+From `ReceiverOutboxTest` and the tickets example's `TicketsPlatformTest`:
+
+```java
+String item = pg.query("SELECT payload FROM outbox_messages WHERE type = 'DISPATCH_JOB'");
+TestResponse r = ReceiverTesting.deliver(Receiving.client(app), SECRET, NOW, ReceiverTesting.Delivery.ofJob(item));
+
+ReceiverTesting.deliver(client, Deliveries.SECRET, now.get(), ReceiverTesting.Delivery.ofEvent(event.toString(), jobId));
+TestResponse fired = ReceiverTesting.fire(client, Deliveries.SECRET, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_1");
+```
+
+The fake resolves a client the way the platform does, with one stand-in: the platform id of client
+code `acme` is `clt_acme`, so the client header is `clt_acme:acme`. A job or event without a client
+code (or with `_platform`) gets no client header. A data-only job's body is its payload alone.
+
+`ReceiverTesting.signature(secret, timestamp, body)`, `timestamp(now)`, `headers(secret, now, body)`
+and `Delivery.headers(secret, now)` are there when a test sends the request some other way (a real
+socket, as `TicketsE2e` does). Wrong secrets, missing signatures and the other
 refusals are the framework's own tests; yours only need the happy path and your handler's results.
 
 The application is built with the module's settings in its environment (`FLOWCATALYST_BASE_URL`

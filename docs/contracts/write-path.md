@@ -58,6 +58,21 @@ once. If it needs fresh state, the attempt has failed and runs again from the st
 `.andDelete(...)`, `.andEmit(...)` to add further aggregates and events. Every plan carries at
 least one event; the first is the use case's result. Events are written in step order.
 
+*Amended 2026-11-07 (fulfil-go fixes A2, A3):*
+
+- **Append-only rows.** `plan.andAppend(row, Appender<R>)` (Go `usecase.Append(row, appender)`)
+  adds a row that is only ever inserted. The runner writes it in the attempt's transaction in plan
+  order: right after the steps added before it, before the steps added after it (step 5 of section
+  4, still step code `PERSIST`). It is never version-checked, produces no event, and is never the
+  audit row's subject (section 7 still takes the first aggregate, else the first event's subject).
+  A plan still needs at least one step; a plan of appends only is refused (`IllegalArgumentException`
+  naming it). An appender's `SQLException` fails the attempt as a repository's does (`23505` is
+  `UNIQUE_VIOLATION`).
+- **`Authorize.SERVICE`** (and `Authorize.requireService(context)` for use inside a check; Go
+  `usecase.RequireService(cx)`): granted only when the context has a principal of kind `SERVICE`,
+  else `AUTHORIZATION` / `SERVICE_REQUIRED`. `Context.ofService(client, principal)` (Go
+  `fw.ServiceContextFor`) builds such a context for an inbound webhook with no platform principal.
+
 ### 3a. The load phase and the record-level check (amendment 2026-10-18)
 
 `authorize` sees the command and the context only; a rule that depends on the stored record ("a
@@ -242,7 +257,8 @@ Facts this section is built on (platform Go source, read 2026-10-10):
 - The batch item (`internal/platform/shared/sdk/dispatch_jobs_batch.go`, `BatchItem`) has exactly:
   `id, externalId, kind, code, source, subject, targetUrl, payload, payloadContentType, dataOnly,
   eventId, correlationId, clientId, subscriptionId, serviceAccountId, dispatchPoolId, messageGroup,
-  mode, sequence, timeoutSeconds, maxRetries, metadata, queue, descriptor`. Unknown keys are ignored
+  mode, sequence, timeoutSeconds, maxRetries, metadata, queue, descriptor` (and, read again
+  2026-11-07, `clientCode` after `clientId`, `connectionId` and `idempotencyKey` at the end). Unknown keys are ignored
   silently; `metadata` is an **array** of `{"key","value"}` (an object fails the whole batch with
   `400 INVALID_JSON`, which is what the SDKs' object-shaped `metadata` does today). Platform
   defaults: `kind` `EVENT`, `payloadContentType` `application/json`, `dataOnly` false, `mode`
@@ -255,8 +271,9 @@ Facts this section is built on (platform Go source, read 2026-10-10):
   `serviceAccountId`, `dispatchPoolId`) `VARCHAR(17)`; `code`, `source`, `subject`, `externalId`,
   `correlationId`, `messageGroup`, `queue`, `descriptor` `VARCHAR(255)`; `payloadContentType`
   `VARCHAR(100)`.
-- `clientId` is stored as given (a platform client **id**, at most 17 characters); the batch endpoint
-  does not resolve a client code the way the events batch resolves `clientCode`.
+- `clientId` is stored as given (a platform client **id**, at most 17 characters). *(2026-11-07: the
+  batch endpoint now also accepts `clientCode`, `connectionId` and `idempotencyKey`; see the
+  amendment below the payload.)*
 - The insert is `ON CONFLICT (id, created_at) DO NOTHING` with `created_at` set at ingest, so a
   redelivered batch can create a second job row; the receiver's at-least-once rule covers it.
 
@@ -274,11 +291,36 @@ The row:
 
 The payload is the batch item. Written always: `id`, `kind`, `code`, `source`, `targetUrl`,
 `payload`, `payloadContentType`, `dataOnly`, `correlationId` (the context's). Written only when set:
-`subject`, `externalId`, `eventId`, `clientId`, `subscriptionId`, `serviceAccountId`,
-`dispatchPoolId`, `messageGroup`, `mode`, `sequence`, `timeoutSeconds`, `maxRetries`, `metadata`
-(array form, insertion order, only when not empty), `queue`, `descriptor`. **Never written**, because
-the batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `expiresAt`,
-`idempotencyKey`, `connectionId`, `causationId`.
+`subject`, `externalId`, `eventId`, `clientId`, `clientCode` (below), `subscriptionId`,
+`serviceAccountId`, `dispatchPoolId`, `messageGroup`, `mode`, `sequence`, `timeoutSeconds`,
+`maxRetries`, `metadata` (array form, insertion order, only when not empty), `queue`, `descriptor`,
+`connectionId`, `idempotencyKey`, in that order (the batch item's). **Never written**, because the
+batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `expiresAt`, `causationId`.
+
+*Amended 2026-11-07 (fulfil-go fixes A1; platform Go source read the same day:
+`dispatch_jobs_batch.go`, `client_code.go`, `job_connection.go`, `dispatchjob/keys.go`,
+`internal/server/delivery_creds.go`):*
+
+- **`clientCode`** is the context's `ClientId` value, written right after where `clientId` goes,
+  when the job has no `platformClientId` and the context's client is not `ClientId.PLATFORM`
+  (`_platform`). The platform resolves it as the events batch does (`ResolveJobClient`: an explicit
+  `clientId` wins; an unknown code is `400 CLIENT_NOT_FOUND` for an anchor caller and `403` for
+  others, each refusing the whole batch) and delivers the job with `X-FlowCatalyst-Client` and the
+  envelope's `clientCode`, so the receiver's context is that client (flowcatalyst contract section 4).
+- **`idempotencyKey`** (`DispatchJob.Builder.idempotencyKey`): not blank, at most 100 bytes of UTF-8
+  (the platform's limit, counted in bytes after trimming). The platform keeps a key 7 days
+  (`JobKeysRetention`), scoped by the application (the code's first segment) and the client; a later
+  item naming a held key creates nothing and is answered with the holding job's id. Never derived
+  from `externalId`: a shared reference must not silently merge two jobs.
+- **`connectionId`** (`DispatchJob.Builder.connectionId`): a platform id (`[0-9A-Za-z_-]{1,17}`).
+  The platform refuses the whole batch when it does not exist (`CONNECTION_NOT_FOUND`), is outside
+  the job's client or application (`CONNECTION_SCOPE_MISMATCH`), or the job's subscription has
+  another connection (`CONNECTION_MISMATCH`). A paused connection holds the job.
+- **Who signs the delivery** (the platform's order, first that names an account decides): the
+  subscription's own service account; the subscription's connection's account; for a job with no
+  subscription, its own `connectionId`'s account; otherwise the **oldest active service account of
+  the application named by the code's first segment**; otherwise the delivery goes out unsigned
+  with a reason on the attempt.
 
 `DispatchJob` (a record, built with `DispatchJob.builder(code, targetUrl)`) is validated when built
 (`IllegalArgumentException`), so a row the platform would refuse terminally is never written:
@@ -296,11 +338,11 @@ the batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `ex
   id is in the payload, so a batch the processor sends again after a lost response creates a job
   with the **same** id, and the receiver's `DispatchDelivery.once` (keyed on the job id) runs the
   work once.
-- platform ids (`eventId`, `subscriptionId`, `serviceAccountId`, `dispatchPoolId`,
+- platform ids (`eventId`, `subscriptionId`, `serviceAccountId`, `dispatchPoolId`, `connectionId`,
   `platformClientId` → `clientId`): `[0-9A-Za-z_-]{1,17}`. `platformClientId` is the platform's id,
-  never derived from the `Context`: the framework's `ClientId` is a client identifier (up to 100
-  characters) that the platform would store unresolved, and that may not fit the column. Without it
-  the job has no client, and with no pool named the platform uses `platform-DEFAULT-POOL`.
+  never derived from the `Context`: the framework's `ClientId` is a client code, which goes in
+  `clientCode` instead (amendment above). Without either the job has no client, and with no pool
+  named the platform uses `platform-DEFAULT-POOL`.
 - `messageGroup`, `externalId`, `subject`, `descriptor`: 1 to 255 characters. `mode`: `IMMEDIATE`,
   `NEXT_ON_ERROR`, `BLOCK_ON_ERROR`. `queue`: `DEFAULT` or `HIGH_PRIORITY`. `sequence`,
   `timeoutSeconds`, `maxRetries`: at least 1 when set. `metadata`: keys not blank, at most 100.
@@ -310,8 +352,8 @@ not support dispatch jobs fails the attempt at step `OUTBOX` when a plan carries
 
 ### Platform work found
 
-- The dispatch-jobs batch should accept `clientCode` and resolve it, as the events batch does; until
-  then a framework application cannot attribute a job to a client by its identifier.
+- ~~The dispatch-jobs batch should accept `clientCode` and resolve it~~: done on the platform; the
+  writer sends it since 2026-11-07.
 - The Java, TypeScript and Laravel SDKs write `metadata` as an object, which the batch endpoint
   rejects with `400` for the whole batch, and write fields the endpoint ignores (`headers`,
   `retryStrategy`, `scheduledFor`, `expiresAt`, `idempotencyKey`, `connectionId`), and their default

@@ -17,9 +17,10 @@ import tools.jackson.databind.JsonNode;
  * The application's connection to the FlowCatalyst platform: a thin wrapper over the SDK client,
  * authenticated with OAuth2 client credentials (the application's service account).
  *
- * <p>Application code uses this wrapper; SDK types do not appear in its signatures. When
- * {@code flowcatalyst.enabled} is false the instance exists but {@link #isEnabled()} is false and
- * every other method throws {@link IllegalStateException}.
+ * <p>Application code uses this wrapper. SDK types appear in one place only, {@link #sdk()}, the
+ * escape hatch for platform APIs the wrapper has no method for. When {@code flowcatalyst.enabled}
+ * is false the instance exists but {@link #isEnabled()} is false and every other method throws
+ * {@link IllegalStateException}.
  */
 public final class PlatformClient {
 
@@ -27,6 +28,7 @@ public final class PlatformClient {
   private final @Nullable FlowCatalystClient reporting;
   private final @Nullable ApplicationCode application;
   private final @Nullable PlatformHttp http;
+  private final @Nullable URI baseUrl;
 
   /** The service principal, with the token it was read from (contract section 4b). */
   private record Resolved(String token, PrincipalId principal) {
@@ -42,15 +44,17 @@ public final class PlatformClient {
       @Nullable FlowCatalystClient sdk,
       @Nullable FlowCatalystClient reporting,
       @Nullable ApplicationCode application,
-      @Nullable PlatformHttp http) {
+      @Nullable PlatformHttp http,
+      @Nullable URI baseUrl) {
     this.sdk = sdk;
     this.reporting = reporting;
     this.application = application;
     this.http = http;
+    this.baseUrl = baseUrl;
   }
 
   static PlatformClient disabled() {
-    return new PlatformClient(null, null, null, null);
+    return new PlatformClient(null, null, null, null, null);
   }
 
   static PlatformClient create(
@@ -73,7 +77,7 @@ public final class PlatformClient {
     // The routes the pinned SDK has no methods for (users, invitations, events, dispatch jobs: the
     // admin pages) go over plain HTTP with the same service-account token (interim, admin contract 12).
     PlatformHttp http = new PlatformHttp(baseUrl, timeout, () -> tokenOf(main), () -> main.tokenManager().clearCache());
-    return new PlatformClient(main, reporting, application, http);
+    return new PlatformClient(main, reporting, application, http, baseUrl);
   }
 
   private static String tokenOf(FlowCatalystClient client) {
@@ -109,6 +113,21 @@ public final class PlatformClient {
    */
   public boolean isEnabled() {
     return sdk != null;
+  }
+
+  /**
+   * The platform's base URL ({@code flowcatalyst.base-url}), for building links to the platform or
+   * calling it with another client.
+   *
+   * @return the URL
+   * @throws IllegalStateException when the module is disabled
+   */
+  public URI baseUrl() {
+    URI url = baseUrl;
+    if (url == null) {
+      throw disabledException();
+    }
+    return url;
   }
 
   /**
@@ -869,8 +888,18 @@ public final class PlatformClient {
     return client;
   }
 
-  /** The SDK client, for use inside this module only. */
-  FlowCatalystClient sdk() {
+  /**
+   * The FlowCatalyst Java SDK client this wrapper uses ({@code io.flowcatalyst:flowcatalyst-sdk}),
+   * for the platform APIs the wrapper has no method for. It holds the application's service-account
+   * credentials and shares the token cache with {@link #accessToken()} and {@link #clearToken()}: on
+   * a {@code 401} it drops the cached token, fetches a new one and sends the request once more. It
+   * also retries {@code 408}, {@code 429}, {@code 502}, {@code 503} and {@code 504} inside each call.
+   * Its errors are the SDK's ({@code FlowCatalystException}), not {@link PlatformException}.
+   *
+   * @return the SDK client
+   * @throws IllegalStateException when the module is disabled
+   */
+  public FlowCatalystClient sdk() {
     FlowCatalystClient client = sdk;
     if (client == null) {
       throw disabledException();

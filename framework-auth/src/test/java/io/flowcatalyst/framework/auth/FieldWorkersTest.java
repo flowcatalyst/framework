@@ -93,6 +93,8 @@ class FieldWorkersTest {
     assertThat(r.tree().path("client").asString()).isEqualTo("acme");
     assertThat(r.tree().path("application").asString()).isEqualTo("orders");
     assertThat(r.tree().path("source").asString()).isEqualTo("FIELD");
+    // the worker's name (the token's name) is the context's subject name
+    assertThat(r.tree().path("subjectName").asString()).isEqualTo("Test Worker");
     // the default mapping grants nothing
     assertThat(r.tree().path("permissions")).isEmpty();
     // every answer to a DPoP request carries a nonce, the success included
@@ -397,20 +399,37 @@ class FieldWorkersTest {
   // ---- 15.5: client, permissions, source ----------------------------------------------------
 
   @Test
-  void theClientSelectorIsNotConsulted() {
-    AtomicBoolean consulted = new AtomicBoolean();
+  void aSelectorNamingAnotherClientRefusesTheFieldWorkerAsItRefusesAUser() {
+    // the application takes the client from the path, as fulfil-go does: /api/clients/{client}/...
     start(
         b ->
             b.clients(
-                (principal, request) -> {
-                  consulted.set(true);
-                  return new ClientId("other");
-                }),
+                (principal, request) ->
+                    request.path().startsWith("/api/me/") ? new ClientId(request.path().substring(8)) : ClientSelector.PLATFORM),
         KEY_1);
-    TestResponse r = get("/api/me", token(Map.of("client_identifier", "acme")));
+    String token = token(Map.of("client_identifier", "acme"));
+
+    TestResponse other = get("/api/me/globex", token);
+    assertThat(other.status()).isEqualTo(403);
+    assertThat(other.tree().path("error").asString()).isEqualTo("CLIENT_NOT_PERMITTED");
+    assertThat(other.header("DPoP-Nonce")).isNotBlank();
+
+    TestResponse own = get("/api/me/acme", token);
+    assertThat(own.status()).isEqualTo(200);
+    assertThat(own.tree().path("client").asString()).isEqualTo("acme");
+
+    // no client named: the token's client, as before
+    TestResponse none = get("/api/me", token);
+    assertThat(none.status()).isEqualTo(200);
+    assertThat(none.tree().path("client").asString()).isEqualTo("acme");
+  }
+
+  @Test
+  void aSelectorNamingTheWorkersClientByItsPlatformIdIsAccepted() {
+    start(b -> b.clients((principal, request) -> new ClientId("clt_0TESTCLIENT")), KEY_1);
+    TestResponse r = get("/api/me", token(Map.of("client_identifier", "acme", "client_id", "clt_0TESTCLIENT")));
     assertThat(r.status()).isEqualTo(200);
     assertThat(r.tree().path("client").asString()).isEqualTo("acme");
-    assertThat(consulted).isFalse();
   }
 
   @Test
@@ -536,6 +555,8 @@ class FieldWorkersTest {
     assertThat(r.status()).isEqualTo(200);
     assertThat(r.tree().path("principal").asString()).isEqualTo("fwu_0TESTWORKER");
     assertThat(r.tree().path("actor").asString()).isEqualTo("prn_ADMIN|principal|Admin");
+    // the subject name stays the worker's; the operator's name is the actor's
+    assertThat(r.tree().path("subjectName").asString()).isEqualTo("Test Worker");
     assertThat(r.tree().path("permissions").toString()).isEqualTo("[\"a:b:view\"]");
     // a mode with no mapping fails closed
     assertThat(get("/api/me", token(Map.of("device_mode", "PERSONAL"))).tree().path("permissions").toString()).isEqualTo("[]");

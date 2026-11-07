@@ -47,6 +47,8 @@ import org.jspecify.annotations.Nullable;
  * @param metadata string pairs, in insertion order
  * @param queue the platform queue, or null
  * @param descriptor a short label, or null
+ * @param connectionId the platform's id of the connection the job is delivered through, or null
+ * @param idempotencyKey makes the create idempotent on the platform, or null
  */
 public record DispatchJob(
     @Nullable String id,
@@ -71,7 +73,9 @@ public record DispatchJob(
     @Nullable Integer maxRetries,
     Map<String, String> metadata,
     @Nullable Queue queue,
-    @Nullable String descriptor) {
+    @Nullable String descriptor,
+    @Nullable String connectionId,
+    @Nullable String idempotencyKey) {
 
   /** The platform's job kinds. */
   public enum Kind {
@@ -105,6 +109,9 @@ public record DispatchJob(
   /** The most metadata pairs a job may carry. */
   static final int METADATA_MAX = 100;
 
+  /** The longest idempotency key the platform keeps, in UTF-8 bytes. */
+  static final int IDEMPOTENCY_KEY_MAX = 100;
+
   private static final Pattern CODE = Pattern.compile("[a-z][a-z0-9-]*:\\S.*");
   private static final Pattern PLATFORM_ID = Pattern.compile("[0-9A-Za-z_-]{1,17}");
 
@@ -132,6 +139,14 @@ public record DispatchJob(
     platformId("subscriptionId", subscriptionId);
     platformId("serviceAccountId", serviceAccountId);
     platformId("dispatchPoolId", dispatchPoolId);
+    platformId("connectionId", connectionId);
+    if (idempotencyKey != null
+        && (idempotencyKey.isBlank()
+            || idempotencyKey.getBytes(java.nio.charset.StandardCharsets.UTF_8).length
+                > IDEMPOTENCY_KEY_MAX)) {
+      throw new IllegalArgumentException(
+          "idempotencyKey must not be blank and at most " + IDEMPOTENCY_KEY_MAX + " bytes (UTF-8)");
+    }
     positive("sequence", sequence);
     positive("timeoutSeconds", timeoutSeconds);
     positive("maxRetries", maxRetries);
@@ -222,6 +237,8 @@ public record DispatchJob(
     private final Map<String, String> metadata = new LinkedHashMap<>();
     private @Nullable Queue queue;
     private @Nullable String descriptor;
+    private @Nullable String connectionId;
+    private @Nullable String idempotencyKey;
 
     private Builder(String code, URI targetUrl) {
       this.code = code;
@@ -333,7 +350,9 @@ public record DispatchJob(
 
     /**
      * Sets the platform's id of the client the job belongs to (written as {@code clientId}). Not
-     * the framework's {@code ClientId}, which is an identifier the platform would not resolve.
+     * the framework's {@code ClientId}, which holds the client's code. Without it the writer sends
+     * the context's client as {@code clientCode} (unless the context is {@code ClientId.PLATFORM}),
+     * which the platform resolves; with it, no {@code clientCode} is written and this id wins.
      *
      * @param value a platform id
      * @return this builder
@@ -466,6 +485,37 @@ public record DispatchJob(
     }
 
     /**
+     * Names the connection the job is delivered through (the platform's id). Pausing the connection
+     * holds the job, and for a job with no subscription the connection's service account signs the
+     * delivery. Without one, the platform signs with the oldest active service account of the
+     * application named by the code's first segment. The platform refuses the whole batch when the
+     * connection does not exist, is outside the job's client and application, or is not the
+     * subscription's own connection.
+     *
+     * @param value a platform id
+     * @return this builder
+     */
+    public Builder connectionId(String value) {
+      this.connectionId = value;
+      return this;
+    }
+
+    /**
+     * Makes the create idempotent: the first job to name a key within its application (the code's
+     * first segment) and client is created, and a later one naming the same key creates nothing (the
+     * platform answers with the first job's id). The platform keeps keys for 7 days. Set explicitly
+     * only; it is never derived from {@link #externalId}, because two jobs that share a reference
+     * must not silently merge.
+     *
+     * @param value not blank, at most 100 bytes (UTF-8)
+     * @return this builder
+     */
+    public Builder idempotencyKey(String value) {
+      this.idempotencyKey = value;
+      return this;
+    }
+
+    /**
      * Builds and validates the job.
      *
      * @return the job
@@ -500,7 +550,9 @@ public record DispatchJob(
           maxRetries,
           metadata,
           queue,
-          descriptor);
+          descriptor,
+          connectionId,
+          idempotencyKey);
     }
   }
 }

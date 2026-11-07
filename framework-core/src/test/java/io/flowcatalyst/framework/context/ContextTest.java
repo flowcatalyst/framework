@@ -240,4 +240,50 @@ class ContextTest {
       Thread.interrupted(); // clear the flag for the next test
     }
   }
+
+  @Test
+  void theSubjectNameSurvivesTheOtherWithMethodsAndIsClearedWithThePrincipal() {
+    Context c =
+        Context.of(new ClientId("c"))
+            .withPrincipal(new PrincipalId("fwu_1"), PrincipalKind.FIELD_WORKER)
+            .withSubjectName("Thandi")
+            .withActor(new Actor("prn_sup", "principal", "Sam"))
+            .withApplication(new ApplicationCode("shop"))
+            .withCorrelationId(new CorrelationId("y"))
+            .withCausationId("dj_1")
+            .withExecutionId("dj_1")
+            .withPermissions(Set.of("a:b"))
+            .forClient(new ClientId("d"));
+    assertThat(c.subjectName()).isEqualTo("Thandi");
+    assertThat(c.findSubjectName()).contains("Thandi");
+    assertThat(c.actor().name()).isEqualTo("Sam"); // the actor keeps its own name
+    // a new principal is someone else: the name goes, as the kind does
+    assertThat(c.withPrincipal(new PrincipalId("fwu_2")).subjectName()).isNull();
+    assertThat(c.withPrincipal(new PrincipalId("fwu_2"), PrincipalKind.FIELD_WORKER).findSubjectName()).isEmpty();
+    // the constructors without it leave it unknown
+    assertThat(Context.of(new ClientId("c")).subjectName()).isNull();
+  }
+
+  @Test
+  void aSubjectNameWithoutAPrincipalIsRefused() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> Context.of(new ClientId("c")).withSubjectName("Thandi"))
+        .withMessageContaining("subject name needs a principal");
+  }
+
+  @Test
+  void aServiceContextIsTheClientAndAServicePrincipal() {
+    Context c = Context.ofService(new ClientId("acme"), new PrincipalId("svc:courier-webhook"));
+    assertThat(c.client()).isEqualTo(new ClientId("acme"));
+    assertThat(c.principal()).isEqualTo(new PrincipalId("svc:courier-webhook"));
+    assertThat(c.principalKind()).isEqualTo(PrincipalKind.SERVICE);
+    assertThat(c.permissions()).isEmpty();
+    assertThat(c.actor()).isNull();
+    assertThat(c.correlationId().value()).isNotBlank();
+  }
+
+  @Test
+  void thePlatformClientIsUnderscorePlatform() {
+    assertThat(ClientId.PLATFORM).isEqualTo(new ClientId("_platform"));
+  }
 }

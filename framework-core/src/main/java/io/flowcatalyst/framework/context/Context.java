@@ -21,6 +21,9 @@ import org.jspecify.annotations.Nullable;
  * @param permissions what the principal may do; empty when nothing was granted. Entries follow the
  *     platform's form, {@code :}-separated segments where a held segment may be {@code *}; check
  *     them with {@link #hasPermission(String)}
+ * @param subjectName the principal's display name, or null when unknown: the field worker's name, or
+ *     the user's name when the token carries one. It describes the principal, never the actor (the
+ *     actor has its own name)
  */
 public record Context(
     ClientId client,
@@ -31,18 +34,49 @@ public record Context(
     @Nullable String causationId,
     @Nullable String executionId,
     Set<String> permissions,
-    @Nullable Actor actor) {
+    @Nullable Actor actor,
+    @Nullable String subjectName) {
 
   /**
    * Copies the permissions.
    *
-   * @throws IllegalArgumentException when a principal kind is given without a principal
+   * @throws IllegalArgumentException when a principal kind or a subject name is given without a
+   *     principal
    */
   public Context {
     if (principalKind != null && principal == null) {
       throw new IllegalArgumentException("a principal kind needs a principal");
     }
+    if (subjectName != null && principal == null) {
+      throw new IllegalArgumentException("a subject name needs a principal");
+    }
     permissions = Set.copyOf(permissions);
+  }
+
+  /**
+   * A context without a subject name.
+   *
+   * @param client the client
+   * @param principal the acting principal, or null
+   * @param principalKind the principal's kind, or null
+   * @param application the application, or null
+   * @param correlationId the correlation id
+   * @param causationId the causation id, or null
+   * @param executionId the execution id, or null
+   * @param permissions what the principal may do
+   * @param actor who is acting as the principal, or null
+   */
+  public Context(
+      ClientId client,
+      @Nullable PrincipalId principal,
+      @Nullable PrincipalKind principalKind,
+      @Nullable ApplicationCode application,
+      CorrelationId correlationId,
+      @Nullable String causationId,
+      @Nullable String executionId,
+      Set<String> permissions,
+      @Nullable Actor actor) {
+    this(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, actor, null);
   }
 
   /**
@@ -66,7 +100,7 @@ public record Context(
       @Nullable String causationId,
       @Nullable String executionId,
       Set<String> permissions) {
-    this(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, null);
+    this(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, null, null);
   }
 
   /**
@@ -88,7 +122,7 @@ public record Context(
       @Nullable String causationId,
       @Nullable String executionId,
       Set<String> permissions) {
-    this(client, principal, null, application, correlationId, causationId, executionId, permissions, null);
+    this(client, principal, null, application, correlationId, causationId, executionId, permissions, null, null);
   }
 
   /**
@@ -138,6 +172,20 @@ public record Context(
   }
 
   /**
+   * A context for a service acting for a client, with a generated correlation id: for work that
+   * has no platform principal of its own, such as an inbound provider webhook the application
+   * verified itself. Same as {@code Context.of(client).withPrincipal(principal, PrincipalKind.SERVICE)}.
+   *
+   * @param client the client the work is for
+   * @param principal the service's principal id, for example the application's own service
+   *     principal ({@code PlatformClient.servicePrincipal()}) or a stable id naming the provider
+   * @return the context
+   */
+  public static Context ofService(ClientId client, PrincipalId principal) {
+    return of(client).withPrincipal(principal, PrincipalKind.SERVICE);
+  }
+
+  /**
    * Copies for another client, keeping everything else: principal, kind, application, correlation,
    * causation and execution ids, and permissions. For work that is not a request and has no client
    * of its own (a scheduled job, a background loop, a receiver's context for the platform) and
@@ -149,29 +197,40 @@ public record Context(
    * @return the new context
    */
   public Context forClient(ClientId value) {
-    return new Context(value, principal, principalKind, application, correlationId, causationId, executionId, permissions, actor);
+    return new Context(value, principal, principalKind, application, correlationId, causationId, executionId, permissions, actor, subjectName);
   }
 
   /**
-   * Copies with a principal whose kind is unknown; any kind held before is cleared, so it never
-   * describes another principal.
+   * Copies with a principal whose kind is unknown; any kind and subject name held before are
+   * cleared, so they never describe another principal.
    *
    * @param value the principal
    * @return the new context
    */
   public Context withPrincipal(PrincipalId value) {
-    return new Context(client, value, null, application, correlationId, causationId, executionId, permissions, null);
+    return new Context(client, value, null, application, correlationId, causationId, executionId, permissions, null, null);
   }
 
   /**
-   * Copies with a principal and its kind.
+   * Copies with a principal and its kind; any subject name held before is cleared.
    *
    * @param value the principal
    * @param kind what kind of principal it is
    * @return the new context
    */
   public Context withPrincipal(PrincipalId value, PrincipalKind kind) {
-    return new Context(client, value, kind, application, correlationId, causationId, executionId, permissions, null);
+    return new Context(client, value, kind, application, correlationId, causationId, executionId, permissions, null, null);
+  }
+
+  /**
+   * Copies with the principal's display name ({@link #subjectName()}).
+   *
+   * @param value the name, for example the field worker's
+   * @return the new context
+   * @throws IllegalArgumentException when the context has no principal
+   */
+  public Context withSubjectName(String value) {
+    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, actor, value);
   }
 
   /**
@@ -182,7 +241,7 @@ public record Context(
    * @return the new context
    */
   public Context withActor(Actor value) {
-    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, value);
+    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, permissions, value, subjectName);
   }
 
   /**
@@ -192,7 +251,7 @@ public record Context(
    * @return the new context
    */
   public Context withApplication(ApplicationCode value) {
-    return new Context(client, principal, principalKind, value, correlationId, causationId, executionId, permissions, actor);
+    return new Context(client, principal, principalKind, value, correlationId, causationId, executionId, permissions, actor, subjectName);
   }
 
   /**
@@ -202,7 +261,7 @@ public record Context(
    * @return the new context
    */
   public Context withCorrelationId(CorrelationId value) {
-    return new Context(client, principal, principalKind, application, value, causationId, executionId, permissions, actor);
+    return new Context(client, principal, principalKind, application, value, causationId, executionId, permissions, actor, subjectName);
   }
 
   /**
@@ -212,7 +271,7 @@ public record Context(
    * @return the new context
    */
   public Context withCausationId(String value) {
-    return new Context(client, principal, principalKind, application, correlationId, value, executionId, permissions, actor);
+    return new Context(client, principal, principalKind, application, correlationId, value, executionId, permissions, actor, subjectName);
   }
 
   /**
@@ -222,7 +281,7 @@ public record Context(
    * @return the new context
    */
   public Context withExecutionId(String value) {
-    return new Context(client, principal, principalKind, application, correlationId, causationId, value, permissions, actor);
+    return new Context(client, principal, principalKind, application, correlationId, causationId, value, permissions, actor, subjectName);
   }
 
   /**
@@ -232,7 +291,7 @@ public record Context(
    * @return the new context
    */
   public Context withPermissions(Set<String> value) {
-    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, value, actor);
+    return new Context(client, principal, principalKind, application, correlationId, causationId, executionId, value, actor, subjectName);
   }
 
   /**
@@ -293,6 +352,15 @@ public record Context(
    */
   public Optional<Actor> findActor() {
     return Optional.ofNullable(actor);
+  }
+
+  /**
+   * The subject's display name as an optional return value.
+   *
+   * @return the name, if known
+   */
+  public Optional<String> findSubjectName() {
+    return Optional.ofNullable(subjectName);
   }
 
   /**

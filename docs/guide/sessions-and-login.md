@@ -183,7 +183,12 @@ AuthModule.builder().clients((principal, request) -> new ClientId(request.header
 ```
 
 Whatever it returns, the framework checks that the principal may act for it (its `clients` claim
-holds `*`, the id, or `id:identifier`) and answers `403 CLIENT_NOT_PERMITTED` otherwise.
+holds `*`, the id, or `id:identifier`) and answers `403 CLIENT_NOT_PERMITTED` otherwise. The
+selector is consulted for [field workers](field-workers.md#in-your-routes) too: one that names a
+client other than the worker's own gets the same `403`.
+
+The `Context`'s `subjectName()` is the principal's display name when the token or session carries a
+`name` claim (`RequestAuthenticationTest`), else empty.
 
 ## Bearer tokens
 

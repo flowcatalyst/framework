@@ -98,6 +98,39 @@ class UseCaseDefinitionTest {
   }
 
   @Test
+  void anAppendFollowsAStepAndAppendsAloneAreNotAPlan() {
+    EventMetadata meta =
+        new EventMetadata(
+            "e", "1.0", "a:b:c:d", "a:b", "b.c.1", java.time.Instant.EPOCH, "corr", null, null, null, "g");
+    ThingEvent first = new ThingEvent(meta, "1", "n", "c");
+    Appender<String> log = (tx, row) -> {};
+    Plan<ThingEvent> plan = Plan.emit(first).andAppend("a", log).andEmit(first).andAppend("b", log);
+    assertThat(plan.appends()).extracting(Plan.Appended::after).containsExactly(1, 2);
+    assertThat(plan.appends().stream().map(a -> (Object) a.row()).toList()).containsExactly("a", "b");
+    // dispatch jobs and further steps keep the appends
+    assertThat(plan.andEmit(first).appends()).hasSize(2);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                new Plan<>(
+                    first,
+                    java.util.List.of(),
+                    java.util.List.of(),
+                    java.util.List.of(new Plan.Appended<>(0, "a", log))))
+        .withMessageContaining("appends alone are not a plan");
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () ->
+                new Plan<>(
+                    first,
+                    java.util.List.of(new Plan.Emit(first)),
+                    java.util.List.of(),
+                    java.util.List.of(new Plan.Appended<>(2, "a", log))))
+        .withMessageContaining("an append follows a step");
+  }
+
+  @Test
   void eventTypesDeriveSourceSubjectAndGroup() {
     EventType type = new EventType("orders", "sales", "order", "line-added");
     ThingId id = new ThingId("ord_1");
@@ -129,5 +162,26 @@ class UseCaseDefinitionTest {
             .load((ctx, cmd) -> Optional.of("x"), UseCaseError.notFound("GONE", "gone"))
             .execute((ctx, cmd, loaded) -> Decision.reject(UseCaseError.internal("X")));
     assertThat(useCase.name()).isEqualTo("do-thing");
+  }
+
+  @Test
+  void requireServiceGrantsOnlyAServicePrincipal() throws Exception {
+    ClientId acme = new ClientId("acme");
+    io.flowcatalyst.framework.context.PrincipalId id = new io.flowcatalyst.framework.context.PrincipalId("prn_1");
+    assertThat(Authorize.requireService(Context.ofService(acme, id))).isEmpty();
+    assertThat(Authorize.SERVICE.check(Context.ofService(acme, id), "cmd")).isEmpty();
+
+    for (Context refused :
+        java.util.List.of(
+            Context.of(acme),
+            Context.of(acme).withPrincipal(id),
+            Context.of(acme).withPrincipal(id, io.flowcatalyst.framework.context.PrincipalKind.USER),
+            Context.of(acme).withPrincipal(id, io.flowcatalyst.framework.context.PrincipalKind.FIELD_WORKER))) {
+      Optional<UseCaseError> denied = Authorize.requireService(refused);
+      assertThat(denied).as(String.valueOf(refused.principalKind())).isPresent();
+      assertThat(denied.get().kind()).isEqualTo(ErrorKind.AUTHORIZATION);
+      assertThat(denied.get().code()).isEqualTo("SERVICE_REQUIRED");
+      assertThat(Authorize.SERVICE.check(refused, "cmd")).isEqualTo(denied);
+    }
   }
 }

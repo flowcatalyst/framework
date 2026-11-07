@@ -4,6 +4,7 @@ import io.flowcatalyst.framework.auth.E2eLauncher;
 import io.flowcatalyst.framework.auth.TestOidcProvider;
 import io.flowcatalyst.framework.database.PostgresFixture;
 import io.flowcatalyst.framework.flowcatalyst.FakePlatform;
+import io.flowcatalyst.framework.flowcatalyst.ReceiverTesting;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -123,9 +124,8 @@ public final class TicketsE2e {
             "/control/sweep",
             q -> {
               Instant now = clock.instant();
-              String body = Deliveries.firingBody(now, TicketsDefinitionsModule.SLA_SWEEP, "si_e2e_" + (++sweeps[0]));
-              String ts = String.valueOf(now.getEpochSecond());
-              HttpResponse<String> response = post(http, appPort, "/fc/scheduled-jobs", body, ts, Map.of());
+              String body = ReceiverTesting.firingBody(now, TicketsDefinitionsModule.SLA_SWEEP, "si_e2e_" + (++sweeps[0]));
+              HttpResponse<String> response = post(http, appPort, "/fc/scheduled-jobs", body, ReceiverTesting.headers(Deliveries.SECRET, now, body));
               if (response.statusCode() != 202) {
                 throw new IllegalStateException("the service answered " + response.statusCode() + " " + response.body());
               }
@@ -143,22 +143,9 @@ public final class TicketsE2e {
                 if (delivered.contains(jobId)) {
                   continue;
                 }
-                String client = event.get("clientCode").asString();
-                Map<String, Object> envelope = new LinkedHashMap<>();
-                envelope.put("id", jobId);
-                envelope.put("type", event.get("type").asString());
-                envelope.put("attemptNumber", 1);
-                envelope.put("source", event.get("source").asString());
-                envelope.put("subject", event.get("subject").asString());
-                envelope.put("correlationId", event.get("correlationId").asString());
-                envelope.put("messageGroup", event.get("messageGroup").asString());
-                envelope.put("clientId", "clt_" + client);
-                envelope.put("clientCode", client);
-                envelope.put("data", JSON.readTree(event.get("data").asString()));
-                String body = JSON.writeValueAsString(envelope);
-                String ts = String.valueOf(now.getEpochSecond());
+                ReceiverTesting.Delivery delivery = ReceiverTesting.Delivery.ofEvent(event.toString(), jobId);
                 HttpResponse<String> response =
-                    post(http, appPort, "/fc/dispatch", body, ts, Map.of("X-Dispatch-Job-Id", jobId, "X-Event-Type", event.get("type").asString(), "X-FlowCatalyst-Client", "clt_" + client + ":" + client));
+                    post(http, appPort, "/fc/dispatch", delivery.body(), delivery.headers(Deliveries.SECRET, now));
                 if (response.statusCode() == 200) {
                   delivered.add(jobId);
                   count++;
@@ -190,14 +177,12 @@ public final class TicketsE2e {
         .serve();
   }
 
-  private static HttpResponse<String> post(HttpClient http, int appPort, String path, String body, String ts, Map<String, String> extra) throws IOException {
+  /** Posts a body with the headers the framework's {@link ReceiverTesting} signed. */
+  private static HttpResponse<String> post(HttpClient http, int appPort, String path, String body, Map<String, String> headers) throws IOException {
     HttpRequest.Builder request =
         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + appPort + path))
-            .header("Content-Type", "application/json")
-            .header("X-FlowCatalyst-Signature", Deliveries.sign(ts, body))
-            .header("X-FlowCatalyst-Timestamp", ts)
             .POST(HttpRequest.BodyPublishers.ofString(body));
-    extra.forEach(request::header);
+    headers.forEach(request::header);
     try {
       return http.send(request.build(), HttpResponse.BodyHandlers.ofString());
     } catch (InterruptedException e) {

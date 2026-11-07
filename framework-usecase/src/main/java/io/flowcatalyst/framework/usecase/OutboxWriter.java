@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.usecase;
 
+import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.core.Ids;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +31,9 @@ import tools.jackson.databind.node.ObjectNode;
  *       and the execution id, when present).
  *   <li>A dispatch-job row: type {@code DISPATCH_JOB}, row id = the job's id, the job's message
  *       group, and the platform's dispatch-jobs batch item as the payload (section 7a), which the
- *       platform's outbox processor sends unchanged.
+ *       platform's outbox processor sends unchanged. The context's client is the item's {@code
+ *       clientCode}, unless the job names a {@code platformClientId} or the context's client is
+ *       {@link ClientId#PLATFORM}.
  *   <li>The audit row: type {@code AUDIT_LOG}, no message group, the SDK's audit payload.
  * </ul>
  *
@@ -166,6 +169,10 @@ public final class OutboxWriter implements Sink {
     putIfSet(payload, "eventId", job.eventId());
     payload.put("correlationId", context.correlationId().value());
     putIfSet(payload, "clientId", job.platformClientId());
+    if (job.platformClientId() == null && !context.client().equals(ClientId.PLATFORM)) {
+      // the platform resolves the code to its client; an explicit platformClientId wins
+      payload.put("clientCode", context.client().value());
+    }
     putIfSet(payload, "subscriptionId", job.subscriptionId());
     putIfSet(payload, "serviceAccountId", job.serviceAccountId());
     putIfSet(payload, "dispatchPoolId", job.dispatchPoolId());
@@ -185,6 +192,8 @@ public final class OutboxWriter implements Sink {
       payload.put("queue", job.queue().name());
     }
     putIfSet(payload, "descriptor", job.descriptor());
+    putIfSet(payload, "connectionId", job.connectionId());
+    putIfSet(payload, "idempotencyKey", job.idempotencyKey());
     return payload;
   }
 

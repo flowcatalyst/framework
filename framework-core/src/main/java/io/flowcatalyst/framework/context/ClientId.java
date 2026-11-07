@@ -20,6 +20,14 @@ import java.util.regex.Pattern;
 public record ClientId(String value) {
   private static final Pattern VALID = Pattern.compile("[A-Za-z0-9._-]{1,100}");
 
+  /**
+   * "No particular client" ({@code _platform}): the client of a context that acts for the platform
+   * rather than for one tenant, such as a scheduled job's or a platform-scoped dispatch job's. A
+   * platform client code never contains {@code _}, so this never names a real client. The outbox
+   * does not write it as a dispatch job's {@code clientCode}.
+   */
+  public static final ClientId PLATFORM = new ClientId("_platform");
+
   /** Rejects values outside {@code [A-Za-z0-9._-]{1,100}}. */
   public ClientId {
     if (!VALID.matcher(value).matches()) {

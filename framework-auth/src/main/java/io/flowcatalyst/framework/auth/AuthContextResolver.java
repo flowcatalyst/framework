@@ -84,12 +84,18 @@ public final class AuthContextResolver implements ContextResolver {
    * Contract section 15.1: the {@code DPoP} scheme is step 1b. There is no fall-back to the cookie.
    * Every answer carries a fresh {@code DPoP-Nonce}, so a client rarely needs the retry.
    */
-  private Authenticated authenticateField(Request request, String token, FieldAuth fieldAuth) {
+  private Authenticated authenticateField(Request request, String token, FieldAuth fieldAuth) throws Exception {
     String nonce = fieldAuth.nonces().issue();
     RequestState.of(request).dpopNonce(nonce);
     FieldVerifier.Outcome outcome = fieldAuth.verifier().verify(token, request.headers("DPoP"), request.method().name(), request.path());
     return switch (outcome) {
-      case FieldVerifier.Outcome.Verified v -> authorities.field(v.worker(), fieldPermissions(request, v.worker(), fieldAuth, nonce));
+      case FieldVerifier.Outcome.Verified v -> {
+        if (!authorities.fieldMayActFor(v.worker(), request)) {
+          // the same refusal a user of another client gets (contract section 7.3)
+          throw new FieldAuthException(403, "CLIENT_NOT_PERMITTED", "the principal may not act for this client", null, nonce);
+        }
+        yield authorities.field(v.worker(), fieldPermissions(request, v.worker(), fieldAuth, nonce));
+      }
       case FieldVerifier.Outcome.Refused r -> {
         LOG.debug("refused a field credential: {}", r.reason());
         throw new FieldAuthException(401, "UNAUTHENTICATED", "authentication is required", "DPoP error=\"invalid_token\"", nonce);

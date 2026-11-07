@@ -73,6 +73,7 @@ class DispatchJobOutboxTest {
       @Nullable String eventId,
       @Nullable String correlationId,
       @Nullable String clientId,
+      @Nullable String clientCode,
       @Nullable String subscriptionId,
       @Nullable String serviceAccountId,
       @Nullable String dispatchPoolId,
@@ -83,7 +84,9 @@ class DispatchJobOutboxTest {
       @Nullable Long maxRetries,
       @Nullable List<GoMetadata> metadata,
       @Nullable String queue,
-      @Nullable String descriptor) {}
+      @Nullable String descriptor,
+      @Nullable String connectionId,
+      @Nullable String idempotencyKey) {}
 
   /** Go {@code dispatchjob.Metadata}. */
   record GoMetadata(String key, String value) {}
@@ -195,6 +198,8 @@ class DispatchJobOutboxTest {
         .metadata("batch", "nightly")
         .queue(DispatchJob.Queue.HIGH_PRIORITY)
         .descriptor("invoice export")
+        .connectionId("0HZXEQ5Y8JY55")
+        .idempotencyKey("export:inv_1")
         .build();
   }
 
@@ -248,7 +253,8 @@ class DispatchJobOutboxTest {
                 + "\"dispatchPoolId\":\"0HZXEQ5Y8JY54\",\"messageGroup\":\"invoice:inv_1\","
                 + "\"mode\":\"BLOCK_ON_ERROR\",\"sequence\":2,\"timeoutSeconds\":45,\"maxRetries\":5,"
                 + "\"metadata\":[{\"key\":\"invoice\",\"value\":\"inv_1\"},{\"key\":\"batch\",\"value\":\"nightly\"}],"
-                + "\"queue\":\"HIGH_PRIORITY\",\"descriptor\":\"invoice export\"}");
+                + "\"queue\":\"HIGH_PRIORITY\",\"descriptor\":\"invoice export\","
+                + "\"connectionId\":\"0HZXEQ5Y8JY55\",\"idempotencyKey\":\"export:inv_1\"}");
 
     // The same transaction wrote the event and the audit row; the job sits between them in order.
     assertThat(rows("SELECT type FROM outbox_messages ORDER BY type"))
@@ -273,7 +279,8 @@ class DispatchJobOutboxTest {
     assertThat(keys)
         .containsExactly(
             "id", "kind", "code", "source", "targetUrl", "payload", "payloadContentType",
-            "dataOnly", "correlationId");
+            "dataOnly", "correlationId", "clientCode");
+    assertThat(tree.get("clientCode").asString()).isEqualTo("acme");
     assertThat(tree.get("id").asString()).isEqualTo(id);
     assertThat(tree.get("kind").asString()).isEqualTo("TASK");
     assertThat(tree.get("source").asString()).isEqualTo("orders");
@@ -294,12 +301,14 @@ class DispatchJobOutboxTest {
     assertThat(item.queue()).isIn("DEFAULT", "HIGH_PRIORITY");
     assertThat(item.timeoutSeconds()).isEqualTo(45L);
     assertThat(item.clientId()).isEqualTo("0HZXEQ5Y8JY51");
+    assertThat(item.clientCode()).isNull();
+    assertThat(item.connectionId()).isEqualTo("0HZXEQ5Y8JY55");
+    assertThat(item.idempotencyKey()).isEqualTo("export:inv_1");
     // Fields the batch endpoint ignores are never sent.
     JsonNode tree = strict.readTree(payload);
     for (String ignored :
         Set.of(
-            "headers", "retryStrategy", "scheduledFor", "expiresAt", "idempotencyKey",
-            "connectionId", "causationId", "clientCode")) {
+            "headers", "retryStrategy", "scheduledFor", "expiresAt", "causationId")) {
       assertThat(tree.has(ignored)).as(ignored).isFalse();
     }
   }
@@ -348,6 +357,61 @@ class DispatchJobOutboxTest {
         .extracting(GoBatchItem::code)
         .containsExactlyInAnyOrder("orders:billing:export", "orders:billing:notify");
     assertThat(request.items()).allSatisfy(i -> assertThat(i.correlationId()).isEqualTo("corr-42"));
+  }
+
+  JsonNode onlyJobPayload() throws Exception {
+    return strict.readTree(
+        rows("SELECT payload FROM outbox_messages WHERE type = 'DISPATCH_JOB'").get(0).get("payload"));
+  }
+
+  @Test
+  void aJobMadeInAClientsContextNamesThatClientByCode() throws Exception {
+    useCases.run(create(), ctx(), new Create("t-c1", List.of(DispatchJob.builder("orders:billing:export", TARGET).build())));
+    JsonNode item = onlyJobPayload();
+    assertThat(item.get("clientCode").asString()).isEqualTo("acme");
+    assertThat(item.has("clientId")).isFalse();
+  }
+
+  @Test
+  void aJobMadeInThePlatformsContextNamesNoClient() throws Exception {
+    Context platform = Context.of(ClientId.PLATFORM).withCorrelationId(new CorrelationId("corr-42"));
+    useCases.run(create(), platform, new Create("t-c2", List.of(DispatchJob.builder("orders:billing:export", TARGET).build())));
+    JsonNode item = onlyJobPayload();
+    assertThat(item.has("clientCode")).isFalse();
+    assertThat(item.has("clientId")).isFalse();
+  }
+
+  @Test
+  void anExplicitPlatformClientIdWinsAndNoClientCodeIsWritten() throws Exception {
+    DispatchJob job =
+        DispatchJob.builder("orders:billing:export", TARGET).platformClientId("0HZXEQ5Y8JY51").build();
+    useCases.run(create(), ctx(), new Create("t-c3", List.of(job)));
+    JsonNode item = onlyJobPayload();
+    assertThat(item.get("clientId").asString()).isEqualTo("0HZXEQ5Y8JY51");
+    assertThat(item.has("clientCode")).isFalse();
+  }
+
+  @Test
+  void theIdempotencyKeyIsExplicitOnlyNeverTheExternalId() throws Exception {
+    DispatchJob job = DispatchJob.builder("orders:billing:export", TARGET).externalId("inv_1").build();
+    useCases.run(create(), ctx(), new Create("t-c4", List.of(job)));
+    JsonNode item = onlyJobPayload();
+    assertThat(item.get("externalId").asString()).isEqualTo("inv_1");
+    assertThat(item.has("idempotencyKey")).isFalse();
+    assertThat(item.has("connectionId")).isFalse();
+  }
+
+  @Test
+  void theIdempotencyKeyAndTheConnectionAreWrittenWhenSet() throws Exception {
+    DispatchJob job =
+        DispatchJob.builder("orders:billing:export", TARGET)
+            .idempotencyKey("export:inv_2")
+            .connectionId("con_0HZXEQ5Y8J")
+            .build();
+    useCases.run(create(), ctx(), new Create("t-c5", List.of(job)));
+    JsonNode item = onlyJobPayload();
+    assertThat(item.get("idempotencyKey").asString()).isEqualTo("export:inv_2");
+    assertThat(item.get("connectionId").asString()).isEqualTo("con_0HZXEQ5Y8J");
   }
 
   @Test

@@ -115,6 +115,16 @@ class RequestAuthenticationTest {
   // ---- bearer (section 7.1) ------------------------------------------------------------------
 
   @Test
+  void theTokensNameIsTheSubjectNameWhenItCarriesOne() {
+    String named = t.provider.accessToken(Map.of("type", "USER", "sub", "prn_ADA", "name", "Ada Lovelace"));
+    assertThat(t.browser().get("/api/me", "Authorization", "Bearer " + named).tree().path("subjectName").asString())
+        .isEqualTo("Ada Lovelace");
+    String unnamed = t.provider.accessToken(Map.of());
+    assertThat(t.browser().get("/api/me", "Authorization", "Bearer " + unnamed).tree().path("subjectName").asString())
+        .isEmpty();
+  }
+
+  @Test
   void aBadBearerTokenNeverFallsBackToTheCookie() {
     TestResponse r = b.get("/api/me", "Authorization", "Bearer not-a-token");
     assertThat(r.status()).isEqualTo(401);

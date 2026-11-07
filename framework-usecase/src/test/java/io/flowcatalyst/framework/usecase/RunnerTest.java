@@ -354,6 +354,96 @@ class RunnerTest {
     assertThat(thingCount()).isEqualTo(2);
   }
 
+  // ---- appends -----------------------------------------------------------------------------
+
+  /** An append-only row: the thing it is about, a note, and how many things existed when written. */
+  record LogLine(String thingId, String note) {}
+
+  static final String LOG_DDL =
+      "CREATE TABLE thing_log (seq bigserial PRIMARY KEY, thing_id text NOT NULL REFERENCES thing (id),"
+          + " note text NOT NULL UNIQUE, things_then bigint NOT NULL)";
+
+  /** Writes the line with the number of things visible in the attempt's transaction at that moment. */
+  static final Appender<LogLine> LOG =
+      (tx, line) -> {
+        try (var st =
+            tx.connection()
+                .prepareStatement(
+                    "INSERT INTO thing_log (thing_id, note, things_then) SELECT ?, ?, count(*) FROM thing")) {
+          st.setString(1, line.thingId());
+          st.setString(2, line.note());
+          st.executeUpdate();
+        }
+      };
+
+  List<String> logLines() {
+    String rows = pg.query("SELECT coalesce(string_agg(thing_id || '/' || note || '/' || things_then, ',' ORDER BY seq), '') FROM thing_log");
+    return rows.isEmpty() ? List.of() : List.of(rows.split(","));
+  }
+
+  UseCase<CreateThing, ThingEvent> createTwoWithLog() {
+    return UseCase.named("create-two-logged", CreateThing.class, ThingEvent.class)
+        .authorize(Authorize.PUBLIC)
+        .execute(
+            (c, cmd) -> {
+              Thing a = Thing.create(new ThingId(cmd.id() + "a"), c.client(), "a", cmd.code() + "a");
+              Thing b = Thing.create(new ThingId(cmd.id() + "b"), c.client(), "b", cmd.code() + "b");
+              return Plan.save(a, repo, eventFor(c, THING_CREATED, a))
+                  .andAppend(new LogLine(a.id().value(), cmd.name() + "-a"), LOG)
+                  .andSave(b, repo, eventFor(c, THING_CREATED, b))
+                  .andAppend(new LogLine(b.id().value(), cmd.name() + "-b"), LOG);
+            });
+  }
+
+  @Test
+  void appendsAreWrittenInTheTransactionInPlanOrderAndAreNeverTheAuditSubject() {
+    pg.execute(LOG_DDL);
+
+    committed(useCases.run(createTwoWithLog(), ctx(acme), new CreateThing("t", "log", "k")));
+
+    // each line after the save it follows (its foreign key holds) and before the next save
+    assertThat(logLines()).containsExactly("ta/log-a/1", "tb/log-b/2");
+    assertThat(sink.events).hasSize(2); // an append makes no event
+    AuditEntry audit = sink.audits.getFirst();
+    assertThat(audit.entityType()).isEqualTo("Thing");
+    assertThat(audit.entityId()).isEqualTo("ta");
+  }
+
+  @Test
+  void aFailedAttemptRollsTheAppendsBackWithEverythingElse() {
+    pg.execute(LOG_DDL);
+    committed(useCases.run(createTwoWithLog(), ctx(acme), new CreateThing("t", "log", "k")));
+
+    // the second append's note is taken: the attempt fails after a save, an append and a save
+    pg.execute("INSERT INTO thing_log (thing_id, note, things_then) VALUES ('ta', 'clash-b', 0)");
+    UseCaseResult<ThingEvent> clash = useCases.run(createTwoWithLog(), ctx(acme), new CreateThing("v", "clash", "y"));
+
+    assertThat(error(clash).code()).isEqualTo("UNIQUE_VIOLATION");
+    assertThat(logLines()).containsExactly("ta/log-a/1", "tb/log-b/2", "ta/clash-b/0");
+    assertThat(thingCount()).isEqualTo(2);
+  }
+
+  @Test
+  void aPlanOfAnEventAndAnAppendTakesTheAuditSubjectFromTheEvent() {
+    pg.execute(LOG_DDL);
+    seed("t1", "n", "c");
+    UseCase<Remove, ThingEvent> note =
+        UseCase.named("note-thing", Remove.class, ThingEvent.class)
+            .authorize(Authorize.PUBLIC)
+            .execute(
+                (c, cmd) -> {
+                  Thing t = Thing.create(new ThingId(cmd.id()), c.client(), "n", "c");
+                  return Plan.emit(eventFor(c, THING_CHANGED, t)).andAppend(new LogLine(cmd.id(), "noted"), LOG);
+                });
+
+    committed(useCases.run(note, ctx(acme), new Remove("t1")));
+
+    assertThat(logLines()).containsExactly("t1/noted/1");
+    AuditEntry audit = sink.audits.getFirst();
+    assertThat(audit.entityType()).isEqualTo("thing");
+    assertThat(audit.entityId()).isEqualTo("t1");
+  }
+
   // ---- phases ------------------------------------------------------------------------------
 
   @Test

@@ -8,6 +8,7 @@ import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.database.PostgresFixture;
 import io.flowcatalyst.framework.flowcatalyst.DefinitionSync;
 import io.flowcatalyst.framework.flowcatalyst.FakePlatform;
+import io.flowcatalyst.framework.flowcatalyst.ReceiverTesting;
 import io.flowcatalyst.framework.http.ContextResolver;
 import io.flowcatalyst.framework.http.Routes;
 import io.flowcatalyst.framework.http.TestClient;
@@ -134,25 +135,9 @@ class TicketsPlatformTest {
                 + "' ORDER BY created_at DESC, id DESC LIMIT 1"));
   }
 
-  /** What the platform delivers to a subscription for an event: the envelope around the row's data. */
-  String envelopeOf(JsonNode event, String jobId, String clientCode) {
-    Map<String, Object> envelope = new java.util.LinkedHashMap<>();
-    envelope.put("id", jobId);
-    envelope.put("type", event.get("type").asString());
-    envelope.put("attemptNumber", 1);
-    envelope.put("source", event.get("source").asString());
-    envelope.put("subject", event.get("subject").asString());
-    envelope.put("correlationId", event.get("correlationId").asString());
-    envelope.put("messageGroup", event.get("messageGroup").asString());
-    envelope.put("clientId", "clt_" + clientCode);
-    envelope.put("clientCode", clientCode);
-    envelope.put("data", JSON.readTree(event.get("data").asString()));
-    return JSON.writeValueAsString(envelope);
-  }
-
-  TestResponse deliverAssignment(JsonNode event, String jobId, String clientCode) {
-    return Deliveries.dispatch(
-        client, now.get(), jobId, event.get("type").asString(), "clt_" + clientCode + ":" + clientCode, envelopeOf(event, jobId, clientCode));
+  /** What the platform delivers to a subscription for an event row, signed (the framework's helper). */
+  TestResponse deliverAssignment(JsonNode event, String jobId) {
+    return ReceiverTesting.deliver(client, Deliveries.SECRET, now.get(), ReceiverTesting.Delivery.ofEvent(event.toString(), jobId));
   }
 
   // ---- the definition sync ---------------------------------------------------------------------
@@ -200,7 +185,7 @@ class TicketsPlatformTest {
     String id = open(person("acme", "prn_ada", "requester"), "Printer on fire", "HIGH");
     assign(agent, id, "agent_7");
 
-    TestResponse r = deliverAssignment(eventRow("tickets-trial:support:ticket:assigned"), "dj_0HZXEQ5Y8JY5Z", "acme");
+    TestResponse r = deliverAssignment(eventRow("tickets-trial:support:ticket:assigned"), "dj_0HZXEQ5Y8JY5Z");
 
     assertThat(r.status()).isEqualTo(200);
     assertThat(r.body()).isEqualTo("{\"ack\":true}");
@@ -221,7 +206,7 @@ class TicketsPlatformTest {
     String id = open(person("acme", "prn_ada", "requester"), "Mine", "LOW");
     assign(person("acme", "agent_1", "agent"), id, "agent_1");
 
-    TestResponse r = deliverAssignment(eventRow("tickets-trial:support:ticket:assigned"), "dj_1", "acme");
+    TestResponse r = deliverAssignment(eventRow("tickets-trial:support:ticket:assigned"), "dj_1");
 
     assertThat(r.status()).isEqualTo(200);
     assertThat(r.body()).isEqualTo("{\"ack\":true}");
@@ -233,7 +218,7 @@ class TicketsPlatformTest {
     String id = open(person("globex", "prn_gus", "requester"), "Globex printer", "LOW");
     assign(person("globex", "agent_g", "agent"), id, "agent_g2");
 
-    TestResponse r = deliverAssignment(eventRow("tickets-trial:support:ticket:assigned"), "dj_2", "globex");
+    TestResponse r = deliverAssignment(eventRow("tickets-trial:support:ticket:assigned"), "dj_2");
 
     assertThat(r.status()).isEqualTo(422);
     assertThat(r.header("FlowCatalyst-Outcome")).isEqualTo("reject");
@@ -248,13 +233,13 @@ class TicketsPlatformTest {
     JsonNode event = eventRow("tickets-trial:support:ticket:assigned");
 
     notifier.answer(500);
-    assertThat(deliverAssignment(event, "dj_3", "acme").status()).isEqualTo(503); // the platform retries it
+    assertThat(deliverAssignment(event, "dj_3").status()).isEqualTo(503); // the platform retries it
     notifier.answer(400);
-    TestResponse refused = deliverAssignment(event, "dj_4", "acme");
+    TestResponse refused = deliverAssignment(event, "dj_4");
     assertThat(refused.status()).isEqualTo(422);
     assertThat(refused.body()).contains("400").doesNotContain(ACME_KEY);
     notifier.answer(202);
-    assertThat(deliverAssignment(event, "dj_5", "acme").status()).isEqualTo(200);
+    assertThat(deliverAssignment(event, "dj_5").status()).isEqualTo(200);
   }
 
   @Test
@@ -276,7 +261,7 @@ class TicketsPlatformTest {
     String acmeLow = open(person("acme", "prn_ada", "requester"), "Acme low", "LOW"); // due in two days
 
     now.set(now.get().plus(Duration.ofMinutes(61)));
-    TestResponse fired = Deliveries.fire(client, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_1");
+    TestResponse fired = ReceiverTesting.fire(client, Deliveries.SECRET, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_1");
     assertThat(fired.status()).isEqualTo(202);
 
     JsonNode completion = platform.awaitInstanceCalls("complete", 1, 10_000).getFirst().json();
@@ -293,7 +278,7 @@ class TicketsPlatformTest {
     assertThat(breach.toString()).contains(FakePlatform.SERVICE_PRINCIPAL);
 
     // A second firing finds nothing left to do.
-    assertThat(Deliveries.fire(client, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_2").status()).isEqualTo(202);
+    assertThat(ReceiverTesting.fire(client, Deliveries.SECRET, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_2").status()).isEqualTo(202);
     JsonNode second = platform.awaitInstanceCalls("complete", 2, 10_000).get(1).json();
     assertThat(second.toString()).contains("\"flagged\":0");
     assertThat(pg.query("SELECT count(*) FROM outbox_messages WHERE payload::jsonb ->> 'type' = 'tickets-trial:support:ticket:sla-breached'")).isEqualTo("2");
@@ -307,7 +292,7 @@ class TicketsPlatformTest {
     var held = store.tryAcquire(io.flowcatalyst.framework.locks.LockKey.service("scheduled-job:sla-sweep"), Duration.ofMinutes(1));
     assertThat(held).isInstanceOf(io.flowcatalyst.framework.locks.AcquireResult.Acquired.class);
 
-    assertThat(Deliveries.fire(client, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_locked").status()).isEqualTo(202);
+    assertThat(ReceiverTesting.fire(client, Deliveries.SECRET, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_locked").status()).isEqualTo(202);
 
     JsonNode completion = platform.awaitInstanceCalls("complete", 1, 10_000).getFirst().json();
     assertThat(completion.toString()).contains("lock-held");
@@ -320,7 +305,7 @@ class TicketsPlatformTest {
     open(person("acme", "prn_ada", "requester"), "A", "URGENT");
     open(person("globex", "prn_gus", "requester"), "B", "LOW");
     now.set(now.get().plus(Duration.ofMinutes(61)));
-    Deliveries.fire(client, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_g");
+    ReceiverTesting.fire(client, Deliveries.SECRET, now.get(), TicketsDefinitionsModule.SLA_SWEEP, "si_g");
     platform.awaitInstanceCalls("complete", 1, 10_000);
 
     Metrics metrics = app.get(Metrics.class);

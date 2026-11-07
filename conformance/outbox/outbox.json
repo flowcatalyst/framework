@@ -281,7 +281,9 @@
       "maxRetries" : 4,
       "metadata" : [ [ "tenant", "acme" ], [ "attempt", "1" ] ],
       "queue" : "HIGH_PRIORITY",
-      "descriptor" : "export one invoice"
+      "descriptor" : "export one invoice",
+      "connectionId" : "con_0ABCDEFGH01",
+      "idempotencyKey" : "export:inv_9"
     }, {
       "id" : "job-text",
       "code" : "shop:notify",
@@ -333,7 +335,7 @@
       "status" : 0,
       "retry_count" : 0,
       "client_id" : "acme",
-      "payload_size" : 234,
+      "payload_size" : 254,
       "headers" : null,
       "error_message" : null,
       "created_at" : "2026-10-08T10:15:31.500000Z",
@@ -347,9 +349,10 @@
         "payload" : "{}",
         "payloadContentType" : "application/json",
         "dataOnly" : false,
-        "correlationId" : "corr-3"
+        "correlationId" : "corr-3",
+        "clientCode" : "acme"
       },
-      "payloadText" : "{\"id\":\"job-defaults\",\"kind\":\"TASK\",\"code\":\"shop:billing:export-invoice\",\"source\":\"shop\",\"targetUrl\":\"https://billing.example.com/export\",\"payload\":\"{}\",\"payloadContentType\":\"application/json\",\"dataOnly\":false,\"correlationId\":\"corr-3\"}"
+      "payloadText" : "{\"id\":\"job-defaults\",\"kind\":\"TASK\",\"code\":\"shop:billing:export-invoice\",\"source\":\"shop\",\"targetUrl\":\"https://billing.example.com/export\",\"payload\":\"{}\",\"payloadContentType\":\"application/json\",\"dataOnly\":false,\"correlationId\":\"corr-3\",\"clientCode\":\"acme\"}"
     }, {
       "id" : "job-full",
       "type" : "DISPATCH_JOB",
@@ -357,7 +360,7 @@
       "status" : 0,
       "retry_count" : 0,
       "client_id" : "acme",
-      "payload_size" : 705,
+      "payload_size" : 770,
       "headers" : null,
       "error_message" : null,
       "created_at" : "2026-10-08T10:15:31.500000Z",
@@ -392,9 +395,11 @@
           "value" : "1"
         } ],
         "queue" : "HIGH_PRIORITY",
-        "descriptor" : "export one invoice"
+        "descriptor" : "export one invoice",
+        "connectionId" : "con_0ABCDEFGH01",
+        "idempotencyKey" : "export:inv_9"
       },
-      "payloadText" : "{\"id\":\"job-full\",\"kind\":\"EVENT\",\"code\":\"shop:billing:export-invoice\",\"source\":\"shop:billing\",\"subject\":\"billing.invoice.inv_9\",\"targetUrl\":\"https://billing.example.com/export?x=1\",\"payload\":\"{\\\"invoiceId\\\":\\\"inv_9\\\",\\\"amounts\\\":[1,2]}\",\"payloadContentType\":\"application/json\",\"dataOnly\":true,\"externalId\":\"ext-1\",\"eventId\":\"0ABCDEFGHJKMR\",\"correlationId\":\"corr-3\",\"clientId\":\"0CLIENT0000001\",\"subscriptionId\":\"sub_1\",\"serviceAccountId\":\"sa_1\",\"dispatchPoolId\":\"pool_1\",\"messageGroup\":\"invoice:inv_9\",\"mode\":\"BLOCK_ON_ERROR\",\"sequence\":2,\"timeoutSeconds\":15,\"maxRetries\":4,\"metadata\":[{\"key\":\"tenant\",\"value\":\"acme\"},{\"key\":\"attempt\",\"value\":\"1\"}],\"queue\":\"HIGH_PRIORITY\",\"descriptor\":\"export one invoice\"}"
+      "payloadText" : "{\"id\":\"job-full\",\"kind\":\"EVENT\",\"code\":\"shop:billing:export-invoice\",\"source\":\"shop:billing\",\"subject\":\"billing.invoice.inv_9\",\"targetUrl\":\"https://billing.example.com/export?x=1\",\"payload\":\"{\\\"invoiceId\\\":\\\"inv_9\\\",\\\"amounts\\\":[1,2]}\",\"payloadContentType\":\"application/json\",\"dataOnly\":true,\"externalId\":\"ext-1\",\"eventId\":\"0ABCDEFGHJKMR\",\"correlationId\":\"corr-3\",\"clientId\":\"0CLIENT0000001\",\"subscriptionId\":\"sub_1\",\"serviceAccountId\":\"sa_1\",\"dispatchPoolId\":\"pool_1\",\"messageGroup\":\"invoice:inv_9\",\"mode\":\"BLOCK_ON_ERROR\",\"sequence\":2,\"timeoutSeconds\":15,\"maxRetries\":4,\"metadata\":[{\"key\":\"tenant\",\"value\":\"acme\"},{\"key\":\"attempt\",\"value\":\"1\"}],\"queue\":\"HIGH_PRIORITY\",\"descriptor\":\"export one invoice\",\"connectionId\":\"con_0ABCDEFGH01\",\"idempotencyKey\":\"export:inv_9\"}"
     }, {
       "id" : "job-text",
       "type" : "DISPATCH_JOB",
@@ -402,7 +407,7 @@
       "status" : 0,
       "retry_count" : 0,
       "client_id" : "acme",
-      "payload_size" : 208,
+      "payload_size" : 228,
       "headers" : null,
       "error_message" : null,
       "created_at" : "2026-10-08T10:15:31.500000Z",
@@ -416,9 +421,10 @@
         "payload" : "hello",
         "payloadContentType" : "text/plain",
         "dataOnly" : false,
-        "correlationId" : "corr-3"
+        "correlationId" : "corr-3",
+        "clientCode" : "acme"
       },
-      "payloadText" : "{\"id\":\"job-text\",\"kind\":\"TASK\",\"code\":\"shop:notify\",\"source\":\"shop\",\"targetUrl\":\"http://hooks.example.com:8080/n\",\"payload\":\"hello\",\"payloadContentType\":\"text/plain\",\"dataOnly\":false,\"correlationId\":\"corr-3\"}"
+      "payloadText" : "{\"id\":\"job-text\",\"kind\":\"TASK\",\"code\":\"shop:notify\",\"source\":\"shop\",\"targetUrl\":\"http://hooks.example.com:8080/n\",\"payload\":\"hello\",\"payloadContentType\":\"text/plain\",\"dataOnly\":false,\"correlationId\":\"corr-3\",\"clientCode\":\"acme\"}"
     }, {
       "id" : "<tsid>",
       "type" : "AUDIT_LOG",
@@ -442,6 +448,116 @@
         "clientCode" : "acme"
       },
       "payloadText" : "{\"entityType\":\"Invoice\",\"entityId\":\"inv_9\",\"operation\":\"cancel-invoice\",\"principalId\":\"user-1\",\"performedAt\":\"2026-10-08T10:15:31.500Z\",\"source\":\"shop:billing\",\"correlationId\":\"corr-3\",\"clientCode\":\"acme\"}"
+    } ]
+  }, {
+    "name" : "dispatch jobs in the platform's context: no clientCode",
+    "now" : "2026-10-08T10:15:32Z",
+    "context" : {
+      "client" : "_platform",
+      "principal" : "svc-1",
+      "correlation" : "corr-4"
+    },
+    "events" : [ {
+      "kind" : "cancelled",
+      "eventId" : "0ABCDEFGHJKMS",
+      "type" : "shop:billing:invoice:cancelled",
+      "subjectId" : "inv_10",
+      "fields" : {
+        "orderId" : "ord_10",
+        "reason" : "sweep"
+      }
+    } ],
+    "dispatchJobs" : [ {
+      "id" : "job-platform",
+      "code" : "shop:billing:sweep",
+      "targetUrl" : "https://billing.example.com/sweep",
+      "idempotencyKey" : "sweep:2026-10-08"
+    } ],
+    "audit" : {
+      "entityType" : "Invoice",
+      "entityId" : "inv_10",
+      "operation" : "sweep-invoices",
+      "source" : "shop:billing"
+    },
+    "rows" : [ {
+      "id" : "0ABCDEFGHJKMS",
+      "type" : "EVENT",
+      "message_group" : "billing:invoice:inv_10",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "_platform",
+      "payload_size" : 353,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:32.000000Z",
+      "updated_at" : "2026-10-08T10:15:32.000000Z",
+      "payload" : {
+        "specVersion" : "1.0",
+        "type" : "shop:billing:invoice:cancelled",
+        "source" : "shop:billing",
+        "subject" : "billing.invoice.inv_10",
+        "data" : {
+          "orderId" : "ord_10",
+          "reason" : "sweep"
+        },
+        "correlationId" : "corr-4",
+        "deduplicationId" : "0ABCDEFGHJKMS",
+        "messageGroup" : "billing:invoice:inv_10",
+        "clientCode" : "_platform",
+        "contextData" : [ {
+          "key" : "principalId",
+          "value" : "svc-1"
+        } ]
+      },
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:billing:invoice:cancelled\",\"source\":\"shop:billing\",\"subject\":\"billing.invoice.inv_10\",\"data\":\"{\\\"orderId\\\":\\\"ord_10\\\",\\\"reason\\\":\\\"sweep\\\"}\",\"correlationId\":\"corr-4\",\"deduplicationId\":\"0ABCDEFGHJKMS\",\"messageGroup\":\"billing:invoice:inv_10\",\"clientCode\":\"_platform\",\"contextData\":[{\"key\":\"principalId\",\"value\":\"svc-1\"}]}"
+    }, {
+      "id" : "job-platform",
+      "type" : "DISPATCH_JOB",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "_platform",
+      "payload_size" : 260,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:32.000000Z",
+      "updated_at" : "2026-10-08T10:15:32.000000Z",
+      "payload" : {
+        "id" : "job-platform",
+        "kind" : "TASK",
+        "code" : "shop:billing:sweep",
+        "source" : "shop",
+        "targetUrl" : "https://billing.example.com/sweep",
+        "payload" : "{}",
+        "payloadContentType" : "application/json",
+        "dataOnly" : false,
+        "correlationId" : "corr-4",
+        "idempotencyKey" : "sweep:2026-10-08"
+      },
+      "payloadText" : "{\"id\":\"job-platform\",\"kind\":\"TASK\",\"code\":\"shop:billing:sweep\",\"source\":\"shop\",\"targetUrl\":\"https://billing.example.com/sweep\",\"payload\":\"{}\",\"payloadContentType\":\"application/json\",\"dataOnly\":false,\"correlationId\":\"corr-4\",\"idempotencyKey\":\"sweep:2026-10-08\"}"
+    }, {
+      "id" : "<tsid>",
+      "type" : "AUDIT_LOG",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "_platform",
+      "payload_size" : 206,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:32.000000Z",
+      "updated_at" : "2026-10-08T10:15:32.000000Z",
+      "payload" : {
+        "entityType" : "Invoice",
+        "entityId" : "inv_10",
+        "operation" : "sweep-invoices",
+        "principalId" : "svc-1",
+        "performedAt" : "2026-10-08T10:15:32Z",
+        "source" : "shop:billing",
+        "correlationId" : "corr-4",
+        "clientCode" : "_platform"
+      },
+      "payloadText" : "{\"entityType\":\"Invoice\",\"entityId\":\"inv_10\",\"operation\":\"sweep-invoices\",\"principalId\":\"svc-1\",\"performedAt\":\"2026-10-08T10:15:32Z\",\"source\":\"shop:billing\",\"correlationId\":\"corr-4\",\"clientCode\":\"_platform\"}"
     } ]
   } ],
   "invalidDispatchJobs" : [ {
@@ -495,5 +611,20 @@
     "payloadText" : "x",
     "contentType" : "",
     "error" : "payloadContentType must be 1 to 100 characters"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "idempotencyKey" : " ",
+    "error" : "idempotencyKey must not be blank and at most 100 bytes (UTF-8)"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "idempotencyKey" : "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+    "error" : "idempotencyKey must not be blank and at most 100 bytes (UTF-8)"
+  }, {
+    "code" : "shop:x",
+    "targetUrl" : "https://a.example.com",
+    "connectionId" : "con 1",
+    "error" : "connectionId must match [0-9A-Za-z_-]{1,17}"
   } ]
 }

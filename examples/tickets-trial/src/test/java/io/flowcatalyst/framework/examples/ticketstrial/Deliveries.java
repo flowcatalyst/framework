@@ -1,14 +1,10 @@
 package io.flowcatalyst.framework.examples.ticketstrial;
 
-import io.flowcatalyst.framework.flowcatalyst.ReceiverTesting;
-import io.flowcatalyst.framework.http.TestClient;
-import io.flowcatalyst.framework.http.TestResponse;
-import java.time.Instant;
-
 /**
- * What the platform sends to the receivers, signed the way it signs (the framework's {@link
- * ReceiverTesting}), with the secret and the firing's JSON of this service's tests. Until the
- * framework published that helper this class carried its own HMAC (friction log F12).
+ * The signing secret this service's tests configure for the receivers. What the platform sends,
+ * signed, comes from the framework's {@code ReceiverTesting} ({@code Delivery.ofEvent}, {@code
+ * deliver}, {@code fire}, {@code firingBody}, {@code headers}); this class carried its own copies
+ * until the framework published them (friction log F12, then fulfil-go fixes A7).
  */
 final class Deliveries {
 
@@ -16,33 +12,4 @@ final class Deliveries {
   static final String SECRET = "whsec-tickets-test-only";
 
   private Deliveries() {}
-
-  static String sign(String timestamp, String body) {
-    return ReceiverTesting.signature(SECRET, timestamp, body);
-  }
-
-  /** A dispatch job for a client, as the platform delivers an event to a subscription. */
-  static TestResponse dispatch(TestClient client, Instant now, String jobId, String type, String clientHeader, String envelope) {
-    return ReceiverTesting.dispatch(client, SECRET, now, jobId, type, clientHeader, envelope);
-  }
-
-  /** The body of a scheduled-job firing, as the platform posts it. */
-  static String firingBody(Instant now, String jobCode, String instanceId) {
-    return "{\"jobId\":\"sj_1\",\"jobCode\":\""
-        + jobCode
-        + "\",\"instanceId\":\""
-        + instanceId
-        + "\",\"scheduledFor\":\""
-        + now.toString()
-        + "\",\"firedAt\":\""
-        + now.toString()
-        + "\",\"triggerKind\":\"CRON\",\"correlationId\":\"corr-"
-        + instanceId
-        + "\",\"tracksCompletion\":true,\"concurrent\":false}";
-  }
-
-  /** A scheduled-job firing, as the platform posts it. */
-  static TestResponse fire(TestClient client, Instant now, String jobCode, String instanceId) {
-    return ReceiverTesting.scheduledJob(client, SECRET, now, firingBody(now, jobCode, instanceId));
-  }
 }

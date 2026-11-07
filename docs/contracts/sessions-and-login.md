@@ -909,11 +909,12 @@ also needs the access token (`ath`), and is limited to the same method and URL.
 |---|---|
 | `principal` | `sub` (`fwu_...`) |
 | principal kind | `FIELD_WORKER` (core contract section 3, amended 2026-11-03) |
-| `client` | `client_identifier`. *Amends 7.3:* the application's client selector is **not** consulted. A field worker belongs to exactly one client, and the token names it |
+| `client` | `client_identifier`. A field worker belongs to exactly one client, and the token names it. *Amended 2026-11-07 (fulfil-go fixes A5; before, the selector was not consulted at all):* the application's client selector **is** consulted, with the worker as a principal that has no `clients`; when it names a client other than the worker's (by identifier or by `clt_` id) and other than `_platform`, the request is refused `403 CLIENT_NOT_PERMITTED` (with the `DPoP-Nonce`), the same answer a user of another client gets. `_platform` or the worker's own client leaves the token's client. The check runs before the field permission resolver |
 | `application` | `aud` |
 | `permissions` | the field permission mapping (below) |
 | correlation id | the request's |
 | actor | `act`, when present (*added 2026-11-06*): the operator behind the worker. The `principal` stays the worker, the **subject** (core contract section 3 and write-path section 7 say where the operator is recorded) |
+| subject name | `name`, when present (*added 2026-11-07*, core contract section 3): the worker's display name, never the actor's. A session or bearer principal's `name`, when its token carries one, fills it the same way |
 
 `Authenticated` gains the source `FIELD` and a field part, `FieldPrincipal`: `workerId`,
 `workerCode`, `name`, `clientId` (`clt_...`), `clientIdentifier`, `appCode`, `deviceId`,
@@ -1043,7 +1044,9 @@ Every refusal in 15.2 and 15.3, over real HTTP routes:
   previous cookie key that is still configured (accepted).
 - `use_dpop_nonce` and its `DPoP-Nonce` header.
 - `pcr` answered with `403 PIN_CHANGE_REQUIRED`.
-- The client selector ignored.
+- The client selector consulted: a path naming another client is `403 CLIENT_NOT_PERMITTED`, the
+  worker's own client (identifier or id) and `_platform` keep the token's client (2026-11-07; before,
+  "the client selector ignored").
 - The default mapping gives no permissions, and both helpers.
 - `RequireSource`.
 - `RequireLiveField`: active, inactive, platform down giving 503, and the per-`sid` cache.
