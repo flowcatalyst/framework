@@ -58,7 +58,8 @@ type site struct {
 
 // startSite runs a server whose POST /orders (and /other) handler counts its runs and answers 201
 // with the run number; a body {"fail":true} is answered 400, {"conflict":true} 409 (written by the
-// handler), {"panic":true} panics.
+// handler), {"panic":true} panics, {"stream":true} streams a 200 (flushed through http.ResponseController
+// before it ends; {"stream":"flusher"} through http.Flusher).
 func startSite(t *testing.T, opts ...idempotency.Option) *site {
 	t.Helper()
 	s := &site{clock: fwtest.NewClock(time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC))}
@@ -98,6 +99,18 @@ func startSite(t *testing.T, opts ...idempotency.Option) *site {
 			if body["conflict"] == true { // a refusal written by the handler itself, not returned
 				w.WriteHeader(http.StatusConflict)
 				return nil
+			}
+			if body["stream"] != nil {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusOK)
+				_, _ = fmt.Fprintf(w, "run %d, part 1\n", n)
+				if f, ok := w.(http.Flusher); ok && body["stream"] == "flusher" {
+					f.Flush()
+				} else if err := http.NewResponseController(w).Flush(); err != nil {
+					return err
+				}
+				_, err = fmt.Fprintf(w, "run %d, part 2\n", n)
+				return err
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Location", fmt.Sprintf("/orders/%d", n))
@@ -263,6 +276,23 @@ func TestAFailedOrPanickedRequestFreesItsKey(t *testing.T) {
 	}
 	if r := s.post(t, "/orders", "acme", "usr_1", "k-p", `{"n":1}`); r.status != 201 {
 		t.Fatalf("after a panic the key is free: %d %s", r.status, r.body)
+	}
+}
+
+// A streamed answer is not kept (it is not one body to replay): the key is freed, so a repeat runs
+// the handler again, as in Java (HTTP contract 13.6).
+func TestAStreamedAnswerIsNotKeptAndFreesItsKey(t *testing.T) {
+	t.Parallel()
+	s := startSite(t)
+	for i, how := range []string{`true`, `"flusher"`} {
+		key, req := "k-s-"+how, `{"stream":`+how+`}`
+		for run := 2*i + 1; run <= 2*i+2; run++ {
+			a := s.post(t, "/orders", "acme", "usr_1", key, req)
+			want := fmt.Sprintf("run %d, part 1\nrun %d, part 2\n", run, run)
+			if a.status != 200 || a.body != want || a.header.Get(idempotency.ReplayedHeader) != "" {
+				t.Fatalf("%s, run %d: %d %q %v", how, run, a.status, a.body, a.header)
+			}
+		}
 	}
 }
 

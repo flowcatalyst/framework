@@ -450,6 +450,9 @@ APIs:
   `idempotency.in-flight-timeout` and prunes in batches of 1000. Both stores pass the shared
   `IdempotencyStoreContract`.
 
-Differences that remain: Go keeps whatever a `2xx` handler wrote, streamed or not; Java frees the key
-when the answer is a streamed body (`Response.Body.Stream`), so it is not kept. Go's timings are code
-options, Java's are settings of the database module (or `Options` in code).
+A streamed answer is never kept, in either language: the key is freed, so a repeat runs again (Go: the
+handler flushed before it returned, through `http.ResponseController` or `http.Flusher`; Java: a
+`Response.Body.Stream` body). Aligned 2026-11-07.
+
+Difference that remains: Go's timings are code options, Java's are settings of the database module
+(or `Options` in code).

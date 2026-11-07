@@ -140,7 +140,8 @@ type scope struct{ client, principal, key string }
 //
 //   - the first takes the key; when it succeeds (2xx) its status, Content-Type and body are kept,
 //     and when it fails (an error, a status of 300 or more, a panic) the key is freed, so a retry
-//     does the work;
+//     does the work. A streamed answer (one the handler flushed before it returned) is not kept
+//     either: the key is freed, so a repeat runs again;
 //   - a repeat with the same method, path, query and body gets the kept answer, with
 //     Idempotency-Replayed: true; a repeat that arrives while the first runs waits for it (Wait),
 //     then gets its answer, or 409 IDEMPOTENCY_IN_PROGRESS when the wait runs out;
@@ -260,7 +261,7 @@ func (k *Keys) first(w http.ResponseWriter, r *http.Request, next httpfw.Handler
 				slog.String("error", err.Error()))
 		}
 	}()
-	if err := next(rec, r); err != nil || rec.status >= http.StatusMultipleChoices {
+	if err := next(rec, r); err != nil || rec.status >= http.StatusMultipleChoices || rec.streamed {
 		return err
 	}
 	if err := k.complete(context.WithoutCancel(r.Context()), sc, token, rec); err != nil {
@@ -338,12 +339,13 @@ DELETE FROM fw_idempotency_keys
 	return err
 }
 
-// recorder keeps the answer while writing it.
+// recorder keeps the answer while writing it. A flush marks the answer streamed.
 type recorder struct {
 	http.ResponseWriter
-	status int
-	wrote  bool
-	body   bytes.Buffer
+	status   int
+	wrote    bool
+	streamed bool
+	body     bytes.Buffer
 }
 
 func (r *recorder) WriteHeader(status int) {
@@ -358,6 +360,15 @@ func (r *recorder) Write(b []byte) (int, error) {
 	r.body.Write(b)
 	return r.ResponseWriter.Write(b)
 }
+
+// FlushError is what http.ResponseController.Flush calls: the answer is streamed.
+func (r *recorder) FlushError() error {
+	r.streamed = true
+	return http.NewResponseController(r.ResponseWriter).Flush()
+}
+
+// Flush is the http.Flusher form of FlushError.
+func (r *recorder) Flush() { _ = r.FlushError() }
 
 // Unwrap lets http.ResponseController reach the real writer.
 func (r *recorder) Unwrap() http.ResponseWriter { return r.ResponseWriter }

@@ -290,7 +290,8 @@ rt.Handle("POST /orders", handler, httpfw.RequiresContext(), httpfw.With(keys.Mi
 ```
 
 - The first request takes the key. A success (2xx) keeps its answer; an error, a status of 300 or
-  more, or a panic frees the key, so a retry does the work.
+  more, or a panic frees the key, so a retry does the work. A streamed answer (the handler flushed
+  before it returned) is not kept either: its key is freed, so a repeat runs again.
 - A repeat with the same method, path, query and body gets the kept answer. One that arrives while
   the first still runs waits for it (`idempotency.Wait`, default 10 s) and gets its answer, or `409
   IDEMPOTENCY_IN_PROGRESS` when the wait runs out: two concurrent requests run the handler once.
