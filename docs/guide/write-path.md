@@ -1,4 +1,4 @@
-<!-- types: Load, LoadedCheck, LoadedExecute, DispatchJob, Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet -->
+<!-- types: Appender, Load, LoadedCheck, LoadedExecute, DispatchJob, Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet -->
 # The write path
 
 All behaviour that changes data goes through a **use case**. A use case validates, authorizes,
@@ -163,6 +163,23 @@ private static final Check<Object> PRINCIPAL_REQUIRED =
 There is **no built-in permission model** (roles and permissions arrive with login and sessions;
 see [STATUS](STATUS.md)). Authorize is your own check of the `Context`.
 
+Two checks ship with the framework. `Authorize.PUBLIC` declares an operation open to anyone.
+`Authorize.SERVICE` grants only a service principal (`PrincipalKind.SERVICE`: the receivers'
+contexts, and `Context.ofService(client, principal)` for an inbound webhook the application
+verified itself), and refuses everyone else with `AUTHORIZATION` / `SERVICE_REQUIRED`; inside your
+own check, `Authorize.requireService(context)` returns the same `Optional<UseCaseError>`
+(`UseCaseDefinitionTest`):
+
+```java
+UseCase.named("record-delivery", RecordDelivery.class, DeliveryRecorded.class)
+    .authorize(Authorize.SERVICE)            // a courier's webhook, never a person
+    .execute(...);
+
+// in the webhook handler, after checking the provider's signature:
+Context ctx = Context.ofService(new ClientId("acme"), new PrincipalId("svc:courier-webhook"));
+useCases.run(recordDelivery, ctx, command);
+```
+
 ### A rule that needs the record: `load` and `authorizeLoaded`
 
 `authorize` is permission-level: it sees the command and the context, not the stored record. A rule that
@@ -201,9 +218,50 @@ written) or a `Plan`:
 - `.andSave(...)`, `.andDelete(...)`, `.andEmit(event)` add further steps.
 - `.andDispatch(DispatchJob)` adds a dispatch job for the platform, written to the outbox in the
   same transaction ([Dispatch jobs](#dispatch-jobs)).
+- `.andAppend(row, appender)` adds an append-only row, written in the same transaction
+  ([Append-only rows](#append-only-rows)).
 
 Every plan carries at least one event; the **first is the use case's result**. Events are written
 in step order. `Plan.save` is generic in the aggregate type, so the repository must match it.
+
+### Append-only rows
+
+Some rows are only ever inserted: an activity log line, a live-update record, a projection row.
+They are not aggregates (nobody loads, changes or deletes them), so they need no version, produce no
+event and must not become the audit row's subject. Write them with an `Appender<R>`, a function
+`void append(Tx tx, R row) throws SQLException`, and add them to the plan (`RunnerTest`):
+
+```java
+static final Appender<LogLine> LOG =
+    (tx, line) -> {
+      try (var st = tx.connection().prepareStatement("INSERT INTO thing_log (thing_id, note, things_then) SELECT ?, ?, count(*) FROM thing")) {
+        st.setString(1, line.thingId());
+        st.setString(2, line.note());
+        st.executeUpdate();
+      }
+    };
+
+return Plan.save(a, repo, eventFor(c, THING_CREATED, a))
+    .andAppend(new LogLine(a.id().value(), cmd.name() + "-a"), LOG)
+    .andSave(b, repo, eventFor(c, THING_CREATED, b))
+    .andAppend(new LogLine(b.id().value(), cmd.name() + "-b"), LOG);
+```
+
+- An append is written **in plan order**: right after the steps added before it (so it may refer
+  to an aggregate the plan just inserted) and before the steps added after it, in the attempt's
+  transaction. A failed attempt rolls it back with everything else; a retried one writes it again.
+- It is never version-checked (the runner ignores what the appender did) and never the audit row's
+  subject: the audit row still names the plan's first aggregate, or the first event's subject.
+- A plan still needs at least one step, the use case's result event; appends alone are not a plan
+  (`new Plan<>(...)` with appends and no step throws `IllegalArgumentException`, and `andAppend` is
+  only offered on a plan that already has a step).
+- A throwing appender fails the attempt like a repository: `UNIQUE_VIOLATION` for a unique
+  constraint, otherwise `INTERNAL` / `PERSIST`.
+
+**Append or aggregate?** If the application ever updates or deletes the row, or a rule reads it to
+decide, it is an aggregate (with a version). If it is written once and only read by screens,
+reports or other services, append it. Do not fake an append-only row as an insert-only aggregate:
+it would need a version column, and placing it first would make it the audit row's subject.
 
 ## 4. Running a use case
 
@@ -250,6 +308,25 @@ again from step 1**, up to `n` attempts in total (2 to 10), waiting `backoff` ra
 half and one and a half times its value; when attempts run out the result is `CONFLICT` /
 `STALE_AGGREGATE`. Choose per use case: adding a line is safe to repeat on fresh state, so it
 retries; a cancellation made on a stale view is for the caller to decide again, so it fails.
+
+**The default is `fail()`.** A use case that does not call `.conflict(...)` gives up at the first
+conflict. That suits a person editing a form: they get `409 STALE_AGGREGATE`, reload and decide
+again. It rarely suits a use case that a **receiver** (a dispatch or scheduled-job handler) or a
+process step runs: nobody is there to reload, and a concurrent request or another delivery touching
+the same aggregate fails the attempt where running it again on fresh state would have succeeded.
+Those use cases usually want `retry`; opt in where you define them (abridged from `OrderUseCases`,
+whose `Policies.defaults()` give adding a line `ConflictPolicy.retry(3, Duration.ofMillis(25))`):
+
+```java
+UseCase.named("add-line", AddLine.class, OrderLineAdded.class)
+    .validate(...)
+    .authorize(PRINCIPAL_REQUIRED)
+    .conflict(ConflictPolicy.retry(3, Duration.ofMillis(25)))   // without this line: ConflictPolicy.fail()
+    .execute(...);
+```
+
+A handler that still gets `CONFLICT` after the attempts can answer `DispatchResult.defer()` so the
+platform delivers the job again later.
 
 ### Errors
 
@@ -400,16 +477,34 @@ DispatchJob.builder("orders:billing:export", TARGET)
 - `id(...)` sets the job id (at most 17 characters); otherwise one is generated. The id travels in
   the payload, so if the processor sends a batch twice the platform gets the same id and your
   receiver's `DispatchDelivery.once` runs the work once ([Receivers](receivers.md)).
-- **No client by default.** `platformClientId(...)` takes the platform's id of the client, not
-  your `ClientId` (an identifier the platform's dispatch-jobs endpoint does not resolve). Without
-  it the platform treats the job as platform-scoped and uses its default pool; the receiver then
-  sees no `X-FlowCatalyst-Client`. Resolving client codes there is platform work.
+- **The context's client.** A job made in a client's context carries that client: the writer sends
+  the `ClientId` as the item's `clientCode`, the platform resolves it to the client, and delivers
+  the job with `X-FlowCatalyst-Client`, so the [receiver](receivers.md#who-runs-the-handler) runs
+  it as that client (`ReceiverOutboxTest` follows one job from a use case in client `acme`'s context
+  to the receiving use case, whose context is `acme`). No `clientCode` is written when the context
+  is `ClientId.PLATFORM` (`_platform`, a scheduled job's context: the job is platform-scoped) or when
+  `platformClientId(...)` names the platform's id of the client explicitly, which wins. The code must
+  be a client the platform knows and the application's service account may write for, as for the
+  events of the same use case; otherwise the platform refuses the whole batch (`400
+  CLIENT_NOT_FOUND` for an anchor account, `403` otherwise) and the row stays undelivered.
+- **Idempotency.** `idempotencyKey(key)` (not blank, at most 100 bytes) makes the create
+  idempotent: the platform keeps a key for 7 days, scoped by the application (the code's first
+  segment) and the client, and answers a later item with the same key with the first job's id,
+  creating nothing. It is explicit only: `externalId` never becomes the key, because two jobs that
+  share a reference must not silently merge into one.
+- **Who signs the delivery.** `connectionId(id)` names the connection (the platform's id) the job
+  is delivered through: pausing the connection holds the job, and for a job without a subscription
+  the connection's service account signs the delivery. Without a connection (and without a
+  subscription), the platform signs with the **oldest active service account of the application
+  named by the code's first segment** (`orders:billing:export` → `orders`); a job with a
+  subscription is signed by the subscription's own account, else its connection's. The platform
+  refuses the whole batch when the connection does not exist, belongs to another client or
+  application, or is not the named subscription's connection.
 - Values the platform would refuse for the whole batch are refused when the job is built
   (`IllegalArgumentException`): a malformed code or URL, text over the platform's column sizes,
   platform ids over 17 characters, `0` for the numbers above, blank metadata keys.
 - Fields the platform's batch endpoint does not read (`headers`, `retryStrategy`, `scheduledFor`,
-  `expiresAt`, `idempotencyKey`, `connectionId`) are not offered. `metadata` is sent as the
-  platform's array of key/value pairs.
+  `expiresAt`) are not offered. `metadata` is sent as the platform's array of key/value pairs.
 
 The exact row and payload are in the contract,
 [write-path section 7a](../contracts/write-path.md#7a-dispatch-job-rows-ma-item-4-2026-10-10).

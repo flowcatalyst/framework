@@ -221,6 +221,8 @@ class OutboxConformanceTest {
     }
     if (j.has("queue")) b.queue(DispatchJob.Queue.valueOf(j.get("queue").asString()));
     if (j.has("descriptor")) b.descriptor(j.get("descriptor").asString());
+    if (j.has("connectionId")) b.connectionId(j.get("connectionId").asString());
+    if (j.has("idempotencyKey")) b.idempotencyKey(j.get("idempotencyKey").asString());
     return b.build();
   }
 

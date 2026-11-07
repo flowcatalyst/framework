@@ -119,20 +119,22 @@ final class AuthApp implements AutoCloseable {
       @Override
       public void boot(App app) {
         Routes routes = app.get(Routes.class).forModule(id());
-        routes.get(
-            "/api/me",
+        io.flowcatalyst.framework.http.Handler me =
             request -> {
               Map<String, Object> body = new LinkedHashMap<>();
               body.put("principal", String.valueOf(request.context().principal()));
               body.put("principalKind", String.valueOf(request.context().principalKind()));
               body.put("client", request.context().client().value());
               body.put("actor", request.context().findActor().map(a -> a.id() + "|" + a.type() + "|" + a.name()).orElse(""));
+              body.put("subjectName", request.context().findSubjectName().orElse(""));
               body.put("application", String.valueOf(request.context().application()));
               body.put("permissions", new TreeSet<>(request.context().permissions()));
               body.put("source", Auth.current(request).map(a -> a.source().name()).orElse("none"));
               return Response.ok(body);
-            },
-            RouteOptions.requiresContext());
+            };
+        routes.get("/api/me", me, RouteOptions.requiresContext());
+        // the same answer under a path naming a client, for a selector that reads it
+        routes.get("/api/me/{client}", me, RouteOptions.requiresContext());
         routes.get("/page", request -> Response.html(200, "<h1>hello</h1>"), RouteOptions.requiresContext());
         routes.post(
             "/api/things",

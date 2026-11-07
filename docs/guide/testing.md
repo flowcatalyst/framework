@@ -16,7 +16,7 @@ the rest are published as test-jars.
 | `TestClient`, `TestResponse` | `framework-http` (main) | the full HTTP pipeline in-process, no socket |
 | `PostgresFixture` | test-jar of `framework-database` | a real PostgreSQL 18 for one test class |
 | `RedisFixture` | test-jar of `framework-redis` | a real Redis for one test class |
-| `FakePlatform`, `ReceiverTesting` | test-jar of `framework-flowcatalyst` | an in-process stand-in for the platform; signed dispatch and scheduled-job deliveries for the receivers |
+| `FakePlatform`, `ReceiverTesting` | test-jar of `framework-flowcatalyst` | an in-process stand-in for the platform; signed dispatch and scheduled-job deliveries for the receivers, built from your outbox rows (`Delivery.ofJob`, `Delivery.ofEvent`, `deliver`, `fire`; [Receivers](receivers.md#testing-receivers)) |
 | `LockStoreContract`, `AdjustableClock` | test-jar of `framework-locks` | the lock driver contract suite; a movable monotonic clock |
 
 Dependencies for a test-jar (the BOM import manages the version; see

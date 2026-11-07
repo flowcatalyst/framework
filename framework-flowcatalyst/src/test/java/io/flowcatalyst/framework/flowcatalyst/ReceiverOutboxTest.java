@@ -6,7 +6,9 @@ import static io.flowcatalyst.framework.flowcatalyst.Receiving.TS;
 import static io.flowcatalyst.framework.flowcatalyst.Receiving.sign;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.Context;
+import io.flowcatalyst.framework.context.PrincipalId;
 import io.flowcatalyst.framework.context.PrincipalKind;
 import io.flowcatalyst.framework.core.App;
 import io.flowcatalyst.framework.database.DatabaseModule;
@@ -14,6 +16,8 @@ import io.flowcatalyst.framework.database.PostgresFixture;
 import io.flowcatalyst.framework.http.TestClient;
 import io.flowcatalyst.framework.http.TestResponse;
 import io.flowcatalyst.framework.usecase.AggregateId;
+import io.flowcatalyst.framework.usecase.Authorize;
+import io.flowcatalyst.framework.usecase.DispatchJob;
 import io.flowcatalyst.framework.usecase.DomainEvent;
 import io.flowcatalyst.framework.usecase.EventMetadata;
 import io.flowcatalyst.framework.usecase.EventType;
@@ -26,6 +30,7 @@ import io.flowcatalyst.framework.usecase.UseCaseModule;
 import io.flowcatalyst.framework.usecase.UseCaseResult;
 import io.flowcatalyst.framework.usecase.UseCases;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -224,6 +229,68 @@ class ReceiverOutboxTest {
         .containsEntry("principalId", FakePlatform.SERVICE_PRINCIPAL)
         .containsEntry("executionId", "sji_0HZXEQ5Y8JY5Z");
     assertThat(row("AUDIT_LOG").path("principalId").asString()).isEqualTo(FakePlatform.SERVICE_PRINCIPAL);
+  }
+
+  static final String EXPORT = "orders:billing:export";
+
+  record RequestExport(String invoiceId) {}
+
+  /** Plans a dispatch job for the receiver of this same application, in the caller's context. */
+  private static UseCase<RequestExport, InvoiceSent> requestExport(Events events) {
+    return UseCase.named("request-export", RequestExport.class, InvoiceSent.class)
+        .authorize(Authorize.PUBLIC)
+        .execute(
+            (ctx, cmd) ->
+                Plan.emit(new InvoiceSent(events.metadata(ctx, SENT, new InvoiceId(cmd.invoiceId())), cmd.invoiceId()))
+                    .andDispatch(
+                        DispatchJob.builder(EXPORT, URI.create("https://orders.example.com/fc/dispatch"))
+                            .jsonPayload(Map.of("invoiceId", cmd.invoiceId()))
+                            .build()));
+  }
+
+  /** The job's journey: a use case in {@code made}'s context, the outbox row, the platform's delivery. */
+  private Context deliverJobMadeIn(ClientId made) {
+    AtomicReference<Context> received = new AtomicReference<>();
+    AtomicReference<UseCaseResult<InvoiceSent>> ran = new AtomicReference<>();
+    start(
+        r ->
+            r.onDispatch(
+                EXPORT,
+                (ctx, d) -> {
+                  received.set(ctx);
+                  ran.set(run(ctx, "51"));
+                  return DispatchResult.ack();
+                }));
+    Context caller =
+        Context.of(made).withPrincipal(new PrincipalId("prn_0HUMANUSER001"), PrincipalKind.USER);
+    assertThat(app.get(UseCases.class).run(requestExport(app.get(Events.class)), caller, new RequestExport("51")))
+        .isInstanceOf(UseCaseResult.Committed.class);
+
+    String item = pg.query("SELECT payload FROM outbox_messages WHERE type = 'DISPATCH_JOB'");
+    pg.execute("DELETE FROM outbox_messages");
+    TestResponse r =
+        ReceiverTesting.deliver(Receiving.client(app), SECRET, NOW, ReceiverTesting.Delivery.ofJob(item));
+    assertThat(r.status()).isEqualTo(200);
+    assertThat(ran.get()).isInstanceOf(UseCaseResult.Committed.class);
+    return received.get();
+  }
+
+  @Test
+  void aJobMadeInAClientsContextIsReceivedAsThatClient() {
+    Context received = deliverJobMadeIn(new ClientId("acme"));
+
+    assertThat(received.client()).isEqualTo(new ClientId("acme"));
+    assertThat(received.principalKind()).isEqualTo(PrincipalKind.SERVICE);
+    // the receiving use case's own writes are the client's
+    assertThat(row("EVENT").path("clientCode").asString()).isEqualTo("acme");
+    assertThat(row("AUDIT_LOG").path("clientCode").asString()).isEqualTo("acme");
+  }
+
+  @Test
+  void aJobMadeInThePlatformsContextIsReceivedAsThePlatform() {
+    Context received = deliverJobMadeIn(ClientId.PLATFORM);
+
+    assertThat(received.client()).isEqualTo(Receivers.PLATFORM_CLIENT);
   }
 
   @Test

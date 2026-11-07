@@ -1,4 +1,4 @@
-<!-- types: PerClient, Context, ClientId, PrincipalId, PrincipalKind, ApplicationCode, CorrelationId, ContextResolver -->
+<!-- types: PerClient, Context, ClientId, PrincipalId, PrincipalKind, ApplicationCode, CorrelationId, ContextResolver, Actor -->
 # Context
 
 `Context` is a value that says **who is acting, for which client, as part of which request**. You
@@ -14,7 +14,9 @@ public record Context(
     CorrelationId correlationId,
     @Nullable String causationId,
     @Nullable String executionId,
-    Set<String> permissions) { ... }
+    Set<String> permissions,
+    @Nullable Actor actor,
+    @Nullable String subjectName) { ... }
 ```
 
 | Field | Required | Meaning |
@@ -27,6 +29,8 @@ public record Context(
 | `causationId` | no | the event or message that caused this work |
 | `executionId` | no | the job or run this work belongs to |
 | `permissions` | no (empty) | what the principal may do, in the platform's form (`ingestor:ingestion:manage`); check with `hasPermission` (below) |
+| `actor` | no | who is signed in **as** the principal: the operator behind an impersonated field request ([field workers](field-workers.md)) |
+| `subjectName` | no; only with a principal | the principal's display name: a field worker's (the token's `name`), or a user's when the token carries one. Never the actor's, which has its own `name` |
 
 ## The id types
 
@@ -80,10 +84,34 @@ Context context = Context.of(new ClientId("acme")).withPrincipal(new PrincipalId
 
 `Context.of(client)` generates a correlation id and leaves the rest empty. The `with...` methods
 return a copy: `withPrincipal`, `withApplication`, `withCorrelationId`, `withCausationId`,
-`withExecutionId`, `withPermissions`. `findPrincipal()`, `findPrincipalKind()` and
-`findApplication()` return `Optional`s. The seven-, six- and four-argument constructors still exist:
-they leave the principal kind unknown, and the six- and four-argument ones give an empty permission
-set.
+`withExecutionId`, `withPermissions`, `withActor`, `withSubjectName`. `findPrincipal()`,
+`findPrincipalKind()`, `findApplication()`, `findActor()` and `findSubjectName()` return `Optional`s.
+The nine-, eight-, seven-, six- and four-argument constructors still exist: they leave the subject name
+(and the shorter ones the actor and the principal kind) unknown, and the six- and four-argument ones
+give an empty permission set. `withPrincipal` clears the kind, the actor and the subject name, which
+described the previous principal.
+
+### A service's context
+
+Work that is not a platform request but acts as a service, such as an inbound provider webhook your
+application verified itself (no platform principal comes with it), builds its context with
+`Context.ofService(client, principal)`: the client, that principal with kind `SERVICE`, a generated
+correlation id (`ContextTest`):
+
+```java
+Context c = Context.ofService(new ClientId("acme"), new PrincipalId("svc:courier-webhook"));
+c.principalKind(); // SERVICE
+```
+
+A use case that only a service may run says so with `Authorize.SERVICE` ([write path](write-path.md#3-use-cases)).
+
+### "No particular client"
+
+`ClientId.PLATFORM` (`_platform`) is the client of work that acts for the platform rather than one
+tenant: a scheduled job's context, a platform-scoped dispatch job's, a request whose principal names
+no client. No real client's code contains `_`. `Receivers.PLATFORM_CLIENT` and
+`ClientSelector.PLATFORM` are the same value. A dispatch job planned in this context names no client
+([write path](write-path.md#dispatch-jobs)).
 
 ### The principal kind
 

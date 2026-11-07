@@ -114,4 +114,57 @@ class DispatchJobTest {
     }
     assertThatIllegalArgumentException().isThrownBy(many::build);
   }
+
+  @Test
+  void theIdempotencyKeyIsNotBlankAndAtMost100Bytes() {
+    DispatchJob.Builder b = DispatchJob.builder("orders:x", URI.create("https://a.example.com"));
+    assertThat(b.idempotencyKey("k".repeat(100)).build().idempotencyKey()).hasSize(100);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> DispatchJob.builder("orders:x", URI.create("https://a.example.com")).idempotencyKey(" ").build())
+        .withMessageContaining("idempotencyKey");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> DispatchJob.builder("orders:x", URI.create("https://a.example.com")).idempotencyKey("k".repeat(101)).build())
+        .withMessageContaining("idempotencyKey");
+    // bytes, not characters: 50 two-byte characters fit, 51 do not
+    assertThat(DispatchJob.builder("orders:x", URI.create("https://a.example.com")).idempotencyKey("\u00e9".repeat(50)).build().idempotencyKey()).hasSize(50);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> DispatchJob.builder("orders:x", URI.create("https://a.example.com")).idempotencyKey("\u00e9".repeat(51)).build());
+  }
+
+  @Test
+  void theConnectionIdIsAPlatformId() {
+    assertThat(DispatchJob.builder("orders:x", URI.create("https://a.example.com")).connectionId("con_0HZXEQ5Y8J").build().connectionId())
+        .isEqualTo("con_0HZXEQ5Y8J");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> DispatchJob.builder("orders:x", URI.create("https://a.example.com")).connectionId("con 1").build())
+        .withMessageContaining("connectionId");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> DispatchJob.builder("orders:x", URI.create("https://a.example.com")).connectionId("c".repeat(18)).build())
+        .withMessageContaining("connectionId");
+  }
+
+  @Test
+  void theWritersItemNamesTheContextsClientByCodeUnlessThePlatformsOrAnExplicitId() {
+    OutboxWriter writer = new OutboxWriter(new io.flowcatalyst.framework.core.Ids(() -> java.time.Instant.EPOCH), () -> java.time.Instant.EPOCH);
+    io.flowcatalyst.framework.context.Context acme =
+        io.flowcatalyst.framework.context.Context.of(new io.flowcatalyst.framework.context.ClientId("acme"));
+    io.flowcatalyst.framework.context.Context platform =
+        io.flowcatalyst.framework.context.Context.of(io.flowcatalyst.framework.context.ClientId.PLATFORM);
+
+    Map<String, Object> item = writer.dispatchJobPayload(acme, "j1", job().build());
+    assertThat(item).containsEntry("clientCode", "acme").doesNotContainKey("clientId");
+    // right after where clientId goes, before the subscription (the batch item's order)
+    assertThat(new java.util.ArrayList<>(item.keySet())).endsWith("correlationId", "clientCode");
+
+    assertThat(writer.dispatchJobPayload(platform, "j2", job().build())).doesNotContainKeys("clientCode", "clientId");
+    assertThat(writer.dispatchJobPayload(acme, "j3", job().platformClientId("clt_0HZXEQ5Y8J").build()))
+        .containsEntry("clientId", "clt_0HZXEQ5Y8J")
+        .doesNotContainKey("clientCode");
+
+    Map<String, Object> keyed =
+        writer.dispatchJobPayload(acme, "j4", job().externalId("inv_1").descriptor("d").connectionId("con_1").idempotencyKey("k1").build());
+    assertThat(keyed).containsEntry("connectionId", "con_1").containsEntry("idempotencyKey", "k1");
+    assertThat(new java.util.ArrayList<>(keyed.keySet())).endsWith("descriptor", "connectionId", "idempotencyKey");
+    assertThat(writer.dispatchJobPayload(acme, "j5", job().externalId("inv_1").build())).doesNotContainKeys("idempotencyKey", "connectionId");
+  }
 }

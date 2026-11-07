@@ -32,7 +32,7 @@ public final class Receivers {
    * dispatch job, or a scheduled job. Platform client identifiers match
    * {@code [a-z0-9][a-z0-9-]*}, so this value can never be a real client.
    */
-  public static final ClientId PLATFORM_CLIENT = new ClientId("_platform");
+  public static final ClientId PLATFORM_CLIENT = ClientId.PLATFORM;
 
   private static final Pattern SEGMENT = Pattern.compile("[A-Za-z0-9._-]+");
 

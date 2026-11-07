@@ -12,7 +12,7 @@ import io.flowcatalyst.framework.http.Request;
 public interface ClientSelector {
 
   /** "No particular client": the same value as the receivers' platform client. */
-  ClientId PLATFORM = new ClientId("_platform");
+  ClientId PLATFORM = ClientId.PLATFORM;
 
   /**
    * Chooses the client.

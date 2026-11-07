@@ -14,7 +14,7 @@ Be clear about what it is *not*, today:
 | A framework call that creates a dispatch job outside a use case | see [Creating a dispatch job](#creating-a-dispatch-job) |
 | Per-client sync, principals sync, OpenAPI sync | not exposed |
 | Docs sync (`Definitions.docs(...)`) | accepted, skipped (the Java SDK cannot sync docs yet) |
-| Wrapper methods for platform APIs (events, dispatch jobs, users) | not built; `PlatformClient` gives you the token, and [Calling a platform API yourself](#calling-a-platform-api-yourself) shows the HTTP client with it |
+| Wrapper methods for platform APIs (events, dispatch jobs, users) | not built; `PlatformClient.sdk()` gives you the Java SDK client, and [Calling a platform API yourself](#calling-a-platform-api-yourself) shows it and the HTTP client with the token |
 
 See [STATUS](STATUS.md). The contract, with the as-built notes in section 4a, is
 [contracts/flowcatalyst.md](../contracts/flowcatalyst.md).
@@ -74,18 +74,32 @@ app:
 ## `PlatformClient`
 
 A provided service wrapping the SDK client built with client credentials. Today it offers
-`isEnabled()`, `application()` (an `ApplicationCode`), `verifyCredentials()`, `accessToken()`
-(a bearer token, cached by the SDK; never log it), `clearToken()` and `servicePrincipal()` (the
-`sub` of that token when its `type` is `SERVICE`: the principal the receivers run handlers as; read
-once per token). The receivers use two more,
-`completeJobInstance(instanceId, Completion, result)` and `logJobInstance(instanceId, level,
-message)`, to report a scheduled-job instance. Failures are the unchecked `PlatformException`. SDK types do not appear in its API.
+`isEnabled()`, `application()` (an `ApplicationCode`), `baseUrl()` (the `URI` of
+`flowcatalyst.base-url`), `verifyCredentials()`, `accessToken()` (a bearer token, cached by the SDK;
+never log it), `clearToken()`, `servicePrincipal()` (the `sub` of that token when its `type` is
+`SERVICE`: the principal the receivers run handlers as; read once per token) and `sdk()` (below).
+The receivers use two more, `completeJobInstance(instanceId, Completion, result)` and
+`logJobInstance(instanceId, level, message)`, to report a scheduled-job instance. Failures are the
+unchecked `PlatformException`. SDK types appear only in `sdk()`.
 
 ## Calling a platform API yourself
 
-`PlatformClient` has no wrapper for the platform's own APIs (events, dispatch jobs, users, ...).
-Call them with the [HTTP client](http-client.md), authenticated with the application's token. From
-`PlatformApiCallTest`:
+`PlatformClient` has no wrapper for most of the platform's own APIs (events, dispatch jobs, users,
+...). Two ways to call them.
+
+**The Java SDK client.** `platformClient.sdk()` is the FlowCatalyst Java SDK's `FlowCatalystClient`
+(`io.flowcatalyst:flowcatalyst-sdk`, the version the framework BOM pins) that the wrapper itself
+uses, with the application's service-account credentials. It shares the token cache with
+`accessToken()` and `clearToken()`; on a `401` it drops the cached token, fetches a new one and sends
+the request once more, and it retries `408`, `429`, `502`, `503` and `504` inside each call. Its
+failures are the SDK's `FlowCatalystException`, not `PlatformException`. From `PlatformApiCallTest`:
+
+```java
+var roles = platformClient.sdk().roles().list();
+```
+
+**The HTTP client**, for a route the pinned SDK has no method for, authenticated with the
+application's token. From `PlatformApiCallTest`:
 
 ```java
 ServiceClient api =

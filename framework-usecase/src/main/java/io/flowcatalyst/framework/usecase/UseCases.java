@@ -312,14 +312,23 @@ public final class UseCases {
     }
   }
 
-  /** Applies the plan, writes the events and the audit row; false when an aggregate is stale. */
+  /**
+   * Applies the plan (each step, then the appends that follow it), writes the events and the audit
+   * row; false when an aggregate is stale.
+   */
   private <C, E extends DomainEvent> boolean write(
       UseCase<C, E> useCase, Context context, C command, Plan<E> plan, Tx tx, String[] step)
       throws Exception {
     step[0] = "PERSIST";
-    for (Plan.Step planned : plan.steps()) {
-      if (!apply(planned, tx)) {
+    List<Plan.Appended<?>> appends = plan.appends();
+    int next = 0;
+    List<Plan.Step> steps = plan.steps();
+    for (int i = 0; i < steps.size(); i++) {
+      if (!apply(steps.get(i), tx)) {
         return false;
+      }
+      while (next < appends.size() && appends.get(next).after() == i + 1) {
+        appends.get(next++).write(tx);
       }
     }
 

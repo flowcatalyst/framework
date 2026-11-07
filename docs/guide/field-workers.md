@@ -72,9 +72,19 @@ access token and is limited to the same method and URL.
 ## In your routes
 
 The request's `Context` has the principal `fwu_...`, the kind `PrincipalKind.FIELD_WORKER`, the
-**client from the token** (`client_identifier`; your `ClientSelector` is not consulted, because a
-field worker belongs to exactly one client), the application, and the permissions from your **field**
-mapping.
+worker's name as `subjectName()` (the token's `name`; an operator signed in as the worker is the
+`actor`, with its own name), the **client from the token** (`client_identifier`: a field worker
+belongs to exactly one client), the application, and the permissions from your **field** mapping.
+
+**A request for another client is refused.** Your `ClientSelector` is consulted for field workers
+too (since 2026-11-07): when it names a client other than the worker's (an application that takes
+the client from the path, `/api/clients/globex/...`, with a worker of `acme`), the answer is `403
+CLIENT_NOT_PERMITTED`, the same as for a user of another client, before your field permission
+resolver runs. When it names the worker's own client (by code or `clt_` id) or `ClientSelector.PLATFORM`
+(no client named), the context's client is the worker's. So a handler need not compare the path's
+client with the worker's itself (`FieldWorkersTest`). The selector sees the worker as a principal of
+kind `FIELD_WORKER` with no `clients`; return `PLATFORM` rather than throwing for one you do not
+recognise.
 
 ```java
 routes.post("/api/v1/gates/open", gates::open,
