@@ -424,6 +424,41 @@ func TestTheDeliveryAndTheContextCarryTheEnvelopeAndTheClient(t *testing.T) {
 	}
 }
 
+// The signature covers the body, so the envelope's clientCode, but not the X-FlowCatalyst-Client
+// header: a delivery whose header names another client than its envelope is refused for good (400
+// CLIENT_MISMATCH) and no handler runs, so a changed header cannot move a job to another client.
+func TestAClientHeaderThatDisagreesWithTheEnvelopeIsRefused(t *testing.T) {
+	var ran atomic.Int32
+	r := dispatchRig(t, func(context.Context, fw.Context, flowcatalyst.Delivery[invoice]) (flowcatalyst.DispatchResult, error) {
+		ran.Add(1)
+		return flowcatalyst.Ack{}, nil
+	}, rigOptions{})
+	got := r.dispatch(envelope, map[string]string{"X-FlowCatalyst-Client": "clt_1:globex"})
+	if got.status != 400 || !strings.Contains(got.body, `"CLIENT_MISMATCH"`) || ran.Load() != 0 {
+		t.Fatalf("a mismatch: %d %s (handler ran %d times)", got.status, got.body, ran.Load())
+	}
+	// only both present and different is a mismatch
+	for name, c := range map[string]struct{ body, client string }{
+		"the same client":                   {envelope, "clt_1:acme"},
+		"an envelope without clientCode":    {strings.Replace(envelope, `,"clientCode":"acme"`, "", 1), "clt_1:globex"},
+		"an envelope with clientCode null":  {strings.Replace(envelope, `"clientCode":"acme"`, `"clientCode":null`, 1), "clt_1:globex"},
+		"no client header":                  {envelope, ""},
+		"an envelope with clientCode empty": {strings.Replace(envelope, `"clientCode":"acme"`, `"clientCode":""`, 1), "clt_1:globex"},
+		"a data-only body":                  {`{"n":1}`, "clt_1:globex"},
+	} {
+		var extra map[string]string
+		if c.client != "" {
+			extra = map[string]string{"X-FlowCatalyst-Client": c.client}
+		}
+		if got := r.dispatch(c.body, extra); got.status != 200 {
+			t.Errorf("%s: %d %s", name, got.status, got.body)
+		}
+	}
+	if ran.Load() != 6 {
+		t.Fatalf("handler ran %d times, want 6", ran.Load())
+	}
+}
+
 func TestMalformedJobHeadersAre400AndCannotForgeLogLines(t *testing.T) {
 	r := dispatchRig(t, ack, rigOptions{})
 	for _, c := range []struct {

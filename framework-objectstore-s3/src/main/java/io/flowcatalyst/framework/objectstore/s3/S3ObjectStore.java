@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import org.jspecify.annotations.Nullable;
 
 /** Values as S3 objects. Closing the store closes the SDK client. */
 final class S3ObjectStore implements ObjectStore, AutoCloseable {
@@ -76,14 +77,14 @@ final class S3ObjectStore implements ObjectStore, AutoCloseable {
   }
 
   @Override
-  public void put(String key, byte[] content, String contentType) {
+  public void put(String key, byte[] content, @Nullable String contentType) {
     ObjectKeys.check(key);
-    StoredObject.checkContentType(contentType);
+    String type = StoredObject.checkContentType(contentType);
     if (content.length > maxBytes) {
       throw new IllegalArgumentException("content is " + content.length + " bytes, over the store's limit of " + maxBytes);
     }
     try {
-      client.putObject(PutObjectRequest.builder().bucket(bucket).key(prefix + key).contentType(contentType).build(), RequestBody.fromBytes(content));
+      client.putObject(PutObjectRequest.builder().bucket(bucket).key(prefix + key).contentType(type).build(), RequestBody.fromBytes(content));
     } catch (SdkException e) {
       throw new ObjectStoreException("object store '" + name + "': cannot write '" + key + "': " + e.getMessage(), e);
     }
@@ -112,6 +113,12 @@ final class S3ObjectStore implements ObjectStore, AutoCloseable {
       String type = in.response().contentType();
       if (type == null || type.isBlank() || type.equals("binary/octet-stream")) {
         type = StoredObject.DEFAULT_CONTENT_TYPE;
+      }
+      try {
+        StoredObject.checkContentType(type);
+      } catch (IllegalArgumentException e) {
+        // an object something else put with a Content-Type that is not a media type
+        throw new ObjectStoreException("object store '" + name + "': the content type of '" + key + "' is not a media type", e);
       }
       return Optional.of(new StoredObject(content, type));
     } catch (NoSuchKeyException e) {

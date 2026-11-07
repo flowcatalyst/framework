@@ -101,6 +101,10 @@ column, the payload text and its size. Null fields are left out of the event dat
 
 `DispatchJob::builder(code, target_url)` builds a dispatch job with the Java builder's rules and
 messages (also in the vectors); `build()` returns `Err` for a job the platform would refuse.
+*Amended 2026-11-07 (the fulfil-go fixes, item A1, kept equal to the Java writer):* the writer names
+the context's client as `clientCode` unless the job has a `platform_client_id` or the client is
+`PLATFORM_CLIENT` (`_platform`), and the builder takes `connection_id` and `idempotency_key` (not
+blank, at most 100 bytes; explicit only).
 
 ## Where Rust differs from Java
 

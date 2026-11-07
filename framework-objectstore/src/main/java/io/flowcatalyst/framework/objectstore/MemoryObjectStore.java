@@ -2,6 +2,7 @@ package io.flowcatalyst.framework.objectstore;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jspecify.annotations.Nullable;
 
 /** In-process values: lost when the JVM stops, so for tests and for throwaway use. */
 final class MemoryObjectStore implements ObjectStore {
@@ -26,11 +27,11 @@ final class MemoryObjectStore implements ObjectStore {
   }
 
   @Override
-  public void put(String key, byte[] content, String contentType) {
+  public void put(String key, byte[] content, @Nullable String contentType) {
     ObjectKeys.check(key);
-    StoredObject.checkContentType(contentType);
+    String type = StoredObject.checkContentType(contentType);
     ObjectStoreFactories.checkSize(content.length, maxBytes);
-    values.put(key, new StoredObject(content.clone(), contentType));
+    values.put(key, new StoredObject(content.clone(), type));
   }
 
   @Override

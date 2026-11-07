@@ -168,4 +168,10 @@ type Input struct {
 	// Problems found while collecting the input (a type registered twice, info given twice); they
 	// are reported with the emitter's own.
 	Problems []string
+	// OperationsOnly leaves out the two checks of the whole document, a missing Info and an
+	// operation that requires a context when no security scheme was contributed, and keeps every
+	// check of the operations and their types. The server's start-up check uses it: a server is
+	// built in tests with a resolver of their own and no document metadata, while the openapi
+	// command still demands both.
+	OperationsOnly bool
 }

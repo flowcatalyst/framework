@@ -328,40 +328,56 @@ Datastar streams (below) are not `EventStreams` and are not ended before the dra
 
 `Idempotency.middleware(store, clock)` (package `io.flowcatalyst.framework.http.idempotency`) makes
 a write sent twice run once: a device's offline queue replays what it could not confirm (fulfil-go
-issue 6). It is route middleware on a route that requires a context. From `IdempotencyTest`:
+issue 6). It is route middleware on a route that requires a context, and behaves as the Go
+framework's `idempotency` package, table included (HTTP contract section 13.6). From
+`IdempotencyTest`:
 
 ```java
-RouteOptions once = RouteOptions.requiresContext().with(Idempotency.middleware(store, CLOCK));
+RouteOptions once = RouteOptions.requiresContext().with(Idempotency.middleware(store, clock));
 routes.post("/claims", handler, once);
 ```
 
 | Request | Answer |
 |---|---|
-| no `Idempotency-Key` header (or a blank one), or a context without a principal | runs as it is |
-| a key over 200 characters | `400 IDEMPOTENCY_KEY_INVALID` |
+| no `Idempotency-Key` header | runs as it is |
+| a key that is not 1 to 200 printable ASCII characters (blank included), or the header twice | `400 IDEMPOTENCY_KEY_INVALID` |
+| a key on a request whose context has no principal | `400 IDEMPOTENCY_KEY_UNSUPPORTED` (it cannot be scoped to a caller) |
 | the first with a key (per client, principal and key) | runs; a `2xx` with a body held in memory is kept (status, `Content-Type`, body) |
-| the same method, path and body again | the kept answer, with `Idempotency-Replayed: true`; other headers of the first answer (`Location`) are not kept |
-| again while the first still runs | `409 IDEMPOTENCY_IN_PROGRESS`: retry shortly |
+| the same method, path, query and body again | the kept answer, with `Idempotency-Replayed: true`; other headers of the first answer (`Location`) are not kept |
+| again while the first still runs | waits for it (10 s) and gets its answer; `409 IDEMPOTENCY_IN_PROGRESS` when the wait runs out |
 | another request under the same key | `422 IDEMPOTENCY_KEY_REUSED` |
 | the first failed (not `2xx`, an exception, or a streamed body) | its key is freed, so a retry does the work |
+| the key is older than the retention (24 h) | taken over: the request runs again |
+| the first never finished and took the key over 5 minutes ago (its process may have stopped) | taken over: the request runs; the stuck one can no longer complete or free the key |
 
-The request is identified by SHA-256 of the method, the path and the body; the body is read within
-the route's limit and cached, so the handler reads the same bytes. Spaces around the key are not
-part of it.
+The request is identified by SHA-256 of `METHOD SP path "?" query LF body` (the path and query as
+sent); the body is read within the route's limit and cached, so the handler reads the same bytes.
+Spaces around the key are not part of it. Each request that tries to take a key makes a random
+token, and only the request holding the key's token completes or frees it.
 
-Stores: `MemoryIdempotencyStore` (one process; tests) and, in the module
-`framework-idempotency-database`, `IdempotencyDatabaseModule`, which migrates
-`fw_idempotency_key` on the default database, provides `IdempotencyStore` as a
-`DatabaseIdempotencyStore`, and runs the loop `idempotency-key-prune` every 10 minutes, deleting keys
-older than `idempotency.retention` (default `24h`) 1000 at a time. A request whose process died
-after it took a key leaves the key in progress (`409`) until it is pruned.
+The timings are `Idempotency.Options` (`retention`, `maxWait`, `inFlightTimeout`; `defaults()` is
+24 h, 10 s, 5 min), passed as `Idempotency.middleware(store, clock, options)`.
+
+Stores (both pass `IdempotencyStoreContract`): `MemoryIdempotencyStore` (one process; tests) and,
+in the module `framework-idempotency-database`, `IdempotencyDatabaseModule` (module id
+`http-idempotency`, the Go framework's migration set: table `fw_idempotency_keys`), which migrates the
+default database, provides `IdempotencyStore` as a `DatabaseIdempotencyStore` and `Idempotency.Options`
+from its settings, and runs the loop `http-idempotency-prune` every hour, deleting keys older than
+the retention 1000 at a time.
+
+| Setting | Default | |
+|---|---|---|
+| `idempotency.retention` | `24h` | how long a key and its answer are kept |
+| `idempotency.wait` | `10s` | how long a repeat waits for the first request's answer |
+| `idempotency.in-flight-timeout` | `5m` | how long an unfinished reservation holds its key |
 
 ```java
 .module(new DatabaseModule())
 .module(new IdempotencyDatabaseModule())
 // in a module's boot:
 Middleware<Request, Response> once =
-    Idempotency.middleware(app.get(IdempotencyStore.class), app.get(InstantSource.class));
+    Idempotency.middleware(
+        app.get(IdempotencyStore.class), app.get(InstantSource.class), app.get(Idempotency.Options.class));
 ```
 
 ## CORS

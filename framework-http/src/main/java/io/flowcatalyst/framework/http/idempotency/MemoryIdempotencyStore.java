@@ -3,6 +3,7 @@ package io.flowcatalyst.framework.http.idempotency;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Keys in this process: for tests and a single instance. Keys are lost on restart and not shared
@@ -10,13 +11,26 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class MemoryIdempotencyStore implements IdempotencyStore {
 
-  private record Entry(String requestHash, Instant createdAt, @org.jspecify.annotations.Nullable StoredAnswer answer) {}
+  private record Entry(String requestHash, String token, Instant createdAt, @Nullable StoredAnswer answer) {}
 
   private final ConcurrentHashMap<IdempotencyScope, Entry> entries = new ConcurrentHashMap<>();
 
   @Override
-  public boolean reserve(IdempotencyScope scope, String requestHash, Instant now) {
-    return entries.putIfAbsent(scope, new Entry(requestHash, now, null)) == null;
+  public boolean reserve(
+      IdempotencyScope scope, String requestHash, String token, Instant now, Instant expiredBefore, Instant unfinishedBefore) {
+    boolean[] taken = {false};
+    entries.compute(
+        scope,
+        (k, e) -> {
+          if (e == null
+              || e.createdAt().isBefore(expiredBefore)
+              || (e.answer() == null && e.createdAt().isBefore(unfinishedBefore))) {
+            taken[0] = true;
+            return new Entry(requestHash, token, now, null);
+          }
+          return e;
+        });
+    return taken[0];
   }
 
   @Override
@@ -31,14 +45,19 @@ public final class MemoryIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public void complete(IdempotencyScope scope, StoredAnswer answer, Instant now) {
+  public void complete(IdempotencyScope scope, String token, StoredAnswer answer, Instant now) {
+    StoredAnswer copy = new StoredAnswer(answer.status(), answer.contentType(), answer.body().clone());
     entries.computeIfPresent(
-        scope, (k, e) -> new Entry(e.requestHash(), e.createdAt(), new StoredAnswer(answer.status(), answer.contentType(), answer.body().clone())));
+        scope,
+        (k, e) ->
+            e.token().equals(token) && e.answer() == null
+                ? new Entry(e.requestHash(), e.token(), e.createdAt(), copy)
+                : e);
   }
 
   @Override
-  public void release(IdempotencyScope scope) {
-    entries.computeIfPresent(scope, (k, e) -> e.answer() == null ? null : e);
+  public void release(IdempotencyScope scope, String token) {
+    entries.computeIfPresent(scope, (k, e) -> e.token().equals(token) && e.answer() == null ? null : e);
   }
 
   /**

@@ -81,13 +81,21 @@ class DispatchReceiverTest {
 
   /** A signed delivery as the platform sends it. */
   private static TestResponse deliver(TestClient client, String body) {
-    return client
-        .post("/fc/dispatch")
-        .header("Content-Type", "application/json")
-        .header("X-Dispatch-Job-Id", JOB)
-        .header("X-Event-Type", TYPE)
-        .header("X-FlowCatalyst-Client", "clt_1:acme")
-        .header("X-FlowCatalyst-Signature", sign(SECRET, TS, body))
+    return deliver(client, body, "clt_1:acme");
+  }
+
+  /** A signed delivery with the given client header (null: none). */
+  private static TestResponse deliver(TestClient client, String body, String clientHeader) {
+    TestClient.Call call =
+        client
+            .post("/fc/dispatch")
+            .header("Content-Type", "application/json")
+            .header("X-Dispatch-Job-Id", JOB)
+            .header("X-Event-Type", TYPE);
+    if (clientHeader != null) {
+      call = call.header("X-FlowCatalyst-Client", clientHeader);
+    }
+    return call.header("X-FlowCatalyst-Signature", sign(SECRET, TS, body))
         .header("X-FlowCatalyst-Timestamp", TS)
         .body(body)
         .send();
@@ -406,6 +414,33 @@ class DispatchReceiverTest {
     assertThat(ctx.principalKind()).isEqualTo(PrincipalKind.SERVICE);
     assertThat(ctx.causationId()).isEqualTo(JOB);
     assertThat(ctx.permissions()).isEmpty();
+  }
+
+  /**
+   * The signature covers the envelope's clientCode but not the X-FlowCatalyst-Client header: a
+   * delivery whose header names another client than its envelope is refused for good (400
+   * CLIENT_MISMATCH) and no handler runs.
+   */
+  @Test
+  void aClientHeaderThatDisagreesWithTheEnvelopeIsRefused() {
+    AtomicInteger calls = new AtomicInteger();
+    TestClient client = startCounting(calls);
+    TestResponse r = deliver(client, ENVELOPE, "clt_1:globex");
+    assertThat(r.status()).isEqualTo(400);
+    assertThat(r.tree().path("error").asString()).isEqualTo("CLIENT_MISMATCH");
+    assertThat(r.header("FlowCatalyst-Outcome")).isNull();
+    assertThat(calls).hasValue(0);
+    // only both present and different is a mismatch
+    assertThat(deliver(client, ENVELOPE, "clt_1:acme").status()).isEqualTo(200);
+    assertThat(deliver(client, ENVELOPE.replace(",\"clientCode\":\"acme\"", ""), "clt_1:globex").status())
+        .isEqualTo(200);
+    assertThat(deliver(client, ENVELOPE.replace("\"clientCode\":\"acme\"", "\"clientCode\":null"), "clt_1:globex").status())
+        .isEqualTo(200);
+    assertThat(deliver(client, ENVELOPE.replace("\"clientCode\":\"acme\"", "\"clientCode\":\"\""), "clt_1:globex").status())
+        .isEqualTo(200);
+    assertThat(deliver(client, ENVELOPE, null).status()).isEqualTo(200);
+    assertThat(deliver(client, "{\"invoiceId\":\"42\"}", "clt_1:globex").status()).isEqualTo(200);
+    assertThat(calls).hasValue(6);
   }
 
   // ---- the service principal (contract section 4b) -----------------------------------------

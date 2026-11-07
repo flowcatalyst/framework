@@ -201,16 +201,29 @@ class DispatchVectorConformanceTest {
             ",\"attemptNumber\":1,\"attemptNumber\":2}")) {
       c.add(ok("malformed envelope: " + tail).handler("ack", null).body(head + tail).sig().build());
     }
-    // X-FlowCatalyst-Client forms
+    // X-FlowCatalyst-Client forms; the envelope names the header's client, as the platform sends it
     for (String client :
         List.of("clt_1:acme", "clt_1", "acme:", ":acme", "a:b:c", "clt 1:acme", "a".repeat(100) + ":" + "b".repeat(100), "a".repeat(101) + ":b")) {
+      String[] parts = client.split(":", -1);
+      String body =
+          parts.length == 2 && !parts[1].isEmpty()
+              ? ENVELOPE.replace("\"clientCode\":\"acme\"", "\"clientCode\":\"" + parts[1] + "\"")
+              : ENVELOPE;
       c.add(
           new B("client header: " + (client.length() > 30 ? client.length() + " characters" : client))
               .std(TYPE, client)
               .handler("ack", null)
+              .body(body)
               .sig()
               .build());
     }
+    // the header is not signed, the envelope is: a header naming another client is refused for good
+    c.add(
+        new B("client header names another client than the envelope's clientCode")
+            .std(TYPE, "clt_1:globex")
+            .handler("ack", null)
+            .sig()
+            .build());
     c.add(new B("client header absent: a platform-scoped job").std(TYPE, null).handler("ack", null).sig().build());
     c.add(
         ok("client header sent twice")

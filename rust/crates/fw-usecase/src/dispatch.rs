@@ -70,6 +70,11 @@ pub struct DispatchJobError(String);
 
 const TEXT_MAX: usize = 255;
 const METADATA_MAX: usize = 100;
+const IDEMPOTENCY_KEY_MAX: usize = 100;
+
+/// The client of a context that has none from the platform (Java `ClientId.PLATFORM`, Go
+/// `fw.PlatformClient`): a dispatch job written in it names no client.
+pub const PLATFORM_CLIENT: &str = "_platform";
 
 /// A validated dispatch job.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,6 +102,8 @@ pub struct DispatchJob {
     metadata: Vec<(String, String)>,
     queue: Option<Queue>,
     descriptor: Option<String>,
+    connection_id: Option<String>,
+    idempotency_key: Option<String>,
 }
 
 /// Builds a [`DispatchJob`]; [`DispatchJobBuilder::build`] validates.
@@ -196,6 +203,8 @@ impl DispatchJob {
                 metadata: Vec::new(),
                 queue: None,
                 descriptor: None,
+                connection_id: None,
+                idempotency_key: None,
             },
             source_set: false,
             payload_error: None,
@@ -255,10 +264,20 @@ impl DispatchJob {
             ("subscriptionId", &self.subscription_id),
             ("serviceAccountId", &self.service_account_id),
             ("dispatchPoolId", &self.dispatch_pool_id),
+            ("connectionId", &self.connection_id),
         ] {
             if v.as_deref().is_some_and(|v| !platform_id_ok(v)) {
                 return e(format!("{field} must match [0-9A-Za-z_-]{{1,17}}"));
             }
+        }
+        if self
+            .idempotency_key
+            .as_deref()
+            .is_some_and(|k| k.trim().is_empty() || k.len() > IDEMPOTENCY_KEY_MAX)
+        {
+            return e(format!(
+                "idempotencyKey must not be blank and at most {IDEMPOTENCY_KEY_MAX} bytes (UTF-8)"
+            ));
         }
         for (field, v) in [
             ("sequence", self.sequence),
@@ -281,11 +300,14 @@ impl DispatchJob {
     }
 
     /// The batch item the platform reads (Go `BatchItem`), with only the fields it reads, in the
-    /// Java writer's order; `metadata` is an array of `{key, value}`, never an object.
+    /// Java writer's order; `metadata` is an array of `{key, value}`, never an object. `client` is
+    /// the context's client: written as `clientCode` (the platform resolves it) unless the job names
+    /// a platform client id or the client is [`PLATFORM_CLIENT`].
     pub(crate) fn payload_json(
         &self,
         id: &str,
         correlation_id: &str,
+        client: &str,
     ) -> Result<String, serde_json::Error> {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -314,6 +336,8 @@ impl DispatchJob {
             #[serde(skip_serializing_if = "Option::is_none")]
             client_id: Option<&'a str>,
             #[serde(skip_serializing_if = "Option::is_none")]
+            client_code: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
             subscription_id: Option<&'a str>,
             #[serde(skip_serializing_if = "Option::is_none")]
             service_account_id: Option<&'a str>,
@@ -335,6 +359,10 @@ impl DispatchJob {
             queue: Option<&'a str>,
             #[serde(skip_serializing_if = "Option::is_none")]
             descriptor: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            connection_id: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            idempotency_key: Option<&'a str>,
         }
         serde_json::to_string(&Item {
             id,
@@ -350,6 +378,8 @@ impl DispatchJob {
             event_id: self.event_id.as_deref(),
             correlation_id,
             client_id: self.platform_client_id.as_deref(),
+            client_code: (self.platform_client_id.is_none() && client != PLATFORM_CLIENT)
+                .then_some(client),
             subscription_id: self.subscription_id.as_deref(),
             service_account_id: self.service_account_id.as_deref(),
             dispatch_pool_id: self.dispatch_pool_id.as_deref(),
@@ -366,6 +396,8 @@ impl DispatchJob {
             }),
             queue: self.queue.map(Queue::as_str),
             descriptor: self.descriptor.as_deref(),
+            connection_id: self.connection_id.as_deref(),
+            idempotency_key: self.idempotency_key.as_deref(),
         })
     }
 }
@@ -445,7 +477,8 @@ impl DispatchJobBuilder {
         self
     }
 
-    /// The platform's client **id** (written as `clientId`); never derived from the `Context`.
+    /// The platform's client **id** (written as `clientId`). Without it the context's client is
+    /// written as `clientCode` (not for [`PLATFORM_CLIENT`]); with it, no `clientCode` is written.
     #[must_use]
     pub fn platform_client_id(mut self, v: &str) -> Self {
         self.job.platform_client_id = Some(v.to_owned());
@@ -529,6 +562,23 @@ impl DispatchJobBuilder {
     #[must_use]
     pub fn descriptor(mut self, v: &str) -> Self {
         self.job.descriptor = Some(v.to_owned());
+        self
+    }
+
+    /// The platform's id of the connection the job is delivered through (its service account signs
+    /// the delivery), `[0-9A-Za-z_-]{1,17}`.
+    #[must_use]
+    pub fn connection_id(mut self, v: &str) -> Self {
+        self.job.connection_id = Some(v.to_owned());
+        self
+    }
+
+    /// Makes the create idempotent on the platform (scoped by application and client, kept 7
+    /// days; a repeat answers the first job's id): not blank, at most 100 bytes of UTF-8. Explicit
+    /// only, never derived from the external id.
+    #[must_use]
+    pub fn idempotency_key(mut self, v: &str) -> Self {
+        self.job.idempotency_key = Some(v.to_owned());
         self
     }
 

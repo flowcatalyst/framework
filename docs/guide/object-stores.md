@@ -26,8 +26,15 @@ StoredObject photo = photos.read("proofs/" + jobId + ".jpg").orElseThrow();
 return Response.bytes(200, photo.contentType(), photo.content());
 ```
 
-- A content type is 1 to 255 printable ASCII characters (it becomes a header, so no line break):
-  `StoredObject.checkContentType`; anything else is `IllegalArgumentException` and nothing is stored.
+- A content type is a media type as Go's `mime.ParseMediaType` reads one (`image/jpeg`,
+  `text/plain; charset=utf-8`; a type, optionally `/subtype`, then `; name=value` parameters), at
+  most 255 printable ASCII characters (it becomes a header, so no line break), stored as given:
+  `StoredObject.checkContentType`. `null` or `""` means `application/octet-stream`; anything else is
+  `IllegalArgumentException` and nothing is stored. The Go framework accepts and refuses the same
+  values (object-store contract section 1; the tests hold Go's verdicts).
+- `folder` treats a type file that holds no media type (written by something else) as a store
+  failure (`ObjectStoreException`), not a guess; so does `s3` for an object whose `Content-Type` is
+  not one.
 - `memory` keeps it with the bytes; `s3` sets it as the object's `Content-Type` (an object put by
   another tool without one, which S3 reports as `binary/octet-stream`, reads as
   `application/octet-stream`); `folder` writes it to the hidden file `.<name>.content-type` beside

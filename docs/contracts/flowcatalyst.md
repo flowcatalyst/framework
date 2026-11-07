@@ -286,6 +286,11 @@ As built in slice 4 (signature check and the dispatch receiver, 2026-10-09):
   when it is a JSON object whose `id` and `type` equal them; then `attemptNumber` must be a
   positive integer, `source`, `subject`, `correlationId`, `messageGroup`, `clientId` and
   `clientCode` strings when present, and keys unique, else `400 VALIDATION` and no handler runs.
+  *Amended 2026-11-07 (integration of the fulfil-go fixes):* the signature covers the body, so the
+  envelope's `clientCode`, but not `X-FlowCatalyst-Client`; when both are present (a non-empty
+  `clientCode`) and the header's code differs, the delivery is `400 {"error":"CLIENT_MISMATCH"}`, no
+  handler runs, and the platform treats it as terminal like any `4xx`. Vector: "client header names
+  another client than the envelope's clientCode" in `conformance/receivers/dispatch.json`.
   Any other body is data-only: `data()` is the body parsed as JSON (empty when it is not JSON),
   `attemptNumber()` is empty.
 - **Context.** Client: the code from `X-FlowCatalyst-Client`, or `Receivers.PLATFORM_CLIENT`

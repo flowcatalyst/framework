@@ -312,7 +312,11 @@ impl Sink for OutboxWriter {
             for job in jobs {
                 let id = job.id().map_or_else(|| self.ids.generate(), str::to_owned);
                 rows.push(Row {
-                    payload: job.payload_json(&id, ctx.correlation().as_str())?,
+                    payload: job.payload_json(
+                        &id,
+                        ctx.correlation().as_str(),
+                        ctx.client().as_str(),
+                    )?,
                     id,
                     kind: TYPE_DISPATCH_JOB,
                     group: job.message_group().map(str::to_owned),

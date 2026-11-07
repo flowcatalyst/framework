@@ -41,7 +41,8 @@ type Store interface {
 }
 
 // StoreFactory makes one store when [Build] runs, from its name and the booted application. The
-// shipped factories are [Env], [File] and [Platform]; an application may write its own.
+// shipped factories are [Env] and [File] (the platform driver is flowcatalyst.PlatformSecrets;
+// [Platform] is its placeholder); an application may write its own.
 type StoreFactory interface {
 	Create(ctx context.Context, name string, b *fw.Boot) (Store, error)
 }
@@ -53,6 +54,11 @@ type StoreError struct {
 }
 
 func (e *StoreError) Error() string { return e.msg }
+
+// NewStoreError is the error of a store that could not be read, for a driver written outside this
+// package. The message must hold no value and no content; the cache serves a stale value for it
+// (CachePolicy.StaleIfError).
+func NewStoreError(message string) *StoreError { return &StoreError{msg: message} }
 
 // Unwrap returns the I/O error behind it, if any.
 func (e *StoreError) Unwrap() error { return e.cause }

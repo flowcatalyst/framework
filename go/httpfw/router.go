@@ -11,6 +11,7 @@ type compiled struct {
 	registrant      string
 	requiresContext bool
 	acceptForms     bool
+	maxBody         int64 // the route's body limit (MaxBody, else http.max-body-bytes)
 	handler         HandlerFunc
 }
 

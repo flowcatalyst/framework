@@ -56,8 +56,9 @@ routes.add(Method.PUT, "/orders/{id}", handler, RouteOptions.requiresContext());
 - No route for the path: `404 NOT_FOUND`. Path matches but not the method: `405
   METHOD_NOT_ALLOWED` with an `Allow` header listing the methods (sorted, `HEAD` included when
   `GET` is, `OPTIONS` always). An `OPTIONS` request to a known path with no `OPTIONS` route is
-  answered `204` with `Allow`. There is no CORS handling (platform has none either). *Amended
-  2026-11-07, section 13:* CORS is configurable and off by default.
+  answered `204` with `Allow`. There was no CORS handling (the platform has none either).
+  *Amended 2026-11-07, section 13.4:* CORS is configurable, off by default, and never allows
+  credentials.
 - Route patterns are listed at start-up in the log at INFO, one line per route.
 
 ## 3. Request and response
@@ -304,36 +305,151 @@ thread asserted (`Thread.currentThread().isVirtual()`), body limit 413, port 0, 
 graceful shutdown with an in-flight request, bind failure; Datastar: exact wire bytes for each
 event with each option, signals from query and body, disconnect handling.
 
-## 13. Amendments of 2026-11-07 (fulfil-go fixes, items B1 and B3; owner-approved)
+## 13. Additions of 2026-11-07 (fulfil-go fixes, items B1 to B3; owner-approved)
 
-Found by the first Go application (fulfil-go); built in both frameworks, names parallel.
+Found by the first Go application (fulfil-go) and approved in `docs/fulfil-go-fixes-2026-11.md`;
+built in both frameworks with the names below. The integration of the two (2026-11-07) settled the
+points where they first differed: CORS never allows credentials (13.4), and the Java
+`Idempotency-Key` middleware follows the Go one, table included (13.6). Differences that remain are
+named where they apply.
 
-- **Before-drain actions (B1).** The server runs actions when shutdown begins, after new requests
-  start getting `503` and readiness reports down, and before it waits for the requests in flight
-  (Java: `HttpServer.beforeDrain(Runnable)`; Go: `Server.BeforeDrain`). Each runs once, in the order
-  added; one that fails is logged and the rest run. They exist to end long-lived responses, which
-  otherwise hold the drain until the grace runs out.
-- **Server-sent event streams (B3).** A framework stream helper (Java: `EventStreams`, provided by the
-  HTTP module, with `SseEvent`): `retry: 3000` first; with `Last-Event-ID` (header, or the
-  `lastEventId` query parameter) the events after it from an application-supplied replay (at most
-  1000), then the published events the stream's filter admits, each once and in id order (subscribe
-  before replay, skip ids already sent); a `: ping` comment after `http.sse.heartbeat` (25 s) idle;
-  `Cache-Control: no-cache`, `X-Accel-Buffering: no`. A stream ends when the client goes, when it is
-  256 events behind, when the replay fails, and when the server's before-drain action closes every
-  stream.
-- **Inbound `Idempotency-Key` (B3).** Route middleware on context routes: scope client + principal +
-  key (at most 200 characters, else `400 IDEMPOTENCY_KEY_INVALID`); the first request takes the key;
-  a `2xx` answer held in memory is kept (status, content type, body) and replayed to a repeat with the
-  same method, path and body with `Idempotency-Replayed: true`; a repeat while the first runs is `409
-  IDEMPOTENCY_IN_PROGRESS`; another request under the key is `422 IDEMPOTENCY_KEY_REUSED`; any other
-  outcome frees the key. Storage is pluggable: memory, and a database store with its own migration
-  set (`fw_idempotency_key`) pruned after `idempotency.retention` (24 h).
-- **Per-route body limit (B3).** A route may set its own request body limit, larger or smaller than
-  `http.max-body-bytes`; it applies once the route is matched (declared length and while reading).
-- **CORS (B3).** Configured by `http.cors.allowed-origins` (empty: off, the default),
-  `allowed-methods`, `allowed-headers`, `exposed-headers`, `max-age`. It runs outside the error
-  mapping so every answer carries the headers; a preflight from an allowed origin for an allowed
-  method and headers is `204`, any other preflight `403 CORS_REFUSED`. **Credentials are never
-  allowed** (`Access-Control-Allow-Credentials` is never sent), so the sessions contract's reasoning
-  in section 7 (no credentialed cross-origin request) still holds; an allowed origin calls with a
-  bearer token.
+### 13.1 Before the drain
+
+When shutdown begins the server refuses new requests (`503 UNAVAILABLE`) and `/health/ready`
+answers `503`; then it runs the before-drain actions; then it waits for the requests in flight (up to
+`http.shutdown-grace`). The actions run once each, in the order added. They exist to end long-lived
+responses (streams), which otherwise hold the drain until the grace runs out.
+
+- Go: `Server.BeforeDrain(func(ctx context.Context))`, the context ending with the grace; and
+  `httpfw.Draining(r)`, a channel closed for every request before the first action runs, which a
+  handler that keeps its response open selects on.
+- Java: `HttpServer.beforeDrain(Runnable)`; an action that fails is logged and the rest run. There is
+  no per-request drain signal: a long-lived response ends through an action (the HTTP module
+  registers one that closes every `EventStreams` stream). Datastar streams (`Datastar.stream`, section
+  10) are not closed there: the helper is static and keeps no list of open streams, so an application
+  that holds one open registers its own action.
+
+### 13.2 The OpenAPI document at start-up
+
+The server builds the document of the declared operations when it is built and fails start-up with
+every problem (OpenAPI contract section 9): Go `httpfw.NewServer`, Java `JettyHttpModule` before it
+opens the port. The two checks of the whole document (no `Info`, a context-requiring operation
+without a security scheme) stay with the `openapi` command and the test helpers, Go
+`fwtest.OpenAPI(t, web)` and Java `OpenApiTesting.assertBuilds(appBuilder)`.
+
+### 13.3 A body limit per route
+
+A route option sets the route's body limit in place of `http.max-body-bytes`, smaller or larger: Go
+`httpfw.MaxBody(n)`, Java `RouteOptions.maxBodyBytes(n)`. It applies to `Content-Length` before the
+handler and while the body is read (`413 PAYLOAD_TOO_LARGE`); other routes keep the global limit.
+In Java, global middleware, which runs before routing, reads under the global limit. Go refuses a value below
+1 as a start-up problem; Java refuses a negative one (`IllegalArgumentException` from the option) and
+takes 0 as "no body".
+
+### 13.4 CORS
+
+Off unless `http.cors.allowed-origins` lists origins (`scheme://host[:port]`, or `*` alone). The other
+settings and their defaults: `http.cors.allowed-methods` (`GET, HEAD, POST, PUT, PATCH, DELETE`),
+`http.cors.allowed-headers` (`Authorization`, `Content-Type`, `DPoP`, `Idempotency-Key`,
+`Last-Event-ID`, `X-Correlation-Id`), `http.cors.exposed-headers` (`X-Correlation-Id,
+Idempotency-Replayed`), `http.cors.max-age` (`10m`). A malformed setting fails start-up naming it.
+A request from an allowed origin gets `Access-Control-Allow-Origin` (the origin, or `*`) and
+`Access-Control-Expose-Headers`; a preflight from an allowed origin is answered `204` with
+`Access-Control-Allow-Methods`, `-Allow-Headers` and `-Max-Age`, before the application's middleware
+and the context resolver (a browser sends no credentials with a preflight). Another origin gets no
+CORS headers.
+
+**Credentials are never allowed:** `Access-Control-Allow-Credentials` is never sent and there is no
+setting for it, so the sessions contract's reasoning (section 7.2: no credentialed cross-origin
+request) still holds; a page on an allowed origin calls with a bearer token. The sessions CSRF guard
+is unchanged.
+
+Differences that remain:
+
+- Go answers every preflight from an allowed origin `204` with the configured lists and leaves the
+  check to the browser; a preflight from another origin goes on to the router (`204` with `Allow`,
+  section 2). Java checks the requested method and headers and answers `403 CORS_REFUSED` when they
+  are not allowed or the origin is not, with `Vary: Origin, Access-Control-Request-Method,
+  Access-Control-Request-Headers` on an answered preflight.
+- Go adds `Vary: Origin` to every response while CORS is on; Java to every response to a request
+  that carries `Origin`. Java's step runs just inside the correlation id and outside the error
+  mapping; Go's inside the error mapping and the access log, outside the application's middleware,
+  and it sets the headers before the rest runs. Either way error answers carry them.
+- Java also takes a `CorsPolicy` in code (`Routes.cors(CorsPolicy)`); Go only the settings.
+
+### 13.5 Server-sent events
+
+A framework stream for `text/event-stream`: headers `Content-Type: text/event-stream`,
+`Cache-Control: no-cache`, `X-Accel-Buffering: no`; a `retry:` field first (3 s); with
+`Last-Event-ID` (the header, or the `lastEventId` query parameter) and an application-supplied replay,
+the events after that id; then the live events, each once and in id order (ids already sent are
+skipped); a `: ping` comment after 25 s idle; the end when the client goes, when the replay fails and
+when the drain begins (13.1). An event is an increasing integer id, a type without line breaks, and
+data written one `data:` line per line. The shapes stay idiomatic:
+
+- Go `sse.Serve(w, r, live, sse.Options{...})`: the handler passes a channel of live events (closing it
+  ends the stream) and an optional replay source read in pages (default 1000) until a short page;
+  options for the retry, the heartbeat and the page size.
+- Java `EventStreams` (provided by the HTTP module) with `SseEvent`: an in-process hub; the
+  application publishes, each stream has a filter and subscribes before it replays (at most 1000
+  events), and a stream 256 events behind is ended; the heartbeat is `http.sse.heartbeat`.
+
+### 13.6 Idempotency-Key
+
+Route middleware for routes that resolve a context, over one table in both frameworks, the migration
+set of module `http-idempotency` (Go `go/httpfw/idempotency/migrations`, Java
+`framework-idempotency-database`, the same file byte for byte):
+
+```sql
+CREATE TABLE fw_idempotency_keys (
+    client_id       TEXT        NOT NULL,
+    principal_id    TEXT        NOT NULL,
+    idempotency_key TEXT        NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 200),
+    request_hash    TEXT        NOT NULL,
+    token           TEXT        NOT NULL,
+    status          INTEGER,
+    content_type    TEXT,
+    response_body   BYTEA,
+    created_at      TIMESTAMPTZ NOT NULL,
+    completed_at    TIMESTAMPTZ,
+    PRIMARY KEY (client_id, principal_id, idempotency_key)
+);
+CREATE INDEX idx_fw_idempotency_keys_created ON fw_idempotency_keys (created_at);
+```
+
+A request with `Idempotency-Key` runs once per (client, principal, key):
+
+- A request without the header runs as it is. A key that is not 1 to 200 printable ASCII characters
+  (`!` to `~`; the spaces around a header value are not part of it), or the header sent twice, is
+  `400 IDEMPOTENCY_KEY_INVALID`. A context without a principal is `400 IDEMPOTENCY_KEY_UNSUPPORTED`:
+  the key cannot be scoped to a caller, so the request is not run unprotected.
+- `request_hash` is the hex SHA-256 of `METHOD SP path "?" query LF body` (the path and query as
+  sent; Go uses `URL.EscapedPath()`). The body is read within the route's body limit and handed on.
+- The first request takes the key with a new random `token`: an insert, or the takeover of a row
+  older than the retention (24 h; kept answer or not) or of an unfinished one older than the in-flight
+  timeout (5 min: the process that ran it may have stopped). A takeover replaces the hash and the
+  token and forgets any answer. Only the request that holds the token completes or frees the key, so
+  a request whose reservation was taken over cannot overwrite or delete the new holder's.
+- A `2xx` answer keeps `status`, `content_type` and the body. Any other status, an error, or a panic
+  (Java: an exception) deletes the row, so a retry does the work.
+- A repeat with the same hash gets the kept answer with `Idempotency-Replayed: true` and no other
+  header of the first answer but `Content-Type`. A repeat while the first runs waits for it (10 s,
+  polling from 20 ms up to 250 ms) and gets its answer, or `409 IDEMPOTENCY_IN_PROGRESS` when the wait
+  runs out. Another hash under the key is `422 IDEMPOTENCY_KEY_REUSED`.
+- Expired rows are deleted by an hourly loop, `http-idempotency-prune`, on every replica.
+
+APIs:
+
+- Go: `idempotency.Declare(app)` (the migration set), `idempotency.New(b, declared, db, opts...)` with
+  `Retention`, `Wait`, `InFlightTimeout`, and `keys.Middleware` (route middleware); `Prune`.
+- Java: `Idempotency.middleware(store, clock[, Idempotency.Options])` over an `IdempotencyStore`
+  (`reserve` with a token and the two cut-offs, `find`, `complete` and `release` by token):
+  `MemoryIdempotencyStore` (one process, tests) and `DatabaseIdempotencyStore` from
+  `IdempotencyDatabaseModule` (module id `http-idempotency`), which also provides the
+  `Idempotency.Options` from `idempotency.retention`, `idempotency.wait` and
+  `idempotency.in-flight-timeout` and prunes in batches of 1000. Both stores pass the shared
+  `IdempotencyStoreContract`.
+
+Differences that remain: Go keeps whatever a `2xx` handler wrote, streamed or not; Java frees the key
+when the answer is a streamed body (`Response.Body.Stream`), so it is not kept. Go's timings are code
+options, Java's are settings of the database module (or `Options` in code).

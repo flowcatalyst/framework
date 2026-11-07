@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Values as files under one folder, a key's {@code /} being folders. A put writes a temporary file
@@ -66,18 +67,18 @@ final class FolderObjectStore implements ObjectStore {
   }
 
   @Override
-  public void put(String key, byte[] content, String contentType) {
+  public void put(String key, byte[] content, @Nullable String contentType) {
     Path target = resolve(key);
-    StoredObject.checkContentType(contentType);
+    String type = StoredObject.checkContentType(contentType);
     ObjectStoreFactories.checkSize(content.length, maxBytes);
     try {
       Path dir = parentOf(target);
       Files.createDirectories(dir);
       refuseLinks(dir);
-      if (contentType.equals(StoredObject.DEFAULT_CONTENT_TYPE)) {
+      if (type.equals(StoredObject.DEFAULT_CONTENT_TYPE)) {
         Files.deleteIfExists(typeFile(target));
       } else {
-        replace(dir, typeFile(target), contentType.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        replace(dir, typeFile(target), type.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
       }
       replace(dir, target, content);
     } catch (IOException e) {
@@ -132,6 +133,15 @@ final class FolderObjectStore implements ObjectStore {
       Path typeFile = typeFile(target);
       if (Files.isRegularFile(typeFile, LinkOption.NOFOLLOW_LINKS)) {
         type = new String(Files.readAllBytes(typeFile), java.nio.charset.StandardCharsets.US_ASCII);
+        if (type.isEmpty()) {
+          throw new ObjectStoreException("object store '" + name + "': the content type of '" + key + "' is not a media type");
+        }
+        try {
+          StoredObject.checkContentType(type);
+        } catch (IllegalArgumentException e) {
+          // a type file this store did not write: a store failure, not a guess
+          throw new ObjectStoreException("object store '" + name + "': the content type of '" + key + "' is not a media type", e);
+        }
       }
       return Optional.of(new StoredObject(content, type));
     } catch (java.nio.file.NoSuchFileException e) {

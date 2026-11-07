@@ -117,9 +117,17 @@ func (d *dispatchReceiver) handle(w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return err
 	}
-	meta, data, hasData, merr := parseDelivery(jobID, eventType, client, raw)
+	meta, data, hasData, envelopeClient, merr := parseDelivery(jobID, eventType, client, raw)
 	if merr != "" {
 		return httpfw.Validation("the dispatch envelope is malformed: " + merr)
+	}
+	// the signature covers the envelope's clientCode but not the client header: when they disagree
+	// the header was not what the platform sent, so the job is refused for good, before any handler
+	if envelopeClient != "" && !client.IsZero() && envelopeClient != client.Code.String() {
+		d.log.Warn(fmt.Sprintf("flowcatalyst: refused dispatch job %s (%s): the %s header names client %s, the signed envelope another (correlation %s)",
+			jobID, eventType, clientHeader, client.Code, httpfw.CorrelationID(r)))
+		return httpfw.NewError(http.StatusBadRequest, "CLIENT_MISMATCH",
+			"the "+clientHeader+" header and the envelope's clientCode name different clients")
 	}
 	h := d.recv.dispatchHandler(eventType)
 	if h == nil {
@@ -277,8 +285,9 @@ func reject(w http.ResponseWriter, r Reject) error {
 
 // parseDelivery reads the body: the platform's envelope when it is a JSON object whose id and type
 // equal the headers, else the raw payload (data-only). A body shaped like an envelope but with
-// duplicate keys or a bad field is malformed (the message), never a data-only payload.
-func parseDelivery(jobID, eventType string, client DeliveryClient, body []byte) (DeliveryMeta, jsontext.Value, bool, string) {
+// duplicate keys or a bad field is malformed (the message), never a data-only payload. It also
+// returns the envelope's clientCode ("" when absent, null or data-only).
+func parseDelivery(jobID, eventType string, client DeliveryClient, body []byte) (DeliveryMeta, jsontext.Value, bool, string, string) {
 	meta := DeliveryMeta{JobID: jobID, EventType: eventType, Client: client, Raw: bytes.Clone(body)}
 	var shape map[string]jsontext.Value
 	lenient := json.Unmarshal(body, &shape, jsontext.AllowDuplicateNames(true)) == nil
@@ -287,42 +296,43 @@ func parseDelivery(jobID, eventType string, client DeliveryClient, body []byte) 
 		meta.CorrelationID = fw.NewCorrelationID()
 		var data jsontext.Value
 		if err := json.Unmarshal(body, &data); err != nil {
-			return meta, nil, false, ""
+			return meta, nil, false, "", ""
 		}
-		return meta, data, true, ""
+		return meta, data, true, "", ""
 	}
 	var root map[string]jsontext.Value
 	if err := json.Unmarshal(body, &root); err != nil {
-		return meta, nil, false, "it has duplicate keys"
+		return meta, nil, false, "", "it has duplicate keys"
 	}
 	attempt, ok := positiveInt(root["attemptNumber"])
 	if !ok {
-		return meta, nil, false, "attemptNumber must be a positive integer"
+		return meta, nil, false, "", "attemptNumber must be a positive integer"
 	}
 	meta.Attempt = attempt
 	var err string
 	if meta.Source, err = optionalString(root, "source"); err != "" {
-		return meta, nil, false, err
+		return meta, nil, false, "", err
 	}
 	if meta.Subject, err = optionalString(root, "subject"); err != "" {
-		return meta, nil, false, err
+		return meta, nil, false, "", err
 	}
 	if meta.MessageGroup, err = optionalString(root, "messageGroup"); err != "" {
-		return meta, nil, false, err
+		return meta, nil, false, "", err
 	}
 	correlation, err := optionalString(root, "correlationId")
 	if err != "" {
-		return meta, nil, false, err
+		return meta, nil, false, "", err
 	}
 	if _, err = optionalString(root, "clientId"); err != "" {
-		return meta, nil, false, err
+		return meta, nil, false, "", err
 	}
-	if _, err = optionalString(root, "clientCode"); err != "" {
-		return meta, nil, false, err
+	clientCode, err := optionalString(root, "clientCode")
+	if err != "" {
+		return meta, nil, false, "", err
 	}
 	meta.CorrelationID = correlationOf(correlation)
 	data, hasData := root["data"]
-	return meta, data, hasData, ""
+	return meta, data, hasData, clientCode, ""
 }
 
 func correlationOf(c string) fw.CorrelationID {

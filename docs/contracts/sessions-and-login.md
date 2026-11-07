@@ -535,7 +535,10 @@ On a route declared to require a context:
 1. `Authorization: Bearer <token>` present (and bearer tokens accepted): verify it (5.6). Invalid:
    `401 UNAUTHENTICATED`; there is **no** fall-back to the cookie. Keys unreadable: `503
    UNAVAILABLE`. The cookie is ignored and the CSRF rules do not apply (a browser cannot be made to
-   send this header cross-site without a CORS preflight, and there is no CORS).
+   send this header cross-site without a CORS preflight, and there is no CORS). *Amended
+   2026-11-07:* with CORS turned on (HTTP contract section 13.4) an allowed origin passes the
+   preflight, but a bearer token is never ambient: only a page that already holds one can send it,
+   and credentials (the cookie) are never allowed across origins.
 2. Any other `Authorization` scheme: `401 UNAUTHENTICATED`.
 3. The session cookie: on an unsafe method, the CSRF rules (7.2) first; then the session is read,
    its timeouts checked (6.4), and `lastSeenAt` written back when due.
@@ -567,9 +570,11 @@ session cookie:
 No synchronizer token: Fetch Metadata, the Origin check, `SameSite=Lax` and JSON-only bodies leave
 nothing for a token to add. **No CORS** is configured anywhere in the framework, so no credentialed
 cross-origin request is ever permitted.
-*Amended 2026-11-07 (http contract section 13):* CORS can now be turned on for chosen origins, but
-it never allows credentials, so this still holds: the cookie is never sent with a permitted
-cross-origin request, and an allowed origin can only send a bearer token it already holds.
+*Amended 2026-11-07 (HTTP contract section 13.4):* an application may now turn CORS on for chosen
+origins (Java and Go, off by default), but it never allows credentials (`Access-Control-Allow-Credentials`
+is never sent and there is no setting for it), so this still holds: the cookie is never sent with a
+permitted cross-origin request, an allowed origin can only send a bearer token it already holds, and
+these rules still refuse a cookie-authenticated unsafe request from another origin.
 
 The public sign-in routes take no unsafe requests (`/auth/login` and `/auth/callback` are `GET`;
 the platform hosts the credential forms). An application that adds a public `POST` next to them

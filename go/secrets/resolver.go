@@ -15,16 +15,17 @@ import (
 // ModuleID is the secrets module's id.
 const ModuleID = "secrets"
 
-// blocked is why the platform driver fails start-up.
-const blocked = "the platform driver is blocked on the platform: FlowCatalyst has no endpoint that resolves a per-client " +
-	"secret for an application (secrets contract, section 4); use Env or File"
+// blocked is why the placeholder platform driver fails start-up.
+const blocked = "secrets.Platform() cannot build the platform driver (package secrets does not depend on the flowcatalyst " +
+	"module): use flowcatalyst.PlatformSecrets(client) from github.com/flowcatalyst/framework/go/flowcatalyst " +
+	"(secrets contract, section 4)"
 
-// PlatformFactory is the platform store, which is blocked: see [Platform].
+// PlatformFactory is the placeholder of the platform driver: see [Platform].
 type PlatformFactory struct{ cache CachePolicy }
 
-// Platform is the store that would ask the platform. The platform has no endpoint that resolves a
-// secret reference or returns a per-client credential, so it still fails start-up with a message
-// saying so.
+// Platform is the placeholder of the platform driver. The driver needs the platform client, which
+// this package cannot depend on, so start-up fails naming flowcatalyst.PlatformSecrets, which is
+// the driver (the Java framework's SecretStores.platform() does the same).
 func Platform() PlatformFactory { return PlatformFactory{cache: DefaultCache()} }
 
 // WithCache returns a copy with another cache policy.

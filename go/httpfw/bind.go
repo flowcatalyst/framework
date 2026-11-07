@@ -25,7 +25,10 @@ func (rt *Routes) Bind(b Binding) {
 	if err != nil {
 		return
 	}
-	ro := routeOptions{requiresContext: b.desc.requiresContext, middleware: b.options.middleware}
+	ro := routeOptions{
+		requiresContext: b.desc.requiresContext, middleware: b.options.middleware,
+		maxBody: b.options.maxBody, maxBodySet: b.options.maxBodySet,
+	}
 	rt.regs = append(rt.regs, registration{pattern: p, registrant: rt.module, handler: b.handler, opts: ro})
 }
 

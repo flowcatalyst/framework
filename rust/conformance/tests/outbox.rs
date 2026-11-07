@@ -213,6 +213,12 @@ fn dispatch_job(j: &Value) -> Result<DispatchJob, String> {
     if let Some(v) = opt("descriptor") {
         b = b.descriptor(v);
     }
+    if let Some(v) = opt("connectionId") {
+        b = b.connection_id(v);
+    }
+    if let Some(v) = opt("idempotencyKey") {
+        b = b.idempotency_key(v);
+    }
     b.build().map_err(|e| e.to_string())
 }
 

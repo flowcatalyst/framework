@@ -1,6 +1,7 @@
 package io.flowcatalyst.framework.objectstore;
 
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A place to keep named byte values: an archive of what was applied, an uploaded file, a report. It
@@ -45,12 +46,13 @@ public interface ObjectStore {
    *
    * @param key the key, see {@link ObjectKeys#check}
    * @param content the bytes; may be empty
-   * @param contentType the media type, see {@link StoredObject#checkContentType}
+   * @param contentType the media type, see {@link StoredObject#checkContentType}; {@code null} or
+   *     {@code ""} stores {@link StoredObject#DEFAULT_CONTENT_TYPE}
    * @throws IllegalArgumentException for a key or content type that is not allowed, or content over
    *     the store's size limit
    * @throws ObjectStoreException when the store cannot be written
    */
-  default void put(String key, byte[] content, String contentType) {
+  default void put(String key, byte[] content, @Nullable String contentType) {
     StoredObject.checkContentType(contentType);
     put(key, content);
   }

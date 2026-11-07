@@ -22,7 +22,7 @@ use fw_core::{Declarations, Module, ModuleId};
 pub use aggregate::{Aggregate, Fresh, Loaded, Version, VersionCheck, VersionError, Write};
 pub use dispatch::{
     DispatchJob, DispatchJobBuilder, DispatchJobError, Kind as DispatchKind, Mode as DispatchMode,
-    Queue as DispatchQueue,
+    PLATFORM_CLIENT, Queue as DispatchQueue,
 };
 pub use error::{ErrorCode, ErrorKind, UseCaseError};
 pub use event::{DomainEvent, ErasedEvent, EventMetadata, EventType, Events};

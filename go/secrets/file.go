@@ -68,7 +68,7 @@ func (f FileFactory) Create(_ context.Context, name string, b *fw.Boot) (Store, 
 		return nil, errors.New("directory cannot be resolved")
 	}
 	s := &fileStore{instance: name, root: root, maxBytes: f.maxBytes, log: b.Logger(ModuleID), warned: map[string]bool{}}
-	return withCache(s, f.cache, b.Clock()), nil
+	return withCache(s, f.cache, b.Clock(), b.Logger(ModuleID)), nil
 }
 
 type fileStore struct {

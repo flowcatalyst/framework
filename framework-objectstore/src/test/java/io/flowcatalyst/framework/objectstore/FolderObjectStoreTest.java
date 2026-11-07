@@ -59,6 +59,16 @@ class FolderObjectStoreTest extends ObjectStoreContract {
   }
 
   @Test
+  void aTypeFileThatHoldsNoMediaTypeIsAStoreFailureNotAGuess() throws IOException {
+    ObjectStore s = store();
+    s.put("c", new byte[] {1}, "text/csv");
+    for (String broken : new String[] {"not a type", "", "text/plain; x"}) {
+      Files.writeString(dir.resolve(".c.content-type"), broken);
+      assertThatThrownBy(() -> s.read("c")).as("'%s'", broken).isInstanceOf(ObjectStoreException.class);
+    }
+  }
+
+  @Test
   void aSymbolicLinkOutOfTheFolderIsNotFollowed() throws IOException {
     Path outside = Files.createTempDirectory("outside");
     Files.writeString(outside.resolve("secret"), "nope");

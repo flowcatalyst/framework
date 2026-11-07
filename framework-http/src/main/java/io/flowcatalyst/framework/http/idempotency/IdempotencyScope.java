@@ -7,14 +7,15 @@ package io.flowcatalyst.framework.http.idempotency;
  * @param clientId the context's client
  * @param principalId the context's principal
  * @param key the {@code Idempotency-Key} header's value, 1 to {@link Idempotency#MAX_KEY_LENGTH}
- *     characters
+ *     printable ASCII characters
  */
 public record IdempotencyScope(String clientId, String principalId, String key) {
 
-  /** Checks the key's length. */
+  /** Checks the key. */
   public IdempotencyScope {
-    if (key.isEmpty() || key.length() > Idempotency.MAX_KEY_LENGTH) {
-      throw new IllegalArgumentException("an idempotency key is 1 to " + Idempotency.MAX_KEY_LENGTH + " characters");
+    if (!Idempotency.validKey(key)) {
+      throw new IllegalArgumentException(
+          "an idempotency key is 1 to " + Idempotency.MAX_KEY_LENGTH + " printable ASCII characters");
     }
   }
 }

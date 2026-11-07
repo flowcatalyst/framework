@@ -15,9 +15,29 @@ no configuration.
 | `put(key, content)` | Stores the value, replacing any earlier value completely and atomically for readers (old value or new, never a mixture). Empty content is a value |
 | `get(key)` | `Optional<byte[]>`: empty when there is no value |
 | `delete(key)` | Removes the value; removing an absent value is not an error |
+| put with a content type | Stores the value with its content type (amended 2026-11-07) |
+| get with the content type | The value and its content type as stored (amended 2026-11-07) |
 
-Nothing else: no listing, metadata, conditional writes or partial reads, so every driver can honour
-the contract the same way. Returned and stored arrays are copies.
+*Amended 2026-11-07 (fulfil-go fixes, items B3 and the integration rulings; owner-approved):* the
+content type is the one piece of metadata. Both frameworks apply the same rule: an empty one (Java
+`null` or `""`, Go `""`) stores `application/octet-stream`; anything else must be at most 255
+printable ASCII characters (spaces allowed, no line breaks) and a media type as Go's
+`mime.ParseMediaType` reads one (a type, optionally `/subtype`, then `; name=value` parameters whose
+value is a token or a quoted string, no parameter twice with different values), else it is refused
+like a bad key (Java `IllegalArgumentException`, Go `ErrInvalidArgument`) and nothing is stored. It is
+stored as given. A value stored without one reads back as `application/octet-stream`; a put replaces
+the type with the bytes; delete removes both. The s3 driver keeps it as the object's `Content-Type`
+(Java reads S3's own `binary/octet-stream` as `application/octet-stream`); the folder driver in a
+hidden file `.<name>.content-type` beside the value (Go writes it after the value, Java before it, so
+a reader racing a type change may briefly see the new bytes with the old type, or the old bytes with
+the new type; a type file that holds no media type is a store failure, not a guess); the memory driver beside the bytes. Java: `put(key, bytes,
+contentType)` and `read(key)` → `StoredObject(content, contentType)`, `StoredObject.DEFAULT_CONTENT_TYPE`,
+`StoredObject.checkContentType`; Go: `PutObject(ctx, key, Object{Content, ContentType})`,
+`GetObject(ctx, key) (Object, bool, error)`, `DefaultContentType`, `CheckContentType`. The Java tests
+hold Go's verdicts on about fifty edge cases (`MediaTypeTable`).
+
+Nothing else: no listing, other metadata, conditional writes or partial reads, so every driver can
+honour the contract the same way. Returned and stored arrays are copies.
 
 ## 2. Keys
 
@@ -70,19 +90,12 @@ driver's test. The S3 driver is tested against an in-process S3 (the real SDK ov
 `FW_S3_ENDPOINT` is set, against a real S3-compatible service (verified against LocalStack on
 2026-10-21).
 
-*Amended 2026-11-07 (fulfil-go fixes, item B3; owner-approved):* a value has a **content type**.
-`put` takes an optional one and a typed read returns it (Java: `put(key, bytes, contentType)` and
-`read(key)` → `StoredObject(content, contentType)`; Go: the parallel names). It is 1 to 255
-printable ASCII characters; a value stored without one reads as `application/octet-stream`. `memory`
-keeps it, `s3` sets the object's `Content-Type` (S3's own `binary/octet-stream` reads as
-`application/octet-stream`), `folder` keeps it in the hidden file `.<name>.content-type` beside the
-value and `delete` removes it. Section 7's "metadata and content types" no longer includes content
-types.
+*Amended 2026-11-07:* `ObjectStoreContract` also covers content types (section 1).
 
 ## 7. Not in this contract
 
-Streaming reads and writes, listing, metadata and content types, conditional puts, multipart uploads,
-pre-signed URLs and encryption settings.
+Streaming reads and writes, listing, metadata other than the content type, conditional puts,
+multipart uploads, pre-signed URLs and encryption settings.
 
 ## 8. Go
 

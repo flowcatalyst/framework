@@ -41,7 +41,7 @@ type Dispatcher struct {
 
 // ServeHTTP implements http.Handler.
 func (d *Dispatcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	st := &reqState{correlation: correlationOf(r), maxBody: d.opts.maxBody, logger: d.opts.logger}
+	st := &reqState{correlation: correlationOf(r), maxBody: d.opts.maxBody, logger: d.opts.logger, draining: d.opts.drain}
 	r = r.WithContext(context.WithValue(r.Context(), stateKey{}, st))
 	h := w.Header()
 	h.Set(correlationHeader, st.correlation.String())
@@ -51,6 +51,9 @@ func (d *Dispatcher) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pipeline := d.route
 	for _, mw := range slices.Backward(d.global) {
 		pipeline = mw(pipeline)
+	}
+	if d.opts.cors != nil {
+		pipeline = d.opts.cors.step(pipeline)
 	}
 	pipeline = d.accessLog(pipeline)
 	pipeline = d.errorMapping(pipeline)
@@ -209,9 +212,6 @@ func rawPath(r *http.Request) string {
 // the route.
 func (d *Dispatcher) route(w http.ResponseWriter, r *http.Request) error {
 	st := stateOf(r)
-	if r.ContentLength > st.maxBody {
-		return NewError(http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body is too large")
-	}
 	path := rawPath(r)
 	if !strings.HasPrefix(path, "/") {
 		return NewError(http.StatusNotFound, "NOT_FOUND", "no route for this path")
@@ -228,6 +228,12 @@ func (d *Dispatcher) route(w http.ResponseWriter, r *http.Request) error {
 	}
 	method := r.Method
 	m := d.router.match(method, segments)
+	if m.kind == found {
+		st.maxBody = m.route.maxBody // the route's own limit (MaxBody), checked below and while reading
+	}
+	if r.ContentLength > st.maxBody {
+		return NewError(http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "request body is too large")
+	}
 	switch m.kind {
 	case notFound:
 		if d.spa != nil && d.spa.Answer(w, r, segments, spaResponder{st: st}) {

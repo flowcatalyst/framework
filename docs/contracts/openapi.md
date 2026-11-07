@@ -527,15 +527,15 @@ scheme was contributed is a dump problem ("say how callers authenticate").
   in a unit test and fails with a diff when the committed file differs, so `./mvnw verify` catches a
   stale document without Node. *As built (MO):* the same test run with `-Dopenapi.update=true`
   writes the file; a missing file fails with the command to write it. The TypeScript side has its own drift check (section 11).
-
-*Amended 2026-11-07 (fulfil-go fixes, item B2; owner-approved):* the document is also **built at
-start-up**. The HTTP server (Java: `JettyHttpModule`, before it opens the port; Go: `httpfw.NewServer`)
-builds it from the declarations and fails start-up with every problem, so a schema problem no
-longer shows only when the document is written. At start-up a missing `info` and a context-requiring
-operation without a security scheme are not problems (they concern the dumped document; the command
-and the test helpers still report them); an application with no declared operation is not checked.
-Test helper: Java `OpenApiTesting.assertBuilds(appBuilder)` fails on every problem the command would
-print, with no committed file; Go: the `fwtest` counterpart.
+- **At start-up (amended 2026-11-07, fulfil-go fixes item B2; owner-approved):** the HTTP server
+  builds the document from the declarations when it is built (Java: `JettyHttpModule`, before it
+  opens the port; Go: `httpfw.NewServer`, problems under key `openapi`) and fails start-up with every
+  problem of the operations and their types, so a type the document cannot describe fails the first
+  test that starts the server, not only the dump. The two checks of the whole document (no `Info`; an
+  operation that requires a context when no security scheme was contributed) stay with the command
+  and the test helpers, because test servers commonly have neither; an application with no declared
+  operation is not checked. Test helpers that apply every check, with no committed file: Java
+  `OpenApiTesting.assertBuilds(appBuilder)`, Go `fwtest.OpenAPI(t, web)`.
 
 ## 10. One document for Java and Go
 

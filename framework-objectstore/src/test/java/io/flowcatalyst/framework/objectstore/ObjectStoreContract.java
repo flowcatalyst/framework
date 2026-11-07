@@ -78,13 +78,41 @@ public abstract class ObjectStoreContract {
   }
 
   @Test
+  public void aPutWithANullOrEmptyContentTypeReadsBackAsOctetStream() {
+    ObjectStore s = store();
+    String k = key("untyped");
+    s.put(k, new byte[] {1}, "image/png");
+    s.put(k, new byte[] {2}, null);
+    assertThat(s.read(k).orElseThrow().contentType()).isEqualTo(StoredObject.DEFAULT_CONTENT_TYPE);
+    s.put(k, new byte[] {3}, "image/png");
+    s.put(k, new byte[] {4}, "");
+    StoredObject got = s.read(k).orElseThrow();
+    assertThat(got.content()).containsExactly(4);
+    assertThat(got.contentType()).isEqualTo(StoredObject.DEFAULT_CONTENT_TYPE);
+  }
+
+  @Test
   public void aBadContentTypeIsRefusedAndNothingIsStored() {
     ObjectStore s = store();
     String k = key("bad-type");
-    for (String bad : List.of("", " ", "text/plain\r\nX-Evil: 1", "a".repeat(StoredObject.MAX_CONTENT_TYPE_LENGTH + 1), "tëxt/plain")) {
+    for (String bad : MediaTypeTable.INVALID) {
       assertThatIllegalArgumentException().as("'%s'", bad).isThrownBy(() -> s.put(k, new byte[] {1}, bad));
     }
     assertThat(s.read(k)).isEmpty();
+  }
+
+  @Test
+  public void everyMediaTypeTheGoFrameworkAcceptsIsStoredAsGiven() {
+    ObjectStore s = store();
+    String k = key("typed");
+    for (String good : MediaTypeTable.VALID) {
+      s.put(k, new byte[] {1}, good);
+      assertThat(s.read(k).orElseThrow().contentType()).as("'%s'", good).isEqualTo(good);
+    }
+    for (String good : MediaTypeTable.VALID_WITH_SPACES_AROUND) {
+      s.put(k, new byte[] {1}, good);
+      assertThat(s.read(k).orElseThrow().contentType().strip()).as("'%s'", good).isEqualTo(good.strip());
+    }
   }
 
   @Test

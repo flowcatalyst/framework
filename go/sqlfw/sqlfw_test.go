@@ -3,10 +3,13 @@ package sqlfw_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -397,5 +400,72 @@ func TestDatabaseURLMustPointAtAnEmptyDatabase(t *testing.T) {
 	r = runOn(t, dir, fixtureSets(dir), "", "check")
 	if r.code != 0 {
 		t.Fatalf("check on an empty database: exit %d\n%s", r.code, r.stderr)
+	}
+}
+
+// A package's migrations are read from their directory by path, so the fwsql command needs none of
+// the application's code: the first generate of a new package needs no stub of its queries.
+func TestGenerateReadsAMigrationDirectoryByPathRelativeToTheApplication(t *testing.T) {
+	t.Parallel()
+	dir := copyFixture(t)
+	for _, d := range []string{".fw", "db", "jet"} {
+		if err := os.RemoveAll(filepath.Join(dir, d)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r := run(t, dir, []fw.MigrationSet{sqlfw.MigrationDir("fixture", "migrations")}, "generate")
+	if r.code != 0 {
+		t.Fatalf("generate: exit %d\n%s", r.code, r.stderr)
+	}
+	for _, f := range []string{"db/things.sql.go", ".fw/schema/00_fixture__V000002__create_tags.sql"} {
+		if got, want := mustRead(t, filepath.Join(dir, f)), mustRead(t, filepath.Join(fixture, f)); !bytes.Equal(got, want) {
+			t.Errorf("%s was not generated as committed", f)
+		}
+	}
+	r = run(t, dir, []fw.MigrationSet{sqlfw.MigrationDir("fixture", "no-such-dir")}, "schema")
+	if r.code != 1 {
+		t.Fatalf("a missing directory: exit %d", r.code)
+	}
+	mustContain(t, "stderr", r.stderr, `migration set "fixture"`, "no-such-dir")
+}
+
+// The fixture's fwsql command builds while the fixture application cannot (it uses its generated
+// queries, which are not there yet): the command depends on no application code.
+func TestTheFwsqlCommandBuildsWithoutTheGeneratedCode(t *testing.T) {
+	t.Parallel()
+	abs, err := filepath.Abs(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmp := t.TempDir()
+	usesDB := filepath.Join(tmp, "uses_db.go")
+	if err := os.WriteFile(usesDB, []byte("package app\n\nimport _ \"github.com/flowcatalyst/framework/go/sqlfw/testdata/app/db\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	replace := map[string]string{filepath.Join(abs, "uses_db.go"): usesDB}
+	generated, _ := filepath.Glob(filepath.Join(abs, "db", "*.go"))
+	for _, f := range generated {
+		replace[f] = "" // not generated yet
+	}
+	overlay := filepath.Join(tmp, "overlay.json")
+	b, err := json.Marshal(map[string]any{"Replace": replace})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(overlay, b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	build := func(pkg string) error {
+		out, err := exec.CommandContext(t.Context(), "go", "build", "-overlay", overlay, "-o", os.DevNull, pkg).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("%w\n%s", err, out)
+		}
+		return nil
+	}
+	if err := build("./testdata/app"); err == nil {
+		t.Fatal("the overlay did not take the generated code away (the application still builds)")
+	}
+	if err := build("./testdata/app/cmd/fwsql"); err != nil {
+		t.Fatalf("the fwsql command needs the application's code: %v", err)
 	}
 }

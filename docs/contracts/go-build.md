@@ -14,14 +14,14 @@ and Rust builds ignore it. It shares with them the contracts and the conformance
 | Module | Directory | May import |
 |---|---|---|
 | `github.com/flowcatalyst/framework/go` | `go/` | the standard library, `golang.org/x/sync`, pgx v5, go-redis v9, `go.yaml.in/yaml/v3`; embedded-postgres in `fwtest` only; `golang.org/x/tools` in `cmd/fwvet` only |
-| `github.com/flowcatalyst/framework/go/flowcatalyst` | `go/flowcatalyst/` | the core module and the platform SDK (`pkg/fcsdk`); the only module that imports fcsdk |
+| `github.com/flowcatalyst/framework/go/flowcatalyst` | `go/flowcatalyst/` | the core module and the platform SDK (`github.com/flowcatalyst/go-sdk`, fcsdk); the only module that imports it |
 | `github.com/flowcatalyst/framework/go/tools` | `go/tools/` | the pinned tools (`tool` directives): golangci-lint, NilAway, gofumpt; never imported |
 
 - **How `go/flowcatalyst` resolves fcsdk (G4, 2026-10-15; own repository since 2026-10-30).** fcsdk is
   the module `github.com/flowcatalyst/go-sdk`, developed in the platform repository's `pkg/fcsdk` and
   published to its own repository `github.com/flowcatalyst/go-sdk` (tags `vX.Y.Z`, one commit per
   release; up to v0.0.8 it was `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk`). `go/flowcatalyst/go.mod`
-  requires a released version (v0.0.9), with no replace, and the checks and CI resolve it from the module
+  requires a released version (v0.0.15 since 2026-11-07), with no replace, and the checks and CI resolve it from the module
   proxy (no platform checkout needed). To develop against unreleased
   fcsdk, set `FCSDK=<path to pkg/fcsdk>` (for example `make -C go go-check FCSDK=../flowcatalyst-go/pkg/fcsdk`):
   `make -C go fc-modfile` then writes `go/flowcatalyst/go.local.work` (not committed; a `replace` of

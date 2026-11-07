@@ -1389,8 +1389,8 @@
       "kind" : "ack"
     } ],
     "ready" : true,
-    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
-    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" ], [ "X-FlowCatalyst-Signature", "76cd5bdc24fc102684363c7f7479f85eca60832e7e3e7475cdb2c8bcbd7feeba" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
     "expect" : {
       "status" : 200,
       "outcome" : null,
@@ -1414,7 +1414,7 @@
           "id" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "code" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         },
-        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
+        "rawBody" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}"
       },
       "contextClient" : "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     }
@@ -1425,8 +1425,8 @@
       "kind" : "ack"
     } ],
     "ready" : true,
-    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:b" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
-    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:b" ], [ "X-FlowCatalyst-Signature", "059bd215383693109a8e5d80deecd1c6025af5c2f03547b9e485edb8ae5bc49b" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"b\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
     "expect" : {
       "status" : 400,
       "outcome" : null,
@@ -1434,6 +1434,26 @@
         "error" : "VALIDATION"
       },
       "messageJava" : "the X-FlowCatalyst-Client header must be {id}:{code}",
+      "handler" : null,
+      "delivery" : null,
+      "contextClient" : null
+    }
+  }, {
+    "name" : "client header names another client than the envelope's clientCode",
+    "handlers" : [ {
+      "pattern" : "orders:billing:invoice:created",
+      "kind" : "ack"
+    } ],
+    "ready" : true,
+    "headers" : [ [ "Content-Type", "application/json" ], [ "X-Dispatch-Job-Id", "dj_0HZXEQ5Y8JY5Z" ], [ "X-Event-Type", "orders:billing:invoice:created" ], [ "X-FlowCatalyst-Client", "clt_1:globex" ], [ "X-FlowCatalyst-Signature", "42bf62d03d1c623cfedf6e8fae78b610ca394092c9b7f4577226c1611051e4ef" ], [ "X-FlowCatalyst-Timestamp", "2026-10-09T12:00:00.000Z" ] ],
+    "body" : "{\"id\":\"dj_0HZXEQ5Y8JY5Z\",\"type\":\"orders:billing:invoice:created\",\"attemptNumber\":2,\"source\":\"orders:billing\",\"subject\":\"billing.invoice.42\",\"correlationId\":\"corr-1\",\"messageGroup\":\"billing:invoice:42\",\"clientId\":\"clt_1\",\"clientCode\":\"acme\",\"data\":{\"invoiceId\":\"42\",\"amount\":\"10.00\"}}",
+    "expect" : {
+      "status" : 400,
+      "outcome" : null,
+      "body" : {
+        "error" : "CLIENT_MISMATCH"
+      },
+      "messageJava" : "the X-FlowCatalyst-Client header and the envelope's clientCode name different clients",
       "handler" : null,
       "delivery" : null,
       "contextClient" : null

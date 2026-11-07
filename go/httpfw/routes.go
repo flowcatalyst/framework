@@ -41,6 +41,8 @@ type routeOptions struct {
 	requiresContext bool
 	acceptForms     bool
 	middleware      []Middleware
+	maxBody         int64 // the route's body limit when maxBodySet, else http.max-body-bytes
+	maxBodySet      bool
 }
 
 type routeOptionFunc func(*routeOptions)
@@ -58,6 +60,15 @@ func RequiresContext() RouteOption {
 // apply first, and every other route keeps the JSON-only rule.
 func AcceptForms() RouteOption {
 	return routeOptionFunc(func(o *routeOptions) { o.acceptForms = true })
+}
+
+// MaxBody sets the largest request body this route accepts, in bytes, in place of
+// http.max-body-bytes: smaller for a route that takes little, larger for one that takes uploads (a
+// proof photo). Over it the request is 413 PAYLOAD_TOO_LARGE, by Content-Length before the handler
+// runs or while the body is read ([DecodeJSON], [ReadBody], typed operations). Less than 1 is a
+// start-up problem.
+func MaxBody(n int64) RouteOption {
+	return routeOptionFunc(func(o *routeOptions) { o.maxBody, o.maxBodySet = n, true })
 }
 
 // With adds route middleware, inside the global middleware and after context resolution.
@@ -164,6 +175,8 @@ type options struct {
 	metrics     *metrics.Registry
 	declared    []Described
 	declaredSet bool
+	drain       <-chan struct{}
+	cors        *cors
 }
 
 // DefaultMaxBodyBytes is http.max-body-bytes' default.
@@ -195,6 +208,9 @@ func WithDeclared(ops ...Described) Option {
 	return func(o *options) { o.declared, o.declaredSet = append(o.declared, ops...), true }
 }
 
+// withDrain gives the dispatcher the server's drain signal ([Draining]).
+func withDrain(ch <-chan struct{}) Option { return func(o *options) { o.drain = ch } }
+
 // Compile checks the tables together, seals them and builds the dispatcher. Every problem is
 // reported at once as a *fw.StartupError: a malformed or duplicate route, a route that requires a
 // context with no resolver, an operation bound twice, undeclared or declared but not bound, and
@@ -209,6 +225,9 @@ func Compile(tables []*Routes, opts ...Option) (*Dispatcher, error) {
 	}
 	if o.clock == nil {
 		o.clock = fw.SystemClock()
+	}
+	if o.drain == nil {
+		o.drain = neverDraining
 	}
 	var (
 		regs     []registration
@@ -252,11 +271,20 @@ func Compile(tables []*Routes, opts ...Option) (*Dispatcher, error) {
 			})
 			continue
 		}
+		if r.opts.maxBodySet && r.opts.maxBody < 1 {
+			problems = append(problems, config.Problem{Module: r.registrant, Key: label, Message: fmt.Sprintf(
+				"route %s: MaxBody must be at least 1 byte, was %d", label, r.opts.maxBody)})
+			continue
+		}
+		limit := o.maxBody
+		if r.opts.maxBodySet {
+			limit = r.opts.maxBody
+		}
 		h := r.handler
 		for _, mw := range slices.Backward(r.opts.middleware) {
 			h = mw(h)
 		}
-		c := &compiled{pattern: r.pattern, registrant: r.registrant, requiresContext: r.opts.requiresContext, acceptForms: r.opts.acceptForms, handler: h}
+		c := &compiled{pattern: r.pattern, registrant: r.registrant, requiresContext: r.opts.requiresContext, acceptForms: r.opts.acceptForms, maxBody: limit, handler: h}
 		rt.add(c)
 		routes = append(routes, c)
 		lines = append(lines, label+" ("+r.registrant+")")

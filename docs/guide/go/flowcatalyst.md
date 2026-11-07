@@ -130,6 +130,13 @@ and its handler, and the use cases the handler runs with its `cx`, act for that 
 `fakeplatform` delivers the outbox row as the platform would, and the receiving use case's context is
 `acme`. A use case only deliveries may run authorizes with `usecase.RequireService(cx)`.
 
+The signature covers the body, so the envelope's `clientCode`, but not `X-FlowCatalyst-Client`: a
+delivery whose header names another client than its envelope's `clientCode` is refused for good,
+`400 CLIENT_MISMATCH`, and no handler runs (added 2026-11-07,
+`TestAClientHeaderThatDisagreesWithTheEnvelopeIsRefused`). Only both present and different is a
+mismatch: an envelope without `clientCode`, a data-only body or no header is not one.
+`fakeplatform.Deliver` always sends a matching pair.
+
 Which service account signs a delivery is the platform's choice: the job's connection's account when
 the job names one (`usecase.ConnectionID`), else, for a job with no subscription, the oldest active
 service account of the application named by the job code's first segment (flowcatalyst-go
@@ -211,8 +218,10 @@ inside one transaction with the record in `fw_dispatch_once`; the work gets the 
 `*database.Tx` and uses `tx.Conn()`. An error or a panic rolls both back, so the redelivery runs it
 again; a concurrent repeat waits for the first. Old rows are purged by a background loop
 (`flowcatalyst-once-purge`, every `once-purge-interval`, rows older than `once-retention` by the
-application's clock, in batches of 5 000, one replica at a time when there is a lock store). Running a
-use case inside the same transaction is an open point shared with Java.
+application's clock, in batches of 5 000, one replica at a time when there is a lock store). A use
+case runs inside the same transaction with `Defined.RunJoined(ctx, cx, cmd, tx)` (write-path contract
+4a, [Go write path](write-path.md)): its writes, events and audit row go in that transaction under a
+savepoint and are committed or rolled back with the record (`once_usecase_test.go`).
 
 ## Differences from Java
 
@@ -249,10 +258,11 @@ passed). What it made hard, and every difference from Java, is in
 
 ## Using it without the platform checkout
 
-fcsdk is released (tag `pkg/fcsdk/v0.0.2`), so `go/flowcatalyst/go.mod` requires
-`github.com/flowcatalyst/flowcatalyst/pkg/fcsdk v0.0.2` and the framework's checks resolve it from the
-module proxy; no platform checkout is needed. To develop against unreleased fcsdk, pass
-`FCSDK=../flowcatalyst-go/pkg/fcsdk` to make: `make -C go fc-modfile FCSDK=...` writes
+The platform SDK (fcsdk) is the module `github.com/flowcatalyst/go-sdk`, released from its own
+repository (up to v0.0.8 it was `github.com/flowcatalyst/flowcatalyst/pkg/fcsdk`), so
+`go/flowcatalyst/go.mod` requires `github.com/flowcatalyst/go-sdk v0.0.15` and the framework's checks
+resolve it from the module proxy; no platform checkout is needed. To develop against unreleased fcsdk,
+pass `FCSDK=../flowcatalyst-go/pkg/fcsdk` (where it is developed) to make: `make -C go fc-modfile FCSDK=...` writes
 `go/flowcatalyst/go.local.work` (not committed) with a `replace` to that checkout. The module's
 `replace` of the core module by `../` is applied only inside this repository. A consumer needs both
 modules released with tags.

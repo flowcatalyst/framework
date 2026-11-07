@@ -122,6 +122,18 @@ final class DispatchReceiver implements Handler {
       delivery = parse(jobId, type, client, body);
     } catch (MalformedEnvelope e) {
       return HttpErrors.validation("the dispatch envelope is malformed: " + e.getMessage());
+    } catch (ClientMismatch e) {
+      // The signature covers the envelope's clientCode but not the client header: when they
+      // disagree the header is not what the platform sent, so the job is refused for good.
+      LOG.warn(
+          "flowcatalyst: refused dispatch job {} ({}): the {} header names client {}, the signed envelope another (correlation {})",
+          jobId,
+          type,
+          CLIENT_HEADER,
+          client == null ? "" : client.code().value(),
+          request.correlationId());
+      return HttpErrors.error(
+          400, "CLIENT_MISMATCH", "the " + CLIENT_HEADER + " header and the envelope's clientCode name different clients");
     }
 
     Optional<DispatchHandler> handler = receivers.dispatchHandler(type);
@@ -224,9 +236,18 @@ final class DispatchReceiver implements Handler {
     return values.getFirst();
   }
 
+  /** The client header and the envelope's {@code clientCode} name different clients. */
+  static final class ClientMismatch extends Exception {
+    private static final long serialVersionUID = 1L;
+
+    ClientMismatch() {
+      super(null, null, false, false);
+    }
+  }
+
   static DispatchDelivery parse(
       String jobId, String type, DispatchDelivery.@Nullable Client client, byte[] body)
-      throws MalformedEnvelope {
+      throws MalformedEnvelope, ClientMismatch {
     // Recognise the envelope leniently, then require it to be unambiguous: a body shaped like an
     // envelope with duplicate keys is malformed, never a data-only payload.
     JsonNode shape = Envelopes.readTree(body, false);
@@ -260,7 +281,10 @@ final class DispatchReceiver implements Handler {
     String messageGroup = optionalString(root, "messageGroup");
     String correlation = optionalString(root, "correlationId");
     optionalString(root, "clientId");
-    optionalString(root, "clientCode");
+    String clientCode = optionalString(root, "clientCode");
+    if (client != null && clientCode != null && !clientCode.isEmpty() && !clientCode.equals(client.code().value())) {
+      throw new ClientMismatch();
+    }
     CorrelationId correlationId =
         correlation != null && CORRELATION.matcher(correlation).matches()
             ? new CorrelationId(correlation)

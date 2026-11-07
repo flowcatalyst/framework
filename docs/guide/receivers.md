@@ -184,7 +184,11 @@ is on [the FlowCatalyst module](flowcatalyst-module.md#creating-a-dispatch-job).
 The body is the platform's envelope, or the raw payload for a `dataOnly` subscription. The job id
 and type always come from the headers `X-Dispatch-Job-Id` and `X-Event-Type`, which are required;
 `X-FlowCatalyst-Client: {id}:{code}` is optional. A malformed header or envelope is `400
-VALIDATION` and no handler runs.
+VALIDATION` and no handler runs. The signature covers the body, so the envelope's `clientCode`, but
+not the client header: a delivery whose header names another client than its envelope's
+`clientCode` is refused for good, `400 CLIENT_MISMATCH`, and no handler runs (added 2026-11-07; both
+present and different is the only mismatch: an envelope without `clientCode`, a data-only body or no
+header is not one). `ReceiverTesting.Delivery.ofJob` and `ofEvent` always build a matching pair.
 
 A `DispatchHandler` receives the `Context` and a `DispatchDelivery`: `jobId()`, `eventType()`,
 `attemptNumber()` (empty for data-only), `source()`, `subject()`, `messageGroup()`,
