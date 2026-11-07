@@ -43,10 +43,11 @@ func Emit(in Input) (document []byte, problems []string) {
 		}
 	}
 	info := newNode()
-	if in.Info == nil {
-		problems = append(problems, "the document has no info: call Info(title, version) once, at declaration")
-	} else {
+	switch {
+	case in.Info != nil:
 		info.set("title", in.Info.Title).set("version", in.Info.Version)
+	case !in.OperationsOnly:
+		problems = append(problems, "the document has no info: call Info(title, version) once, at declaration")
 	}
 
 	cons := newConstraints(&problems)
@@ -87,7 +88,7 @@ func Emit(in Input) (document []byte, problems []string) {
 		if len(op.Problems) > 0 {
 			continue
 		}
-		if op.RequiresContext && len(schemeNames) == 0 {
+		if op.RequiresContext && len(schemeNames) == 0 && !in.OperationsOnly {
 			problems = append(problems, op.Label()+": the operation requires a context but no security scheme was contributed; say how callers authenticate (the module that resolves the context contributes them)")
 		}
 		for _, t := range op.Tags {

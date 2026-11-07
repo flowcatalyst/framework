@@ -527,6 +527,13 @@ scheme was contributed is a dump problem ("say how callers authenticate").
   in a unit test and fails with a diff when the committed file differs, so `./mvnw verify` catches a
   stale document without Node. *As built (MO):* the same test run with `-Dopenapi.update=true`
   writes the file; a missing file fails with the command to write it. The TypeScript side has its own drift check (section 11).
+- **At start-up (amended 2026-11-07, fulfil-go issue 14):** the HTTP server builds the document when it
+  is built and fails start-up with every problem of the operations and their types, so a type the
+  document cannot describe fails the first test that starts the server, not only the dump. The two
+  checks of the whole document (no `Info`; an operation that requires a context when no security
+  scheme was contributed) stay with the command and the test helper, because test servers commonly
+  have neither. Go: `httpfw.NewServer` (problems under key `openapi`) and `fwtest.OpenAPI(t, web)`,
+  which applies every check.
 
 ## 10. One document for Java and Go
 

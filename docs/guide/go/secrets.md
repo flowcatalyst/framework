@@ -1,4 +1,4 @@
-<!-- types: Ref, Result, Found, NotFound, Refused, Store, StoreFactory, StoreError, CachePolicy, Resolver, Declared, BuildOption, EnvFactory, FileFactory, PlatformFactory -->
+<!-- types: Ref, Result, Found, NotFound, Refused, Store, StoreFactory, StoreError, CachePolicy, Resolver, Declared, BuildOption, EnvFactory, FileFactory, PlatformFactory, Canonicalizer, PlatformSecretsFactory, RevealedSecret -->
 # Go: per-client secrets
 
 Package `secrets` implements the [secrets contract](../../contracts/secrets.md): a reference per
@@ -46,10 +46,36 @@ application's own setting, read where `Build` is called.
   `EvalSymlinks` does not canonicalise: the store compares with the directory entries). At most
   `WithMaxBytes` (default 65 536, 1 to 1 048 576), strict UTF-8, one trailing newline removed, an
   empty file is `NotFound`. A world-readable file is warned about once, not refused.
-- `Platform()` still fails start-up: the platform has no endpoint that resolves a secret.
+- `flowcatalyst.PlatformSecrets(client)` (package `flowcatalyst`, since 2026-11-07): the
+  [platform-config contract](../../contracts/platform-config.md) section 3 driver, as the Java
+  `PlatformSecrets.store()`. A name `n` for client `c` is the platform configuration property
+  `(application, section, n)` at client scope `c`, read with `PlatformClient.RevealConfigSecret` (`GET
+  /api/config/{app}/{section}/{n}/secret?clientId=c`) as the application's service account, which needs
+  `platform:application-service:config:reveal`. The section is `secrets` unless `.Section("ftp")` says
+  otherwise. The client is the platform's client id (`clt_...`) or the client's identifier (`acme`);
+  any other client is `Refused` without a call. No fall-back to the global value. `200` is `Found`;
+  `404 Config_NOT_FOUND` or `Client_NOT_FOUND` is `NotFound`; `400 NOT_A_SECRET` is `Refused`; any
+  other `404`, a `403` (named "not authorised to reveal", with the application), `5xx`, the network or
+  an answer without a value is a `*StoreError` with no value, no body and no cause. A disabled
+  flowcatalyst module fails start-up. From `go/flowcatalyst/platformsecrets_test.go`:
+
+  ```go
+  r.resolver, err = secrets.Build(ctx, b, sd, secrets.WithStore("platform", store(fc.Client())))
+  ```
+
+  where `store` is `flowcatalyst.PlatformSecrets` (or `flowcatalyst.PlatformSecrets(c).Section("ftp")`).
+  `secrets.Platform()` stays as a placeholder whose start-up failure names this driver.
 - `WithCache(CachePolicy)` on a factory: `DefaultCache()` is 5 minutes and 10 000 entries (least
-  recently used first), `NoCache()` turns it off, `NewCachePolicy(ttl, max)` checks 0 to 24 h and 1
-  to 1 000 000. Only found values are cached; `Resolver.Evict` and `EvictAll` drop them.
+  recently used first) and serves a value for up to 5 minutes past its TTL while the store fails
+  (`StaleIfError`, `WithStaleIfError(d)`, 0 to 24 h, 0 off); `NoCache()` turns it off;
+  `NewCachePolicy(ttl, max)` checks 0 to 24 h and 1 to 1 000 000. Only found values are cached;
+  `Resolver.Evict` and `EvictAll` drop them. Since 2026-11-07 the cache does what the Java cache does:
+  concurrent misses for one secret make one call to the store; a `*StoreError` serves the last found
+  value for `StaleIfError` with a WARN naming the store, secret and client (never the value), never
+  after `NotFound` or `Refused`, which drop the entry; and a store that implements `Canonicalizer` (the
+  platform driver: an identifier and the stored id it has learned from an answer) keeps one entry per
+  client, which `Evict` drops under either name. `secrets.Cached(store, policy, b)` gives a driver
+  written outside the package the same cache; `secrets.NewStoreError` is its failure.
 
 ## Results and errors
 
@@ -58,7 +84,7 @@ application's own setting, read where `Build` is called.
 store, client and name, never a value). A store that cannot be read (I/O error, invalid UTF-8, file
 too large) is a `*StoreError` whose message has neither a value nor content; `ErrNoStore` and
 `ErrUnknownStore` are for a resolver without a usable store. A custom store implements `Store` and
-a `StoreFactory`.
+a `StoreFactory`, and wraps itself with `secrets.Cached`.
 
 Differences from Java: errors are values; no `zeroisation` (as Java); the case rule above is
 Go-specific; `fw.Boot.LookupEnv` replaces `EnvironmentVariables`.

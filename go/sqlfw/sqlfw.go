@@ -27,8 +27,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/flowcatalyst/framework/go/fw"
@@ -117,20 +119,23 @@ func Main(ctx context.Context, args []string, cfg Config) int {
 		_, _ = io.WriteString(t.err, usage)
 		return 2
 	}
-	var problems []string
-	var err error
-	switch args[0] {
-	case "schema":
-		err = t.writeSchema()
-	case "generate":
-		err = t.generate(ctx)
-	case "jet":
-		err = t.jet(ctx)
-	case "check":
-		problems, err = t.check(ctx)
-	default:
+	if !slices.Contains([]string{"schema", "generate", "jet", "check"}, args[0]) {
 		fmt.Fprintf(t.err, "fwsql: unknown command %q\n%s", args[0], usage)
 		return 2
+	}
+	var problems []string
+	err := t.resolveSets()
+	if err == nil {
+		switch args[0] {
+		case "schema":
+			err = t.writeSchema()
+		case "generate":
+			err = t.generate(ctx)
+		case "jet":
+			err = t.jet(ctx)
+		case "check":
+			problems, err = t.check(ctx)
+		}
 	}
 	if err != nil {
 		fmt.Fprintf(t.err, "fwsql %s: %v\n", args[0], err)
@@ -258,4 +263,45 @@ func sqlcProblems(sub, out string, err error) []string {
 		ps = append(ps, fmt.Sprintf("sqlc %s: %v", sub, err))
 	}
 	return ps
+}
+
+// MigrationDir is a migration set read from a directory by path, relative to [Config.Dir] (an
+// absolute path is used as it is). Name the application's sets this way in its fwsql command, so the
+// command compiles without the application's packages: the packages that embed a set usually use
+// the queries generated from it, so importing them for their set fails until those queries exist,
+// and the first generate of a new package would need a stub. The directory holds the same files
+// the package embeds; the framework's own sets (usecase.OutboxMigrations and the like) are imported
+// as before, since they compile on their own.
+//
+//	Sets: []fw.MigrationSet{
+//		{Module: usecase.OutboxModuleID, Files: usecase.OutboxMigrations()},
+//		sqlfw.MigrationDir(orders.ModuleID, "orders/migrations"),
+//	},
+func MigrationDir(module, dir string) fw.MigrationSet {
+	return fw.MigrationSet{Module: module, Files: migrationDir(dir)}
+}
+
+// migrationDir is the directory of a [MigrationDir] set. Main resolves it against Config.Dir
+// before any command runs; read directly, it is relative to the working directory.
+type migrationDir string
+
+func (d migrationDir) Open(name string) (fs.File, error) { return os.DirFS(string(d)).Open(name) }
+
+// resolveSets opens every MigrationDir set from the application directory and checks that it is a
+// directory, naming the set and the path when it is not.
+func (t *tool) resolveSets() error {
+	sets := make([]fw.MigrationSet, len(t.cfg.Sets))
+	for i, set := range t.cfg.Sets {
+		if d, ok := set.Files.(migrationDir); ok {
+			p := t.path(string(d))
+			info, err := os.Stat(p)
+			if err != nil || !info.IsDir() {
+				return fmt.Errorf("migration set %q: %s is not a directory (MigrationDir paths are relative to Config.Dir)", set.Module, filepath.ToSlash(p))
+			}
+			set.Files = os.DirFS(p)
+		}
+		sets[i] = set
+	}
+	t.cfg.Sets = sets
+	return nil
 }

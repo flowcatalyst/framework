@@ -15,9 +15,20 @@ no configuration.
 | `put(key, content)` | Stores the value, replacing any earlier value completely and atomically for readers (old value or new, never a mixture). Empty content is a value |
 | `get(key)` | `Optional<byte[]>`: empty when there is no value |
 | `delete(key)` | Removes the value; removing an absent value is not an error |
+| put with a content type | Stores the value with its content type (amended 2026-11-07) |
+| get with the content type | The value and its content type as stored (amended 2026-11-07) |
 
-Nothing else: no listing, metadata, conditional writes or partial reads, so every driver can honour
-the contract the same way. Returned and stored arrays are copies.
+*Amended 2026-11-07 (fulfil-go issue 6):* the content type is the one piece of metadata. It is a media
+type (parameters allowed), at most 255 printable ASCII characters; anything else is refused like a
+bad key and nothing is stored. A value stored without one reads back as `application/octet-stream`; a
+put replaces the type with the bytes; delete removes both. The s3 driver keeps it as the object's
+`Content-Type`, the folder driver in a hidden file `.<name>.content-type` beside the value (written
+after the value, so a reader racing a type change may briefly see the new bytes with the old type),
+the memory driver beside the bytes. Go: `PutObject(ctx, key, Object{Content, ContentType})`,
+`GetObject(ctx, key) (Object, bool, error)`, `DefaultContentType`, `CheckContentType`.
+
+Nothing else: no listing, other metadata, conditional writes or partial reads, so every driver can
+honour the contract the same way. Returned and stored arrays are copies.
 
 ## 2. Keys
 
@@ -72,8 +83,8 @@ driver's test. The S3 driver is tested against an in-process S3 (the real SDK ov
 
 ## 7. Not in this contract
 
-Streaming reads and writes, listing, metadata and content types, conditional puts, multipart uploads,
-pre-signed URLs and encryption settings.
+Streaming reads and writes, listing, metadata other than the content type, conditional puts,
+multipart uploads, pre-signed URLs and encryption settings.
 
 ## 8. Go
 

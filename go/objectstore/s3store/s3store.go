@@ -118,14 +118,23 @@ func (s *store) fail(op, key string, err error) error {
 }
 
 func (s *store) Put(ctx context.Context, key string, content []byte) error {
+	return s.PutObject(ctx, key, objectstore.Object{Content: content})
+}
+
+// PutObject stores the value as an S3 object whose Content-Type is the value's type.
+func (s *store) PutObject(ctx context.Context, key string, o objectstore.Object) error {
 	if err := objectstore.CheckKey(key); err != nil {
 		return err
 	}
-	if err := objectstore.CheckSize(len(content), s.maxBytes); err != nil {
+	if err := objectstore.CheckContentType(o.ContentType); err != nil {
+		return err
+	}
+	if err := objectstore.CheckSize(len(o.Content), s.maxBytes); err != nil {
 		return err
 	}
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.bucket), Key: aws.String(s.prefix + key), Body: bytes.NewReader(content),
+		Bucket: aws.String(s.bucket), Key: aws.String(s.prefix + key), Body: bytes.NewReader(o.Content),
+		ContentType: aws.String(objectstore.ContentTypeOrDefault(o.ContentType)),
 	})
 	if err != nil {
 		return s.fail("write", key, err)
@@ -134,28 +143,34 @@ func (s *store) Put(ctx context.Context, key string, content []byte) error {
 }
 
 func (s *store) Get(ctx context.Context, key string) ([]byte, bool, error) {
+	o, ok, err := s.GetObject(ctx, key)
+	return o.Content, ok, err
+}
+
+// GetObject returns the object's bytes and its Content-Type (the default when it has none).
+func (s *store) GetObject(ctx context.Context, key string) (objectstore.Object, bool, error) {
 	if err := objectstore.CheckKey(key); err != nil {
-		return nil, false, err
+		return objectstore.Object{}, false, err
 	}
 	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(s.prefix + key)})
 	if err != nil {
 		if isNoSuchKey(err) {
-			return nil, false, nil
+			return objectstore.Object{}, false, nil
 		}
-		return nil, false, s.fail("read", key, err)
+		return objectstore.Object{}, false, s.fail("read", key, err)
 	}
 	defer out.Body.Close()
 	if n := aws.ToInt64(out.ContentLength); n > int64(s.maxBytes) {
-		return nil, false, fmt.Errorf("%w: object store '%s': '%s' is %d bytes, over the limit of %d", objectstore.ErrStore, s.name, key, n, s.maxBytes)
+		return objectstore.Object{}, false, fmt.Errorf("%w: object store '%s': '%s' is %d bytes, over the limit of %d", objectstore.ErrStore, s.name, key, n, s.maxBytes)
 	}
 	data, err := io.ReadAll(io.LimitReader(out.Body, int64(s.maxBytes)+1))
 	if err != nil {
-		return nil, false, s.fail("read", key, err)
+		return objectstore.Object{}, false, s.fail("read", key, err)
 	}
 	if len(data) > s.maxBytes {
-		return nil, false, fmt.Errorf("%w: object store '%s': '%s' is over the limit of %d", objectstore.ErrStore, s.name, key, s.maxBytes)
+		return objectstore.Object{}, false, fmt.Errorf("%w: object store '%s': '%s' is over the limit of %d", objectstore.ErrStore, s.name, key, s.maxBytes)
 	}
-	return data, true, nil
+	return objectstore.Object{Content: data, ContentType: objectstore.ContentTypeOrDefault(aws.ToString(out.ContentType))}, true, nil
 }
 
 func (s *store) Delete(ctx context.Context, key string) error {

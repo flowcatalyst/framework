@@ -12,43 +12,55 @@ type memoryStore struct {
 	maxBytes int
 
 	mu     sync.RWMutex
-	values map[string][]byte
+	values map[string]Object
 }
 
 func (m *memoryStore) Name() string { return m.name }
 
-func (m *memoryStore) Put(_ context.Context, key string, content []byte) error {
+func (m *memoryStore) Put(ctx context.Context, key string, content []byte) error {
+	return m.PutObject(ctx, key, Object{Content: content})
+}
+
+func (m *memoryStore) PutObject(_ context.Context, key string, o Object) error {
 	if err := CheckKey(key); err != nil {
 		return err
 	}
-	if err := CheckSize(len(content), m.maxBytes); err != nil {
+	if err := CheckContentType(o.ContentType); err != nil {
 		return err
 	}
-	c := slices.Clone(content)
+	if err := CheckSize(len(o.Content), m.maxBytes); err != nil {
+		return err
+	}
+	c := slices.Clone(o.Content)
 	if c == nil {
 		c = []byte{}
 	}
 	m.mu.Lock()
-	m.values[key] = c
+	m.values[key] = Object{Content: c, ContentType: ContentTypeOrDefault(o.ContentType)}
 	m.mu.Unlock()
 	return nil
 }
 
-func (m *memoryStore) Get(_ context.Context, key string) ([]byte, bool, error) {
+func (m *memoryStore) Get(ctx context.Context, key string) ([]byte, bool, error) {
+	o, ok, err := m.GetObject(ctx, key)
+	return o.Content, ok, err
+}
+
+func (m *memoryStore) GetObject(_ context.Context, key string) (Object, bool, error) {
 	if err := CheckKey(key); err != nil {
-		return nil, false, err
+		return Object{}, false, err
 	}
 	m.mu.RLock()
 	v, ok := m.values[key]
 	m.mu.RUnlock()
 	if !ok {
-		return nil, false, nil
+		return Object{}, false, nil
 	}
-	c := slices.Clone(v)
+	c := slices.Clone(v.Content)
 	if c == nil {
 		c = []byte{}
 	}
-	return c, true, nil
+	return Object{Content: c, ContentType: v.ContentType}, true, nil
 }
 
 func (m *memoryStore) Delete(_ context.Context, key string) error {

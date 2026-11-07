@@ -105,6 +105,13 @@ platform configuration property `(application, section, name)` at the client's s
 reveal call as the application's service account; the section defaults to `secrets`; no fall-back to the global
 value. The design, the result table and the cache rules are in [platform-config](platform-config.md) section 3.
 
+Go: built 2026-11-07 as `flowcatalyst.PlatformSecrets(client)` in the flowcatalyst module (`.Section`,
+`.WithCache`), over `PlatformClient.RevealConfigSecret`; `secrets.Platform()` is the placeholder whose
+start-up failure names it. The Go cache now has the amended behaviours of platform-config section 3
+(canonical client keys through the optional `Canonicalizer`, single flight, stale on error with
+`CachePolicy.StaleIfError`); `secrets.Cached` and `secrets.NewStoreError` are the Go counterparts of
+`SecretStores.cached` and `SecretStoreException`.
+
 History: until 2026-10-23 this driver was blocked, because the platform had no endpoint that returned a per-client
 secret to an application, confined to its own application, audited and encrypted at rest. The reveal endpoint
 (platform commit `4d4c6c8c`) is that endpoint.

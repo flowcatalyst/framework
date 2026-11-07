@@ -48,6 +48,7 @@ type Declared struct {
 	metricsEnabled config.Handle[bool]
 	metricsPath    config.Handle[string]
 	metricsToken   config.Handle[config.Secret]
+	cors           corsSettings
 
 	mu         sync.Mutex
 	ops        []Described
@@ -87,6 +88,7 @@ func Declare(app *fw.App) *Declared {
 		})),
 		metricsToken: config.Declare(m, config.SecretValue("http.metrics.bearer-token",
 			"When set, the metrics endpoint requires 'Authorization: Bearer <token>'.")),
+		cors:       declareCORS(m),
 		schemas:    map[reflect.Type]openapi.Schema{},
 		names:      map[reflect.Type]string{},
 		properties: map[reflect.Type]map[string]openapi.Schema{},
@@ -185,12 +187,14 @@ func (d *Declared) declaredOperations() []Described {
 
 // OpenAPI writes the document of the declared operations, or returns every problem found. It
 // needs nothing but the declarations.
-func (d *Declared) OpenAPI() (document []byte, problems []string) {
+func (d *Declared) OpenAPI() (document []byte, problems []string) { return d.emit(false) }
+
+func (d *Declared) emit(operationsOnly bool) (document []byte, problems []string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	in := openapi.Input{
 		Info: d.info, Schemas: cloneMap(d.schemas), Names: d.names, Properties: d.properties,
-		Security: slices.Clone(d.security), Problems: slices.Clone(d.problems),
+		Security: slices.Clone(d.security), Problems: slices.Clone(d.problems), OperationsOnly: operationsOnly,
 	}
 	for t, s := range builtinSchemas() {
 		if _, taken := in.Schemas[t]; !taken {
@@ -204,6 +208,18 @@ func (d *Declared) OpenAPI() (document []byte, problems []string) {
 		in.Operations = append(in.Operations, o.descriptor().openapi())
 	}
 	return openapi.Emit(in)
+}
+
+// documentProblems builds the document as the openapi command would, without its two checks of the
+// whole document (no Info, no security scheme: see openapi.Input.OperationsOnly), and returns its
+// problems as start-up problems ([NewServer] fails with them).
+func (d *Declared) documentProblems() []fw.Problem {
+	_, problems := d.emit(true)
+	out := make([]fw.Problem, 0, len(problems))
+	for _, p := range problems {
+		out = append(out, config.Problem{Module: ModuleID, Key: "openapi", Message: "the OpenAPI document cannot be written: " + p})
+	}
+	return out
 }
 
 func cloneMap[K comparable, V any](m map[K]V) map[K]V {

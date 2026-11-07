@@ -48,7 +48,7 @@ func Memory(opts ...Option) StoreFactory {
 		if err != nil {
 			return nil, err
 		}
-		return &memoryStore{name: name, maxBytes: o.maxBytes, values: make(map[string][]byte)}, nil
+		return &memoryStore{name: name, maxBytes: o.maxBytes, values: make(map[string]Object)}, nil
 	}
 }
 

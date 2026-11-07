@@ -25,11 +25,21 @@ Only the application knows its migration sets, so it wires the framework's tool 
 	os.Exit(sqlfw.Main(context.Background(), os.Args[1:], sqlfw.Config{
 		Sets: []fw.MigrationSet{
 			{Module: usecase.OutboxModuleID, Files: usecase.OutboxMigrations()},
-			{Module: orders.ModuleID, Files: orders.Migrations()},
+			sqlfw.MigrationDir("orders", "orders/migrations"), // by path: the command needs no application code
 		},
 		Jet: &sqlfw.JetConfig{Dir: "internal/jet"},
 	}))
 ```
+
+The application's own sets are named with `sqlfw.MigrationDir(module, dir)`: read from the directory
+by path, relative to `Config.Dir` (a missing directory fails naming the set and the path). The
+command then imports no application package, so it compiles before the queries generated from a set
+exist: the first `generate` of a new package needs no stub. (A package that embeds its set usually
+uses the queries generated from it; importing it for `Migrations()` fails until they exist.) The
+directory holds the files the package embeds; the module id must be the one the package declares.
+The framework's own sets are imported as before. `go/sqlfw/sqlfw_test.go` builds the fixture's
+command with the generated code taken away (a `go build -overlay`) while the fixture application no
+longer builds.
 
 - `go run ./tools/fwsql schema` writes every set, in apply order, flat into `.fw/schema`
   (`00_outbox__V000001__create_outbox_messages.sql`; versions are zero-padded because sqlc reads

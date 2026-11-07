@@ -26,7 +26,8 @@ type reqState struct {
 	logger      *slog.Logger
 	cx          fw.Context
 	hasCx       bool
-	acceptForms bool // the matched route was registered with AcceptForms
+	acceptForms bool            // the matched route was registered with AcceptForms
+	draining    <-chan struct{} // closed when the server's shutdown begins (Draining)
 }
 
 type stateKey struct{}
@@ -41,6 +42,15 @@ func stateOf(r *http.Request) *reqState {
 // CorrelationID returns the request's correlation id: the valid X-Correlation-Id the caller sent,
 // else a generated one.
 func CorrelationID(r *http.Request) fw.CorrelationID { return stateOf(r).correlation }
+
+// neverDraining is the drain signal of a dispatcher that no server runs (Compile in a test).
+var neverDraining = make(chan struct{})
+
+// Draining returns a channel that is closed when the server begins to shut down, before it waits for
+// the requests in flight ([Server.BeforeDrain]). A handler that keeps its response open (a stream)
+// selects on it and ends, so it does not hold the drain. Under a dispatcher that no [Server] runs it
+// is never closed.
+func Draining(r *http.Request) <-chan struct{} { return stateOf(r).draining }
 
 // RoutePattern returns the pattern of the matched route ("/orders/{id}"), "" when none matched.
 func RoutePattern(r *http.Request) string {

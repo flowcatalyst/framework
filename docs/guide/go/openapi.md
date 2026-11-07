@@ -1,4 +1,4 @@
-<!-- types: Operation, Builder, In, Binding, OperationHandler, PathParam, QueryParam, OptionalQuery, ListQuery, Params, NoBody, Validator, FieldSpec, Rule, FieldError, Input, Schema, EnumValuer, SchemaProvider, Unique, SecurityScheme, Info, Described -->
+<!-- types: Operation, Builder, In, Binding, OperationHandler, PathParam, QueryParam, OptionalQuery, ListQuery, Params, NoBody, Validator, FieldSpec, Rule, FieldError, Input, Schema, EnumValuer, SchemaProvider, Unique, SecurityScheme, Info, Described, StartupError -->
 # Go: typed operations and OpenAPI
 
 Typed operations are the Go form of the [OpenAPI contract](../../contracts/openapi.md): an operation
@@ -122,3 +122,25 @@ never calls the build function. Problems go to standard error with exit code 1; 
 prints the usage and exits 2. The orders demo commits the file as `web/openapi.json`, and a test
 fails when it is stale (the drift check of the contract's section 9); the TypeScript client is
 generated from it by the shared UI package.
+
+## The document at start-up
+
+`httpfw.NewServer` builds the document of the declared operations and fails start-up (a
+`*fw.StartupError`, key `openapi`, each problem prefixed "the OpenAPI document cannot be written")
+with every problem of the operations and their types, together with the route problems. A plain
+`int`, an embedded struct or a pointer field without `omitzero` therefore fails the first test that
+starts the server, not only the `openapi` command. Two checks of the whole document stay with the
+command: a missing `Info` and an operation that requires a context when no security scheme was
+contributed (a test server with a resolver of its own has neither, and still starts).
+
+`fwtest.OpenAPI(t, web)` builds the document as the command does, both checks included, and fails the
+test listing every problem; it returns the document for a drift check. From
+`go/fwtest/openapi_test.go`:
+
+```go
+good := httpfw.Declare(fw.New("good"))
+good.Info("good", "1")
+good.Operations(httpfw.Get[goodView]("/good").ID("getGood").Build())
+rec := &recordingTB{TB: t}
+doc := OpenAPI(rec, good)
+```

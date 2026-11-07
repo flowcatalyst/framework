@@ -104,6 +104,7 @@ type PlatformClient struct {
 
 	mu       sync.Mutex
 	resolved resolvedToken
+	aliases  clientAliases // client identifier -> stored id, learned from the platform's answers
 }
 
 type resolvedToken struct {

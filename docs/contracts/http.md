@@ -56,7 +56,7 @@ routes.add(Method.PUT, "/orders/{id}", handler, RouteOptions.requiresContext());
 - No route for the path: `404 NOT_FOUND`. Path matches but not the method: `405
   METHOD_NOT_ALLOWED` with an `Allow` header listing the methods (sorted, `HEAD` included when
   `GET` is, `OPTIONS` always). An `OPTIONS` request to a known path with no `OPTIONS` route is
-  answered `204` with `Allow`. There is no CORS handling (platform has none either).
+  answered `204` with `Allow`. CORS is off unless configured (amended 2026-11-07, section 13.4).
 - Route patterns are listed at start-up in the log at INFO, one line per route.
 
 ## 3. Request and response
@@ -302,3 +302,87 @@ replaced, in `Context`); `requiresContext` start-up failure; Jetty: real request
 thread asserted (`Thread.currentThread().isVirtual()`), body limit 413, port 0, health endpoints,
 graceful shutdown with an in-flight request, bind failure; Datastar: exact wire bytes for each
 event with each option, signals from query and body, disconnect handling.
+
+## 13. Additions of 2026-11-07 (from the fulfil-go port)
+
+Owner-approved in `docs/fulfil-go-fixes-2026-11.md` (items B1 to B3). Go built 2026-11-07
+(`go/httpfw`, `go/httpfw/sse`, `go/httpfw/idempotency`); Java mirrors the names given here.
+
+### 13.1 Before the drain
+
+A hook runs when shutdown begins, after the server refuses new requests (`503 UNAVAILABLE`) and
+`/health/ready` answers `503`, and before it waits for the requests in flight. Go:
+`Server.BeforeDrain(func(ctx))`, hooks in registration order, the context ending with
+`http.shutdown-grace`; and `httpfw.Draining(r)`, a channel closed for every request at that moment.
+A long-lived response (a stream) ends there, so it does not hold the drain for the whole grace.
+
+### 13.2 The OpenAPI document at start-up
+
+The server builds the document of the declared operations when it is built and fails start-up with
+every problem of the operations and their types (OpenAPI contract section 9). The two checks of the
+whole document (no `Info`, a context-requiring operation without a security scheme) stay with the
+`openapi` command and the test helper (Go `fwtest.OpenAPI`).
+
+### 13.3 A body limit per route
+
+A route option sets the route's body limit in place of `http.max-body-bytes`, smaller or larger (Go
+`httpfw.MaxBody(n)`). It applies to `Content-Length` before the handler and while reading. A value
+below 1 is a start-up problem. Other routes keep the global limit.
+
+### 13.4 CORS
+
+Off unless `http.cors.allowed-origins` lists origins (`scheme://host[:port]`, or `*` alone).
+Settings and defaults: `http.cors.allowed-methods` (`GET, HEAD, POST, PUT, PATCH, DELETE`),
+`http.cors.allowed-headers` (`Authorization, Content-Type, DPoP, Idempotency-Key, Last-Event-ID,
+X-Correlation-Id`), `http.cors.exposed-headers` (`X-Correlation-Id, Idempotency-Replayed`),
+`http.cors.allow-credentials` (`false`; `true` with `*` fails start-up), `http.cors.max-age` (`10m`).
+A preflight from a listed origin is answered `204` before the application's middleware and the
+context resolver; a request from a listed origin gets `Access-Control-Allow-Origin` (the origin, or
+`*`), `Access-Control-Expose-Headers` and, when configured, `Access-Control-Allow-Credentials`; every
+response carries `Vary: Origin` while CORS is on; any other origin gets no CORS headers. A malformed
+setting fails start-up naming it. The sessions CSRF guard is unchanged.
+
+### 13.5 Server-sent events
+
+A writer for `text/event-stream` (Go `sse.Serve(w, r, live, sse.Options{...})`): headers
+`Content-Type: text/event-stream`, `Cache-Control: no-cache`, `X-Accel-Buffering: no`; a `retry:`
+field (default 3 s); when the request has `Last-Event-ID` (or the `lastEventId` query parameter) and
+the application gave a replay source, every event after it, in pages (default 1000) until a short
+page; then the live events, skipping ids already sent; a `: ping` comment while idle (default 25 s);
+the end when the client goes, the live source closes or the drain begins (13.1). An event is an
+increasing integer id (0: none), a type without line breaks, and data written one `data:` line per
+line.
+
+### 13.6 Idempotency-Key
+
+Route middleware over a framework table, migration set of module `http-idempotency`:
+
+```sql
+CREATE TABLE fw_idempotency_keys (
+    client_id       TEXT        NOT NULL,
+    principal_id    TEXT        NOT NULL,
+    idempotency_key TEXT        NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 200),
+    request_hash    TEXT        NOT NULL,
+    token           TEXT        NOT NULL,
+    status          INTEGER,
+    content_type    TEXT,
+    response_body   BYTEA,
+    created_at      TIMESTAMPTZ NOT NULL,
+    completed_at    TIMESTAMPTZ,
+    PRIMARY KEY (client_id, principal_id, idempotency_key)
+);
+CREATE INDEX idx_fw_idempotency_keys_created ON fw_idempotency_keys (created_at);
+```
+
+A request with `Idempotency-Key` runs once per (client, principal, key); `request_hash` is the hex
+SHA-256 of `METHOD SP escaped-path "?" raw-query LF body`. The first takes the key (an insert, or the
+takeover of a row older than the retention, default 24 h, or of an unfinished one older than the
+in-flight timeout, default 5 min); a 2xx answer keeps `status`, `content_type` and the body; an
+error, a status of 300 or more, or a panic deletes the row. A repeat with the same hash gets the kept
+answer with `Idempotency-Replayed: true`; while the first runs it waits (default 10 s), then `409
+IDEMPOTENCY_IN_PROGRESS`; another hash under the key is `422 IDEMPOTENCY_KEY_REUSED`; a key that is
+not 1 to 200 printable ASCII characters is `400 IDEMPOTENCY_KEY_INVALID`; a context without a
+principal is `400 IDEMPOTENCY_KEY_UNSUPPORTED`. Expired rows are pruned hourly. Go:
+`idempotency.Declare(app)`, `idempotency.New(b, declared, db, opts...)`, `keys.Middleware`, options
+`Retention`, `Wait`, `InFlightTimeout`.
+

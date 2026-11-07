@@ -379,5 +379,5 @@ owner may reverse them.
 ## 13. Out of scope
 
 Compression; `Range`; several SPAs in one application; server-side rendering or templating of
-`index.html`; service-worker support beyond serving the file; CORS (none anywhere in the framework);
+`index.html`; service-worker support beyond serving the file; CORS (off unless configured: HTTP contract section 13.4);
 serving files that are not part of the built SPA (uploads, generated reports: those are routes).

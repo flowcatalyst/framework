@@ -59,14 +59,7 @@ func (f EnvFactory) Create(_ context.Context, name string, b *fw.Boot) (Store, e
 	if err := f.cache.Validate(); err != nil {
 		return nil, err
 	}
-	return withCache(&envStore{instance: name, prefix: f.prefix, lookup: b.LookupEnv}, f.cache, b.Clock()), nil
-}
-
-func withCache(s Store, p CachePolicy, clock fw.Clock) Store {
-	if p.TTL == 0 {
-		return s
-	}
-	return newCached(s, p, clock)
+	return withCache(&envStore{instance: name, prefix: f.prefix, lookup: b.LookupEnv}, f.cache, b.Clock(), b.Logger(ModuleID)), nil
 }
 
 type envStore struct {

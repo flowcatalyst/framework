@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mime"
 )
 
 // MaxKeyLength is the longest key, in characters.
@@ -32,7 +33,8 @@ var ErrInvalidArgument = errors.New("invalid object store argument")
 // the limit. The message names the store and key. The framework does not retry.
 var ErrStore = errors.New("object store failure")
 
-// Store is the driver contract: three operations on keys that [CheckKey] accepts. Safe for
+// Store is the driver contract: three operations on keys that [CheckKey] accepts, and the forms of
+// put and get that carry the value's content type. Safe for
 // concurrent use. Returned and stored slices are copies.
 type Store interface {
 	// Name returns the name the store was given in [WithStore].
@@ -44,6 +46,59 @@ type Store interface {
 	Get(ctx context.Context, key string) ([]byte, bool, error)
 	// Delete removes the value; removing an absent value is not an error.
 	Delete(ctx context.Context, key string) error
+	// PutObject stores a value with its content type (a media type such as "image/jpeg", parameters
+	// allowed; "" stores [DefaultContentType]), replacing any earlier value and type. A type that
+	// [CheckContentType] refuses is an error wrapping [ErrInvalidArgument], and nothing is stored.
+	// Put is PutObject with no type.
+	PutObject(ctx context.Context, key string, o Object) error
+	// GetObject returns the value with its content type, exactly as stored ([DefaultContentType] for
+	// a value stored without one), and false (with a nil error and the zero Object) when there is
+	// none.
+	GetObject(ctx context.Context, key string) (Object, bool, error)
+}
+
+// Object is a stored value with its content type.
+type Object struct {
+	// Content is the value's bytes.
+	Content []byte
+	// ContentType is its media type; on a put, "" means [DefaultContentType].
+	ContentType string
+}
+
+// DefaultContentType is the content type of a value stored without one.
+const DefaultContentType = "application/octet-stream"
+
+// MaxContentTypeLength is the longest content type, in characters.
+const MaxContentTypeLength = 255
+
+// CheckContentType checks a content type: "" (the default), or a media type that mime.ParseMediaType
+// accepts, of printable ASCII, at most [MaxContentTypeLength] characters. The error wraps
+// [ErrInvalidArgument]. Drivers use it before storing.
+func CheckContentType(ct string) error {
+	if ct == "" {
+		return nil
+	}
+	if len(ct) > MaxContentTypeLength {
+		return fmt.Errorf("%w: a content type is at most %d characters, was %d", ErrInvalidArgument, MaxContentTypeLength, len(ct))
+	}
+	for i := 0; i < len(ct); i++ {
+		if ct[i] < 0x20 || ct[i] > 0x7e {
+			return fmt.Errorf("%w: a content type is printable ASCII", ErrInvalidArgument)
+		}
+	}
+	if _, _, err := mime.ParseMediaType(ct); err != nil {
+		return fmt.Errorf("%w: '%s' is not a media type", ErrInvalidArgument, ct)
+	}
+	return nil
+}
+
+// ContentTypeOrDefault returns ct, or [DefaultContentType] when it is "". Drivers store what it
+// returns.
+func ContentTypeOrDefault(ct string) string {
+	if ct == "" {
+		return DefaultContentType
+	}
+	return ct
 }
 
 // CheckKey checks a key: 1 to [MaxKeyLength] characters, segments separated by a single '/', each

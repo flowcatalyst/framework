@@ -44,11 +44,12 @@ type fakeS3 struct {
 
 	mu      sync.Mutex
 	objects map[string][]byte
+	types   map[string]string // each object's Content-Type, as S3 keeps it
 }
 
 func newFakeS3(t *testing.T, bucket string) *fakeS3 {
 	t.Helper()
-	f := &fakeS3{bucket: bucket, objects: map[string][]byte{}}
+	f := &fakeS3{bucket: bucket, objects: map[string][]byte{}, types: map[string]string{}}
 	f.srv = httptest.NewServer(http.HandlerFunc(f.handle))
 	t.Cleanup(f.srv.Close)
 	return f
@@ -77,8 +78,13 @@ func (f *fakeS3) handle(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 	case http.MethodPut:
 		body, _ := io.ReadAll(r.Body)
+		ct := r.Header.Get("Content-Type")
+		if ct == "" {
+			ct = "binary/octet-stream" // what S3 answers for an object stored without one
+		}
 		f.mu.Lock()
 		f.objects[key] = body
+		f.types[key] = ct
 		f.mu.Unlock()
 		w.Header().Set("ETag", `"fake"`)
 		w.WriteHeader(200)
@@ -88,11 +94,14 @@ func (f *fakeS3) handle(w http.ResponseWriter, r *http.Request) {
 			xmlError(w, 404, "NoSuchKey", "nope")
 			return
 		}
-		w.Header().Set("Content-Type", "application/octet-stream")
+		f.mu.Lock()
+		w.Header().Set("Content-Type", f.types[key])
+		f.mu.Unlock()
 		_, _ = w.Write(v)
 	case http.MethodDelete:
 		f.mu.Lock()
 		delete(f.objects, key)
+		delete(f.types, key)
 		f.mu.Unlock()
 		w.WriteHeader(204)
 	default:

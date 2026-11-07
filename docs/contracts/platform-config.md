@@ -258,6 +258,8 @@ module, are shown on the value field. **Names**: the form's property rule is `Se
 3. The admin list is not paged and shows global and client rows together.
 4. The framework logs every reveal and write with the signed-in principal.
 5. Java only for now; Go and Rust get a hand-off after the Java side is confirmed against a real platform.
+   *Go built 2026-11-07* (the driver and its cache rules, not the admin section or the UI page): see
+   the secrets contract section 4, `platform`.
 
 ## 8. As built
 

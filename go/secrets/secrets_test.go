@@ -631,10 +631,10 @@ func TestWithoutACacheARotatedFileIsReadAtOnce(t *testing.T) {
 
 // --- the resolver and the build ------------------------------------------------------------------
 
-func TestThePlatformDriverIsBlockedAndSaysSo(t *testing.T) {
+func TestThePlatformPlaceholderPointsAtTheDriver(t *testing.T) {
 	t.Parallel()
 	_, _, err := build(t, nil, nil, "", secrets.WithStore("platform", secrets.Platform()))
-	if err == nil || !strings.Contains(err.Error(), "blocked on the platform") || !strings.Contains(err.Error(), "secret store 'platform'") {
+	if err == nil || !strings.Contains(err.Error(), "flowcatalyst.PlatformSecrets(client)") || !strings.Contains(err.Error(), "secret store 'platform'") {
 		t.Fatalf("%v", err)
 	}
 }

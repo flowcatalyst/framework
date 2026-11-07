@@ -1,4 +1,4 @@
-<!-- types: Store, StoreFactory, Option, BuildOption, Declared, Stores, Harness -->
+<!-- types: Store, StoreFactory, Option, BuildOption, Declared, Stores, Harness, Object -->
 # Go: object stores
 
 Package `objectstore` implements the [object stores contract](../../contracts/object-stores.md): named
@@ -12,8 +12,19 @@ shared vector, `conformance/objectstore/keys.json`.
 | `Put(ctx, key, content)` | Stores the value, replacing any earlier one completely. A reader sees the old value or the new one, never a mixture. Empty content is a value |
 | `Get(ctx, key)` | `([]byte, bool, error)`: the bytes, and `false` with a nil error when there is no value |
 | `Delete(ctx, key)` | Removes the value; removing one that is not there is not an error |
+| `PutObject(ctx, key, objectstore.Object{Content, ContentType})` | `Put` with the value's content type |
+| `GetObject(ctx, key)` | `(objectstore.Object, bool, error)`: the bytes and the content type as stored |
 
-There is no listing, no metadata and no partial read. Stored and returned slices are copies.
+The content type is the one metadata a store keeps (since 2026-11-07): a media type such as
+`image/jpeg`, parameters allowed, at most 255 printable ASCII characters (`objectstore.CheckContentType`;
+anything else is `ErrInvalidArgument` and nothing is stored). A value stored without one (`Put`, or an
+empty `ContentType`) reads back as `objectstore.DefaultContentType`, `application/octet-stream`; a put
+replaces the type with the bytes. The S3 driver stores it as the object's `Content-Type`, the memory
+driver beside the bytes, and the folder driver in a hidden file `.<name>.content-type` beside the value
+(written after it, removed with it; a type file that does not hold a media type is `ErrStore`). In the
+folder driver a reader racing a put that changes the type may see the new bytes with the old type for
+that moment; the folder driver is for local development and tests. There is no listing and no partial
+read. Stored and returned slices are copies.
 
 ## Declaring and building
 
@@ -89,7 +100,8 @@ If any store fails to build, the stores built before it are closed and `Build` r
 
 `objectstoretest.Run(t, harness)` is the contract's test suite, one subtest per case (round trip,
 missing key, replacement, binary-safe values, empty values, idempotent delete, nested keys, no
-aliasing, refused keys, the size limit, eight concurrent writers). Every driver's tests call it:
+aliasing, refused keys, the size limit, eight concurrent writers, the content type kept with the
+value, refused content types). Every driver's tests call it:
 
 ```go
 objectstoretest.Run(t, objectstoretest.Harness{Limit: 4096, New: func(t *testing.T) objectstore.Store {

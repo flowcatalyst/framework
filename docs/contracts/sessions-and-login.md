@@ -565,8 +565,10 @@ session cookie:
    `application/x-www-form-urlencoded` and `multipart/form-data`. Rules 1 to 4 still apply to it unchanged.
 
 No synchronizer token: Fetch Metadata, the Origin check, `SameSite=Lax` and JSON-only bodies leave
-nothing for a token to add. **No CORS** is configured anywhere in the framework, so no credentialed
-cross-origin request is ever permitted.
+nothing for a token to add. **No CORS** is configured by default, so no credentialed cross-origin
+request is permitted (amended 2026-11-07: an application may configure CORS, HTTP contract section
+13.4; credentials stay off unless it sets `http.cors.allow-credentials`, and these rules still refuse a
+cookie-authenticated unsafe request from another origin).
 
 The public sign-in routes take no unsafe requests (`/auth/login` and `/auth/callback` are `GET`;
 the platform hosts the credential forms). An application that adds a public `POST` next to them

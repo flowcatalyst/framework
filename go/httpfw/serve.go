@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,6 +34,10 @@ type Server struct {
 	listener net.Listener
 	started  atomic.Bool
 	draining atomic.Bool
+	drain    chan struct{} // closed when shutdown begins (Draining)
+
+	mu          sync.Mutex
+	beforeDrain []func(ctx context.Context)
 }
 
 // NewServer builds the server from the http.* settings: it checks the route tables together (a
@@ -43,7 +49,7 @@ func NewServer(b *fw.Boot, d *Declared, tables []*Routes, opts ...Option) (*Serv
 	log := b.Logger(ModuleID)
 	s := &Server{
 		host: d.host.Get(b), port: d.port.Get(b), boot: b, log: log,
-		grace: b.ShutdownDrain(),
+		grace: b.ShutdownDrain(), drain: make(chan struct{}),
 	}
 	if g, ok := d.shutdownGrace.Lookup(b); ok {
 		s.grace = g
@@ -71,11 +77,27 @@ func NewServer(b *fw.Boot, d *Declared, tables []*Routes, opts ...Option) (*Serv
 		})
 	}
 	all := append(append([]*Routes(nil), tables...), own)
+	c := d.cors
+	crossOrigin, problem := newCORS(c.origins.Get(b), c.methods.Get(b), c.headers.Get(b), c.exposed.Get(b), c.credentials.Get(b), c.maxAge.Get(b))
+	if problem != "" {
+		return nil, &fw.StartupError{Problems: []fw.Problem{config.Problem{Module: ModuleID, Key: "http.cors", Message: problem}}}
+	}
 	base := []Option{
+		withCORS(crossOrigin),
 		WithEnvironment(b.Environment()), WithMaxBodyBytes(d.maxBody.Get(b)), WithLogger(log), WithClock(b.Clock()),
-		WithMetrics(b.Metrics()), WithDeclared(d.declaredOperations()...),
+		WithMetrics(b.Metrics()), WithDeclared(d.declaredOperations()...), withDrain(s.drain),
 	}
 	disp, err := Compile(all, append(base, opts...)...)
+	if docProblems := d.documentProblems(); len(docProblems) > 0 {
+		// the document is part of the application: a type it cannot describe fails the start, with
+		// the route problems when there are any, not only the openapi command
+		if se, ok := errors.AsType[*fw.StartupError](err); ok {
+			docProblems = append(se.Problems, docProblems...)
+		} else if err != nil {
+			return nil, err
+		}
+		return nil, &fw.StartupError{Problems: docProblems}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +159,18 @@ func (s *Server) Handler() http.Handler { return http.HandlerFunc(s.serveHTTP) }
 // down.
 func (s *Server) IsDraining() bool { return s.draining.Load() }
 
+// BeforeDrain registers a hook that runs when shutdown begins, before the drain: after the server
+// has started refusing new requests (503) and /health/ready reports down, and before it waits for
+// the requests in flight. Hooks run in registration order, each to completion, with a context that
+// ends with http.shutdown-grace. A long-lived response (a server-sent event stream) ends there, so
+// it does not hold the drain until the grace runs out. Every request also sees the start of the
+// drain through [Draining], which is closed before the first hook runs.
+func (s *Server) BeforeDrain(f func(ctx context.Context)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.beforeDrain = append(s.beforeDrain, f)
+}
+
 // Serve implements fw.Serve: it serves until ctx is cancelled, then stops accepting, lets
 // in-flight requests finish for up to http.shutdown-grace and closes what is left.
 func (s *Server) Serve(ctx context.Context) error {
@@ -154,8 +188,15 @@ func (s *Server) Serve(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 	s.draining.Store(true)
+	close(s.drain)
 	shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.grace)
 	defer cancel()
+	s.mu.Lock()
+	hooks := slices.Clone(s.beforeDrain)
+	s.mu.Unlock()
+	for _, f := range hooks {
+		f(shutdown)
+	}
 	if err := s.srv.Shutdown(shutdown); err != nil {
 		s.log.Warn("requests still running after the grace period; closing them", slog.Duration("grace", s.grace))
 		_ = s.srv.Close()

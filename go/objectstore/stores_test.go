@@ -89,6 +89,35 @@ func TestFolderSpecifics(t *testing.T) {
 			t.Errorf("files: %v", files)
 		}
 	})
+	t.Run("the content type is a hidden file beside the value, removed with it", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		s := startOne(t, "test", objectstore.Folder(dir))
+		if err := s.PutObject(ctx, "a/b.jpg", objectstore.Object{Content: []byte{1}, ContentType: "image/jpeg"}); err != nil {
+			t.Fatal(err)
+		}
+		typ, err := os.ReadFile(filepath.Join(dir, "a", ".b.jpg.content-type"))
+		if err != nil || string(typ) != "image/jpeg" {
+			t.Fatalf("type file: %q %v", typ, err)
+		}
+		if err := s.Delete(ctx, "a/b.jpg"); err != nil {
+			t.Fatal(err)
+		}
+		entries, _ := os.ReadDir(filepath.Join(dir, "a"))
+		if len(entries) != 0 {
+			t.Errorf("left behind: %v", entries)
+		}
+		// a type file that does not hold a media type is a store failure, not a guess
+		if err := s.PutObject(ctx, "c", objectstore.Object{Content: []byte{1}, ContentType: "text/csv"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".c.content-type"), []byte("not a type"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := s.GetObject(ctx, "c"); !errors.Is(err, objectstore.ErrStore) {
+			t.Errorf("a broken type file: %v", err)
+		}
+	})
 	t.Run("a symbolic link out of the folder is not followed", func(t *testing.T) {
 		t.Parallel()
 		dir, outside := t.TempDir(), t.TempDir()

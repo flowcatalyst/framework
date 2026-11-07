@@ -52,6 +52,8 @@ func Run(t *testing.T, h Harness) {
 		{"keys that could escape or are malformed are refused", badKeys},
 		{"content over the limit is refused and nothing is stored", overLimit},
 		{"concurrent puts to one key leave one whole value", concurrentPuts},
+		{"the content type is kept with the value", contentTypeKept},
+		{"a content type that is not a media type is refused", badContentTypes},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -233,5 +235,75 @@ func concurrentPuts(t *testing.T, s objectstore.Store, _ int) {
 	}
 	if !bytes.Equal(got, bytes.Repeat(got[:1], 512)) {
 		t.Errorf("a mixture of two writers' values")
+	}
+}
+
+// wantObject reads a value with its content type, failing the test when it is absent.
+func wantObject(t *testing.T, s objectstore.Store, k string, content []byte, contentType string) {
+	t.Helper()
+	o, ok, err := s.GetObject(t.Context(), k)
+	if err != nil || !ok {
+		t.Fatalf("get object %q: %v, %v", k, ok, err)
+	}
+	if !bytes.Equal(o.Content, content) || o.ContentType != contentType {
+		t.Errorf("get object %q: %q %q, want %q %q", k, o.Content, o.ContentType, content, contentType)
+	}
+}
+
+func contentTypeKept(t *testing.T, s objectstore.Store, _ int) {
+	ctx := t.Context()
+	k := key(t, "photo.jpg")
+	jpeg := []byte{0xff, 0xd8, 0xff, 0xe0}
+	if err := s.PutObject(ctx, k, objectstore.Object{Content: jpeg, ContentType: "image/jpeg"}); err != nil {
+		t.Fatal(err)
+	}
+	wantObject(t, s, k, jpeg, "image/jpeg")
+	if got := mustGet(t, s, k); !bytes.Equal(got, jpeg) {
+		t.Errorf("get: %v", got)
+	}
+	// a put replaces the type with the bytes, exactly as given (parameters included)
+	if err := s.PutObject(ctx, k, objectstore.Object{Content: []byte("hello"), ContentType: "text/plain; charset=utf-8"}); err != nil {
+		t.Fatal(err)
+	}
+	wantObject(t, s, k, []byte("hello"), "text/plain; charset=utf-8")
+	// a value stored without a type (Put, or an empty ContentType) reads back as the default
+	mustPut(t, s, k, []byte("plain"))
+	wantObject(t, s, k, []byte("plain"), objectstore.DefaultContentType)
+	if err := s.PutObject(ctx, k, objectstore.Object{Content: []byte{}}); err != nil {
+		t.Fatal(err)
+	}
+	wantObject(t, s, k, []byte{}, objectstore.DefaultContentType)
+	// a deleted value leaves no type behind
+	k2 := key(t, "doc.pdf")
+	if err := s.PutObject(ctx, k2, objectstore.Object{Content: []byte("%PDF"), ContentType: "application/pdf"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(ctx, k2); err != nil {
+		t.Fatal(err)
+	}
+	if o, ok, err := s.GetObject(ctx, k2); err != nil || ok || o.Content != nil || o.ContentType != "" {
+		t.Fatalf("deleted: %v %v %v", o, ok, err)
+	}
+	mustPut(t, s, k2, []byte("again"))
+	wantObject(t, s, k2, []byte("again"), objectstore.DefaultContentType)
+}
+
+func badContentTypes(t *testing.T, s objectstore.Store, limit int) {
+	ctx := t.Context()
+	k := key(t, "typed")
+	for _, ct := range []string{
+		"not a type", "image/", "text/plain\r\nX-Injected: 1", "image/jpeg; charset", "t\u00e9xt/plain", "text/plain; x=\"a\x01b\"", "text/plain; x=\"\u00e9\"",
+		"application/" + strings.Repeat("x", objectstore.MaxContentTypeLength),
+	} {
+		if err := s.PutObject(ctx, k, objectstore.Object{Content: []byte{1}, ContentType: ct}); !errors.Is(err, objectstore.ErrInvalidArgument) {
+			t.Errorf("%q: want ErrInvalidArgument, got %v", ct, err)
+		}
+	}
+	wantAbsent(t, s, k)
+	if _, _, err := s.GetObject(ctx, "../x"); !errors.Is(err, objectstore.ErrInvalidArgument) {
+		t.Errorf("get object of a bad key: %v", err)
+	}
+	if err := s.PutObject(ctx, k, objectstore.Object{Content: make([]byte, limit+1)}); !errors.Is(err, objectstore.ErrInvalidArgument) {
+		t.Errorf("over the limit: %v", err)
 	}
 }
