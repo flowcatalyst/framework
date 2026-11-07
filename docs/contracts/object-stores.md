@@ -70,6 +70,15 @@ driver's test. The S3 driver is tested against an in-process S3 (the real SDK ov
 `FW_S3_ENDPOINT` is set, against a real S3-compatible service (verified against LocalStack on
 2026-10-21).
 
+*Amended 2026-11-07 (fulfil-go fixes, item B3; owner-approved):* a value has a **content type**.
+`put` takes an optional one and a typed read returns it (Java: `put(key, bytes, contentType)` and
+`read(key)` → `StoredObject(content, contentType)`; Go: the parallel names). It is 1 to 255
+printable ASCII characters; a value stored without one reads as `application/octet-stream`. `memory`
+keeps it, `s3` sets the object's `Content-Type` (S3's own `binary/octet-stream` reads as
+`application/octet-stream`), `folder` keeps it in the hidden file `.<name>.content-type` beside the
+value and `delete` removes it. Section 7's "metadata and content types" no longer includes content
+types.
+
 ## 7. Not in this contract
 
 Streaming reads and writes, listing, metadata and content types, conditional puts, multipart uploads,

@@ -177,8 +177,14 @@ public final class Response {
     return of(status, contentType, new Body.Bytes(bytes));
   }
 
-  /** A response with no body and no content type, such as {@code 304 Not Modified}. */
-  static Response empty(int status) {
+  /**
+   * A response with no body and no content type, such as {@code 304 Not Modified} or a {@code 202}
+   * with nothing to say.
+   *
+   * @param status the status
+   * @return the response
+   */
+  public static Response empty(int status) {
     return of(status, null, new Body.Empty());
   }
 

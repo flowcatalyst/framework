@@ -16,6 +16,30 @@ class OpenApiTestingTest {
 
   @TempDir Path dir;
 
+  record Unwritable(String text, java.util.Optional<String> note) {}
+
+  @Test
+  void assertBuildsPassesForADocumentThatCanBeWrittenWithNoFile() {
+    OpenApiTesting.assertBuilds(OpenApiFixture.app(a -> OpenApiFixture.register(a, OpenApiFixture.ALL)));
+  }
+
+  @Test
+  void assertBuildsFailsWithEveryProblem() {
+    Operation<NoBody, Unwritable> bad = Operation.get("/unwritable", Unwritable.class).id("unwritable").build();
+
+    Throwable t =
+        catchThrowable(
+            () ->
+                OpenApiTesting.assertBuilds(
+                    OpenApiFixture.app(a -> OpenApi.declare(a, bad)))); // no OpenApi.info either
+
+    assertThat(t)
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("the OpenAPI document cannot be written")
+        .hasMessageContaining("Optional is refused")
+        .hasMessageContaining("no info");
+  }
+
   @Test
   void aCurrentDocumentPasses() throws Exception {
     Path file = dir.resolve("openapi.json");

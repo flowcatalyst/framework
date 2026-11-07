@@ -56,7 +56,8 @@ routes.add(Method.PUT, "/orders/{id}", handler, RouteOptions.requiresContext());
 - No route for the path: `404 NOT_FOUND`. Path matches but not the method: `405
   METHOD_NOT_ALLOWED` with an `Allow` header listing the methods (sorted, `HEAD` included when
   `GET` is, `OPTIONS` always). An `OPTIONS` request to a known path with no `OPTIONS` route is
-  answered `204` with `Allow`. There is no CORS handling (platform has none either).
+  answered `204` with `Allow`. There is no CORS handling (platform has none either). *Amended
+  2026-11-07, section 13:* CORS is configurable and off by default.
 - Route patterns are listed at start-up in the log at INFO, one line per route.
 
 ## 3. Request and response
@@ -302,3 +303,37 @@ replaced, in `Context`); `requiresContext` start-up failure; Jetty: real request
 thread asserted (`Thread.currentThread().isVirtual()`), body limit 413, port 0, health endpoints,
 graceful shutdown with an in-flight request, bind failure; Datastar: exact wire bytes for each
 event with each option, signals from query and body, disconnect handling.
+
+## 13. Amendments of 2026-11-07 (fulfil-go fixes, items B1 and B3; owner-approved)
+
+Found by the first Go application (fulfil-go); built in both frameworks, names parallel.
+
+- **Before-drain actions (B1).** The server runs actions when shutdown begins, after new requests
+  start getting `503` and readiness reports down, and before it waits for the requests in flight
+  (Java: `HttpServer.beforeDrain(Runnable)`; Go: `Server.BeforeDrain`). Each runs once, in the order
+  added; one that fails is logged and the rest run. They exist to end long-lived responses, which
+  otherwise hold the drain until the grace runs out.
+- **Server-sent event streams (B3).** A framework stream helper (Java: `EventStreams`, provided by the
+  HTTP module, with `SseEvent`): `retry: 3000` first; with `Last-Event-ID` (header, or the
+  `lastEventId` query parameter) the events after it from an application-supplied replay (at most
+  1000), then the published events the stream's filter admits, each once and in id order (subscribe
+  before replay, skip ids already sent); a `: ping` comment after `http.sse.heartbeat` (25 s) idle;
+  `Cache-Control: no-cache`, `X-Accel-Buffering: no`. A stream ends when the client goes, when it is
+  256 events behind, when the replay fails, and when the server's before-drain action closes every
+  stream.
+- **Inbound `Idempotency-Key` (B3).** Route middleware on context routes: scope client + principal +
+  key (at most 200 characters, else `400 IDEMPOTENCY_KEY_INVALID`); the first request takes the key;
+  a `2xx` answer held in memory is kept (status, content type, body) and replayed to a repeat with the
+  same method, path and body with `Idempotency-Replayed: true`; a repeat while the first runs is `409
+  IDEMPOTENCY_IN_PROGRESS`; another request under the key is `422 IDEMPOTENCY_KEY_REUSED`; any other
+  outcome frees the key. Storage is pluggable: memory, and a database store with its own migration
+  set (`fw_idempotency_key`) pruned after `idempotency.retention` (24 h).
+- **Per-route body limit (B3).** A route may set its own request body limit, larger or smaller than
+  `http.max-body-bytes`; it applies once the route is matched (declared length and while reading).
+- **CORS (B3).** Configured by `http.cors.allowed-origins` (empty: off, the default),
+  `allowed-methods`, `allowed-headers`, `exposed-headers`, `max-age`. It runs outside the error
+  mapping so every answer carries the headers; a preflight from an allowed origin for an allowed
+  method and headers is `204`, any other preflight `403 CORS_REFUSED`. **Credentials are never
+  allowed** (`Access-Control-Allow-Credentials` is never sent), so the sessions contract's reasoning
+  in section 7 (no credentialed cross-origin request) still holds; an allowed origin calls with a
+  bearer token.

@@ -19,6 +19,7 @@ final class Router {
       String registrant,
       boolean requiresContext,
       boolean acceptsForms,
+      long maxBodyBytes,
       Pipeline<Request, Response> pipeline) {}
 
   sealed interface Match {}

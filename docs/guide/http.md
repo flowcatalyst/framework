@@ -1,4 +1,4 @@
-<!-- types: MetricsEndpoint, ServiceError, Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher -->
+<!-- types: MetricsEndpoint, ServiceError, Routes, Handler, Method, RouteOptions, Request, Response, StreamBody, Middleware, Next, Pipeline, Validator, Rules, Rule, Violations, FieldError, ValidationException, HttpException, HttpErrors, ContextResolver, TestClient, TestResponse, Json, Datastar, ServerSentEventGenerator, PatchElementsOptions, PatchSignalsOptions, ElementPatchMode, Namespace, ClientDisconnectedException, JettyHttpModule, HttpServer, Dispatcher, EventStreams, SseEvent, CorsPolicy, Idempotency, IdempotencyStore, MemoryIdempotencyStore, IdempotencyScope, IdempotencyRecord, StoredAnswer, IdempotencyDatabaseModule, DatabaseIdempotencyStore -->
 # HTTP
 
 Two artifacts:
@@ -15,9 +15,9 @@ Every request is counted in `fw_http_server_requests_total` and timed in
 Rate limiting is a middleware in `framework-http` itself: see [Rate limiting](rate-limiting.md).
 `request.remoteAddress()` is the connection's peer address (never a header).
 
-Application code depends on `framework-http` types only. There is no Servlet API, no sessions, no
-static files, no TLS (terminate in front), no HTTP/2, no CORS, no compression, and
-no OpenAPI generation.
+Application code depends on `framework-http` types only. There is no Servlet API, no TLS (terminate
+in front), no HTTP/2 and no compression. CORS is off unless `http.cors.allowed-origins` is set
+([CORS](#cors)); sessions, the SPA and OpenAPI are their own pages.
 
 ## What `framework-http` pulls in
 
@@ -113,7 +113,7 @@ There are `get`, `post`, `put`, `patch`, `delete` and `add(Method, ...)`, each w
 | `query(name)`, `queries(name)` | first value or `null`; all values |
 | `queryRequired(name)`, `queryInt(name, default)`, `queryLong`, `queryBool`, `queryEnum(name, Class, default)` | typed query parameters; a bad value is a `ValidationException` naming the parameter |
 | `header(name)`, `headers(name)` | case-insensitive |
-| `body()`, `bodyBytes()`, `bodyText()` | the raw body (stream once, or bytes cached); limited by `http.max-body-bytes` |
+| `body()`, `bodyBytes()`, `bodyText()` | the raw body (stream once, or bytes cached); limited by `http.max-body-bytes`, or by the route's own limit ([below](#a-routes-own-body-limit)) |
 | `json(Validator<T>)` | decode and validate a JSON body (below) |
 | `context()` | the resolved `Context`; `IllegalStateException` on a route without `requiresContext` |
 | `correlationId()` | |
@@ -239,6 +239,25 @@ first and not removable: **(1)** correlation id, **(2)** error mapping, **(3)** 
 path template, status, duration, correlation id; never query strings or bodies). Yours run inside
 those. Context resolution runs after the global middleware and before route middleware.
 
+## A route's own body limit
+
+`http.max-body-bytes` (1 MiB) is the limit of every route unless the route sets its own, larger or
+smaller, with `RouteOptions.maxBodyBytes(bytes)` (fulfil-go issue 6: proof photos were held to the
+global 1 MiB). From `RouteBodyLimitTest`:
+
+```java
+routes.post("/photo", length, RouteOptions.none().maxBodyBytes(100));
+routes.bind(NOTE, r -> Outcome.ok(new Echo(r.body().text().length())), RouteOptions.none().maxBodyBytes(200));
+```
+
+- It applies once the route is matched: a declared `Content-Length` over it is `413
+  PAYLOAD_TOO_LARGE` before the handler runs, and reading past it (`bodyBytes()`, `body()`) is
+  `413`. Paths with no route, and `405`/`OPTIONS` answers, keep the global limit.
+- Global middleware runs before routing, so a global middleware that reads the body reads under the
+  global limit.
+- `with(...)`, `acceptingForms()` and `Routes.bind` keep it; a negative limit is
+  `IllegalArgumentException`.
+
 ## Correlation id
 
 The `X-Correlation-Id` request header is used when valid (`[A-Za-z0-9._-]{1,100}`), otherwise one is
@@ -267,6 +286,104 @@ body length, `-1` when none) and `Response.redirect(location)` (a `302` with no 
 the sessions CSRF guard accepts a form body on it (see [sessions and login](sessions-and-login.md#csrf)).
 `Request.acceptsForms()` tells whether the matched route was declared so. A typed operation cannot be one
 (`Routes.bind` throws `IllegalArgumentException`).
+
+## Server-sent event streams
+
+`EventStreams` (package `io.flowcatalyst.framework.http.sse`; the HTTP module provides one) serves
+`text/event-stream` routes with what fulfil-go built for its live updates (issue 6): heartbeats,
+`Last-Event-ID` replay from the application's own log, and an end on shutdown before the drain.
+
+```java
+EventStreams streams = app.get(EventStreams.class);
+routes.get(
+    "/api/stores/{store}/events",
+    r -> streams.serve(r, e -> e.type().startsWith("pick-"), (after, limit) -> log.after(r.pathParam("store"), after, limit)),
+    RouteOptions.requiresContext());
+// where the application learns of a committed change, for example its tail of the log table:
+streams.publish(new SseEvent(row.id(), row.type(), row.payloadJson()));
+```
+
+- An `SseEvent(id, type, data)` has an id of at least 1, increasing in publish order (a log table's
+  sequence), a one-line type and text data (usually JSON). On the wire: `id:`, `event:`, one
+  `data:` line per line of data.
+- A stream sends `retry: 3000` first. When the client sends `Last-Event-ID` (or the `lastEventId`
+  query parameter, for clients that cannot set the header; a value that is not a number of 0 or more
+  counts as none), it then sends what `Replay.after(lastId, 1000)` returns, then the published events
+  its filter admits, each once and in id order: it subscribes before it replays, and skips any id at
+  or below the last one sent. `serve(request, filter)` without a replay starts live.
+- Idle for `http.sse.heartbeat` (25 s): a `: ping` comment, which keeps proxies from closing it and
+  finds a client that went away. Headers: `Cache-Control: no-cache`, `X-Accel-Buffering: no`.
+- A stream ends when the client goes, when it falls more than 256 events behind (`BUFFER`; it is
+  sent what it held, the client reconnects with its last id), when the replay throws (logged at
+  WARN), and on `closeAll()`, which the HTTP module registers with `HttpServer.beforeDrain`, so open
+  streams end when shutdown begins instead of holding the drain for its grace. A stream opened after
+  `closeAll` ends at once.
+- `publish` is in-process and never blocks. Each instance publishes what its own tail of the shared
+  log reads (fulfil-go wakes its tail with PostgreSQL `NOTIFY` and polls as a safety net), so any
+  instance serves any stream.
+
+Datastar streams (below) are not `EventStreams` and are not ended before the drain.
+
+## Idempotency-Key
+
+`Idempotency.middleware(store, clock)` (package `io.flowcatalyst.framework.http.idempotency`) makes
+a write sent twice run once: a device's offline queue replays what it could not confirm (fulfil-go
+issue 6). It is route middleware on a route that requires a context. From `IdempotencyTest`:
+
+```java
+RouteOptions once = RouteOptions.requiresContext().with(Idempotency.middleware(store, CLOCK));
+routes.post("/claims", handler, once);
+```
+
+| Request | Answer |
+|---|---|
+| no `Idempotency-Key` header (or a blank one), or a context without a principal | runs as it is |
+| a key over 200 characters | `400 IDEMPOTENCY_KEY_INVALID` |
+| the first with a key (per client, principal and key) | runs; a `2xx` with a body held in memory is kept (status, `Content-Type`, body) |
+| the same method, path and body again | the kept answer, with `Idempotency-Replayed: true`; other headers of the first answer (`Location`) are not kept |
+| again while the first still runs | `409 IDEMPOTENCY_IN_PROGRESS`: retry shortly |
+| another request under the same key | `422 IDEMPOTENCY_KEY_REUSED` |
+| the first failed (not `2xx`, an exception, or a streamed body) | its key is freed, so a retry does the work |
+
+The request is identified by SHA-256 of the method, the path and the body; the body is read within
+the route's limit and cached, so the handler reads the same bytes. Spaces around the key are not
+part of it.
+
+Stores: `MemoryIdempotencyStore` (one process; tests) and, in the module
+`framework-idempotency-database`, `IdempotencyDatabaseModule`, which migrates
+`fw_idempotency_key` on the default database, provides `IdempotencyStore` as a
+`DatabaseIdempotencyStore`, and runs the loop `idempotency-key-prune` every 10 minutes, deleting keys
+older than `idempotency.retention` (default `24h`) 1000 at a time. A request whose process died
+after it took a key leaves the key in progress (`409`) until it is pruned.
+
+```java
+.module(new DatabaseModule())
+.module(new IdempotencyDatabaseModule())
+// in a module's boot:
+Middleware<Request, Response> once =
+    Idempotency.middleware(app.get(IdempotencyStore.class), app.get(InstantSource.class));
+```
+
+## CORS
+
+Off by default. Setting `http.cors.allowed-origins` turns it on for every response, with
+`CorsPolicy` (`Routes.cors(policy)` installs one in code; one per application):
+
+- The middleware runs just inside the correlation id, outside the error mapping and every other
+  middleware, so error answers, `404`s and refusals by middleware carry the headers too.
+- A request with an allowed `Origin` gets `Access-Control-Allow-Origin` (the origin, or `*` for the
+  wildcard), `Access-Control-Expose-Headers` and `Vary: Origin`; another origin gets only `Vary:
+  Origin` (the browser withholds the answer). A request without `Origin` is untouched.
+- A preflight (`OPTIONS` with `Access-Control-Request-Method`) from an allowed origin asking for an
+  allowed method and allowed headers is `204` with `Access-Control-Allow-Methods`, `-Headers` and
+  `-Max-Age`; any other preflight is `403 CORS_REFUSED`. A plain `OPTIONS` keeps the router's
+  `204` with `Allow`.
+- **Never credentials** (`Access-Control-Allow-Credentials` is never sent): the session cookie is
+  never usable across origins, as the [sessions contract](../contracts/sessions-and-login.md)
+  section 7 relies on. A page on an allowed origin calls with a bearer token it holds
+  (`Authorization` is an allowed header).
+- Origins are `scheme://host[:port]` with no path, or the single entry `*`; a bad one fails
+  start-up naming `http.cors`.
 
 ## Datastar
 
@@ -323,6 +440,12 @@ The server's settings are configuration (they are service settings,
 | `http.metrics.enabled` | boolean | `false`; mounts the [Prometheus endpoint](background-and-metrics.md#the-prometheus-endpoint) |
 | `http.metrics.path` | string | `/metrics` |
 | `http.metrics.bearer-token` | secret | none; when set, scrapes need it |
+| `http.sse.heartbeat` | duration | `25s`; an idle [event stream](#server-sent-event-streams) sends a comment |
+| `http.cors.allowed-origins` | string list | empty: [CORS](#cors) off |
+| `http.cors.allowed-methods` | string list | `GET, HEAD, POST, PUT, PATCH, DELETE` |
+| `http.cors.allowed-headers` | string list | `Content-Type, Authorization, DPoP, X-Correlation-Id, Idempotency-Key, Last-Event-ID` |
+| `http.cors.exposed-headers` | string list | `X-Correlation-Id, Idempotency-Replayed` |
+| `http.cors.max-age` | duration | `10m`; how long a browser caches a preflight's answer |
 
 The module claims the `http` component: any other key under `http` in a file (a typo such as
 `http.prot`) fails start-up as unknown, listing the keys above.
@@ -352,9 +475,26 @@ Add your own checks with `app.health().add(name, check)` (see
 
 ### Graceful shutdown
 
-On `shutdown` the module stops accepting (closes connectors), lets in-flight requests finish for
-up to `http.shutdown-grace`, then interrupts the rest. New requests on existing connections get
-`503 UNAVAILABLE` with `Connection: close`.
+On `shutdown` the module first marks the server draining (new requests on existing connections get
+`503 UNAVAILABLE` with `Connection: close`, `/health/ready` is down), then runs the
+**before-drain actions**, then stops accepting (closes connectors), lets in-flight requests finish
+for up to `http.shutdown-grace`, and interrupts the rest.
+
+`HttpServer.beforeDrain(Runnable)` adds an action that runs when shutdown begins, before the drain
+(fulfil-go issue 17: a long-lived response held the drain until its grace ran out). Use it to end
+long-lived responses; `EventStreams.closeAll` is registered there by the module. A module's own
+`shutdown` hook is too late for that: the HTTP module is listed last, so its `shutdown` (the drain)
+runs first. Actions run once, in the order added, on the stopping thread; one that throws is logged
+at WARN and the rest still run. From `GracefulShutdownTest`:
+
+```java
+server.beforeDrain(
+    () -> {
+      drainingInHook.set(server.isDraining());
+      listeningInHook.set(listening(port));
+      stop.set(true);
+    });
+```
 
 ## Testing
 

@@ -223,6 +223,24 @@ give the same bytes on every machine, in Java and in Go. Your `main` passes the 
 `OpenApi.document(builder.declarations())` returns `OpenApiDocument.Written(json)` or
 `Refused(problems)`.
 
+### Checked at start-up
+
+*Added 2026-11-07 (fulfil-go issue 14).* The HTTP module also builds the document when it starts,
+before it opens the port, so a type the document cannot describe (an `Optional` or `Object`
+component, a raw or wildcard type, an array other than `byte[]`, two types with one component
+name...) **fails start-up** with every problem named, not only the `openapi` command. Two problems
+are left to the command and the tests, because they are about the document rather than a type: a
+missing `OpenApi.info`, and an operation that requires a context when no security scheme was
+contributed. An application that declares no operation is not checked. Tools get the same check with
+`OpenApi.check(lookup)`.
+
+To fail a unit test on any problem the command would print, with no committed file
+(`OpenApiTestingTest`):
+
+```java
+OpenApiTesting.assertBuilds(OpenApiFixture.app(a -> OpenApiFixture.register(a, OpenApiFixture.ALL)));
+```
+
 ## Keeping it current
 
 Commit the document (`web/openapi.json`) and let a unit test fail the Maven build when it is stale
@@ -251,7 +269,8 @@ flag), and its Zod plugin turns `int64` into `z.coerce.bigint()` while the TypeS
 - `TestClient` serves bound operations like any route; hand-built tables call
   `routes.declare(OpenApi.operations(lookup))` to get the declared-but-not-bound checks
   (`OrdersApiTest` does).
-- `OpenApiTesting.assertCommitted` in the build, as above.
+- `OpenApiTesting.assertCommitted` in the build, as above; `OpenApiTesting.assertBuilds(builder)` when
+  no document is committed.
 - The framework's own tests validate every emitted document against the OpenAPI 3.1 schema and the
   JSON the typed writer produces against the emitted schemas.
 

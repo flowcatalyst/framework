@@ -45,6 +45,20 @@ class FolderObjectStoreTest extends ObjectStoreContract {
   }
 
   @Test
+  void theContentTypeIsAHiddenFileBesideTheValueAndGoesWithIt() throws IOException {
+    store().put("a/photo", new byte[] {1}, "image/jpeg");
+    try (var files = Files.walk(dir)) {
+      assertThat(files.filter(Files::isRegularFile).map(p -> dir.relativize(p).toString()))
+          .containsExactlyInAnyOrder("a/photo", "a/.photo.content-type");
+    }
+    assertThat(Files.readString(dir.resolve("a/.photo.content-type"))).isEqualTo("image/jpeg");
+    store().delete("a/photo");
+    try (var files = Files.walk(dir)) {
+      assertThat(files.filter(Files::isRegularFile)).isEmpty();
+    }
+  }
+
+  @Test
   void aSymbolicLinkOutOfTheFolderIsNotFollowed() throws IOException {
     Path outside = Files.createTempDirectory("outside");
     Files.writeString(outside.resolve("secret"), "nope");

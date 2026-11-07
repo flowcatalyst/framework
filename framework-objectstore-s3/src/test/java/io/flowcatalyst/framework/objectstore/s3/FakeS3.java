@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 final class FakeS3 implements AutoCloseable {
 
   final Map<String, byte[]> objects = new ConcurrentHashMap<>();
+  /** The Content-Type each object was put with; S3 answers binary/octet-stream for one put without. */
+  final Map<String, String> types = new ConcurrentHashMap<>();
   final AtomicInteger failNext = new AtomicInteger();
   private final HttpServer server;
   private final String bucket;
@@ -47,6 +49,8 @@ final class FakeS3 implements AutoCloseable {
         case "HEAD" -> reply(x, 200, new byte[0]);
         case "PUT" -> {
           objects.put(key, body(x));
+          String type = x.getRequestHeaders().getFirst("Content-Type");
+          types.put(key, type == null ? "binary/octet-stream" : type);
           x.getResponseHeaders().add("ETag", "\"fake\"");
           reply(x, 200, new byte[0]);
         }
@@ -55,11 +59,12 @@ final class FakeS3 implements AutoCloseable {
           if (v == null) {
             reply(x, 404, "<Error><Code>NoSuchKey</Code><Message>nope</Message></Error>".getBytes(StandardCharsets.UTF_8));
           } else {
-            reply(x, 200, v);
+            reply(x, 200, v, types.getOrDefault(key, "binary/octet-stream"));
           }
         }
         case "DELETE" -> {
           objects.remove(key);
+          types.remove(key);
           reply(x, 204, new byte[0]);
         }
         default -> reply(x, 405, new byte[0]);
@@ -105,7 +110,11 @@ final class FakeS3 implements AutoCloseable {
   }
 
   private static void reply(HttpExchange x, int status, byte[] body) throws IOException {
-    x.getResponseHeaders().add("Content-Type", status >= 400 ? "application/xml" : "application/octet-stream");
+    reply(x, status, body, status >= 400 ? "application/xml" : "application/octet-stream");
+  }
+
+  private static void reply(HttpExchange x, int status, byte[] body, String contentType) throws IOException {
+    x.getResponseHeaders().add("Content-Type", contentType);
     x.sendResponseHeaders(status, status == 204 || body.length == 0 && status != 200 ? -1 : body.length == 0 ? -1 : body.length);
     if (body.length > 0 && status != 204) {
       x.getResponseBody().write(body);

@@ -13,11 +13,14 @@ import io.flowcatalyst.framework.core.MonotonicClock;
 import io.flowcatalyst.framework.core.Problem;
 import io.flowcatalyst.framework.core.StartupException;
 import io.flowcatalyst.framework.http.ContextResolver;
+import io.flowcatalyst.framework.http.CorsPolicy;
 import io.flowcatalyst.framework.http.Dispatcher;
+import io.flowcatalyst.framework.http.Method;
 import io.flowcatalyst.framework.http.MetricsEndpoint;
 import io.flowcatalyst.framework.http.Response;
 import io.flowcatalyst.framework.http.Routes;
 import io.flowcatalyst.framework.http.openapi.OpenApi;
+import io.flowcatalyst.framework.http.sse.EventStreams;
 import io.flowcatalyst.framework.metrics.Metrics;
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -29,7 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The HTTP server module (id {@code http}): provides {@link Routes} and {@link HttpServer}, adds
+ * The HTTP server module (id {@code http}): provides {@link Routes}, {@link HttpServer} and {@link
+ * EventStreams} (ended before the drain, {@link HttpServer#beforeDrain}), adds
  * the health endpoints, compiles the route table and starts Jetty in {@code started}
  * (after every module's {@code boot}), and stops it gracefully in {@code shutdown}. It claims the
  * {@code openapi} declaration-phase command ({@link OpenApi#command()}), and its {@link Routes}
@@ -89,7 +93,46 @@ public final class JettyHttpModule implements Module {
       Setting.secret("http.metrics.bearer-token")
           .describedAs("When set, the metrics endpoint requires 'Authorization: Bearer <token>'.");
 
+  /** {@code http.sse.heartbeat}: how long an event stream may be idle before it sends a comment. */
+  public static final Setting<Duration> SSE_HEARTBEAT =
+      Setting.duration("http.sse.heartbeat")
+          .withDefault(EventStreams.DEFAULT_HEARTBEAT)
+          .describedAs("How long a server-sent event stream may be idle before it sends a heartbeat comment.");
+
+  /** {@code http.cors.allowed-origins}: the origins allowed across origins; empty turns CORS off. */
+  public static final Setting<List<String>> CORS_ALLOWED_ORIGINS =
+      Setting.stringList("http.cors.allowed-origins")
+          .withDefault(List.of())
+          .describedAs("Origins (https://host[:port]) allowed to call across origins, or '*'; empty turns CORS off.");
+
+  /** {@code http.cors.allowed-methods}: the methods a preflight may ask for. */
+  public static final Setting<List<String>> CORS_ALLOWED_METHODS =
+      Setting.stringList("http.cors.allowed-methods")
+          .withDefault(CorsPolicy.DEFAULT_METHODS.stream().map(Method::name).toList())
+          .describedAs("Methods a cross-origin preflight may ask for.");
+
+  /** {@code http.cors.allowed-headers}: the request headers a preflight may ask for. */
+  public static final Setting<List<String>> CORS_ALLOWED_HEADERS =
+      Setting.stringList("http.cors.allowed-headers")
+          .withDefault(CorsPolicy.DEFAULT_HEADERS)
+          .describedAs("Request headers a cross-origin preflight may ask for.");
+
+  /** {@code http.cors.exposed-headers}: the response headers a page may read. */
+  public static final Setting<List<String>> CORS_EXPOSED_HEADERS =
+      Setting.stringList("http.cors.exposed-headers")
+          .withDefault(CorsPolicy.DEFAULT_EXPOSED)
+          .describedAs("Response headers a cross-origin page may read.");
+
+  /** {@code http.cors.max-age}: how long a browser may cache a preflight's answer. */
+  public static final Setting<Duration> CORS_MAX_AGE =
+      Setting.duration("http.cors.max-age")
+          .withDefault(Duration.ofMinutes(10))
+          .describedAs("How long a browser may cache the answer to a cross-origin preflight.");
+
   private static final Pattern LITERAL_PATH = Pattern.compile("(/[A-Za-z0-9._~-]+)+");
+
+  /** What the start-up OpenAPI check found, set when the route table is built. */
+  private volatile List<String> documentProblems = List.of();
 
   @Override
   public String id() {
@@ -109,6 +152,12 @@ public final class JettyHttpModule implements Module {
     app.declare(METRICS_ENABLED);
     app.declare(METRICS_PATH);
     app.declare(METRICS_BEARER_TOKEN);
+    app.declare(SSE_HEARTBEAT);
+    app.declare(CORS_ALLOWED_ORIGINS);
+    app.declare(CORS_ALLOWED_METHODS);
+    app.declare(CORS_ALLOWED_HEADERS);
+    app.declare(CORS_EXPOSED_HEADERS);
+    app.declare(CORS_MAX_AGE);
     // the environment decides whether an SPA without index.html may start (local, test); the
     // operations modules declared with OpenApi.declare must each be bound once (OpenAPI contract)
     app.provide(
@@ -116,8 +165,11 @@ public final class JettyHttpModule implements Module {
         lookup -> {
           Routes routes = new Routes(lookup.get(Config.class).environment());
           routes.declare(OpenApi.operations(lookup));
+          // the document is built now, so a type it cannot describe fails start-up (in started)
+          documentProblems = OpenApi.check(lookup);
           return routes;
         });
+    app.provide(EventStreams.class, lookup -> new EventStreams(lookup.get(Config.class).get(SSE_HEARTBEAT)));
     // java -jar app.jar openapi [--out web/openapi.json]: the document, after register only
     app.command(OpenApi.command());
     app.provide(
@@ -147,8 +199,14 @@ public final class JettyHttpModule implements Module {
     Routes routes = app.get(Routes.class);
     HttpServer server = app.get(HttpServer.class);
     Routes own = routes.forModule(ID);
+    // open event streams end when shutdown begins, so they do not hold the drain for its grace
+    server.beforeDrain(app.get(EventStreams.class)::closeAll);
     own.get("/health/live", r -> Response.json(200, Map.of("status", "UP")));
     own.get("/health/ready", r -> ready(app, server));
+    CorsPolicy cors = cors(app.config());
+    if (cors != null) {
+      routes.cors(cors);
+    }
     if (app.config().get(METRICS_ENABLED)) {
       String path = app.config().get(METRICS_PATH);
       if (!LITERAL_PATH.matcher(path).matches()) {
@@ -176,6 +234,12 @@ public final class JettyHttpModule implements Module {
     ContextResolver resolver = app.find(ContextResolver.class).orElse(null);
     Dispatcher dispatcher =
         routes.compile(resolver, app.get(MonotonicClock.class), app.get(Metrics.class));
+    if (!documentProblems.isEmpty()) {
+      throw new StartupException(
+          documentProblems.stream()
+              .map(p -> Problem.of(ID, "openapi", "the OpenAPI document cannot be written: " + p))
+              .toList());
+    }
     for (String line : dispatcher.describeRoutes()) {
       LOG.info("route {}", line);
     }
@@ -185,6 +249,32 @@ public final class JettyHttpModule implements Module {
   @Override
   public void shutdown(App app) {
     app.get(HttpServer.class).stop();
+  }
+
+  /** The CORS policy of {@code http.cors.*}, or null when no origin is allowed (CORS off). */
+  private static @Nullable CorsPolicy cors(Config config) {
+    List<String> origins = config.get(CORS_ALLOWED_ORIGINS).stream().map(String::strip).filter(o -> !o.isEmpty()).toList();
+    if (origins.isEmpty()) {
+      return null;
+    }
+    List<Method> methods = new java.util.ArrayList<>();
+    for (String m : config.get(CORS_ALLOWED_METHODS)) {
+      Method parsed = Method.parse(m.strip().toUpperCase(java.util.Locale.ROOT));
+      if (parsed == null) {
+        throw new StartupException(List.of(Problem.of(ID, CORS_ALLOWED_METHODS.key(), "not a method: '" + m.strip() + "'")));
+      }
+      methods.add(parsed);
+    }
+    try {
+      return new CorsPolicy(
+          origins,
+          methods,
+          config.get(CORS_ALLOWED_HEADERS).stream().map(String::strip).toList(),
+          config.get(CORS_EXPOSED_HEADERS).stream().map(String::strip).toList(),
+          config.get(CORS_MAX_AGE));
+    } catch (IllegalArgumentException e) {
+      throw new StartupException(List.of(Problem.of(ID, "http.cors", String.valueOf(e.getMessage()))));
+    }
   }
 
   private static Response ready(App app, HttpServer server) {

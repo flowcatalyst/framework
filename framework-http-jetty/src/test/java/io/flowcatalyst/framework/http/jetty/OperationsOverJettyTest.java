@@ -38,6 +38,40 @@ class OperationsOverJettyTest {
   static final Operation<NoBody, Greeting> GREET =
       Operation.get("/greet/{name}", Greeting.class).id("greet").path(NAME).build();
 
+  /** A response the document cannot describe: Optional is refused (house rule: never a field). */
+  record Bad(String text, java.util.Optional<String> note) {}
+
+  static final Operation<NoBody, Bad> BAD = Operation.get("/bad", Bad.class).id("bad").build();
+
+  static final Operation<NoBody, Greeting> PRIVATE =
+      Operation.get("/private", Greeting.class).id("private").requiresContext().build();
+
+  /** Declares and binds operations, with or without OpenApi.info. */
+  static Module declaring(boolean info, Operation<NoBody, ?>... operations) {
+    return new Module() {
+      @Override
+      public String id() {
+        return "api";
+      }
+
+      @Override
+      public void register(AppBuilder app) {
+        OpenApi.declare(app, operations);
+        if (info) {
+          OpenApi.info(app, "greeter", "1");
+        }
+      }
+
+      @Override
+      @SuppressWarnings("unchecked")
+      public void boot(App app) {
+        for (Operation<NoBody, ?> op : operations) {
+          app.get(Routes.class).forModule(id()).bind((Operation<NoBody, Object>) op, r -> Outcome.failed(500, "NO", "no"));
+        }
+      }
+    };
+  }
+
   static Module api(boolean bind) {
     return new Module() {
       @Override
@@ -80,6 +114,46 @@ class OperationsOverJettyTest {
     Throwable t = catchThrowable(() -> builder(api(false)).start());
 
     assertThat(t).isInstanceOf(StartupException.class).hasMessageContaining("operation greet is declared but not bound");
+  }
+
+  @Test
+  void anOperationTheDocumentCannotDescribeFailsStartUpNotOnlyTheOpenapiCommand() {
+    Throwable t = catchThrowable(() -> builder(declaring(true, GREET, BAD)).start().close());
+
+    assertThat(t)
+        .isInstanceOf(StartupException.class)
+        .hasMessageContaining("OpenAPI")
+        .hasMessageContaining("Optional is refused");
+  }
+
+  @Test
+  void startUpDoesNotNeedTheDocumentsInfoOrSecuritySchemes() throws Exception {
+    // those are the openapi command's and OpenApiTesting's concern; start-up checks the schemas
+    try (App app =
+        App.builder()
+            .configDirectory(dir)
+            .environment(Apps.env())
+            .module(new JettyHttpModule())
+            .module(declaring(false, GREET, PRIVATE))
+            .module(
+                new Module() {
+                  @Override
+                  public String id() {
+                    return "resolver";
+                  }
+
+                  @Override
+                  public void register(AppBuilder b) {
+                    b.provide(
+                        io.flowcatalyst.framework.http.ContextResolver.class,
+                        l -> r -> {
+                          throw new IllegalStateException("not called");
+                        });
+                  }
+                })
+            .start()) {
+      assertThat(app.get(HttpServer.class).port()).isPositive();
+    }
   }
 
   @Test

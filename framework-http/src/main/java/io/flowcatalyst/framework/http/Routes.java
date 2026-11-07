@@ -46,6 +46,7 @@ public final class Routes {
     final List<Operation<?, ?>> declared = new ArrayList<>();
     boolean declarationsKnown;
     boolean sealed;
+    @Nullable CorsPolicy cors;
 
     State(@Nullable String environment) {
       this.environment = environment;
@@ -238,6 +239,26 @@ public final class Routes {
   }
 
   /**
+   * Turns on CORS for every response with this policy (one per application). It runs just inside
+   * the correlation id, outside the error mapping and every other middleware, so errors, {@code
+   * 404}s and refusals by middleware carry the headers too; a preflight ({@code OPTIONS} with {@code
+   * Access-Control-Request-Method}) is answered by it. The HTTP module calls it when {@code
+   * http.cors.allowed-origins} is set.
+   *
+   * @param policy the policy
+   * @throws IllegalStateException when a policy is already installed or the server is listening
+   */
+  public void cors(CorsPolicy policy) {
+    synchronized (state) {
+      requireOpen();
+      if (state.cors != null) {
+        throw new IllegalStateException("CORS is already turned on; an application has one policy");
+      }
+      state.cors = policy;
+    }
+  }
+
+  /**
    * Mounts the application's single-page application as the router's fallback: a request whose
    * path matches no route is answered by it (static-assets contract). One per application; the
    * checks against the route table run when the table is compiled.
@@ -317,6 +338,9 @@ public final class Routes {
         return; // reported when the table is compiled
       }
       RouteOptions route = operation.requiresContext() ? RouteOptions.requiresContext() : RouteOptions.none();
+      if (options.maxBodyBytes().isPresent()) {
+        route = route.maxBodyBytes(options.maxBodyBytes().getAsLong());
+      }
       for (Middleware<Request, Response> m : options.middleware()) {
         route = route.with(m);
       }
@@ -368,6 +392,7 @@ public final class Routes {
     List<Binding> bindings;
     List<Operation<?, ?>> declared;
     boolean declarationsKnown;
+    @Nullable CorsPolicy cors;
     synchronized (state) {
       state.sealed = true;
       registrations = List.copyOf(state.registrations);
@@ -376,6 +401,7 @@ public final class Routes {
       bindings = List.copyOf(state.bindings);
       declared = List.copyOf(state.declared);
       declarationsKnown = state.declarationsKnown;
+      cors = state.cors;
     }
     List<Router.Compiled> compiled = new ArrayList<>();
     List<Problem> problems = new ArrayList<>();
@@ -426,6 +452,7 @@ public final class Routes {
               r.registrant(),
               r.options().needsContext(),
               r.options().acceptsForms(),
+              r.options().maxBodyBytes().orElse(-1),
               pipeline);
       router.add(route);
       compiled.add(route);
@@ -454,7 +481,7 @@ public final class Routes {
     if (!problems.isEmpty()) {
       throw new StartupException(problems);
     }
-    return new Dispatcher(router, global, resolver, clock, metrics, lines, spa);
+    return new Dispatcher(router, global, resolver, clock, metrics, lines, spa, cors);
   }
 
   /** The operation rules of OpenAPI contract section 3. */

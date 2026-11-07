@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
@@ -55,6 +56,7 @@ public final class HttpServer {
 
   private final AtomicBoolean draining = new AtomicBoolean();
   private final Set<Thread> inFlight = ConcurrentHashMap.newKeySet();
+  private final List<Runnable> beforeDrain = new CopyOnWriteArrayList<>();
 
   private @Nullable Server server;
   private @Nullable ServerConnector connector;
@@ -95,6 +97,23 @@ public final class HttpServer {
    */
   public boolean isDraining() {
     return draining.get();
+  }
+
+  /**
+   * Adds an action that runs when shutdown begins, <em>before</em> the drain: after new requests
+   * start getting {@code 503} and readiness reports down, and before the server waits for the
+   * requests in flight. Use it to end long-lived responses (a server-sent event stream) so they do
+   * not hold the drain until {@code http.shutdown-grace} runs out; {@code EventStreams} registers
+   * itself here. Module {@code shutdown} hooks are no place for that: the HTTP module is listed
+   * last, so its {@code shutdown} (the drain) runs first.
+   *
+   * <p>Actions run once, in the order they were added, on the thread that stops the server. One
+   * that throws is logged at WARN and the rest still run. Keep them short: they delay the drain.
+   *
+   * @param action what to run
+   */
+  public void beforeDrain(Runnable action) {
+    beforeDrain.add(action);
   }
 
   /**
@@ -142,7 +161,9 @@ public final class HttpServer {
 
   /** Stops accepting, lets in-flight requests finish up to the grace period, then stops. */
   void stop() {
-    draining.set(true);
+    if (draining.compareAndSet(false, true)) {
+      runBeforeDrain();
+    }
     Server s = server;
     ServerConnector c = connector;
     if (s == null || c == null) {
@@ -165,6 +186,16 @@ public final class HttpServer {
       LOG.warn("error stopping the HTTP server", e);
     }
     server = null;
+  }
+
+  private void runBeforeDrain() {
+    for (Runnable action : beforeDrain) {
+      try {
+        action.run();
+      } catch (RuntimeException e) {
+        LOG.warn("a before-drain action failed; the shutdown goes on", e);
+      }
+    }
   }
 
   private static String rootMessage(Throwable t) {

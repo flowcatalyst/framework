@@ -528,6 +528,15 @@ scheme was contributed is a dump problem ("say how callers authenticate").
   stale document without Node. *As built (MO):* the same test run with `-Dopenapi.update=true`
   writes the file; a missing file fails with the command to write it. The TypeScript side has its own drift check (section 11).
 
+*Amended 2026-11-07 (fulfil-go fixes, item B2; owner-approved):* the document is also **built at
+start-up**. The HTTP server (Java: `JettyHttpModule`, before it opens the port; Go: `httpfw.NewServer`)
+builds it from the declarations and fails start-up with every problem, so a schema problem no
+longer shows only when the document is written. At start-up a missing `info` and a context-requiring
+operation without a security scheme are not problems (they concern the dumped document; the command
+and the test helpers still report them); an application with no declared operation is not checked.
+Test helper: Java `OpenApiTesting.assertBuilds(appBuilder)` fails on every problem the command would
+print, with no committed file; Go: the `fwtest` counterpart.
+
 ## 10. One document for Java and Go
 
 The two emitters must produce comparable documents, so a SPA written against one backend's document

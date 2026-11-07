@@ -54,6 +54,17 @@
       <plugin>
         <artifactId>maven-enforcer-plugin</artifactId>
       </plugin>
+      <!-- IdempotencyStoreContract, which every idempotency store's test extends -->
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>
