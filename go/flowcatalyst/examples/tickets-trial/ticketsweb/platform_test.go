@@ -2,7 +2,6 @@ package ticketsweb
 
 import (
 	"bytes"
-	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"io"
 	"net/http"
@@ -72,8 +71,9 @@ func (s *platformSite) assign(cookie, ticketID, assignee string) {
 	}
 }
 
-// eventRow is the outbox row of the latest event of a type, as the platform's processor would read it.
-func (s *platformSite) eventRow(eventType string) map[string]any {
+// eventPayload is the outbox payload of the latest event of a type, as the platform's processor would
+// read it.
+func (s *platformSite) eventPayload(eventType string) string {
 	s.t.Helper()
 	var payload string
 	err := s.built.DB.Pool().QueryRow(s.t.Context(),
@@ -82,8 +82,14 @@ func (s *platformSite) eventRow(eventType string) map[string]any {
 	if err != nil {
 		s.t.Fatal(err)
 	}
+	return payload
+}
+
+// eventRow is that payload as JSON.
+func (s *platformSite) eventRow(eventType string) map[string]any {
+	s.t.Helper()
 	var row map[string]any
-	if err := json.Unmarshal([]byte(payload), &row); err != nil {
+	if err := json.Unmarshal([]byte(s.eventPayload(eventType)), &row); err != nil {
 		s.t.Fatal(err)
 	}
 	return row
@@ -98,48 +104,9 @@ func (s *platformSite) query(sql string) string {
 	return out
 }
 
-// envelopeOf is what the platform delivers to a subscription for an event: the envelope around the
-// row's data.
-func envelopeOf(t *testing.T, event map[string]any, jobID, clientCode string) string {
-	t.Helper()
-	data, _ := event["data"].(string)
-	envelope := []struct {
-		Key   string
-		Value any
-	}{
-		{"id", jobID},
-		{"type", event["type"]},
-		{"attemptNumber", 1},
-		{"source", event["source"]},
-		{"subject", event["subject"]},
-		{"correlationId", event["correlationId"]},
-		{"messageGroup", event["messageGroup"]},
-		{"clientId", "clt_" + clientCode},
-		{"clientCode", clientCode},
-		{"data", jsontext.Value(data)},
-	}
-	var b bytes.Buffer
-	b.WriteByte('{')
-	for i, e := range envelope {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		k, _ := json.Marshal(e.Key)
-		v, err := json.Marshal(e.Value)
-		if err != nil {
-			t.Fatal(err)
-		}
-		b.Write(k)
-		b.WriteByte(':')
-		b.Write(v)
-	}
-	b.WriteByte('}')
-	return b.String()
-}
-
-func (s *platformSite) deliver(d Delivery) answer {
+// deliver sends a signed request the fake platform built.
+func (s *platformSite) deliver(req *http.Request, err error) answer {
 	s.t.Helper()
-	req, err := d.Request(s.t.Context(), s.base, signingSecret, s.clock.Now())
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -152,17 +119,25 @@ func (s *platformSite) deliver(d Delivery) answer {
 	return answer{res.StatusCode, res.Header, string(b)}
 }
 
-func (s *platformSite) deliverAssignment(event map[string]any, jobID, clientCode string) answer {
+func (s *platformSite) signing() fakeplatform.Signing {
+	return fakeplatform.Signing{Secret: signingSecret, At: s.clock.Now()}
+}
+
+// deliverAssignment delivers an assignment event to the subscription, as the platform would for the
+// event's client.
+func (s *platformSite) deliverAssignment(eventPayload, jobID string) answer {
 	s.t.Helper()
-	return s.deliver(Delivery{
-		Path: "/fc/dispatch", Body: envelopeOf(s.t, event, jobID, clientCode),
-		Headers: map[string]string{"X-Dispatch-Job-Id": jobID, "X-Event-Type": event["type"].(string), "X-FlowCatalyst-Client": "clt_" + clientCode + ":" + clientCode}, //nolint:forcetypeassert // an outbox row has a string type
-	})
+	job, err := fakeplatform.JobFromEvent(jobID, eventPayload)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	return s.deliver(fakeplatform.Deliver(s.t.Context(), s.base+"/fc", s.signing(), job))
 }
 
 func (s *platformSite) fire(instanceID string) answer {
 	s.t.Helper()
-	return s.deliver(Delivery{Path: "/fc/scheduled-jobs", Body: FiringBody(s.clock.Now(), tickets.SLASweepJob, instanceID)})
+	return s.deliver(fakeplatform.Fire(s.t.Context(), s.base+"/fc", s.signing(),
+		fakeplatform.Firing{JobID: "sj_1", JobCode: tickets.SLASweepJob, InstanceID: instanceID, TracksCompletion: true}))
 }
 
 // ---- the definition sync -----------------------------------------------------------------------
@@ -239,7 +214,7 @@ func TestAnAssignmentTheUseCaseWroteNotifiesTheAssigneeWithTheClientsOwnKey(t *t
 	id := s.open(s.person("acme", "prn_ada", "requester"), "Printer on fire", "HIGH")
 	s.assign(agent, id, "agent_7")
 
-	r := s.deliverAssignment(s.eventRow("tickets-trial:support:ticket:assigned"), "dj_0HZXEQ5Y8JY5Z", "acme")
+	r := s.deliverAssignment(s.eventPayload("tickets-trial:support:ticket:assigned"), "dj_0HZXEQ5Y8JY5Z")
 
 	if r.status != 200 || r.body != `{"ack":true}` {
 		t.Fatalf("delivery: %d %s", r.status, r.body)
@@ -267,7 +242,7 @@ func TestAssigningATicketToYourselfNotifiesNobody(t *testing.T) {
 	id := s.open(s.person("acme", "prn_ada", "requester"), "Mine", "LOW")
 	s.assign(s.person("acme", "agent_1", "agent"), id, "agent_1")
 
-	r := s.deliverAssignment(s.eventRow("tickets-trial:support:ticket:assigned"), "dj_1", "acme")
+	r := s.deliverAssignment(s.eventPayload("tickets-trial:support:ticket:assigned"), "dj_1")
 
 	if r.status != 200 || r.body != `{"ack":true}` || len(s.notifier.Received()) != 0 {
 		t.Errorf("delivery: %d %s, %d notifications", r.status, r.body, len(s.notifier.Received()))
@@ -280,7 +255,7 @@ func TestAClientWithoutAKeyIsRejectedTerminallyAndTheSecretIsNeverSent(t *testin
 	id := s.open(s.person("globex", "prn_gus", "requester"), "Globex printer", "LOW")
 	s.assign(s.person("globex", "agent_g", "agent"), id, "agent_g2")
 
-	r := s.deliverAssignment(s.eventRow("tickets-trial:support:ticket:assigned"), "dj_2", "globex")
+	r := s.deliverAssignment(s.eventPayload("tickets-trial:support:ticket:assigned"), "dj_2")
 
 	if r.status != 422 || r.header.Get("FlowCatalyst-Outcome") != "reject" || strings.Contains(r.body, acmeKey) || len(s.notifier.Received()) != 0 {
 		t.Errorf("delivery: %d %v %s, %d notifications", r.status, r.header, r.body, len(s.notifier.Received()))
@@ -292,19 +267,19 @@ func TestATroubledNotificationServiceIsTransientAndARefusalIsTerminal(t *testing
 	s := startPlatformSite(t)
 	id := s.open(s.person("acme", "prn_ada", "requester"), "Printer", "LOW")
 	s.assign(s.person("acme", "agent_1", "agent"), id, "agent_7")
-	event := s.eventRow("tickets-trial:support:ticket:assigned")
+	event := s.eventPayload("tickets-trial:support:ticket:assigned")
 
 	s.notifier.Answer(500)
-	if got := s.deliverAssignment(event, "dj_3", "acme").status; got != 503 { // the platform retries it
+	if got := s.deliverAssignment(event, "dj_3").status; got != 503 { // the platform retries it
 		t.Errorf("a 500: %d", got)
 	}
 	s.notifier.Answer(400)
-	refused := s.deliverAssignment(event, "dj_4", "acme")
+	refused := s.deliverAssignment(event, "dj_4")
 	if refused.status != 422 || !strings.Contains(refused.body, "400") || strings.Contains(refused.body, acmeKey) {
 		t.Errorf("a 400: %d %s", refused.status, refused.body)
 	}
 	s.notifier.Answer(202)
-	if got := s.deliverAssignment(event, "dj_5", "acme").status; got != 200 {
+	if got := s.deliverAssignment(event, "dj_5").status; got != 200 {
 		t.Errorf("recovered: %d", got)
 	}
 }

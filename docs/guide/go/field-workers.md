@@ -98,7 +98,8 @@ A field request builds the usual `fw.Context`:
 | Context | From a field token |
 |---|---|
 | principal | `sub` (`fwu_...`), kind `fw.PrincipalFieldWorker` (`FIELD_WORKER`) |
-| client | `client_identifier`; the module's client selector is **not** consulted |
+| client | `client_identifier`, held against the module's client selector (below) |
+| subject name | `name`: `cx.SubjectName()` |
 | application | `aud` |
 | permissions | the field permission mapping below |
 
@@ -107,6 +108,20 @@ A field request builds the usual `fw.Context`:
 `DeviceID`, `DeviceMode` (`PERSONAL` or `SHARED`), `AMR`, `AuthTime`, `SessionID` and `ExpiresAt`.
 A field worker has no platform authority: its `Principal` has no roles, applications, clients or
 tier.
+
+**The client is checked against the path.** The worker's client is always the token's, but the
+module's client selector still runs, with the worker's `Principal` (kind `FIELD_WORKER`, no clients).
+When it names a client other than `_platform` and other than the token's (a route
+`/api/clients/{client}/...` whose selector reads the path), the request is refused with
+`403 CLIENT_NOT_PERMITTED`, the answer a user of another client gets, before the worker's permissions
+are looked up. So a handler need not compare the path's client with `cx.Client()`. A selector that
+names no client (`auth.HomeClient()` does not, for a worker) leaves the token's client; a selector
+error is a `500`, as for a user. `TestFieldTokenIsCheckedAgainstTheSelectedClient` (`go/auth`) refuses a
+`globex` worker on `/api/clients/acme/things` and accepts it on `/api/clients/globex/things`.
+
+**The worker's name** is on the Context: `cx.SubjectName()` (from the token's `name`), so a use case
+can record who collected or delivered without the request. `cx.Actor()` stays the operator signed in
+as the worker.
 
 **Permissions** come from the field mapping, separate from the session and bearer mapping, and the
 default grants none, so a route that requires a permission refuses field workers until you map
@@ -208,7 +223,8 @@ headers, _ := tt.FieldRequest(provider, device, "POST", "/api/echo", auth.FieldP
 proof rule), replay through the memory and the Redis cache (a Redis server from `PATH`, as for the
 Redis session store), nonces (the algorithm written out a second time in the test, the previous
 bucket, a nonce under an older configured key, a key rotated out, two buckets ago), `use_dpop_nonce`
-and its header, `pcr`, the ignored client selector, the three mappings, `RequireSource`, and the
+and its header, `pcr`, the client selector's check (another client's path refused, the worker's own
+and a path without a client accepted, a selector error), the subject name, the three mappings, `RequireSource`, and the
 `DPoP` scheme with field workers off. `go/flowcatalyst` tests: `RequireLiveField` (active, inactive,
 the platform failing in five ways, unreachable, the per-`sid` cache) and `OnFieldRevocation` (each
 of the three events, rejections, a failing handler). `TestFieldConformance` runs every case of

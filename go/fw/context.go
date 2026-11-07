@@ -22,6 +22,7 @@ type Context struct {
 	execution   ExecutionID
 	permissions []Permission
 	actor       Actor
+	subjectName string
 }
 
 // Actor is the operator behind a Context whose principal is someone else: a supervisor, or a
@@ -31,6 +32,12 @@ type Context struct {
 type Actor struct {
 	ID, Type, Name string
 }
+
+// PlatformClient is the client of a Context that acts for no particular client: a receiver run
+// whose delivery named none, every scheduled-job firing, a request whose principal has no client.
+// It cannot equal a platform client identifier. auth.PlatformClient and
+// flowcatalyst.PlatformClientID are this value.
+var PlatformClient = MustClientID("_platform")
 
 // ErrZeroContext is returned when a framework API is given the zero Context.
 var ErrZeroContext = errors.New("fw: the zero Context has no client")
@@ -54,6 +61,15 @@ func ContextFor(client ClientID) Context {
 		panic(err)
 	}
 	return cx
+}
+
+// ServiceContextFor returns the Context of work a service does for a client on its own account,
+// with no platform principal behind it (an inbound provider webhook, matched to its client by the
+// provider's reference): principal p of kind [PrincipalService], a new random correlation id, no
+// permissions. A use case it runs authorizes with usecase.RequireService. It panics on the zero
+// ClientID or the zero PrincipalID (a programming error).
+func ServiceContextFor(client ClientID, p PrincipalID) Context {
+	return ContextFor(client).WithPrincipalOfKind(p, PrincipalService)
 }
 
 // IsZero reports whether cx is the zero Context.
@@ -81,6 +97,12 @@ func (cx Context) Execution() (ExecutionID, bool) { return cx.execution, !cx.exe
 
 // Actor returns who is acting as the principal, when someone is (an impersonated field request).
 func (cx Context) Actor() (Actor, bool) { return cx.actor, cx.actor.ID != "" }
+
+// SubjectName returns the display name of the principal (the subject), when the auth layer knew it:
+// a field worker's name from its token, a user's when the token carries one. It is for showing and
+// recording who did something ("collected by Dee"); it identifies nobody (use Principal) and grants
+// nothing. [Context.Actor] stays the operator acting as the principal.
+func (cx Context) SubjectName() (string, bool) { return cx.subjectName, cx.subjectName != "" }
 
 // Permissions returns a copy of the permissions the principal holds.
 func (cx Context) Permissions() []Permission { return slices.Clone(cx.permissions) }
@@ -140,7 +162,8 @@ func (cx Context) WithPrincipal(p PrincipalID) Context {
 	}
 	cx.principal = p
 	cx.kind = 0
-	cx.actor = Actor{} // an actor acts as one principal: a new principal drops it
+	cx.actor = Actor{}  // an actor acts as one principal: a new principal drops it
+	cx.subjectName = "" // and so does the name, which described the old one
 	return cx
 }
 
@@ -165,6 +188,16 @@ func (cx Context) WithActor(a Actor) Context {
 		panic("fw: Context.WithActor with a blank id")
 	}
 	cx.actor = a
+	return cx
+}
+
+// WithSubjectName returns a copy recording the principal's display name (set it after the
+// principal: a new principal drops it). It panics on a blank name.
+func (cx Context) WithSubjectName(name string) Context {
+	if strings.TrimSpace(name) == "" {
+		panic("fw: Context.WithSubjectName with a blank name")
+	}
+	cx.subjectName = name
 	return cx
 }
 

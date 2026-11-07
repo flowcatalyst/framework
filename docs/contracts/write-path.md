@@ -58,6 +58,25 @@ once. If it needs fresh state, the attempt has failed and runs again from the st
 `.andDelete(...)`, `.andEmit(...)` to add further aggregates and events. Every plan carries at
 least one event; the first is the use case's result. Events are written in step order.
 
+*Amended 2026-11-07 (fulfil-go port, items 8 and 18):*
+
+- **Append.** A plan may hold **append-only rows** beside its aggregate steps: an activity entry, a
+  live-update log line, a projection row, anything only ever inserted. An append is written by an
+  application-supplied appender (Go `usecase.Append(row, appender)` with `Appender[R]`'s
+  `Append(ctx, tx, row)`; Java `Plan.append(row, appender)` or its plan idiom) in the attempt's
+  transaction, **in plan order** among the aggregate steps, committed or rolled back with them, written
+  again only by a retried attempt. It is never version-checked and never the audit row's subject: the
+  audit row names the plan's first **aggregate** step wherever the appends are. A plan with appends but
+  no aggregate step is refused as `INTERNAL` / `APPEND_ONLY_PLAN` (a bug: the appends belong to an
+  aggregate change, which the audit row names); a plan with no step at all keeps naming the first
+  event's subject. Use an aggregate for anything loaded, changed or deleted later; use an append for
+  rows that are only inserted.
+- **The service grant.** `authorize` may require that the context's principal is a service (kind
+  `SERVICE`): the receivers' service principal, a scheduled job, or a provider webhook's service
+  context (core contract section 3). Anyone else is refused with `AUTHORIZATION` /
+  `SERVICE_REQUIRED`, whatever permissions they hold. Go `usecase.RequireService(cx)`; Java
+  `Grants.requireService(cx)` or the Java grant idiom.
+
 ### 3a. The load phase and the record-level check (amendment 2026-10-18)
 
 `authorize` sees the command and the context only; a rule that depends on the stored record ("a
@@ -100,7 +119,8 @@ Order inside one attempt: validate, authorize, **load**, **authorizeLoaded**, ex
 1. validate, then authorize; the first error is the result.
 2. execute (with a load phase: load, then the record-level check, then execute; section 3a); `Rejected` is the result.
 3. Check every aggregate in the plan belongs to `context.client()`. A mismatch fails as
-   `INTERNAL` with code `CROSS_CLIENT_WRITE` and is logged as a bug.
+   `INTERNAL` with code `CROSS_CLIENT_WRITE` and is logged as a bug. A plan of appends only fails as
+   `INTERNAL` / `APPEND_ONLY_PLAN` (section 3, amended 2026-11-07), also logged as a bug.
 4. Begin a transaction (READ COMMITTED) on the default database instance.
 5. Apply the plan's writes in order, then write each event to the outbox, then one audit row.
 6. Commit.
@@ -114,6 +134,7 @@ Outcome of a failed write:
 | `23505` | `CONFLICT` / `UNIQUE_VIOLATION`, not retried |
 | any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`VALIDATE`, `AUTHORIZE`, `LOAD`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
 | a plan with another client's aggregate | `INTERNAL` / `CROSS_CLIENT_WRITE` (step 3), not retried |
+| a plan of appends only (no aggregate step) | `INTERNAL` / `APPEND_ONLY_PLAN` (step 3), not retried |
 | the thread is interrupted while waiting between attempts | `INTERNAL` / `INTERRUPTED`, the interrupt flag is restored |
 
 Every failed attempt rolls back fully. **Conflict policy:** `fail` returns `CONFLICT` with code
@@ -256,7 +277,9 @@ Facts this section is built on (platform Go source, read 2026-10-10):
   `correlationId`, `messageGroup`, `queue`, `descriptor` `VARCHAR(255)`; `payloadContentType`
   `VARCHAR(100)`.
 - `clientId` is stored as given (a platform client **id**, at most 17 characters); the batch endpoint
-  does not resolve a client code the way the events batch resolves `clientCode`.
+  does not resolve a client code the way the events batch resolves `clientCode`. (Superseded: the
+  batch has since gained `clientCode`, `connectionId` and `idempotencyKey`; amendment 2026-11-07
+  below.)
 - The insert is `ON CONFLICT (id, created_at) DO NOTHING` with `created_at` set at ingest, so a
   redelivered batch can create a second job row; the receiver's at-least-once rule covers it.
 
@@ -276,9 +299,10 @@ The payload is the batch item. Written always: `id`, `kind`, `code`, `source`, `
 `payload`, `payloadContentType`, `dataOnly`, `correlationId` (the context's). Written only when set:
 `subject`, `externalId`, `eventId`, `clientId`, `subscriptionId`, `serviceAccountId`,
 `dispatchPoolId`, `messageGroup`, `mode`, `sequence`, `timeoutSeconds`, `maxRetries`, `metadata`
-(array form, insertion order, only when not empty), `queue`, `descriptor`. **Never written**, because
-the batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `expiresAt`,
-`idempotencyKey`, `connectionId`, `causationId`.
+(array form, insertion order, only when not empty), `queue`, `descriptor`, and (amended 2026-11-07,
+below) `clientCode` after `clientId`, `connectionId` and `idempotencyKey` after `descriptor`. **Never
+written**, because the batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`,
+`expiresAt`, `causationId`.
 
 `DispatchJob` (a record, built with `DispatchJob.builder(code, targetUrl)`) is validated when built
 (`IllegalArgumentException`), so a row the platform would refuse terminally is never written:
@@ -296,11 +320,12 @@ the batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `ex
   id is in the payload, so a batch the processor sends again after a lost response creates a job
   with the **same** id, and the receiver's `DispatchDelivery.once` (keyed on the job id) runs the
   work once.
-- platform ids (`eventId`, `subscriptionId`, `serviceAccountId`, `dispatchPoolId`,
+- platform ids (`eventId`, `subscriptionId`, `serviceAccountId`, `dispatchPoolId`, `connectionId`,
   `platformClientId` → `clientId`): `[0-9A-Za-z_-]{1,17}`. `platformClientId` is the platform's id,
   never derived from the `Context`: the framework's `ClientId` is a client identifier (up to 100
-  characters) that the platform would store unresolved, and that may not fit the column. Without it
-  the job has no client, and with no pool named the platform uses `platform-DEFAULT-POOL`.
+  characters) that may not fit the column. Without it the job names the context's client as
+  `clientCode` (amended 2026-11-07, below), and with no pool named the platform uses
+  `platform-DEFAULT-POOL`.
 - `messageGroup`, `externalId`, `subject`, `descriptor`: 1 to 255 characters. `mode`: `IMMEDIATE`,
   `NEXT_ON_ERROR`, `BLOCK_ON_ERROR`. `queue`: `DEFAULT` or `HIGH_PRIORITY`. `sequence`,
   `timeoutSeconds`, `maxRetries`: at least 1 when set. `metadata`: keys not blank, at most 100.
@@ -308,10 +333,41 @@ the batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `ex
 `Sink` gained `writeDispatchJobs(tx, context, jobs)`, a default method that throws; a `Sink` that does
 not support dispatch jobs fails the attempt at step `OUTBOX` when a plan carries one.
 
+*Amended 2026-11-07 (fulfil-go port, item 16; the platform now takes these fields, verified in
+flowcatalyst-go `internal/platform/shared/sdk/dispatch_jobs_batch.go`, `client_code.go`,
+`job_connection.go` and `internal/server/delivery_creds.go`):*
+
+- **The job's client.** When the job has no `platformClientId` and the context's client is not the
+  platform client (`_platform`), the item carries `clientCode`: the context's client, written right
+  after `clientId`'s place. The platform resolves it to its client (`ResolveJobClient`): an unknown
+  code, or one the caller may not reach, refuses the whole batch (`400 CLIENT_NOT_FOUND` for an anchor,
+  `403` otherwise), so a framework application's clients must exist on the platform. An explicit
+  `platformClientId` wins and no `clientCode` is written. A job that names a client is delivered with
+  `X-FlowCatalyst-Client: {clientId}:{clientCode}` (and `clientId`/`clientCode` in the envelope), so
+  the receiver runs its handler in that client's context (flowcatalyst contract section 4b); a
+  platform-scoped job is delivered without them and runs for `_platform`.
+- **`connectionId`** (optional, `[0-9A-Za-z_-]{1,17}`): the connection the job is delivered through.
+  Pausing the connection holds the job; with no subscription, the connection's service account signs
+  the delivery. The platform refuses the batch when the connection does not exist, is outside the
+  job's client and application, or is not the subscription's own connection. **Without it** (and with
+  no subscription) the platform signs with the **oldest active service account of the application
+  named by the job code's first segment** (`delivery_creds.go`, step 3), and sends the delivery bare
+  when that application has none.
+- **`idempotencyKey`** (optional, not blank, at most 100 bytes of UTF-8): the first job to name a key
+  within its application (the code's first segment) and client is created; a later item naming it
+  creates nothing and answers the first job's id. The platform keeps keys 7 days. It is set explicitly
+  only, **never derived from `externalId`**: two jobs that share an external reference must not merge
+  silently.
+- Payload order: `... correlationId, clientId, clientCode, subscriptionId, ... queue, descriptor,
+  connectionId, idempotencyKey` (the platform's `BatchItem` order for the two new fields). The
+  conformance vector `conformance/outbox/outbox.json` has a client's jobs with `clientCode`, a job
+  with both new fields, a platform-scoped job without `clientCode`, and the builder's refusals of the
+  new fields.
+
 ### Platform work found
 
-- The dispatch-jobs batch should accept `clientCode` and resolve it, as the events batch does; until
-  then a framework application cannot attribute a job to a client by its identifier.
+- ~~The dispatch-jobs batch should accept `clientCode` and resolve it~~: done on the platform; the
+  framework writes it since 2026-11-07 (above).
 - The Java, TypeScript and Laravel SDKs write `metadata` as an object, which the batch endpoint
   rejects with `400` for the whole batch, and write fields the endpoint ignores (`headers`,
   `retryStrategy`, `scheduledFor`, `expiresAt`, `idempotencyKey`, `connectionId`), and their default

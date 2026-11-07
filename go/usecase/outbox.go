@@ -235,7 +235,10 @@ func EventPayload(cx fw.Context, ev event.Event) (string, error) {
 }
 
 // DispatchJobPayload is the platform's dispatch-jobs batch item for a job, with only the fields
-// the endpoint reads, in the Java writer's order.
+// the endpoint reads, in the Java writer's order. The job names its client: clientId when
+// [PlatformClientID] set one, else clientCode, the Context's client, unless that is
+// [fw.PlatformClient] (a platform-scoped job names none). The platform delivers a job that names a
+// client with X-FlowCatalyst-Client, so its receiver runs in that client's context.
 func DispatchJobPayload(cx fw.Context, id string, j DispatchJob) string {
 	var o object
 	o.str("id", id)
@@ -251,6 +254,9 @@ func DispatchJobPayload(cx fw.Context, id string, j DispatchJob) string {
 	optional(&o, "eventId", j.eventID)
 	o.str("correlationId", cx.Correlation().String())
 	optional(&o, "clientId", j.platformClientID)
+	if j.platformClientID == "" && cx.Client() != fw.PlatformClient {
+		o.str("clientCode", cx.Client().String())
+	}
 	optional(&o, "subscriptionId", j.subscriptionID)
 	optional(&o, "serviceAccountId", j.serviceAccountID)
 	optional(&o, "dispatchPoolId", j.dispatchPoolID)
@@ -268,6 +274,8 @@ func DispatchJobPayload(cx fw.Context, id string, j DispatchJob) string {
 	}
 	optional(&o, "queue", string(j.queue))
 	optional(&o, "descriptor", j.descriptor)
+	optional(&o, "connectionId", j.connectionID)
+	optional(&o, "idempotencyKey", j.idempotencyKey)
 	return o.done()
 }
 

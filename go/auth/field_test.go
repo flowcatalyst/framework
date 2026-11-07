@@ -270,12 +270,61 @@ func TestFieldPermissionResolver(t *testing.T) {
 	})
 }
 
-func TestFieldClientSelectorIsNotConsulted(t *testing.T) {
-	selector := func(auth.Principal, *http.Request) (fw.ClientID, error) { return fw.MustClientID("other"), nil }
+// pathClient selects the client a path names (/api/clients/{client}/...), else the home client: the
+// selection of an application whose client-scoped routes carry the client.
+func pathClient() auth.ClientSelector {
+	home := auth.HomeClient()
+	return func(p auth.Principal, r *http.Request) (fw.ClientID, error) {
+		if rest, ok := strings.CutPrefix(r.URL.Path, "/api/clients/"); ok {
+			if code, _, _ := strings.Cut(rest, "/"); code != "" {
+				return fw.ParseClientID(code)
+			}
+		}
+		return home(p, r)
+	}
+}
+
+// A field token is checked against the client the selector chose (fulfil-go port, item 10): a path
+// naming client X refuses a field worker of client Y with the answer a user of another client gets.
+func TestFieldTokenIsCheckedAgainstTheSelectedClient(t *testing.T) {
+	lookups := 0
+	f := startField(t, config{options: []auth.Option{auth.Clients(pathClient())}},
+		auth.FieldPermissionsFrom(func(context.Context, auth.FieldPrincipal) ([]string, error) { lookups++; return nil, nil }))
+	globex := auth.FieldPrincipal{ClientIdentifier: "globex"}
+
+	other := f.call("GET", "/api/clients/acme/things", globex)
+	if other.status != 403 || other.str("error") != "CLIENT_NOT_PERMITTED" {
+		t.Fatalf("a globex worker on acme's path: %d %s", other.status, other.body)
+	}
+	if lookups != 0 {
+		t.Errorf("a refused worker's permissions were looked up %d times", lookups)
+	}
+	if other.header.Get("DPoP-Nonce") == "" {
+		t.Error("a DPoP response carries a fresh nonce even when it is an error")
+	}
+	// a user of another client gets the same answer
+	user := f.do("GET", "/api/clients/acme/things", "", "Authorization", "Bearer "+f.provider.AccessToken(map[string]any{"clients": []string{"clt_9:globex"}}))
+	if user.status != 403 || user.str("error") != "CLIENT_NOT_PERMITTED" {
+		t.Fatalf("a globex user on acme's path: %d %s", user.status, user.body)
+	}
+
+	own := f.call("GET", "/api/clients/globex/things", globex)
+	if own.status != 200 || own.str("client") != "globex" {
+		t.Fatalf("a globex worker on globex's path: %d %s", own.status, own.body)
+	}
+	// where the selector names no client (the platform client), the token's client is the Context's
+	if r := f.call("GET", "/api/me", globex); r.status != 200 || r.str("client") != "globex" {
+		t.Fatalf("a path without a client: %d %s", r.status, r.body)
+	}
+}
+
+func TestFieldTokenWithASelectorThatFails(t *testing.T) {
+	selector := func(auth.Principal, *http.Request) (fw.ClientID, error) {
+		return fw.ClientID{}, errors.New("selector broke")
+	}
 	f := startField(t, config{options: []auth.Option{auth.Clients(selector)}})
-	r := f.call("GET", "/api/me", auth.FieldPrincipal{ClientIdentifier: "acme"})
-	if r.status != 200 || r.str("client") != "acme" {
-		t.Fatalf("%d %s", r.status, r.body)
+	if r := f.call("GET", "/api/me", auth.FieldPrincipal{ClientIdentifier: "acme"}); r.status != 500 {
+		t.Fatalf("%d %s: a selector's error is a 500, as for a user", r.status, r.body)
 	}
 }
 
@@ -597,4 +646,22 @@ func TestFieldStartup(t *testing.T) {
 			t.Fatalf("warned:\n%s", logs.String())
 		}
 	})
+}
+
+// The subject's display name is on the Context (fulfil-go port, item 20): a field worker's from its
+// token, a user's when the token carries one; the actor stays the operator.
+func TestTheSubjectNameIsOnTheContext(t *testing.T) {
+	f := startField(t, config{})
+	r := f.call("GET", "/api/me", auth.FieldPrincipal{Name: "Dee Driver", Actor: &auth.FieldActor{ID: "prn_SUP", Type: "principal", Name: "Sue Pervisor"}})
+	if r.status != 200 || r.str("subjectName") != "Dee Driver" || r.str("actor") != "prn_SUP|principal|Sue Pervisor" {
+		t.Fatalf("field worker: %d %s", r.status, r.body)
+	}
+	named := f.do("GET", "/api/me", "", "Authorization", "Bearer "+f.provider.AccessToken(map[string]any{"type": "USER", "name": "Uma User"}))
+	if named.status != 200 || named.str("subjectName") != "Uma User" {
+		t.Fatalf("user with a name: %d %s", named.status, named.body)
+	}
+	unnamed := f.do("GET", "/api/me", "", "Authorization", "Bearer "+f.provider.AccessToken(nil))
+	if unnamed.status != 200 || unnamed.str("subjectName") != "" {
+		t.Fatalf("a token without a name: %d %s", unnamed.status, unnamed.body)
+	}
 }

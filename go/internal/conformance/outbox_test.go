@@ -292,6 +292,8 @@ func dispatchJob(t *testing.T, raw jsontext.Value) (usecase.DispatchJob, error) 
 		Metadata         [][2]string    `json:"metadata"`
 		Queue            *string        `json:"queue"`
 		Descriptor       *string        `json:"descriptor"`
+		IdempotencyKey   *string        `json:"idempotencyKey"`
+		ConnectionID     *string        `json:"connectionId"`
 	}
 	if err := json.Unmarshal(raw, &j, json.RejectUnknownMembers(false)); err != nil {
 		t.Fatal(err)
@@ -347,6 +349,8 @@ func dispatchJob(t *testing.T, raw jsontext.Value) (usecase.DispatchJob, error) 
 		opts = append(opts, usecase.Queue(usecase.JobQueue(*j.Queue)))
 	}
 	str(j.Descriptor, usecase.Descriptor)
+	str(j.IdempotencyKey, usecase.IdempotencyKey)
+	str(j.ConnectionID, usecase.ConnectionID)
 	return usecase.NewDispatchJob(j.Code, j.TargetURL, opts...)
 }
 

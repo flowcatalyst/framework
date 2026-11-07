@@ -65,6 +65,8 @@ type DispatchJob struct {
 	metadata           []metadataEntry
 	queue              JobQueue
 	descriptor         string
+	connectionID       string
+	idempotencyKey     string
 	payloadErr         error
 }
 
@@ -161,9 +163,22 @@ func Queue(q JobQueue) JobOption { return func(j *DispatchJob) { j.queue = q } }
 // Descriptor sets the descriptor.
 func Descriptor(s string) JobOption { return func(j *DispatchJob) { j.descriptor = s } }
 
+// IdempotencyKey sets the job's idempotency key (not blank, at most 100 bytes of UTF-8). The platform
+// scopes it by application (the code's first segment) and client and keeps it 7 days: a repeat
+// creates nothing and answers the first job's id. It is never derived from [ExternalID]: two jobs
+// that share an external id must not merge silently.
+func IdempotencyKey(key string) JobOption { return func(j *DispatchJob) { j.idempotencyKey = key } }
+
+// ConnectionID sets the connection the job is delivered through ([0-9A-Za-z_-]{1,17}): pausing the
+// connection holds the job, and the connection's service account signs the delivery. Without it a
+// job with no subscription is signed by the oldest active service account of the application its
+// code names (the code's first segment).
+func ConnectionID(id string) JobOption { return func(j *DispatchJob) { j.connectionID = id } }
+
 const (
-	textMax     = 255
-	metadataMax = 100
+	textMax           = 255
+	metadataMax       = 100
+	idempotencyKeyMax = 100 // UTF-8 bytes: the platform's limit (dispatchjob.MaxIdempotencyKeyLen)
 )
 
 // NewDispatchJob builds and checks a job: code {application}:{rest} (application
@@ -215,6 +230,7 @@ func (j *DispatchJob) check() error {
 		{"subscriptionId", j.subscriptionID},
 		{"serviceAccountId", j.serviceAccountID},
 		{"dispatchPoolId", j.dispatchPoolID},
+		{"connectionId", j.connectionID},
 	} {
 		if f.v != "" && !validPlatformID(f.v) {
 			return fmt.Errorf("%s must match [0-9A-Za-z_-]{1,17}", f.name)
@@ -242,6 +258,9 @@ func (j *DispatchJob) check() error {
 	case "", JobQueueDefault, JobQueueHighPriority:
 	default:
 		return fmt.Errorf("dispatch job queue must be DEFAULT or HIGH_PRIORITY: %s", j.queue)
+	}
+	if j.idempotencyKey != "" && (isBlank(j.idempotencyKey) || len(j.idempotencyKey) > idempotencyKeyMax) {
+		return fmt.Errorf("idempotencyKey must not be blank and at most %d bytes (UTF-8)", idempotencyKeyMax)
 	}
 	if len(j.metadata) > metadataMax {
 		return fmt.Errorf("at most %d metadata entries", metadataMax)

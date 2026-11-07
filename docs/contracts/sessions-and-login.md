@@ -909,7 +909,8 @@ also needs the access token (`ath`), and is limited to the same method and URL.
 |---|---|
 | `principal` | `sub` (`fwu_...`) |
 | principal kind | `FIELD_WORKER` (core contract section 3, amended 2026-11-03) |
-| `client` | `client_identifier`. *Amends 7.3:* the application's client selector is **not** consulted. A field worker belongs to exactly one client, and the token names it |
+| `client` | `client_identifier`. *Amends 7.3:* a field worker belongs to exactly one client, and the token names it. *Amended 2026-11-07 (fulfil-go port, item 10):* the application's client selector still runs, with the worker's principal (kind `FIELD_WORKER`, no clients), as a **check**: when it names a client other than `_platform` and other than the token's, the request is refused with `403 CLIENT_NOT_PERMITTED` (the answer a user of another client gets), before the field permission mapping runs. A path that names client X so refuses a worker of client Y. A selector error is a `500`, as for a user |
+| subject name | `name` (core contract section 3, amended 2026-11-07); also a user's `name` claim, when the token or session carries one |
 | `application` | `aud` |
 | `permissions` | the field permission mapping (below) |
 | correlation id | the request's |
@@ -1043,7 +1044,9 @@ Every refusal in 15.2 and 15.3, over real HTTP routes:
   previous cookie key that is still configured (accepted).
 - `use_dpop_nonce` and its `DPoP-Nonce` header.
 - `pcr` answered with `403 PIN_CHANGE_REQUIRED`.
-- The client selector ignored.
+- The client selector as a check: a worker of another client refused on a path naming a client
+  (`403 CLIENT_NOT_PERMITTED`, as for a user, permissions not looked up), the worker's own client and
+  a path without a client accepted.
 - The default mapping gives no permissions, and both helpers.
 - `RequireSource`.
 - `RequireLiveField`: active, inactive, platform down giving 503, and the per-`sid` cache.

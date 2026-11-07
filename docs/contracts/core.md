@@ -215,6 +215,22 @@ request resolver sets it. `withPrincipal` clears it (an actor acts as one princi
 the other copies keep it. It is added to the log attributes. Go `fw.Context.Actor()` /
 `WithActor(fw.Actor)`, Java `Context.findActor()` / `withActor(Actor)`.
 
+*Amended 2026-11-07 (fulfil-go port, items 18 and 20):*
+
+- `Context` gains an optional **subject name**: the principal's display name, set by the request
+  resolver from the token's `name` (a field worker's always carries one; a user's when the token
+  does). It describes the subject, never the actor, identifies nobody and grants nothing. A new
+  principal clears it (`withPrincipal`); `forClient` and the other copies keep it. It is not written to
+  the outbox and not added to the log attributes (a person's name). Go `fw.Context.SubjectName()` /
+  `WithSubjectName(name)`, Java `subjectName()`.
+- The platform client `_platform` is a named constant of the context's client type (Go
+  `fw.PlatformClient`): "no particular client", the receivers' client for a delivery that names none
+  and the request resolver's default.
+- A **service context** constructor: the context of work a service does for a client with no platform
+  principal behind it (an inbound provider webhook): the client, a principal of kind `SERVICE`, a new
+  correlation id, no permissions. Go `fw.ServiceContextFor(client, principal)`. Its use cases authorize
+  with the write-path contract's service grant (section 3).
+
 ### 3a. Work for one client after another (amendment 2026-10-18, friction F3 and F15)
 
 A scheduled-job firing and a background loop have no client of their own (the receiver's context is

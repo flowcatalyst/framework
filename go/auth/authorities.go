@@ -1,19 +1,20 @@
 package auth
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/httpfw"
 )
 
-// PlatformClient is "no particular client": the same value as the receivers' platform client.
-var PlatformClient = fw.MustClientID("_platform")
+// PlatformClient is "no particular client": [fw.PlatformClient], the same value as the receivers'
+// platform client.
+var PlatformClient = fw.PlatformClient
 
 // PermissionMapper turns a principal into the permissions its Context carries (contract section
 // 7.3). Behaviour in code: the platform's id_token carries roles, not permissions, and only the
@@ -183,6 +184,9 @@ func (a *authorities) context(au Authenticated, r *http.Request) (fw.Context, er
 		return fw.Context{}, err
 	}
 	cx := fw.ContextFor(au.Client).WithPrincipalOfKind(id, au.Principal.Kind).WithCorrelation(httpfw.CorrelationID(r))
+	if name := strings.TrimSpace(au.Principal.Name); name != "" { // the subject's own name (a field worker's from its token)
+		cx = cx.WithSubjectName(name)
+	}
 	if au.Field != nil && au.Field.Actor != nil { // the worker is the subject, the actor the operator
 		cx = cx.WithActor(fw.Actor{ID: au.Field.Actor.ID, Type: au.Field.Actor.Type, Name: au.Field.Actor.Name})
 	}
@@ -212,25 +216,49 @@ func (a *authorities) context(au Authenticated, r *http.Request) (fw.Context, er
 var errNoClient = httpfw.NewError(http.StatusInternalServerError, "INTERNAL", "internal error")
 
 // fieldAuthenticated is who a verified field token and proof describe (contract section 15.5). The
-// client is the token's client_identifier; the application's client selector is not consulted.
-func fieldAuthenticated(ctx context.Context, f FieldPrincipal, resolve FieldPermissionResolver, log *slog.Logger) (Authenticated, error) {
+// client is the token's client_identifier, held against the client the application's selector
+// chose ([authorities.checkFieldClient]) before the worker's permissions are looked up.
+func (a *authorities) fieldAuthenticated(r *http.Request, f FieldPrincipal, resolve FieldPermissionResolver, log *slog.Logger) (Authenticated, error) {
 	client, err := fw.ParseClientID(f.ClientIdentifier)
 	if err != nil {
 		return Authenticated{}, errNoClient
 	}
-	granted, err := resolve(ctx, f)
+	principal := Principal{
+		ID: f.WorkerID, Kind: fw.PrincipalFieldWorker, Name: f.Name,
+		Clients: []string{}, Applications: []string{}, Roles: []string{}, Scopes: []string{},
+	}
+	if err := a.checkFieldClient(principal, client, r); err != nil {
+		return Authenticated{}, err
+	}
+	granted, err := resolve(r.Context(), f)
 	if err != nil { // not "no permissions": the device retries
 		log.Warn("a field worker's permissions could not be found", "worker", f.WorkerID, "error", err)
 		return Authenticated{}, httpfw.NewError(http.StatusServiceUnavailable, "UNAVAILABLE", "tokens cannot be checked right now; try again")
 	}
 	return Authenticated{
-		Principal: Principal{
-			ID: f.WorkerID, Kind: fw.PrincipalFieldWorker, Name: f.Name,
-			Clients: []string{}, Applications: []string{}, Roles: []string{}, Scopes: []string{},
-		},
-		Client: client, Permissions: slices.Clone(granted), Source: SourceField, Field: &f,
+		Principal: principal,
+		Client:    client, Permissions: slices.Clone(granted), Source: SourceField, Field: &f,
 		ExpiresAt: f.ExpiresAt, AuthTime: f.AuthTime,
 	}, nil
+}
+
+// checkFieldClient holds a field worker's client against the application's client selection
+// (contract section 15.5, amended 2026-11-07): the selector runs with the worker's Principal (kind
+// FIELD_WORKER, no clients), and a client it names other than the platform client and the token's
+// own is refused with 403 CLIENT_NOT_PERMITTED, the answer a user of another client gets. So a
+// path that names client X refuses a worker of client Y. The token's client stays the Context's.
+func (a *authorities) checkFieldClient(p Principal, own fw.ClientID, r *http.Request) error {
+	selected, err := a.clients(p, r)
+	if err != nil {
+		return err
+	}
+	if selected.IsZero() {
+		return errNoClient
+	}
+	if selected != PlatformClient && selected != own {
+		return httpfw.Forbidden("CLIENT_NOT_PERMITTED", "the principal may not act for this client")
+	}
+	return nil
 }
 
 // RequireSource is route middleware that answers 403 FORBIDDEN unless the request was

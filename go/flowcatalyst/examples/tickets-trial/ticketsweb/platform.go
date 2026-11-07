@@ -1,15 +1,10 @@
 package ticketsweb
 
 import (
-	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/flowcatalyst/framework/go/flowcatalyst/fakeplatform"
@@ -122,46 +117,4 @@ func (p *Platform) AwaitInstanceCalls(kind string, n int, timeout time.Duration)
 		case <-tick.C:
 		}
 	}
-}
-
-// ---- what the platform sends to the receivers ------------------------------------------------------
-
-// Sign is the signature of a delivery: hex(HMAC-SHA256(secret, timestamp + body)) (flowcatalyst
-// contract section 4). The Java side publishes this as ReceiverTesting; the Go module has no public
-// helper, so a service re-implements these eight lines (friction G76-1).
-func Sign(secret, timestamp, body string) string {
-	m := hmac.New(sha256.New, []byte(secret))
-	m.Write([]byte(timestamp))
-	m.Write([]byte(body))
-	return hex.EncodeToString(m.Sum(nil))
-}
-
-// FiringBody is the body of a scheduled-job firing, as the platform posts it.
-func FiringBody(now time.Time, jobCode, instanceID string) string {
-	ts := now.UTC().Format(time.RFC3339Nano)
-	return `{"jobId":"sj_1","jobCode":"` + jobCode + `","instanceId":"` + instanceID + `","scheduledFor":"` + ts +
-		`","firedAt":"` + ts + `","triggerKind":"CRON","correlationId":"corr-` + instanceID + `","tracksCompletion":true,"concurrent":false}`
-}
-
-// Delivery is a signed POST to a receiver of the application.
-type Delivery struct {
-	Path    string
-	Body    string
-	Headers map[string]string
-}
-
-// Request builds the signed request for a delivery at a time with the signing secret.
-func (d Delivery) Request(ctx context.Context, baseURL, secret string, now time.Time) (*http.Request, error) {
-	ts := fmt.Sprint(now.Unix())
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimSuffix(baseURL, "/")+d.Path, strings.NewReader(d.Body))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-FlowCatalyst-Signature", Sign(secret, ts, d.Body))
-	req.Header.Set("X-FlowCatalyst-Timestamp", ts)
-	for k, v := range d.Headers {
-		req.Header.Set(k, v)
-	}
-	return req, nil
 }

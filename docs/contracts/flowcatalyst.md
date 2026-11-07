@@ -33,6 +33,13 @@ client-credentials (the application's service account). Application code uses th
 methods; the SDK types do not appear in framework contracts. Adds a health check `flowcatalyst`
 (token fetch succeeds within `app.health.timeout`).
 
+*Amended 2026-11-07 (fulfil-go port, item 11):* `PlatformClient` also gives the platform's base URL
+(`flowcatalyst.base-url` without a trailing slash) and, for the platform APIs the wrapper does not
+cover, the SDK's own client over the wrapper's cached token: a call answered `401` clears the token
+and is sent once more with a fresh one. This is the one place an SDK type appears (Go
+`PlatformClient.BaseURL()` and `SDK()`, a `github.com/flowcatalyst/go-sdk` client; Java as its guide
+says). Both fail as disabled while `flowcatalyst.enabled` is false.
+
 Failure of the platform at start-up does not stop the application (the platform is not on the
 request path); it is logged and the health check reports it.
 
@@ -491,7 +498,18 @@ Rulings taken here: the scheduled-job cause is the **instance id**, because the 
 message that was delivered, while the job id names the definition, which fires many times and
 would make every run look like one cause. Permissions stay empty: the service account's platform
 permissions (`scope`) are the platform's (`platform:application-service:...`), not the
-application's; a use case that must admit receiver runs checks the principal kind.
+application's; a use case that must admit receiver runs checks the principal kind (the write-path
+contract's service grant, Go `usecase.RequireService`, amended 2026-11-07).
+
+*Amended 2026-11-07 (fulfil-go port, items 16 and 19):* a dispatch job the application wrote in a
+client's context carries that client (`clientCode`, write-path contract section 7a), so the platform
+delivers it with `X-FlowCatalyst-Client` and the handler's context is that client's: no handler has to
+re-scope a context from a client named in the payload. The receivers' test helpers build what the
+platform sends, signed as it signs (section 4): a dispatch delivery (headers, envelope or data-only
+body, `X-FlowCatalyst-Client` when the job has a client) and a scheduled-job firing (the firing body),
+and turn an outbox row (`DISPATCH_JOB`, or an `EVENT` delivered to a subscription) into the job the
+platform would deliver. Go: package `fakeplatform` (`Signature`, `Deliver`, `Fire`, `JobFromOutbox`,
+`JobFromEvent`); Java: `ReceiverTesting` and `FakePlatform` in the module's test-jar.
 
 **What reaches the outbox** (write-path contract sections 6 and 7): each event's `causationId` is
 the job (or instance) id and its `contextData` holds `principalId` = the service principal and

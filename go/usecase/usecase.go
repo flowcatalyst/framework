@@ -67,6 +67,22 @@ func Require(cx fw.Context, p fw.Permission) (Grant, error) {
 	return Grant{}, Authorization(PermissionRequired, "The permission "+p.String()+" is required.")
 }
 
+// ServiceRequired is the code of the error RequireService returns.
+var ServiceRequired = MustErrorCode("SERVICE_REQUIRED")
+
+// RequireService grants when the Context's principal is a service ([fw.PrincipalService]): the
+// receivers' service principal, a scheduled job, or a provider webhook's
+// [fw.ServiceContextFor]. Anyone else (a user, a field worker, a principal of unknown kind, no
+// principal) gets an AUTHORIZATION error, whatever permissions they hold. Use it for a use case
+// only the platform's deliveries or the application's own services run; a service principal
+// carries no permissions, so Require cannot express this.
+func RequireService(cx fw.Context) (Grant, error) {
+	if k, ok := cx.PrincipalKind(); ok && k == fw.PrincipalService {
+		return Grant{ok: true}, nil
+	}
+	return Grant{}, Authorization(ServiceRequired, "Only a service may do this.")
+}
+
 // Committed is the result of a run that committed: the plan's first event. Only the runner
 // makes a non-zero one.
 type Committed[E any] struct {

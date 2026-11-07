@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -96,8 +97,10 @@ const (
 // otherwise the two retries would multiply.
 type PlatformClient struct {
 	app       fw.ApplicationCode
+	base      string
 	sdk       *client.FlowCatalystClient
 	reporting *client.FlowCatalystClient
+	public    *client.FlowCatalystClient // SDK(): refreshes a rejected token once
 	tokens    *auth.ClientCredentialsProvider
 	http      *platformHTTP
 	enabled   bool
@@ -131,10 +134,70 @@ func newPlatformClient(baseURL url.URL, app fw.ApplicationCode, clientID string,
 		}
 		return tok, nil
 	}
+	public := client.New(base, client.WithTokenProvider(tokens.Token), client.WithTimeout(timeout),
+		client.WithHTTPClient(&http.Client{Timeout: timeout, Transport: refreshOn401{next: http.DefaultTransport, tokens: tokens}}),
+		client.WithRetry(3, 100*time.Millisecond))
 	return &PlatformClient{
-		app: app, sdk: mk(3), reporting: mk(1), tokens: tokens, enabled: true,
+		app: app, base: base, sdk: mk(3), reporting: mk(1), public: public, tokens: tokens, enabled: true,
 		http: newPlatformHTTP(base, timeout, token, tokens.Invalidate),
 	}
+}
+
+// BaseURL returns the platform's address (flowcatalyst.base-url, without a trailing slash).
+func (c *PlatformClient) BaseURL() (string, error) {
+	if !c.enabled {
+		return "", ErrDisabled
+	}
+	return c.base, nil
+}
+
+// SDK returns a client of the platform SDK (github.com/flowcatalyst/go-sdk/client) that calls the
+// platform as the application's service account, for the platform APIs this wrapper does not cover
+// (field workers, clients, principals). It uses the token [PlatformClient.AccessToken] caches; a
+// call the platform answers 401 clears that token and is sent once more with a fresh one. The SDK
+// retries 408, 425, 429 and 5xx itself (3 attempts). Its errors are the SDK's (*client.APIError
+// carries the platform's answer: log it, never return it to a caller). The one place an SDK type
+// appears in this package's API; it is the same client for every call.
+func (c *PlatformClient) SDK() (*client.FlowCatalystClient, error) {
+	if !c.enabled {
+		return nil, ErrDisabled
+	}
+	return c.public, nil
+}
+
+// refreshOn401 is the transport of the SDK() client: a request the platform answers 401 clears the
+// cached token and is sent once more with a fresh one (a token revoked or rotated before it
+// expired). A request whose body cannot be sent again is not retried.
+type refreshOn401 struct {
+	next   http.RoundTripper
+	tokens *auth.ClientCredentialsProvider
+}
+
+func (t refreshOn401) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.next.RoundTrip(req)
+	if err != nil || resp.StatusCode != http.StatusUnauthorized || req.Header.Get("Authorization") == "" {
+		return resp, err
+	}
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		return resp, nil
+	}
+	t.tokens.Invalidate()
+	tok, terr := t.tokens.Token(req.Context())
+	if terr != nil {
+		return resp, nil //nolint:nilerr // the 401 is the answer when no new token can be had
+	}
+	again := req.Clone(req.Context())
+	if req.GetBody != nil {
+		body, berr := req.GetBody()
+		if berr != nil {
+			return resp, nil //nolint:nilerr // the 401 is the answer when the body cannot be sent again
+		}
+		again.Body = body
+	}
+	again.Header.Set("Authorization", "Bearer "+tok)
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	return t.next.RoundTrip(again)
 }
 
 // Enabled reports whether the module is active (flowcatalyst.enabled).

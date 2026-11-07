@@ -1,4 +1,4 @@
-<!-- types: Platform, PlatformClient, PlatformError, Declared, Definitions, Catalog, EventType, Permission, Role, Subscription, Connection, DispatchPool, ScheduledJob, Process, Doc, SyncMode, SyncReport, CategoryResult, SyncError, Receivers, DispatchResult, Ack, Defer, Reject, JobResult, Success, Failure, JobOptions, Delivery, DeliveryMeta, DeliveryClient, Firing, OnceResult, BuildOption, Category, Outcome, Completion, LogLevel -->
+<!-- types: Platform, PlatformClient, PlatformError, Declared, Definitions, Catalog, EventType, Permission, Role, Subscription, Connection, DispatchPool, ScheduledJob, Process, Doc, SyncMode, SyncReport, CategoryResult, SyncError, Receivers, DispatchResult, Ack, Defer, Reject, JobResult, Success, Failure, JobOptions, Delivery, DeliveryMeta, DeliveryClient, Firing, OnceResult, BuildOption, Category, Outcome, Completion, LogLevel, Signing, Job -->
 # Go: the FlowCatalyst module
 
 Package `flowcatalyst` (its own Go module, `github.com/flowcatalyst/framework/go/flowcatalyst`, the
@@ -7,7 +7,8 @@ the platform client as the application's service account, the definitions and th
 `flowcatalyst` and `outbox` health checks, and the two receivers, which run handlers as the
 application's service principal. The Java pages are [The FlowCatalyst module](../flowcatalyst-module.md)
 and [Receivers](../receivers.md); behaviour, settings and defaults are the same unless a section
-says otherwise. fcsdk types never appear in this package's signatures.
+says otherwise. fcsdk types appear in this package's signatures in one place only:
+`PlatformClient.SDK()` (below).
 
 ## Declaring and building
 
@@ -43,6 +44,25 @@ credentials: `AccessToken(ctx)` (a `config.Secret`, cached; use it as the creden
 one token source, because the SDK retries inside every call and the completion calls have their own
 bounded retry. Errors are `*PlatformError` values whose message carries the status, never the
 platform's answer or a credential (they appear on the unauthenticated health endpoint).
+
+For the platform APIs the wrapper does not cover (field workers, clients, principals),
+`BaseURL()` returns `flowcatalyst.base-url` without its trailing slash and `SDK()` a
+`*client.FlowCatalystClient` of `github.com/flowcatalyst/go-sdk` (v0.0.15) that calls the platform as
+the application's service account, over the token `AccessToken` caches. A call the platform answers
+`401` clears that token and is sent once more with a fresh one (a second `401` is the answer); the SDK
+retries 408, 425, 429 and 5xx itself. It is one client for every call. Its errors are the SDK's: a
+`*client.APIError` carries the platform's answer, so log it and never return it to a caller. Both fail
+with `ErrDisabled` while the module is disabled.
+
+```go
+	sdk, err := r.fc.Client().SDK()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := sdk.Clients().GetByIdentifier(t.Context(), "acme")
+```
+
+(from `flowcatalyst/sdk_test.go`).
 
 The platform is not on the request path: if it is down at start-up the application starts, the
 failure is logged and the `flowcatalyst` check (informational) reports it. Once receivers have
@@ -97,10 +117,23 @@ A handler always runs as the application's service principal: the `sub` of the c
 token (a JWT with `type` `SERVICE`; anything else is `ErrNoServicePrincipal` and the delivery is
 answered `503 UNAVAILABLE`, the dispatch retried or the firing redelivered, with no handler run). The
 `fw.Context` has that principal (kind Service), the client from `X-FlowCatalyst-Client` (or
-`_platform`, which is also every firing's client), the application, the envelope's correlation id
+`_platform`, `fw.PlatformClient`, which is also every firing's client), the application, the envelope's correlation id
 (generated when it is not printable ASCII of at most 200 characters), **causation and execution = the
 dispatch job id**, or for a firing **the instance id**, and no permissions. The vector
 `conformance/receivers/context.json`, written by the Java test, passes in `conformance_test.go`.
+
+A dispatch job the application wrote in a client's context names that client (`clientCode`,
+[write path](write-path.md#dispatch-jobs)), so the platform delivers it with `X-FlowCatalyst-Client`
+and its handler, and the use cases the handler runs with its `cx`, act for that client: no
+`cx.ForClient` from a client named in the payload. `TestAJobWrittenInAClientsContextIsReceivedInThatClientsContext`
+(`flowcatalyst/deliver_test.go`) proves it end to end: a use case in `acme`'s context writes the job,
+`fakeplatform` delivers the outbox row as the platform would, and the receiving use case's context is
+`acme`. A use case only deliveries may run authorizes with `usecase.RequireService(cx)`.
+
+Which service account signs a delivery is the platform's choice: the job's connection's account when
+the job names one (`usecase.ConnectionID`), else, for a job with no subscription, the oldest active
+service account of the application named by the job code's first segment (flowcatalyst-go
+`internal/server/delivery_creds.go`). The receiver's signing secret must be that account's.
 
 ### Dispatch jobs
 
@@ -143,6 +176,33 @@ takes the lock and refuses an exclusive firing. Completion is reported only when
 the result cut to 10 000 characters, retried three times after the first call with a doubling delay
 (`completion-retry-delay`) and the SDK transport retry off. `Firing.Log(level, message)` appends to
 the instance's log, best effort.
+
+## Testing the receivers: `fakeplatform`
+
+Package `fakeplatform` is the platform for an application's tests and launchers: `Start()` serves the
+token endpoint and routes the test answers, and two helpers build what the platform sends the
+receivers, signed as it signs (`hex(HMAC-SHA256(secret, timestamp + body))`, `fakeplatform.Signature`),
+with the timestamp from the application's clock. They build the `*http.Request`; the test sends it.
+
+- `Deliver(ctx, receivers, signing, job)` posts a `Job` (id, code, client, envelope fields, data,
+  data-only) to `{receivers}/dispatch`: the envelope as the platform writes it, `X-Dispatch-Job-Id`,
+  `X-Event-Type`, and for a job with a client `X-FlowCatalyst-Client: {clientId}:{client}` (the client id
+  defaults to `clt_` + the client). `JobFromOutbox(payload)` is the job the platform delivers for a
+  `DISPATCH_JOB` outbox row, `JobFromEvent(jobID, payload)` the one it delivers to a subscription for
+  an `EVENT` row (its client is the event's).
+- `Fire(ctx, receivers, signing, firing)` posts a `Firing` (job code, instance id, tracking,
+  concurrency, timeout, payload; the times default to the signing time) to `{receivers}/scheduled-jobs`.
+
+```go
+	job, err := fakeplatform.JobFromOutbox(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := fakeplatform.Deliver(t.Context(), receivers, signing, job)
+```
+
+(from `flowcatalyst/deliver_test.go`; `signing` is `fakeplatform.Signing{Secret: testSecret, At: testNow}`).
+The tickets trial's tests and browser launcher use them (it used to carry its own copies).
 
 ## `Once` and its purge
 
