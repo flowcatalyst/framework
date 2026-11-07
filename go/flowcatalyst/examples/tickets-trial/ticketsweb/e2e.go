@@ -1,9 +1,7 @@
 package ticketsweb
 
 import (
-	"bytes"
 	"context"
-	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -227,8 +225,12 @@ func RunE2E(ctx context.Context, args []string, out io.Writer) error {
 			sweeps++
 			n := sweeps
 			deliveredMu.Unlock()
-			now := clock.Now()
-			status, err := post(ctx, baseURL, Delivery{Path: "/fc/scheduled-jobs", Body: FiringBody(now, tickets.SLASweepJob, "si_e2e_"+strconv.Itoa(n))}, now)
+			req, err := fakeplatform.Fire(ctx, baseURL+"/fc", fakeplatform.Signing{Secret: e2eSecret, At: clock.Now()},
+				fakeplatform.Firing{JobID: "sj_1", JobCode: tickets.SLASweepJob, InstanceID: "si_e2e_" + strconv.Itoa(n), TracksCompletion: true})
+			if err != nil {
+				return "", err
+			}
+			status, err := post(req)
 			if err != nil {
 				return "", err
 			}
@@ -256,10 +258,15 @@ func RunE2E(ctx context.Context, args []string, out io.Writer) error {
 				if done {
 					continue
 				}
-				status, err := post(ctx, baseURL, Delivery{
-					Path: "/fc/dispatch", Body: event.envelope(jobID),
-					Headers: map[string]string{"X-Dispatch-Job-Id": jobID, "X-Event-Type": event.Type, "X-FlowCatalyst-Client": "clt_" + event.ClientCode + ":" + event.ClientCode},
-				}, now)
+				job, err := fakeplatform.JobFromEvent(jobID, event.payload)
+				if err != nil {
+					return "", err
+				}
+				req, err := fakeplatform.Deliver(ctx, baseURL+"/fc", fakeplatform.Signing{Secret: e2eSecret, At: now}, job)
+				if err != nil {
+					return "", err
+				}
+				status, err := post(req)
 				if err != nil {
 					return "", err
 				}
@@ -333,11 +340,7 @@ func RunE2E(ctx context.Context, args []string, out io.Writer) error {
 }
 
 // post sends a signed delivery and answers its status.
-func post(ctx context.Context, baseURL string, d Delivery, now time.Time) (int, error) {
-	req, err := d.Request(ctx, baseURL, e2eSecret, now)
-	if err != nil {
-		return 0, err
-	}
+func post(req *http.Request) (int, error) {
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err
@@ -347,50 +350,10 @@ func post(ctx context.Context, baseURL string, d Delivery, now time.Time) (int, 
 	return res.StatusCode, nil
 }
 
-// assignment is an assignment event as the outbox row holds it.
+// assignment is an assignment event's outbox row: its payload and its id.
 type assignment struct {
-	Type            string `json:"type"`
-	Source          string `json:"source"`
-	Subject         string `json:"subject"`
-	Data            string `json:"data"`
-	CorrelationID   string `json:"correlationId"`
 	DeduplicationID string `json:"deduplicationId"`
-	MessageGroup    string `json:"messageGroup"`
-	ClientCode      string `json:"clientCode"`
-}
-
-// envelope is what the platform delivers to a subscription for the event: the envelope around the
-// row's data.
-func (a assignment) envelope(jobID string) string {
-	fields := []struct {
-		key   string
-		value any
-	}{
-		{"id", jobID},
-		{"type", a.Type},
-		{"attemptNumber", 1},
-		{"source", a.Source},
-		{"subject", a.Subject},
-		{"correlationId", a.CorrelationID},
-		{"messageGroup", a.MessageGroup},
-		{"clientId", "clt_" + a.ClientCode},
-		{"clientCode", a.ClientCode},
-		{"data", jsontext.Value(a.Data)},
-	}
-	var b bytes.Buffer
-	b.WriteByte('{')
-	for i, f := range fields {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		k, _ := json.Marshal(f.key)
-		v, _ := json.Marshal(f.value)
-		b.Write(k)
-		b.WriteByte(':')
-		b.Write(v)
-	}
-	b.WriteByte('}')
-	return b.String()
+	payload         string
 }
 
 func assignmentEvents(ctx context.Context, built *Built, mu *sync.Mutex) ([]assignment, error) {
@@ -412,9 +375,10 @@ func assignmentEvents(ctx context.Context, built *Built, mu *sync.Mutex) ([]assi
 			return nil, err
 		}
 		var a assignment
-		if err := json.Unmarshal([]byte(payload), &a); err != nil {
+		if err := json.Unmarshal([]byte(payload), &a, json.RejectUnknownMembers(false)); err != nil {
 			return nil, err
 		}
+		a.payload = payload
 		out = append(out, a)
 	}
 	return out, rows.Err()

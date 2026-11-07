@@ -19,8 +19,8 @@ import (
 
 // PlatformClientID is the client of a context that has none from the platform: a dispatch job
 // without X-FlowCatalyst-Client, and every scheduled-job firing. It cannot equal a platform
-// client identifier.
-var PlatformClientID = fw.MustClientID("_platform")
+// client identifier: it is [fw.PlatformClient].
+var PlatformClientID = fw.PlatformClient
 
 var (
 	segmentRe = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)

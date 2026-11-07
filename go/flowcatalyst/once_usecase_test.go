@@ -17,7 +17,9 @@ import (
 // delivery's idempotency record, the use case's writes, the events and the audit row are one
 // transaction, committed or rolled back together.
 
-type paidCmd struct{ ID string }
+type paidCmd struct {
+	ID string `json:"id"`
+}
 
 type paid struct{ id string }
 

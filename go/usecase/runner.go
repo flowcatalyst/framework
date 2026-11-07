@@ -161,14 +161,25 @@ func attemptOnce[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx
 			return zero, internal(step, errors.New("event without metadata"))
 		}
 	}
+	aggregates := 0
 	for _, s := range plan.steps {
 		if s == nil {
 			return zero, internal(step, errors.New("nil step"))
 		}
-		if s.client() != cx.Client() {
-			log.Error("BUG: the plan writes an aggregate of another client", slog.String("aggregate_client", s.client().String()))
+		client, _, isAggregate := s.aggregate()
+		if !isAggregate {
+			continue
+		}
+		aggregates++
+		if client != cx.Client() {
+			log.Error("BUG: the plan writes an aggregate of another client", slog.String("aggregate_client", client.String()))
 			return zero, internal("CROSS_CLIENT_WRITE", nil)
 		}
+	}
+	if aggregates == 0 && len(plan.steps) > 0 {
+		log.Error("BUG: a plan of appends only: usecase.Append writes rows that belong to an aggregate change, " +
+			"and the audit row names that aggregate; add its Insert, Update or Delete to the plan")
+		return zero, internal("APPEND_ONLY_PLAN", errors.New("a plan of appends only"))
 	}
 	if joined != nil {
 		return persistJoined(ctx, d, cx, cmd, plan, log, &step, joined)
@@ -233,13 +244,14 @@ func staleAggregate() *Error {
 	return Conflict(MustErrorCode("STALE_AGGREGATE"), "The record was changed by someone else; reload it and try again.")
 }
 
-// auditEntry builds the audit row's entry: the entity from the first step's aggregate, or from
-// the first event's subject when the plan has no aggregate (domain.aggregate.id).
+// auditEntry builds the audit row's entry: the entity from the first aggregate step (an append is
+// never the subject), or from the first event's subject when the plan has no step
+// (domain.aggregate.id).
 func auditEntry[C any, E event.Event](operation string, cx fw.Context, cmd C, plan *Plan[E], now time.Time) AuditEntry {
 	first := plan.first.Metadata()
 	var entity Entity
-	if len(plan.steps) > 0 {
-		entity = plan.steps[0].entity()
+	if e, ok := firstAggregate(plan.steps); ok {
+		entity = e
 	} else {
 		parts := strings.SplitN(first.Subject(), ".", 3)
 		if len(parts) == 3 {
@@ -266,6 +278,15 @@ func auditEntry[C any, E event.Event](operation string, cx fw.Context, cmd C, pl
 		entry.ApplicationCode = app.String()
 	}
 	return entry
+}
+
+func firstAggregate(steps []Step) (Entity, bool) {
+	for _, s := range steps {
+		if _, e, ok := s.aggregate(); ok {
+			return e, true
+		}
+	}
+	return Entity{}, false
 }
 
 func attrsAny(attrs []slog.Attr) []any {

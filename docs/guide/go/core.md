@@ -119,6 +119,24 @@ and execution ids and the permissions (`HasPermission` uses the platform's wildc
 passed explicitly beside `context.Context`, never stored in one. `fw.Ids` generates TSIDs
 ([Go overview](index.md)).
 
+- `fw.PlatformClient` is `_platform`, "no particular client": the client of a receiver run whose
+  delivery named none and of every scheduled-job firing (`auth.PlatformClient` and
+  `flowcatalyst.PlatformClientID` are the same value). A dispatch job written in its context names
+  no client.
+- `cx.SubjectName()` returns the principal's display name when the auth layer knew it: a field
+  worker's (the token's `name`), a user's when the token carries one. It is for showing and recording
+  who did something; it identifies nobody (use `Principal`) and grants nothing. `cx.Actor()` stays the
+  operator acting as the principal (the `act` claim). `WithSubjectName(name)` sets it (set it after the
+  principal: a new principal drops it, `ForClient` keeps it).
+- `fw.ServiceContextFor(client, principal)` is the context of work a service does for a client with no
+  platform principal behind it, such as a provider's webhook matched to its client by the provider's
+  reference: the principal of kind `PrincipalService`, a new correlation id, no permissions. The use
+  case it runs authorizes with `usecase.RequireService(cx)` ([write path](write-path.md)):
+
+```go
+cx := fw.ServiceContextFor(fw.MustClientID("acme"), fw.MustPrincipalID("svc_uber"))
+```
+
 ### Work for one client after another
 
 A scheduled job's context is the platform's (`_platform`) and a background loop has none, but the work

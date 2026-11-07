@@ -144,10 +144,14 @@ func testRoutes() *httpfw.Routes {
 		if a, ok := cx.Actor(); ok {
 			actor = a.ID + "|" + a.Type + "|" + a.Name
 		}
+		subjectName, _ := cx.SubjectName()
 		return httpfw.JSON(w, 200, map[string]any{
 			"principal": principal.String(), "principalKind": kind.String(), "client": cx.Client().String(),
-			"application": appText, "permissions": perms, "source": source, "actor": actor,
+			"application": appText, "permissions": perms, "source": source, "actor": actor, "subjectName": subjectName,
 		})
+	})
+	rt.HandleContext("GET /api/clients/{client}/things", func(w http.ResponseWriter, _ *http.Request, cx fw.Context) error {
+		return httpfw.JSON(w, 200, map[string]any{"client": cx.Client().String()})
 	})
 	rt.HandleContext("GET /page", func(w http.ResponseWriter, _ *http.Request, _ fw.Context) error {
 		httpfw.HTML(w, 200, "<h1>hello</h1>")

@@ -222,12 +222,13 @@ the other copies keep it. It is added to the log attributes. Go `fw.Context.Acto
   for a user or service when the token carries it. It describes the principal, never the actor (the
   actor keeps its own `name`). Like the kind, it needs a principal (refused without one) and
   `withPrincipal` clears it; `forClient`, `withActor` and the other copies keep it. It is not written
-  to the outbox. Go `cx.SubjectName()`, Java `subjectName()` / `findSubjectName()` /
-  `withSubjectName(String)`.
+  to the outbox, nor added to the log attributes (it is a person's name). Go `cx.SubjectName()` /
+  `WithSubjectName(name)`, Java `subjectName()` / `findSubjectName()` / `withSubjectName(String)`.
 - `Context.ofService(client, principal)` (Go `fw.ServiceContextFor(client, principalID)`): a context
   for the client with that principal of kind `SERVICE` and a generated correlation id, for work with
   no platform principal of its own, such as an inbound provider webhook the application verified.
-- `ClientId.PLATFORM` (`_platform`; Go has it as `auth.PlatformClient` and `flowcatalyst.PlatformClientID`) is the core's name for "no particular
+- `ClientId.PLATFORM` (`_platform`; Go `fw.PlatformClient`, which `auth.PlatformClient` and
+  `flowcatalyst.PlatformClientID` now name) is the core's name for "no particular
   client", the value the receivers and the client selector already used (`Receivers.PLATFORM_CLIENT`
   and `ClientSelector.PLATFORM` are now this constant). The outbox does not write it as a dispatch
   job's `clientCode` (write-path contract section 7a).

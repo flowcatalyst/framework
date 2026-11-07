@@ -65,9 +65,14 @@ least one event; the first is the use case's result. Events are written in step 
   order: right after the steps added before it, before the steps added after it (step 5 of section
   4, still step code `PERSIST`). It is never version-checked, produces no event, and is never the
   audit row's subject (section 7 still takes the first aggregate, else the first event's subject).
-  A plan still needs at least one step; a plan of appends only is refused (`IllegalArgumentException`
-  naming it). An appender's `SQLException` fails the attempt as a repository's does (`23505` is
-  `UNIQUE_VIOLATION`).
+  A plan of appends only is refused. Java refuses it when the plan is built
+  (`IllegalArgumentException` naming it; an append follows a step, and a plan whose only step is an
+  `Emit` is valid). Go refuses it when the plan runs (`INTERNAL` / `APPEND_ONLY_PLAN`, logged as a
+  bug: the appends belong to an aggregate change), allows an append before the first aggregate step,
+  and its `Appender[R]` has `Append(ctx, tx, row)` with no client argument (the row carries its own
+  client; the runner checks aggregates only). An appender's error fails the attempt as a repository's
+  does (`23505` is `UNIQUE_VIOLATION`). Use an aggregate for anything loaded, changed or deleted
+  later; use an append for rows only ever inserted.
 - **`Authorize.SERVICE`** (and `Authorize.requireService(context)` for use inside a check; Go
   `usecase.RequireService(cx)`): granted only when the context has a principal of kind `SERVICE`,
   else `AUTHORIZATION` / `SERVICE_REQUIRED`. `Context.ofService(client, principal)` (Go
@@ -115,7 +120,8 @@ Order inside one attempt: validate, authorize, **load**, **authorizeLoaded**, ex
 1. validate, then authorize; the first error is the result.
 2. execute (with a load phase: load, then the record-level check, then execute; section 3a); `Rejected` is the result.
 3. Check every aggregate in the plan belongs to `context.client()`. A mismatch fails as
-   `INTERNAL` with code `CROSS_CLIENT_WRITE` and is logged as a bug.
+   `INTERNAL` with code `CROSS_CLIENT_WRITE` and is logged as a bug. A plan of appends only fails as
+   `INTERNAL` / `APPEND_ONLY_PLAN` (section 3, amended 2026-11-07), also logged as a bug.
 4. Begin a transaction (READ COMMITTED) on the default database instance.
 5. Apply the plan's writes in order, then write each event to the outbox, then one audit row.
 6. Commit.
@@ -129,6 +135,7 @@ Outcome of a failed write:
 | `23505` | `CONFLICT` / `UNIQUE_VIOLATION`, not retried |
 | any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`VALIDATE`, `AUTHORIZE`, `LOAD`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
 | a plan with another client's aggregate | `INTERNAL` / `CROSS_CLIENT_WRITE` (step 3), not retried |
+| a plan of appends only (no aggregate step) | `INTERNAL` / `APPEND_ONLY_PLAN` (step 3), not retried |
 | the thread is interrupted while waiting between attempts | `INTERNAL` / `INTERRUPTED`, the interrupt flag is restored |
 
 Every failed attempt rolls back fully. **Conflict policy:** `fail` returns `CONFLICT` with code
@@ -349,6 +356,37 @@ batch endpoint ignores them: `headers`, `retryStrategy`, `scheduledFor`, `expire
 
 `Sink` gained `writeDispatchJobs(tx, context, jobs)`, a default method that throws; a `Sink` that does
 not support dispatch jobs fails the attempt at step `OUTBOX` when a plan carries one.
+
+*Amended 2026-11-07 (fulfil-go port, item 16; the platform now takes these fields, verified in
+flowcatalyst-go `internal/platform/shared/sdk/dispatch_jobs_batch.go`, `client_code.go`,
+`job_connection.go` and `internal/server/delivery_creds.go`):*
+
+- **The job's client.** When the job has no `platformClientId` and the context's client is not the
+  platform client (`_platform`), the item carries `clientCode`: the context's client, written right
+  after `clientId`'s place. The platform resolves it to its client (`ResolveJobClient`): an unknown
+  code, or one the caller may not reach, refuses the whole batch (`400 CLIENT_NOT_FOUND` for an anchor,
+  `403` otherwise), so a framework application's clients must exist on the platform. An explicit
+  `platformClientId` wins and no `clientCode` is written. A job that names a client is delivered with
+  `X-FlowCatalyst-Client: {clientId}:{clientCode}` (and `clientId`/`clientCode` in the envelope), so
+  the receiver runs its handler in that client's context (flowcatalyst contract section 4b); a
+  platform-scoped job is delivered without them and runs for `_platform`.
+- **`connectionId`** (optional, `[0-9A-Za-z_-]{1,17}`): the connection the job is delivered through.
+  Pausing the connection holds the job; with no subscription, the connection's service account signs
+  the delivery. The platform refuses the batch when the connection does not exist, is outside the
+  job's client and application, or is not the subscription's own connection. **Without it** (and with
+  no subscription) the platform signs with the **oldest active service account of the application
+  named by the job code's first segment** (`delivery_creds.go`, step 3), and sends the delivery bare
+  when that application has none.
+- **`idempotencyKey`** (optional, not blank, at most 100 bytes of UTF-8): the first job to name a key
+  within its application (the code's first segment) and client is created; a later item naming it
+  creates nothing and answers the first job's id. The platform keeps keys 7 days. It is set explicitly
+  only, **never derived from `externalId`**: two jobs that share an external reference must not merge
+  silently.
+- Payload order: `... correlationId, clientId, clientCode, subscriptionId, ... queue, descriptor,
+  connectionId, idempotencyKey` (the platform's `BatchItem` order for the two new fields). The
+  conformance vector `conformance/outbox/outbox.json` has a client's jobs with `clientCode`, a job
+  with both new fields, a platform-scoped job without `clientCode`, and the builder's refusals of the
+  new fields.
 
 ### Platform work found
 

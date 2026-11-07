@@ -910,6 +910,7 @@ also needs the access token (`ath`), and is limited to the same method and URL.
 | `principal` | `sub` (`fwu_...`) |
 | principal kind | `FIELD_WORKER` (core contract section 3, amended 2026-11-03) |
 | `client` | `client_identifier`. A field worker belongs to exactly one client, and the token names it. *Amended 2026-11-07 (fulfil-go fixes A5; before, the selector was not consulted at all):* the application's client selector **is** consulted, with the worker as a principal that has no `clients`; when it names a client other than the worker's (by identifier or by `clt_` id) and other than `_platform`, the request is refused `403 CLIENT_NOT_PERMITTED` (with the `DPoP-Nonce`), the same answer a user of another client gets. `_platform` or the worker's own client leaves the token's client. The check runs before the field permission resolver |
+| subject name | `name` (core contract section 3, amended 2026-11-07); also a user's `name` claim, when the token or session carries one |
 | `application` | `aud` |
 | `permissions` | the field permission mapping (below) |
 | correlation id | the request's |
