@@ -29,6 +29,7 @@ end of [STATUS](../STATUS.md#where-the-guide-and-the-contracts-can-differ).
 | [build and publishing](../../contracts/build.md) | `framework-bom`, what an application needs, GitHub Packages, the publish workflow | [Getting started](../getting-started.md) |
 | [Rust build](../../contracts/rust-build.md) | the Rust workspace: toolchain, crates and features, lints, supply chain, CI | [The Rust framework](../rust/index.md) |
 | [FlowCatalyst module](../../contracts/flowcatalyst.md) | the platform client, definition sync, outbox delivery stance, receivers | [The FlowCatalyst module](../flowcatalyst-module.md), [Receivers](../receivers.md) |
+| [push to clients](../../contracts/push.md) (draft) | server-sent push: topics, the push outbox and relay, the Postgres and Redis logs, subscribe and listen, rules and tickets, resets, backpressure, the A4 gateway sketch | — |
 
 Design documents behind the contracts:
 

@@ -32,7 +32,7 @@ How to build an application with it. Start at the [guide index](guide/index.md).
   the code. [core](contracts/core.md), [database and Redis](contracts/database-and-redis.md),
   [locks](contracts/locks.md), [write path](contracts/write-path.md),
   [checked SQL](contracts/checked-sql.md), [HTTP](contracts/http.md),
-  [FlowCatalyst module](contracts/flowcatalyst.md).
+  [FlowCatalyst module](contracts/flowcatalyst.md), [push to clients](contracts/push.md) (draft).
 - [Framework plumbing](framework-plumbing.md): the design rules and owner rulings.
 - [Implementation plan](implementation-plan.md): milestones, order of work, platform work needed.
 - Other implementations of the same contracts: [Go](go/design.md) (designed 2026-10-13, nothing
