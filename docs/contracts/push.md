@@ -1,6 +1,6 @@
 # Contract: push to clients (server-sent events)
 
-Status: **DRAFT for review (P0), 2026-11-08.** Nothing is built. Drivers: `postgres` (A1) and
+Status: **accepted 2026-11-08 (owner rulings in section 16); P1 (Go) in progress.** Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
 
@@ -113,7 +113,7 @@ CREATE TABLE fw_push_log (
 CREATE INDEX fw_push_log_logged_at ON fw_push_log (logged_at);
 ```
 
-`push.retention` defaults to 24 h (1 h to 7 days). Each driver passes the same contract tests and
+`push.retention` defaults to 24 h and is configurable from 10 minutes up to 24 h, never more (owner, 2026-11-08). Each driver passes the same contract tests and
 conformance vectors (section 13); application code and clients cannot tell them apart.
 
 ## 5. Clients (tenants) and who receives what
@@ -286,7 +286,7 @@ The SDKs provide one reader per platform, all following sections 6 and 7:
 |---|---|---|
 | `push.driver` | `postgres` | `postgres`, `redis` |
 | `push.redis-instance` | the default Redis instance | a configured instance |
-| `push.retention` | 24h | 1h to 7d |
+| `push.retention` | 24h | 10m to 24h |
 | `push.max-data-bytes` | 16384 | 1 to 65536 |
 | `push.max-topics` | 100 | 1 to 1000 |
 | `push.relay.batch` / `push.relay.interval` | 500 / 1s | 1–5000 / 50ms–10s |
@@ -386,14 +386,13 @@ In `conformance/push/`, shared by Go and Java (and later Rust and the gateway):
 - Exactly-once beyond what the ids give: a client that resumes from an older id gets those pushes
   again, and drops ids it has already applied.
 
-## 16. Open points for the owner
+## 16. Owner rulings (2026-11-08)
 
-1. **Tickets:** EdDSA (asymmetric, so the A4 gateway can verify without the application's secret)
-   is proposed from the start, rather than HMAC now and EdDSA later.
-2. **One subscribe mode:** P0 has a single flow (subscribe, then listen), for every client and every
-   host. A direct `GET /push/stream?topic=...` with header authentication would save a request for
-   field apps but doubles the surface. It is left out.
-3. **Retention:** 24 h with `reset`, as proposed. Some topics may want longer, for example a
-   device's own job list. A per-topic retention is possible later with A1; with A2 it means more
-   than one Redis stream.
-4. **First consumer** (P4): fulfil-go, or field workers' job updates.
+1. **Tickets are EdDSA from the start**, so the A4 gateway verifies them without the application's secret.
+2. **One subscribe mode:** subscribe, then listen. No direct `GET /push/stream?topic=...` with header
+   authentication.
+3. **Retention is configurable, 24 h at most** (`push.retention`, 10 minutes to 24 hours). One value
+   per host; no per-topic retention.
+4. **The first consumer (P4) is field workers' job updates**: a worker's device listens to its own
+   topic (`{application}:field-worker:{principal}:jobs`, rule `{principal}`, principal kind
+   `FIELD_WORKER`) through field-js, subscribing with its field token and DPoP.
