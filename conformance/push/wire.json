@@ -1,0 +1,43 @@
+{
+  "description": "The bytes of a push stream (push contract 6.2 and section 7; http contract 13.5). A stream begins with the retry field, then the subscribed event (no id), then a reset or the replayed pushes, then the live pushes; a heartbeat comment while idle. A push's data line is one JSON object, topic then data, the data being the push's JSON text as stored (compact). Every 'bytes' is exact, including the blank line that ends an event.",
+  "howToRun": "Render each event from its input with the implementation's writer and compare the bytes exactly. An HTTP test can also read a real stream and compare its first frames with streamStart and subscribed.",
+  "streamStart": {"bytes": "retry: 3000\n\n"},
+  "heartbeat": {"bytes": ": ping\n\n"},
+  "events": [
+    {
+      "name": "push",
+      "input": {"id": 1042, "type": "order.updated", "topic": "fulfil:order:ord_1", "data": "{\"orderId\":\"ord_1\",\"version\":7}"},
+      "bytes": "id: 1042\nevent: order.updated\ndata: {\"topic\":\"fulfil:order:ord_1\",\"data\":{\"orderId\":\"ord_1\",\"version\":7}}\n\n"
+    },
+    {
+      "name": "push with empty data",
+      "input": {"id": 1, "type": "job.assigned", "topic": "fulfil:field-worker:fwu_0W1:jobs", "data": "{}"},
+      "bytes": "id: 1\nevent: job.assigned\ndata: {\"topic\":\"fulfil:field-worker:fwu_0W1:jobs\",\"data\":{}}\n\n"
+    },
+    {
+      "name": "subscribed",
+      "input": {"granted": ["fulfil:order:ord_1", "fulfil:user:prn_0ABC"], "latest": 41},
+      "bytes": "event: subscribed\ndata: {\"granted\":[\"fulfil:order:ord_1\",\"fulfil:user:prn_0ABC\"],\"latest\":41}\n\n"
+    },
+    {
+      "name": "subscribed to an empty log",
+      "input": {"granted": ["fulfil:order:ord_1"], "latest": 0},
+      "bytes": "event: subscribed\ndata: {\"granted\":[\"fulfil:order:ord_1\"],\"latest\":0}\n\n"
+    },
+    {
+      "name": "reset, retention",
+      "input": {"reason": "retention", "latest": 1042},
+      "bytes": "id: 1042\nevent: reset\ndata: {\"reason\":\"retention\",\"latest\":1042}\n\n"
+    },
+    {
+      "name": "reset, unknown id",
+      "input": {"reason": "unknown-id", "latest": 7},
+      "bytes": "id: 7\nevent: reset\ndata: {\"reason\":\"unknown-id\",\"latest\":7}\n\n"
+    },
+    {
+      "name": "auth-expired",
+      "input": {},
+      "bytes": "event: auth-expired\ndata: {}\n\n"
+    }
+  ]
+}

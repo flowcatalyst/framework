@@ -144,6 +144,13 @@ belong to an aggregate change. **Aggregate or Append?** Anything that is loaded,
 later, or whose concurrent change must be detected, is an aggregate; anything only inserted (and read
 by queries, a tailer or a projection) is an append.
 
+**Pushes to clients.** `usecase.Push(topic, type, data)` is a step too: a row of `fw_push_outbox`
+for the Context's client, written in plan order, sent to listening browsers and devices only if the
+transaction commits; not an event, not audited, and a plan whose only steps are pushes is not "appends
+only". A push that breaks the push contract's section 1 fails the run as `INTERNAL` / `INVALID_PUSH`
+before anything is written; a failure writing it is `INTERNAL` / `PUSH`. `usecase.WithPushMaxDataBytes`
+(given by `pushes.RunnerOption()`) sets the data limit. See [Go: push to clients](push.md).
+
 ## Running inside the caller's transaction
 
 `Defined.RunJoined(ctx, cx, cmd, tx)` (write-path contract 4a) runs the same attempts on a

@@ -73,6 +73,7 @@
     - { title: "Go: the FlowCatalyst module", path: guide/go/flowcatalyst.md }
     - { title: "Go: sessions and login", path: guide/go/sessions-and-login.md }
     - { title: "Go: field workers", path: guide/go/field-workers.md }
+    - { title: "Go: push to clients", path: guide/go/push.md }
     - { title: "Go: the application admin", path: guide/go/admin.md }
     - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
     - { title: "Go: money and units", path: guide/go/measure.md }
@@ -107,6 +108,7 @@
     - { title: Admin skeleton contract, path: contracts/admin.md }
     - { title: Client settings contract, path: contracts/client-settings.md }
     - { title: Money and units contract, path: contracts/measure.md }
+    - { title: Push contract, path: contracts/push.md }
     - { title: Framework plumbing, path: framework-plumbing.md }
     - { title: Implementation plan, path: implementation-plan.md }
     - { title: UI dogfooding plan, path: ui-dogfood-plan.md }

@@ -153,6 +153,10 @@ and `test` (for `auth.public-base-url` and `auth.issuer`; inside them it is logg
 cookies lose `Secure` and the `__Host-` prefix), a public base URL with a path, `offline_access` in
 the scope, an idle timeout longer than the absolute one, a bad cookie key list.
 
+`Module.CarriesCredentials(r)` reports whether a request presents credentials at all (an
+`Authorization` header or the session cookie), for a route that also serves callers without them and
+must still answer a bad credential `401` (the push subscribe, [Go: push to clients](push.md)).
+
 **The endpoints** (contract section 4, all `Cache-Control: no-store`): `GET /auth/login` (PKCE `S256`,
 `state`, `nonce`, a 10-minute login record, the binding cookie `__Host-fw_login_<16 hex of
 SHA-256(state)>`, then `302` to the authorize endpoint with the parameters in the contract's order),

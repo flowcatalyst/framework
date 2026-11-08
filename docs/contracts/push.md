@@ -1,6 +1,9 @@
 # Contract: push to clients (server-sent events)
 
-Status: **accepted 2026-11-08 (owner rulings in section 16); P1 (Go) in progress.** Drivers: `postgres` (A1) and
+Status: **accepted 2026-11-08 (owner rulings in section 16). P1a built in Go (2026-11-08): the core
+module (`go/push`), the A1 `postgres` driver, `usecase.Push`, tickets, the HTTP routes, the
+conformance vectors and the A1 contract tests; amendments from that build in section 17. Not yet:
+A2 (`redis`), Java, the SDK readers, the load test.** Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
 
@@ -35,7 +38,10 @@ another.
   for everyone allowed on the topic and fits the limit; that is the application's call, per topic.
 
 Invalid topics, types or data are refused when the push is built (Java `IllegalArgumentException`;
-Go the plan fails as `INTERNAL` / `INVALID_PUSH`, logged as a bug).
+Go the plan fails as `INTERNAL` / `INVALID_PUSH`, logged as a bug). The refusal codes (amended
+2026-11-08, section 17): `TOPIC_INVALID`, `TYPE_INVALID`, `TYPE_RESERVED`, `DATA_INVALID` (not
+JSON), `DATA_NOT_OBJECT`, `DATA_TOO_LARGE`. The data is stored as compact JSON (no whitespace), so
+its `data` line on the wire is one line; the limit counts those bytes.
 
 ## 2. Publishing
 
@@ -46,8 +52,10 @@ A push is published in a transaction, always:
   order, at step 5 (step code `PUSH`). It is not an event: it is not audited, is never the use
   case's result and does not count toward "every plan carries an event". A failed attempt writes no
   push.
-- **Outside a use case:** `Pushes.publish(tx, context, push)` (Go `push.Publish(ctx, tx, cx, p)`)
-  inside a transaction the caller owns, or `Pushes.publish(context, push)` in its own transaction.
+- **Outside a use case:** `Pushes.publish(tx, context, push)` (Go `pushes.Publish(ctx, tx, cx, p)`,
+  a method of the built module, which knows `push.max-data-bytes` and the clock; `tx` is a `pgx.Tx`)
+  inside a transaction the caller owns, or `Pushes.publish(context, push)` (Go
+  `pushes.PublishAlone(ctx, cx, p)`) in its own transaction.
 
 Each push records the `Context`'s client (section 5): the client is part of the push.
 
@@ -300,7 +308,8 @@ The SDKs provide one reader per platform, all following sections 6 and 7:
 
 **Metrics:**
 - `fw_push_published_total`;
-- `fw_push_relay_lag_seconds` (oldest outbox row's age);
+- `fw_push_relay_lag_seconds` (a timer: per relay run, the age of the oldest outbox row it moved;
+  amended 2026-11-08, section 17);
 - `fw_push_log_id` (gauge);
 - `fw_push_streams_open`;
 - `fw_push_delivered_total`;
@@ -396,3 +405,53 @@ In `conformance/push/`, shared by Go and Java (and later Rust and the gateway):
 4. **The first consumer (P4) is field workers' job updates**: a worker's device listens to its own
    topic (`{application}:field-worker:{principal}:jobs`, rule `{principal}`, principal kind
    `FIELD_WORKER`) through field-js, subscribing with its field token and DPoP.
+
+## 17. Amendments from the Go build (P1a, 2026-11-08)
+
+Smallest calls made where the text was silent or could not be built as written:
+
+1. **Publishing (section 2).** Go `usecase.Push(topic, type, data)` is a plan step (passed to
+   `NewPlan` like `Insert` or `Append`); a failure writing it is `INTERNAL` with step code `PUSH`. A
+   plan whose only steps are pushes is valid (it is not "appends only"). The runner learns
+   `push.max-data-bytes` from `usecase.WithPushMaxDataBytes` (`pushes.RunnerOption()`; default 16384).
+   `fw_push_published_total` is counted by the relay as it logs (committed pushes only).
+2. **The relay (section 3)** holds its lock (lease 15 s, refreshed) for as long as it runs: one gated
+   run listens on `fw_push_outbox` and drains the outbox until shutdown or the lock is lost; another
+   instance retries every `push.relay.interval`. It takes rows with `SELECT ... ORDER BY id LIMIT n
+   FOR UPDATE`, always from the head of the queue, never after a remembered id.
+3. **Retention (section 4)** never deletes the newest log row, so A1's `max(id) + 1` never starts again
+   at 1. **"Older than the oldest id kept" (section 7)** means: the log may have deleted a push after
+   the client's `Last-Event-ID`. A driver reports the highest id deleted (`Trimmed`; A1: the oldest id
+   kept minus one, its ids having no gaps; A2: the stream's `max-deleted-entry-id`), and the reset is
+   sent when `Last-Event-ID` is below it. A `Last-Event-ID` equal to the oldest id kept minus one
+   loses nothing and is not reset. Replaying from the log checks this after each page it reads; a
+   replay from memory (everything after `Last-Event-ID` still held) is never a reset.
+4. **Subscribe (6.1).** `topics` must hold 1 to `push.max-topics` entries (counted as sent);
+   duplicates are dropped; `denied` is always present (an empty list). Without credentials the
+   stream's client is the first valid ticket's; a request with neither credentials nor a valid ticket
+   is `401`. A ticket whose `client` is not the stream's client grants nothing (`TICKET_INVALID`).
+   The limits of section 8 are also checked when the stream opens (`429 PUSH_LIMIT` on the `GET`),
+   because a stream token can be used more than once. A host that is draining answers `503
+   UNAVAILABLE`.
+5. **Rules (6.3).** A pattern's first segment is a literal and must be the application's code (a
+   start-up problem otherwise); a placeholder name is `[a-z][A-Za-z0-9]*`. `{client}` alone does not
+   make a rule safe: it needs `{principal}` or `requires`. A public rule allows a request without
+   credentials.
+6. **Tickets (6.4).** `push.ticket.key` is `<kid>:<base64url of a 32-byte Ed25519 seed>`, comma
+   separated, the signing key first and the previous one second (at most two); `GET /push/keys` lists
+   both. A minted ticket's `exp` is `iat` + 2 minutes. Also invalid: a header with `crit`, an `iat`
+   more than a minute ahead of the host's clock, a `stream-exp` already past. "A DPoP proof with that
+   key" (`cnf`) means the subscribe request is authenticated with a field token bound to that key
+   (sessions contract section 15); there is no proof without a token. A ticket that names a requested
+   topic but grants nothing makes its denial `TICKET_INVALID`; a malformed ticket (not a JWS compact
+   with JSON header and claims) is `400`.
+7. **Revocation (section 7).** Go `pushes.EndStreams(ctx, Holder{Principal, Device, Session})` ends
+   the matching streams on every instance (A1: `pg_notify('fw_push_end', <holder>)`, which every hub
+   follows; a hub serves streams only once it follows the log, so no such signal is missed), with
+   `auth-expired`. `flowcatalyst.PushHolder(event)` turns a field revocation event into the holder;
+   the application calls both from its `OnFieldRevocation` handler. A sign-out hook is not built yet.
+8. **Configuration (section 10).** `push.stream.secret` has at least 32 characters;
+   `push.max-streams` and `push.max-streams-per-principal` are at least 1.
+9. **Metrics (section 11).** `fw_push_relay_lag_seconds` is a timer: the framework's registry
+   refuses a gauge named `_seconds`. `push:log` is an informational health check (the database's
+   own check is the critical one).

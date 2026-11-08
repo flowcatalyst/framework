@@ -1,0 +1,552 @@
+{
+  "application": "fulfil",
+  "cases": [
+    {
+      "context": null,
+      "expect": {
+        "denied": [],
+        "expiresAt": "2026-11-08T13:00:00Z",
+        "granted": [
+          "fulfil:order:1"
+        ],
+        "principal": "prn_1",
+        "streamClient": "acme",
+        "ticketReasons": [
+          null
+        ]
+      },
+      "name": "valid, without credentials: the stream's client and principal are the ticket's",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": null,
+      "expect": {
+        "denied": [],
+        "expiresAt": "2026-11-08T13:00:00Z",
+        "granted": [
+          "fulfil:order:1"
+        ],
+        "principal": "prn_1",
+        "streamClient": "acme",
+        "ticketReasons": [
+          null
+        ]
+      },
+      "name": "signed with the previous key",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNS16In0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.mlTnphjPF6EreM-v5FcfNnGmJYniLUtOXBNSf2_s3XfsQ0QPIXFuwmgdPJ0_EcGwI9VVEqz99YEl2u3HhfJ8AQ"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "kid"
+        ]
+      },
+      "name": "an unknown kid",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3Qtb3RoZXIifQ.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.AmgQO3mnf-q7Bqv6lK-7Yo9PVZr3GQG8BndaFrpELVZnIs6X1KWZtPolLHe3tBNpggj4RrysbtCbP_-UI0vuBw"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "signature"
+        ]
+      },
+      "name": "the current kid, signed by another key",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.QMge7wKZ-bMtONTSqOgtiHc6uBRV13cnDo8PoRRrLYQfN0x0idTCdEy-mRoGhS23kSrkDJwB02caRA5YyxkYDA"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": null,
+      "expect": {
+        "error": "UNAUTHENTICATED"
+      },
+      "name": "an unknown kid without credentials: no valid ticket names a client",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3Qtb3RoZXIifQ.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.AmgQO3mnf-q7Bqv6lK-7Yo9PVZr3GQG8BndaFrpELVZnIs6X1KWZtPolLHe3tBNpggj4RrysbtCbP_-UI0vuBw"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "expired"
+        ]
+      },
+      "name": "expired",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzODgwMCwiZXhwIjoxNzk0MTM5MTAwfQ.M4VbOqSEV6nXZUR72RKJrvGACHxKaPHBv1ahrbNLfjshP-r9YAvy7FOoD6blB7Lc6G205VfplRaxm-3IX58xAA"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "times"
+        ]
+      },
+      "name": "exp more than 5 minutes after iat",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTIwMCwiZXhwIjoxNzk0MTM5NTAxfQ.iX4AM2aMz6WCRpUXA0yF62Tg5795-0YCu9D7pGpcSDaslZp6PE4izLTziRXKAS8zOR7xRgbtzFTlV2ZwjOm-Ag"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "aud"
+        ]
+      },
+      "name": "wrong aud",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1vdGhlciIsImNsaWVudCI6ImFjbWUiLCJ0b3BpY3MiOlsiZnVsZmlsOm9yZGVyOntpZH0iXSwic3ViIjoicHJuXzEiLCJpYXQiOjE3OTQxMzkxOTAsImV4cCI6MTc5NDEzOTMxMH0.6H2ULbAVyjOh972a04-nnyY3IDFY-AwFLXN-6ij6XIxofjR1nMb38Bm9IPi9xBp72ncVkhNX8g29UiK76X44Bw"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "orders:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "iss"
+        ]
+      },
+      "name": "another application's ticket (iss): this host knows only its own",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJvcmRlcnMiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJvcmRlcnM6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.Q6HYQFQB9KuFQDi5nPcwzZZ3JM08TJQzvIOwxtTyN-2pHFJq5ymepr_-5Vl-ESOGRU7qOIzcNi0yrirs0ndnDA"
+      ],
+      "topics": [
+        "orders:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          },
+          {
+            "code": "TICKET_INVALID",
+            "topic": "orders:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "topic-outside-iss"
+        ]
+      },
+      "name": "a topic outside iss: the whole ticket grants nothing",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSIsIm9yZGVyczpvcmRlcjp7aWR9Il0sInN1YiI6InBybl8xIiwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTB9.uXQizZP9n0ijUE7yBMKHj3wrQsHb7J-PJVIFVi4cPyfdZ1UVtk4AWFZj6fkHaV6HUdiNUQhYbt45vVzugetYDg"
+      ],
+      "topics": [
+        "fulfil:order:1",
+        "orders:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": "jkt-B"
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "cnf"
+        ]
+      },
+      "name": "cnf: the request proved another key",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImNuZiI6eyJqa3QiOiJqa3QtQSJ9LCJpYXQiOjE3OTQxMzkxOTAsImV4cCI6MTc5NDEzOTMxMH0.GPme_0AdLmFLj5ve_eRJvuMTd7dnjunejc3gxP4J2uheo5iYdsbFaatgihiT0kAgQSZxZwS1aUvAiL9lLY8fAg"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": null,
+      "expect": {
+        "error": "UNAUTHENTICATED"
+      },
+      "name": "cnf: the request proved no key",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImNuZiI6eyJqa3QiOiJqa3QtQSJ9LCJpYXQiOjE3OTQxMzkxOTAsImV4cCI6MTc5NDEzOTMxMH0.GPme_0AdLmFLj5ve_eRJvuMTd7dnjunejc3gxP4J2uheo5iYdsbFaatgihiT0kAgQSZxZwS1aUvAiL9lLY8fAg"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": "jkt-A"
+      },
+      "expect": {
+        "denied": [],
+        "expiresAt": "2026-11-08T13:00:00Z",
+        "granted": [
+          "fulfil:order:1"
+        ],
+        "principal": "prn_2",
+        "streamClient": "acme",
+        "ticketReasons": [
+          null
+        ]
+      },
+      "name": "cnf: the request proved that key",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImNuZiI6eyJqa3QiOiJqa3QtQSJ9LCJpYXQiOjE3OTQxMzkxOTAsImV4cCI6MTc5NDEzOTMxMH0.GPme_0AdLmFLj5ve_eRJvuMTd7dnjunejc3gxP4J2uheo5iYdsbFaatgihiT0kAgQSZxZwS1aUvAiL9lLY8fAg"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "alg"
+        ]
+      },
+      "name": "alg other than EdDSA",
+      "tickets": [
+        "eyJhbGciOiJIUzI1NiIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.VY5mB6zlzZFFcKjlQbqEiE3D841pwozBeHdQ_JQOjOPFPfdu2DDp6-3Rpk23bmAswqh3zY67EgLINa5ag2DcDg"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "error": "NO_TOPICS",
+        "ticketReasons": [
+          "client-mismatch"
+        ]
+      },
+      "name": "the ticket's client is not the stream's",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50Ijoib3RoZXIiLCJ0b3BpY3MiOlsiZnVsZmlsOm9yZGVyOntpZH0iXSwic3ViIjoicHJuXzEiLCJpYXQiOjE3OTQxMzkxOTAsImV4cCI6MTc5NDEzOTMxMH0.hTRqchouStPyA08kCENDVjgQfX2sgU-jgSgD-lXMa-nD3sDxdP3FoBf7S2DrRN4C_FX_oCG6GvZKX9jiMT_ECQ"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "denied": [],
+        "expiresAt": "2026-11-08T12:01:00Z",
+        "granted": [
+          "fulfil:order:1"
+        ],
+        "principal": "prn_2",
+        "streamClient": "acme",
+        "ticketReasons": [
+          null
+        ]
+      },
+      "name": "stream-exp shortens the stream",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwLCJzdHJlYW0tZXhwIjoxNzk0MTM5MjYwfQ.1MN7SDgR-2kZ1YVy6zeUCGxagVZd3Dvr0iUezuxU4KAA-wYU7oNgkPG-VDkvtuTuCFZAf6MCFXA6bGiKOokNDA"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": null,
+      "expect": {
+        "denied": [
+          {
+            "code": "TOPIC_FORBIDDEN",
+            "topic": "fulfil:user:prn_99:extra"
+          },
+          {
+            "code": "TOPIC_FORBIDDEN",
+            "topic": "fulfil:order:1"
+          }
+        ],
+        "expiresAt": "2026-11-08T13:00:00Z",
+        "granted": [
+          "fulfil:user:prn_99"
+        ],
+        "principal": "prn_1",
+        "streamClient": "acme",
+        "ticketReasons": [
+          null
+        ]
+      },
+      "name": "a placeholder matches any one segment, {principal} included; other topics are forbidden",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6dXNlcjp7cHJpbmNpcGFsfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.aorTX_ehhQcEX1N3H66eQ_84bxNGUbSdP8dEW6oOYb4VA8zqtwwQQUIgGJxjT5y0-yC40WvRvaADnzOgZEWBAA"
+      ],
+      "topics": [
+        "fulfil:user:prn_99",
+        "fulfil:user:prn_99:extra",
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": null,
+      "expect": {
+        "denied": [],
+        "expiresAt": "2026-11-08T13:00:00Z",
+        "granted": [
+          "fulfil:order:1"
+        ],
+        "principal": null,
+        "streamClient": "_platform",
+        "ticketReasons": [
+          null
+        ]
+      },
+      "name": "platform-wide: the platform client's value",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiX3BsYXRmb3JtIiwidG9waWNzIjpbImZ1bGZpbDpvcmRlcjp7aWR9Il0sImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.0rarVUzI01UHykuFu-9axVaW_iljKHZSwTf8KC74w-BMn6WY9BcLuglbI542GM5uf2Zhrh9lgPkuH9YtCrBGDQ"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": null,
+      "expect": {
+        "denied": [
+          {
+            "code": "TICKET_INVALID",
+            "topic": "fulfil:user:1"
+          }
+        ],
+        "expiresAt": "2026-11-08T13:00:00Z",
+        "granted": [
+          "fulfil:order:1"
+        ],
+        "principal": "prn_1",
+        "streamClient": "acme",
+        "ticketReasons": [
+          "kid",
+          null
+        ]
+      },
+      "name": "two tickets: the first valid one names the client, an invalid one does not stop the other",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3Qtb3RoZXIifQ.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6dXNlcjp7aWR9Il0sInN1YiI6InBybl8xIiwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTB9.rv1qBye6io7gDydCAlXW0eZjGW2d8xpXxkfbP97QdDt-SN1aTI4lV_hJJIEN6SMxmi0gsnn8zXGiaW7n05kICA",
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ"
+      ],
+      "topics": [
+        "fulfil:user:1",
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "error": "VALIDATION"
+      },
+      "name": "a malformed ticket",
+      "tickets": [
+        "abc.def"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    },
+    {
+      "context": {
+        "client": "acme",
+        "principal": "prn_2",
+        "proofKey": null
+      },
+      "expect": {
+        "error": "VALIDATION"
+      },
+      "name": "claims that are not JSON",
+      "tickets": [
+        "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.bm90IGpzb24.AA"
+      ],
+      "topics": [
+        "fulfil:order:1"
+      ]
+    }
+  ],
+  "description": "Push tickets (push contract 6.4). THE KEYS HERE ARE TEST KEYS, published on purpose: never configure them anywhere real. The host is application 'fulfil' with push.ticket.key = current then previous (the stranger key is not configured), push.stream.max-lifetime 1h and no topic rules, at the time 'now'. Each case is one subscribe: 'context' is the request's credentials (null: none) with the client, the principal and the thumbprint of the DPoP key it proved (proofKey, null: none); 'tickets' and 'topics' are the request body. 'expect' is either an error (VALIDATION 400, UNAUTHENTICATED 401, NO_TOPICS 403; 'denied' is then what the host decided before refusing) or the grant: granted and denied topics in request order, the stream token's client and principal and expiresAt. ticketReasons lists, per ticket, why it grants nothing (null: it is valid); the reason words are this vector's, not the wire's.",
+  "howToRun": "Build a host from 'application', 'keys' (current and previous, kid:seed), 'now' and 'maxLifetimeSeconds', with no rules. For each case run the subscribe decision with the context and the body, and compare. GET /push/keys must answer 'jwks' (keys in order: current, previous).",
+  "jwks": {
+    "keys": [
+      {
+        "alg": "EdDSA",
+        "crv": "Ed25519",
+        "kid": "test-2026-a",
+        "kty": "OKP",
+        "use": "sig",
+        "x": "C5tnrYkj67IDkzahPXBR70jrqnjByoUmQMvv4oOk5S8"
+      },
+      {
+        "alg": "EdDSA",
+        "crv": "Ed25519",
+        "kid": "test-2025-z",
+        "kty": "OKP",
+        "use": "sig",
+        "x": "w5JzHl7DNXJdBEGcXCVQxizdCl1WyUQHiYOFkvjLPsE"
+      }
+    ]
+  },
+  "keys": {
+    "current": {
+      "kid": "test-2026-a",
+      "seed": "5BgJptHbkz4uIeRqgLz3Ws_38Ovwi1uCpSdyW45yMdc",
+      "x": "C5tnrYkj67IDkzahPXBR70jrqnjByoUmQMvv4oOk5S8"
+    },
+    "previous": {
+      "kid": "test-2025-z",
+      "seed": "aMAmPCO41Sx6WwDvG_MWCgxTdygpi14ynrtSTxTfFrM",
+      "x": "w5JzHl7DNXJdBEGcXCVQxizdCl1WyUQHiYOFkvjLPsE"
+    },
+    "stranger": {
+      "kid": "test-other",
+      "seed": "akpj827cS1gLGxwkstCQeVk6M-4kmfcyq47WcTCGpr0",
+      "x": "Il4AVdFdE91gx97xbPi2kXOPzVSNqSlCwH-NHPhwCUc"
+    }
+  },
+  "maxLifetimeSeconds": 3600,
+  "now": 1794139200
+}

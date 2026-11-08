@@ -50,7 +50,8 @@ JOSE `typ` `fc-field+jwt`, `iss` the platform, `aud` your application code, `tok
 a `sub` starting `fwu_` and the claims `client_id`, `client_identifier`, `sid` and
 `cnf.jkt` (`device_id` too, except on a device that is not enrolled: `device_mode` `UNENROLLED`). The optional
 `linked_principal_id` claim is read into `FieldPrincipal.LinkedPrincipalID` (empty when the worker is not linked to a platform user); it is for audit
-correlation only and grants nothing. A token with `pcr: true` (a temporary PIN: it works only on the platform's
+correlation only and grants nothing. `FieldPrincipal.KeyThumbprint` is the token's `cnf.jkt`, the
+device key the proof was signed with (a push ticket bound to a key compares it). A token with `pcr: true` (a temporary PIN: it works only on the platform's
 `/field/auth/pin`) is answered `403 PIN_CHANGE_REQUIRED`. The proof must be an ES256 JWS whose
 `jwk` is a public P-256 key with the thumbprint `cnf.jkt`, with `htm` the method, `htu` your
 `auth.public-base-url` plus the request's escaped path (never the `Host` header, no query),
@@ -192,6 +193,9 @@ token validity. The application must also declare a subscription to the event ty
 `Definitions.Subscription`, which the sync creates. **Not verified:** that a real platform accepts
 and delivers an application's subscription to `platform:iam:field-*` events (no platform was run
 for this build; see the [flowcatalyst contract](../../contracts/flowcatalyst.md) section 5).
+
+To end the worker's push streams on a revocation, call `pushes.EndStreams(ctx,
+flowcatalyst.PushHolder(e))` in the handler ([Go: push to clients](push.md)).
 
 ## Testing
 

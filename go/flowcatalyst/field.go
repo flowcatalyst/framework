@@ -9,6 +9,7 @@ import (
 	"github.com/flowcatalyst/framework/go/auth"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/httpfw"
+	"github.com/flowcatalyst/framework/go/push"
 )
 
 // Field-worker support of the FlowCatalyst module (sessions-and-login contract sections 15.6 and
@@ -136,6 +137,26 @@ type SessionRevoked struct{ SessionID, WorkerID, DeviceID, ClientID, Reason stri
 func (WorkerSuspended) fieldRevocation() {}
 func (DeviceRevoked) fieldRevocation()   {}
 func (SessionRevoked) fieldRevocation()  {}
+
+// PushHolder names the push streams a revocation ends (push contract section 7): the worker's for
+// a suspension, the device's for a revoked device, and for a revoked session the login family's
+// (or, when the platform revoked every session of a worker or a device, theirs). Call
+// push.Pushes.EndStreams with it from the handler of [OnFieldRevocation]:
+//
+//	flowcatalyst.OnFieldRevocation(receivers, func(ctx context.Context, cx fw.Context, ev flowcatalyst.FieldRevocation) error {
+//		return pushes.EndStreams(ctx, flowcatalyst.PushHolder(ev))
+//	})
+func PushHolder(event FieldRevocation) push.Holder {
+	switch e := event.(type) {
+	case WorkerSuspended:
+		return push.Holder{Principal: e.WorkerID}
+	case DeviceRevoked:
+		return push.Holder{Device: e.DeviceID}
+	case SessionRevoked:
+		return push.Holder{Session: e.SessionID, Principal: e.WorkerID, Device: e.DeviceID}
+	}
+	return push.Holder{}
+}
 
 // Event types of the revocations, as the platform writes them.
 const (

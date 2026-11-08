@@ -1,0 +1,27 @@
+{
+  "description": "Replay and reset on a resumed stream (push contract 6.2 step 2, sections 5 and 7). 'log' is what the log keeps (ids 5 to 12); 'trimmed' is the highest id retention deleted (A1: the oldest kept minus one), so the log holds everything after it. Each case opens a stream on 'topics' for 'client' ('_platform' is the platform client; a push's client null is the platform client) with a Last-Event-ID (null: none), on a host whose memory holds nothing (push.recent 0, so the replay reads the log). Expected: the ids sent before the live pushes, or a reset with its reason and id ('latest', the highest id the host has). A Last-Event-ID equal to trimmed loses nothing: everything after it is kept.",
+  "howToRun": "Load the log (A1: insert the rows with these ids into fw_push_log; trimmed then follows), start the hub, open each case's stream and read what comes after the subscribed event, up to the first live push. Compare the ids, or the reset's reason and id.",
+  "trimmed": 4,
+  "latest": 12,
+  "log": [
+    {"id": 5, "topic": "fulfil:order:1", "type": "order.updated", "client": "acme", "data": {"v": 5}},
+    {"id": 6, "topic": "fulfil:order:2", "type": "order.updated", "client": "acme", "data": {"v": 6}},
+    {"id": 7, "topic": "fulfil:order:1", "type": "order.updated", "client": "other", "data": {"v": 7}},
+    {"id": 8, "topic": "fulfil:order:1", "type": "order.updated", "client": null, "data": {"v": 8}},
+    {"id": 9, "topic": "fulfil:order:1", "type": "order.shipped", "client": "acme", "data": {"v": 9}},
+    {"id": 10, "topic": "fulfil:news", "type": "news", "client": null, "data": {"v": 10}},
+    {"id": 11, "topic": "fulfil:order:1", "type": "order.updated", "client": "other", "data": {"v": 11}},
+    {"id": 12, "topic": "fulfil:order:1", "type": "order.updated", "client": "acme", "data": {"v": 12}}
+  ],
+  "cases": [
+    {"name": "no Last-Event-ID: nothing from the past", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": null, "expect": {"ids": []}},
+    {"name": "the oldest kept minus one: nothing lost, no reset", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 4, "expect": {"ids": [5, 8, 9, 12]}},
+    {"name": "older than retention", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 3, "expect": {"reset": {"reason": "retention", "id": 12}}},
+    {"name": "from the start", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 0, "expect": {"reset": {"reason": "retention", "id": 12}}},
+    {"name": "another client's pushes are never sent; the platform client's are", "topics": ["fulfil:order:1"], "client": "other", "lastEventId": 6, "expect": {"ids": [7, 8, 11]}},
+    {"name": "a platform stream hears every client", "topics": ["fulfil:order:1"], "client": "_platform", "lastEventId": 7, "expect": {"ids": [8, 9, 11, 12]}},
+    {"name": "several topics, in id order", "topics": ["fulfil:news", "fulfil:order:2"], "client": "acme", "lastEventId": 4, "expect": {"ids": [6, 10]}},
+    {"name": "up to date", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 12, "expect": {"ids": []}},
+    {"name": "higher than anything logged here", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 13, "expect": {"reset": {"reason": "unknown-id", "id": 12}}}
+  ]
+}

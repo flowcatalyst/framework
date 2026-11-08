@@ -133,7 +133,7 @@ Outcome of a failed write:
 | stale aggregate (row count 0) | conflict: apply the policy |
 | SQLSTATE `40001` or `40P01` (serialization failure, deadlock) | conflict: apply the policy |
 | `23505` | `CONFLICT` / `UNIQUE_VIOLATION`, not retried |
-| any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`VALIDATE`, `AUTHORIZE`, `LOAD`, `EXECUTE`, `BEGIN`, `PERSIST`, `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
+| any other exception from a phase, a repository or the database | `INTERNAL`, code naming the step (`VALIDATE`, `AUTHORIZE`, `LOAD`, `EXECUTE`, `BEGIN`, `PERSIST`, `PUSH` (a push to clients, [push contract](push.md) section 2), `OUTBOX`, `AUDIT`, `COMMIT`); the cause is logged, never put in the error message |
 | a plan with another client's aggregate | `INTERNAL` / `CROSS_CLIENT_WRITE` (step 3), not retried |
 | a plan of appends only (no aggregate step) | `INTERNAL` / `APPEND_ONLY_PLAN` (step 3), not retried |
 | the thread is interrupted while waiting between attempts | `INTERNAL` / `INTERRUPTED`, the interrupt flag is restored |

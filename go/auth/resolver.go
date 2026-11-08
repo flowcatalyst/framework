@@ -63,6 +63,17 @@ func (c *ContextResolver) authenticate(r *http.Request) (Authenticated, error) {
 	return *session, nil
 }
 
+// CarriesCredentials reports whether the request presents credentials at all: an Authorization
+// header (bearer or DPoP) or the session cookie. A route that also serves callers without
+// credentials (push subscribe with tickets only) resolves the context only when it does, so a bad
+// credential is still a 401.
+func (m *Module) CarriesCredentials(r *http.Request) bool {
+	if len(r.Header.Values("Authorization")) > 0 {
+		return true
+	}
+	return readCookie(r, m.sessions.cookies.sessionName()) != ""
+}
+
 // isDPoP reports whether the request uses the DPoP authorization scheme (any case).
 func isDPoP(r *http.Request) bool {
 	a := r.Header.Get("Authorization")

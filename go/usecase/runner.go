@@ -16,6 +16,7 @@ import (
 	"github.com/flowcatalyst/framework/go/event"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/internal/dbtx"
+	"github.com/flowcatalyst/framework/go/internal/pushrow"
 	"github.com/flowcatalyst/framework/go/metrics"
 )
 
@@ -43,6 +44,7 @@ type Runner struct {
 	wait      func(ctx context.Context, d time.Duration) error
 	runs      *metrics.Counter
 	durations *metrics.Timer
+	pushMax   int // push.max-data-bytes
 }
 
 // RunnerOption configures [NewRunner].
@@ -74,7 +76,7 @@ func NewRunner(b *fw.Boot, d *Declared, db *database.DB, opts ...RunnerOption) (
 	}
 	r := &Runner{
 		db: db, outbox: NewOutboxWriter(b.Ids(), b.Clock()), clock: b.Clock(), log: b.Logger("usecase"),
-		wait: sleep, runs: runs, durations: durations,
+		wait: sleep, runs: runs, durations: durations, pushMax: pushrow.DefaultMaxDataBytes,
 	}
 	for _, o := range opts {
 		o(r)
@@ -161,13 +163,21 @@ func attemptOnce[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx
 			return zero, internal(step, errors.New("event without metadata"))
 		}
 	}
-	aggregates := 0
+	aggregates, appends := 0, 0
 	for _, s := range plan.steps {
 		if s == nil {
 			return zero, internal(step, errors.New("nil step"))
 		}
+		if p, ok := s.(pushStep); ok {
+			if err := d.runner.checkPush(p); err != nil {
+				log.Error("BUG: a push breaks the push contract (section 1)", slog.String("error", err.Error()))
+				return zero, internal("INVALID_PUSH", err)
+			}
+			continue
+		}
 		client, _, isAggregate := s.aggregate()
 		if !isAggregate {
+			appends++
 			continue
 		}
 		aggregates++
@@ -176,7 +186,7 @@ func attemptOnce[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx
 			return zero, internal("CROSS_CLIENT_WRITE", nil)
 		}
 	}
-	if aggregates == 0 && len(plan.steps) > 0 {
+	if aggregates == 0 && appends > 0 {
 		log.Error("BUG: a plan of appends only: usecase.Append writes rows that belong to an aggregate change, " +
 			"and the audit row names that aggregate; add its Insert, Update or Delete to the plan")
 		return zero, internal("APPEND_ONLY_PLAN", errors.New("a plan of appends only"))
@@ -297,13 +307,21 @@ func attrsAny(attrs []slog.Attr) []any {
 	return out
 }
 
-// write applies the plan's steps in order, then the events, the dispatch jobs and the audit row on
+// write applies the plan's steps in order (a push as a row of fw_push_outbox, step code PUSH), then the events, the dispatch jobs and the audit row on
 // tx, setting *step before each. false means an aggregate was stale (a conflict). The caller owns the
 // transaction: begin, commit or release, and rollback.
 func write[C any, E event.Event](ctx context.Context, d *Defined[C, E], cx fw.Context, cmd C, plan *Plan[E], tx *database.Tx, log *slog.Logger, step *string) (bool, error) {
 	r := d.runner
 	*step = stepPersist
 	for _, s := range plan.steps {
+		if p, isPush := s.(pushStep); isPush {
+			*step = stepPush
+			if err := r.writePush(ctx, tx, cx, p); err != nil {
+				return false, failure(log, *step, err)
+			}
+			*step = stepPersist
+			continue
+		}
 		ok, err := s.apply(ctx, tx)
 		if err != nil {
 			return false, failure(log, *step, err)

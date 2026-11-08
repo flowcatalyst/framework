@@ -18,6 +18,7 @@ import (
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/fwtest"
 	"github.com/flowcatalyst/framework/go/httpfw"
+	"github.com/flowcatalyst/framework/go/push"
 )
 
 const publicBase = "https://app.example"
@@ -301,5 +302,23 @@ func TestOnFieldRevocationRegistersOnce(t *testing.T) {
 	}})
 	if second == nil || !strings.Contains(second.Error(), "already registered") {
 		t.Fatalf("second: %v", second)
+	}
+}
+
+func TestPushHolderOfEachRevocation(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		event flowcatalyst.FieldRevocation
+		want  push.Holder
+	}{
+		{flowcatalyst.WorkerSuspended{WorkerID: "fwu_1", ClientID: "clt_1"}, push.Holder{Principal: "fwu_1"}},
+		{flowcatalyst.DeviceRevoked{DeviceID: "fwd_1", ClientID: "clt_1"}, push.Holder{Device: "fwd_1"}},
+		{flowcatalyst.SessionRevoked{SessionID: "fws_1", ClientID: "clt_1"}, push.Holder{Session: "fws_1"}},
+		{flowcatalyst.SessionRevoked{WorkerID: "fwu_1", Reason: "ADMIN"}, push.Holder{Principal: "fwu_1"}},
+		{flowcatalyst.SessionRevoked{DeviceID: "fwd_1", Reason: "DEVICE_REVOKED"}, push.Holder{Device: "fwd_1"}},
+	} {
+		if got := flowcatalyst.PushHolder(c.event); got != c.want {
+			t.Errorf("%#v: %+v, want %+v", c.event, got, c.want)
+		}
 	}
 }
