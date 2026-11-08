@@ -196,3 +196,13 @@ opts = append(opts, RedisClients(clients, c.backend.redis.Prefix))
 `fw_push_streams_open`, `fw_push_delivered_total`, `fw_push_streams_ended_total{reason}` (`client`,
 `slow`, `expired`, `revoked`, `drain`), `fw_push_resets_total{reason}` and
 `fw_push_replay_source_total{source}` (`memory`, `log`).
+
+## Load test
+
+`go/examples/push-demo` is a small server with the push module (public topic `pushdemo:t:{id}`, a
+ticket endpoint, a publish endpoint, several listening ports, `/debug/stats` and pprof) and a load
+generator (`loadgen`: idle, fan-out, broadcast and restart modes, delay histogram, loss check, with
+`Last-Event-ID` resumes); `loadtest.sh` starts and stops the processes. The first local run, its
+method, the commands and the findings (about 68 KiB per stream, a 15 s relay-lock delay after a
+`kill -9`, resumes after a restart served from the log) are in
+[the load test results](../../push-load-test-results.md).
