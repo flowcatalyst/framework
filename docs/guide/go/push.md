@@ -1,4 +1,4 @@
-<!-- types: Pushes, Declared, Push, Rule, RuleOption, Option, Driver, Log, Entry, OutboxRow, Holder, Follower, PostgresLog, Credentials, Authenticator, AuthenticatorFunc, TicketOptions, Denial, InvalidPushError -->
+<!-- types: Pushes, Declared, Push, Rule, RuleOption, Option, Driver, Log, Entry, OutboxRow, Holder, Follower, PostgresLog, RedisStreamLog, Credentials, Authenticator, AuthenticatorFunc, TicketOptions, Denial, InvalidPushError -->
 # Go: push to clients
 
 Package `push` implements the [push contract](../../contracts/push.md) (P1a): small messages to
@@ -6,8 +6,8 @@ browsers, apps and field devices listening over server-sent events. A push is wr
 transaction as the change it announces, so it is sent only if that transaction commits; one relay
 at a time moves committed pushes, in order, into a log every instance follows; each instance's hub
 fans them out to its streams, replays what a reconnecting client missed and sends a `reset` to one
-that was away too long. This build has the `postgres` log driver (A1, `PostgresLog`); the `redis`
-driver (A2) plugs in through the `Log` interface. Snippets come from the package tests
+that was away too long. This build has both log drivers: `postgres` (A1, `PostgresLog`, the default) and `redis`
+(A2, `RedisStreamLog`), selected by `push.driver`. Snippets come from the package tests
 (`go/push/*_test.go`); the vectors in `conformance/push/` pass.
 
 ## Declaring and building
@@ -38,7 +38,9 @@ separated, the signing key first and the previous key second during a rotation.
 
 Options: `Authenticate` (without it every subscribe needs tickets), `Application(code)` (default: the
 application's name; the first segment of every topic and the issuer of its tickets), `BasePath("/api")`
-for the routes, and `RedisLog(...)` for the A2 driver when `push.driver` is `redis`. `Build`
+for the routes, and, when `push.driver` is `redis`, `RedisClients(clients, prefix)` (the A2 driver on the Redis
+instance `push.redis-instance`, the default instance when it is not set) or `RedisLog(...)` for a
+driver of your own. `Build`
 registers the loops `push-relay` (gated) and `push-retention` (every minute, deletes log rows older
 than `push.retention` but never the newest), the informational health check `push:log`, and the hub,
 which starts with the application once it follows the log and stops at shutdown.
@@ -146,6 +148,47 @@ and keeps `Entry.OutboxID`, and the hub drops an outbox id it has already seen),
 `Latest`, `Trimmed` (the highest id deleted: a `Last-Event-ID` below it gets a `reset`), `Prune`,
 `Follow` (wake-ups and the ends of streams), `End` and `Ping`. `PostgresLog` is A1: ids `max(id)+1`
 in the relay's transaction, `pg_notify('fw_push_log', <id>)` and `pg_notify('fw_push_end', <holder>)`.
+
+### The Redis driver (A2)
+
+Set `push.driver=redis` and give `Build` the Redis instances (`push.redis-instance` names one; the
+default instance otherwise). The database still holds the outbox and the relay still takes its
+lock there; only the log moves. From `go/push/harness_test.go`:
+
+```go
+clients, err := redisfw.Connect(ctx, b, rd)
+if err != nil {
+	return nil, err
+}
+opts = append(opts, RedisClients(clients, c.backend.redis.Prefix))
+```
+
+`NewRedisStreamLog(client, prefix)` builds the driver on a go-redis client of your own. The prefix
+("" in production) goes before both keys, so tests give each test its own.
+
+- **Keys.** The stream `<prefix>fw:push` (one entry per push with the fields `topic`, `type`,
+  `client`, `data`, `outbox` and `logged_at`) and the pub/sub channel `<prefix>fw:push:end`.
+  Redis 6.2 or Valkey is needed (exclusive range ids). One standalone server, as everywhere in the
+  framework.
+- **Ids.** The entry id `ms-seq` is sent as `ms * 2^20 + seq`, so ids increase but are not
+  contiguous, and are far above the 1, 2, 3 of A1. A sequence of 2^20 or more (a million entries in
+  one millisecond) is an error, not a wrong id. Clients treat ids as opaque, as the contract says.
+- **Append** is one `MULTI`/`EXEC` of `XADD`, in the relay's order, before the relay deletes the
+  outbox rows. A crash between the two adds the rows again; the hub drops an outbox id it has seen,
+  live and in a replay.
+- **Follow** blocks in `XREAD BLOCK` (one second at a time, so a stopped follower returns within a
+  second) and calls `Grown` once when it starts and after every wake-up; it subscribes to the end
+  channel, and `End` is a `PUBLISH` every instance receives, this one included. When the connection
+  fails `Follow` returns the error; the hub calls it again after a pause (one second, doubling to
+  thirty) and polls the log every `push.relay.interval` meanwhile, so the application stays ready
+  (`push:log` is informational) and pushes are late by at most the interval. An end published while
+  the subscription is down is lost, as with `LISTEN`/`NOTIFY`.
+- **Retention.** `Prune` deletes the entries whose id is below the Redis server's clock at the
+  retention edge, always keeping the newest, with `XDEL` in batches of 1000. It does not use `XTRIM`:
+  Redis moves `max-deleted-entry-id`, which is what `Trimmed` reports, on `XDEL` only. The ids are
+  the server's clock, so keep it within seconds of the application's.
+- **Latest** is the stream's `last-generated-id`, which stays right when the stream is empty or
+  trimmed; **Trimmed** is `max-deleted-entry-id` (0 when nothing was deleted).
 
 ## Metrics
 

@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,6 +25,7 @@ import (
 	"github.com/flowcatalyst/framework/go/locks"
 	"github.com/flowcatalyst/framework/go/locks/dblock"
 	"github.com/flowcatalyst/framework/go/metrics"
+	"github.com/flowcatalyst/framework/go/redisfw"
 )
 
 func TestMain(m *testing.M) {
@@ -84,6 +87,44 @@ type nodeConfig struct {
 	clock   *fwtest.Clock
 	declare func(d *Declared)
 	logs    io.Writer
+	// backend is the log driver and its servers; nil is A1 on the database the node is given.
+	backend *backend
+}
+
+// The log drivers the contract tests run against.
+const (
+	driverPostgres = "postgres"
+	driverRedis    = "redis"
+)
+
+// backend is where a test's nodes keep the log: the database every node shares, and for the redis
+// driver the Redis server and the key prefix of the test.
+type backend struct {
+	driver string
+	dbURL  string
+	redis  fwtest.Redis
+}
+
+// eachDriver runs f once per log driver, as parallel subtests on a database of their own.
+func eachDriver(t *testing.T, f func(t *testing.T, b backend)) {
+	t.Helper()
+	for _, driver := range []string{driverPostgres, driverRedis} {
+		t.Run(driver, func(t *testing.T) {
+			t.Parallel()
+			b := backend{driver: driver, dbURL: fwtest.NewDatabase(t).URL}
+			if driver == driverRedis {
+				b.redis = fwtest.NewRedis(t)
+			}
+			f(t, b)
+		})
+	}
+}
+
+// start starts a node of the application on the backend.
+func (b backend) start(t *testing.T, c nodeConfig) *node {
+	t.Helper()
+	c.backend = &b
+	return startNode(t, b.dbURL, c)
 }
 
 // node is one instance of the application: its own hub, relay loop and HTTP server, on a database
@@ -122,6 +163,15 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 		"PUSH_STREAM_SECRET": testSecret, "PUSH_TICKET_KEY": testKeyCurrent + "," + testKeyPrevious,
 		"PUSH_RELAY_INTERVAL": "50ms",
 	}
+	configDir := t.TempDir()
+	if c.backend != nil && c.backend.driver == driverRedis {
+		env["PUSH_DRIVER"] = driverRedis
+		env["REDIS_INSTANCES_DEFAULT_URL"] = c.backend.redis.URL
+		yaml := "redis:\n  instances:\n    default: { url: placeholder }\n"
+		if err := os.WriteFile(filepath.Join(configDir, "application.yaml"), []byte(yaml), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	maps.Copy(env, c.env)
 	clock := c.clock
 	if clock == nil {
@@ -131,11 +181,15 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 	if logs == nil {
 		logs = io.Discard
 	}
-	app := fw.New("test", fw.WithEnvironment(env), fw.WithConfigDir(t.TempDir()), fw.WithClock(clock),
+	app := fw.New("test", fw.WithEnvironment(env), fw.WithConfigDir(configDir), fw.WithClock(clock),
 		fw.WithOutput(io.Discard, io.Discard), fw.WithLogger(slog.New(slog.NewTextHandler(logs, nil))))
 	web := httpfw.Declare(app)
 	ld := locks.Declare(app)
 	pd := Declare(app)
+	var rd *redisfw.Declared
+	if c.backend != nil && c.backend.driver == driverRedis {
+		rd = redisfw.Declare(app)
+	}
 	if c.declare != nil {
 		c.declare(pd)
 	} else {
@@ -155,7 +209,15 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 		if err != nil {
 			return nil, err
 		}
-		p, err := pd.Build(ctx, b, db, lk, Authenticate(headerAuth))
+		opts := []Option{Authenticate(headerAuth)}
+		if rd != nil {
+			clients, err := redisfw.Connect(ctx, b, rd)
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, RedisClients(clients, c.backend.redis.Prefix))
+		}
+		p, err := pd.Build(ctx, b, db, lk, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -407,5 +469,51 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 			t.Fatalf("timed out waiting for %s", what)
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// settle waits until the log holds count entries and the hub has dispatched them, and returns their
+// ids in order. The tests name pushes by their place in the log because A2's ids are not 1, 2, 3.
+func (n *node) settle(count int) []int64 {
+	n.t.Helper()
+	var ids []int64
+	waitFor(n.t, fmt.Sprintf("%d entries in the log", count), func() bool {
+		entries, err := n.p.log.ReadAfter(n.t.Context(), 0, 10_000)
+		if err != nil {
+			n.t.Fatal(err)
+		}
+		ids = ids[:0]
+		for _, e := range entries {
+			ids = append(ids, e.ID)
+		}
+		return len(ids) >= count
+	})
+	if len(ids) != count {
+		n.t.Fatalf("the log holds %d entries, want %d", len(ids), count)
+	}
+	waitFor(n.t, "the hub to follow", func() bool { return n.p.hub.lastID() == ids[count-1] })
+	return ids
+}
+
+// deleteLogUpTo deletes the log's entries with an id up to id, as retention would.
+func deleteLogUpTo(t *testing.T, log Log, db *database.DB, id int64) {
+	t.Helper()
+	switch l := log.(type) {
+	case *PostgresLog:
+		if _, err := db.Pool().Exec(t.Context(), "DELETE FROM fw_push_log WHERE id <= $1", id); err != nil {
+			t.Fatal(err)
+		}
+	case *RedisStreamLog:
+		msgs, err := l.client.XRange(t.Context(), l.stream, "-", intToID(id)).Result()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range msgs {
+			if err := l.client.XDel(t.Context(), l.stream, m.ID).Err(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	default:
+		t.Fatalf("unknown log driver %T", log)
 	}
 }

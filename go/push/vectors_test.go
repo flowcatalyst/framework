@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/fwtest"
 	"github.com/flowcatalyst/framework/go/internal/conformance"
@@ -285,31 +287,45 @@ func TestReplayVector(t *testing.T) {
 		c := raw.(map[string]any)
 		t.Run(str(c["name"]), func(t *testing.T) {
 			t.Parallel()
-			n := startNode(t, fwtest.NewDatabase(t).URL, nodeConfig{env: map[string]string{"PUSH_RECENT": "0"}})
-			loadLog(t, n, v["log"].([]any))
-			waitFor(t, "the hub to follow the log", func() bool { return n.p.hub.lastID() == latest })
-			if trimmed, _ := n.p.log.Trimmed(t.Context()); trimmed != int64(v["trimmed"].(float64)) {
-				t.Fatalf("trimmed %d", trimmed)
-			}
-			topics := asList(c["topics"])
-			// the vector's topics are application fulfil's; the stream token is signed here, as a
-			// subscribe would
-			sub := subscription{topics: topics, client: str(c["client"])}
-			last, hasLast := int64(0), c["lastEventId"] != nil
-			if hasLast {
-				last = int64(c["lastEventId"].(float64))
-			}
-			got := replayThrough(t, n, sub, last, hasLast)
-			if !sameJSONValue(got, c["expect"]) {
-				t.Errorf("got %v, want %v", got, c["expect"])
-			}
+			eachDriver(t, func(t *testing.T, b backend) {
+				n := b.start(t, nodeConfig{env: map[string]string{"PUSH_RECENT": "0"}})
+				loadLog(t, n, v["log"].([]any), int64(v["trimmed"].(float64)))
+				waitFor(t, "the hub to follow the log", func() bool { return n.p.hub.lastID() == latest })
+				if trimmed, _ := n.p.log.Trimmed(t.Context()); trimmed != int64(v["trimmed"].(float64)) {
+					t.Fatalf("trimmed %d", trimmed)
+				}
+				topics := asList(c["topics"])
+				// the vector's topics are application fulfil's; the stream token is signed here, as a
+				// subscribe would
+				sub := subscription{topics: topics, client: str(c["client"])}
+				last, hasLast := int64(0), c["lastEventId"] != nil
+				if hasLast {
+					last = int64(c["lastEventId"].(float64))
+				}
+				got := replayThrough(t, n, sub, last, hasLast)
+				if !sameJSONValue(got, c["expect"]) {
+					t.Errorf("got %v, want %v", got, c["expect"])
+				}
+			})
 		})
 	}
 }
 
-// loadLog writes the vector's log rows into fw_push_log.
-func loadLog(t *testing.T, n *node, rows []any) {
+// loadLog writes the vector's log rows into the log with their ids; trimmed is the highest id the
+// log deleted (A2: the entry is added and deleted, which is what the stream's max-deleted-entry-id
+// records).
+func loadLog(t *testing.T, n *node, rows []any, trimmed int64) {
 	t.Helper()
+	rl, redisDriver := n.p.log.(*RedisStreamLog)
+	if redisDriver && trimmed > 0 {
+		id := intToID(trimmed)
+		if err := rl.client.XAdd(t.Context(), &redis.XAddArgs{Stream: rl.stream, ID: id, Values: []any{"outbox", "0"}}).Err(); err != nil {
+			t.Fatal(err)
+		}
+		if err := rl.client.XDel(t.Context(), rl.stream, id).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for _, raw := range rows {
 		r := raw.(map[string]any)
 		data, _ := json.Marshal(r["data"])
@@ -317,8 +333,17 @@ func loadLog(t *testing.T, n *node, rows []any) {
 		if r["client"] != nil {
 			client = r["client"]
 		}
+		id := int64(r["id"].(float64))
+		if redisDriver {
+			c, _ := client.(string)
+			values := []any{"topic", r["topic"], "type", r["type"], "client", c, "data", string(data), "outbox", "0", "logged_at", fmt.Sprint(begin.UnixMicro())}
+			if err := rl.client.XAdd(t.Context(), &redis.XAddArgs{Stream: rl.stream, ID: intToID(id), Values: values}).Err(); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
 		if _, err := n.db.Pool().Exec(t.Context(), `INSERT INTO fw_push_log (id, topic, type, client, data, logged_at) VALUES ($1, $2, $3, $4, $5, $6)`,
-			int64(r["id"].(float64)), r["topic"], r["type"], client, string(data), begin); err != nil {
+			id, r["topic"], r["type"], client, string(data), begin); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -2,8 +2,9 @@
 
 Status: **accepted 2026-11-08 (owner rulings in section 16). P1a built in Go (2026-11-08): the core
 module (`go/push`), the A1 `postgres` driver, `usecase.Push`, tickets, the HTTP routes, the
-conformance vectors and the A1 contract tests; amendments from that build in section 17. Not yet:
-A2 (`redis`), Java, the SDK readers, the load test.** Drivers: `postgres` (A1) and
+conformance vectors and the A1 contract tests; amendments from that build in section 17. A2
+(`redis`) built in Go the same day (`RedisStreamLog`; the contract tests run on both drivers;
+amendment 10 of section 17). Not yet: Java, the SDK readers, the load test.** Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
 
@@ -106,7 +107,7 @@ topic, type, client, data, and the time it was logged. The driver decides where 
 | log | table `fw_push_log` (below) on the default instance | the Redis stream `fw:push` on `push.redis-instance` |
 | id | `max(id) + 1`, assigned by the relay inside its transaction; `PRIMARY KEY (id)` refuses a second relay | the Redis entry id `ms-seq`, sent as `ms * 2^20 + seq` (seq below 2^20) |
 | instances woken by | `pg_notify('fw_push_log', <highest id>)` in the relay's transaction | `XREAD BLOCK` on the stream |
-| retention | rows older than `push.retention` deleted by a loop | `XADD ... MINID` at the retention edge |
+| retention | rows older than `push.retention` deleted by a loop | entries below the retention edge deleted by a loop with `XDEL` (not `XTRIM`: section 17.10) |
 | relay step | insert into the log and delete from the outbox, one transaction | `XADD` each row, then delete the rows; a crash between the two can add a row twice, so each entry carries the outbox id and the hub drops an outbox id it has already seen |
 
 ```sql
@@ -455,3 +456,11 @@ Smallest calls made where the text was silent or could not be built as written:
 9. **Metrics (section 11).** `fw_push_relay_lag_seconds` is a timer: the framework's registry
    refuses a gauge named `_seconds`. `push:log` is an informational health check (the database's
    own check is the critical one).
+10. **A2 retention uses `XDEL`** (Go build, 2026-11-08). Redis moves a stream's `max-deleted-entry-id`
+   on `XDEL` only, not on `XTRIM` or `XADD ... MINID` (checked on Redis 8.x), and `Trimmed` (amendment
+   3) is that field. So `Prune` reads the entries below the edge and deletes them with `XDEL` in batches,
+   never the newest. The edge is a Redis entry id, that is the Redis server's clock; the application's
+   clock should agree with it to within seconds. `Latest` is `last-generated-id` and `Trimmed` is
+   `max-deleted-entry-id`; ids are `ms * 2^20 + seq`, not contiguous. A1's and A2's `Log` interface is
+   the same. The channel for `End` is `fw:push:end` (`PUBLISH`/`SUBSCRIBE`); both keys take an optional
+   prefix.
