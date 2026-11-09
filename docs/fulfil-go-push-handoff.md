@@ -18,7 +18,7 @@ fulfil-go by itself; the move is that app's work, screen by screen.
 | `ForStoresOf(client)` (the office follows every store) | No wildcard subscriptions: publish to `fulfil:stores` as well as `fulfil:store:{ref}` (two `usecase.Push` steps) |
 | Per-channel check in the stream handler | Rules for what a permission decides; tickets for the rest (below) |
 | `streams.LatestCursor` in a read endpoint | `pushes.Cursor()`, called **before** the state is read |
-| `@inhance/api-client` `createSseClient` | `PushStream` (field-js; exported from field-react-native too, see "Phones") |
+| `@inhance/api-client` `createSseClient` | `PushStream` (field-react-native for the phones, field-js for the web; one shared core) |
 | Payload = the new state of the row | Allowed: the contract's default is a signal, but a topic may carry state when it is fine for everyone on the topic and fits `push.max-data-bytes` (16 KiB default, up to 64 KiB) |
 | Retention of `sync_events` | `push.retention`, 10 min to 24 h (default 24 h); a client away longer gets `reset` |
 
@@ -75,6 +75,8 @@ was missed, so reload only on `reset`.
 ## Clients
 
 ```ts
+import { PushStream } from "@flowcatalyst/field-react-native"; // the release after v0.1.0
+
 const stream = new PushStream({
   baseUrl: env.apiBase,                     // the base the push routes are mounted under
   topics: [`fulfil:store:${store}`],
@@ -83,15 +85,19 @@ const stream = new PushStream({
   lastEventId: snapshot.pushCursor,
 });
 stream.on(`fulfil:store:${store}`, ({ data }) => { if (data.pick) show(upsert(current.current, data.pick)); });
-stream.addEventListener("reset", () => void refresh());   // away too long: reload (new cursor)
-stream.addEventListener("state", (e) => setLive((e as CustomEvent).detail));
+stream.addListener("reset", () => void refresh());   // away too long: reload (new cursor)
+stream.addListener("state", (state) => setLive(state));
 stream.start();
 // AppState 'active': stream.stop(); stream.start() resumes from stream.lastEventId
 ```
 
-- **Phones:** React Native's own `fetch` cannot stream a body; FieldClient is built on
-  `expo/fetch`, which can, so `signedFetch` works for the stream too.
-- **Web (FlightboardPage):** `fetch: globalThis.fetch.bind(globalThis)` for the cookie session.
+- **Phones:** field-react-native's `PushStream` has no DOM dependency (Hermes): listeners are
+  `addListener(event, fn) → { remove() }`, as on `FieldClient`. React Native's own `fetch` cannot
+  stream a body; FieldClient is built on `expo/fetch`, which can, so `signedFetch` works for the
+  stream too.
+- **Web (FlightboardPage):** field-js's `PushStream` is the same reader as an `EventTarget`
+  (`addEventListener("reset", …)`, `detail` on each event), with
+  `fetch: globalThis.fetch.bind(globalThis)` for the cookie session.
 - Ids are strings and opaque; the reader drops a push at or below the last id it delivered.
 
 ## Cutover
