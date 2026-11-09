@@ -417,7 +417,17 @@ func TestADrainedHubStopsReadingTheLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.drain()
+	// a read that began before the drain is let finish (17.11), so the count is taken once the
+	// reads have stopped moving; after that the drained hub must not read again
 	before := len(log.reads())
+	for {
+		time.Sleep(30 * time.Millisecond) // three polls
+		n := len(log.reads())
+		if n == before {
+			break
+		}
+		before = n
+	}
 	time.Sleep(100 * time.Millisecond) // ten polls
 	h.poke()
 	time.Sleep(20 * time.Millisecond)
