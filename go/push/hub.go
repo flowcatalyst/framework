@@ -23,6 +23,25 @@ const (
 // pageSize is how many entries one read of the log asks for.
 const pageSize = 1000
 
+// opTimeout bounds one read of the log by the hub and one relay run. Neither is cancelled when the
+// application stops: it is let finish (they take milliseconds), because a query cancelled half-way
+// makes the driver abandon its connection, and closing the pool then waits for PostgreSQL to
+// acknowledge the cancel (pgx gives it up to 15 s).
+const opTimeout = 10 * time.Second
+
+// opContext is the context of one log read or relay run: not cancelled with ctx, bounded by
+// opTimeout.
+func opContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), opTimeout)
+}
+
+// errDraining is a listen after the hub began to drain.
+var errDraining = errors.New("push: draining")
+
+// errEnded stops a replay from the log for a stream that the hub ended meanwhile (the drain, a
+// revocation, a slow stream).
+var errEnded = errors.New("push: the stream ended")
+
 // errLimit is a subscribe or a listen over push.max-streams or push.max-streams-per-principal.
 var errLimit = errors.New("push: stream limit")
 
@@ -33,15 +52,77 @@ type subscription struct {
 	principal, device, session string
 }
 
+// frame is one push as the hub holds it: the log entry and its SSE event, encoded once when the hub
+// reads it and shared, read-only, by the memory of recent pushes and by every stream it goes to.
+type frame struct {
+	Entry
+	wire []byte // the push event (pushEvent), never modified
+}
+
+func newFrame(e Entry) *frame { return &frame{Entry: e, wire: appendPushEvent(nil, e)} }
+
 // stream is one open stream on this instance.
 type stream struct {
 	sub      subscription
 	topics   map[string]struct{}
-	platform bool       // opened in the platform client's context: hears every client
-	ch       chan Entry // the live pushes; the hub never blocks on it
+	platform bool // opened in the platform client's context: hears every client
 	done     chan struct{}
 	reason   string // why it ended, set before done is closed
 	ended    bool
+
+	// The live pushes not yet taken by the stream's goroutine: at most push.stream.buffer, in a ring
+	// that grows only as far as the stream falls behind (an idle stream holds none). The hub appends
+	// under qmu and never blocks; ready (capacity 1) wakes the stream's goroutine.
+	qmu   sync.Mutex
+	queue []*frame
+	head  int
+	n     int
+	ready chan struct{}
+}
+
+// offer queues f unless limit pushes are already waiting; false means the stream is too slow.
+func (s *stream) offer(f *frame, limit int) bool {
+	s.qmu.Lock()
+	if s.n >= limit {
+		s.qmu.Unlock()
+		return false
+	}
+	if s.n == len(s.queue) {
+		grown := make([]*frame, min(limit, max(4, 2*len(s.queue))))
+		for i := range s.n {
+			grown[i] = s.queue[(s.head+i)%len(s.queue)]
+		}
+		s.queue, s.head = grown, 0
+	}
+	s.queue[(s.head+s.n)%len(s.queue)] = f
+	s.n++
+	s.qmu.Unlock()
+	select {
+	case s.ready <- struct{}{}:
+	default:
+	}
+	return true
+}
+
+// next takes the oldest waiting push, nil when none waits. An emptied ring larger than a burst of a
+// few pushes is let go, so a stream keeps no memory of a backlog it has caught up with.
+func (s *stream) next() *frame {
+	s.qmu.Lock()
+	defer s.qmu.Unlock()
+	if s.n == 0 {
+		return nil
+	}
+	f := s.queue[s.head]
+	s.queue[s.head] = nil
+	s.head = (s.head + 1) % len(s.queue)
+	s.n--
+	if s.n == 0 {
+		s.head = 0
+		if len(s.queue) > 16 {
+			s.queue = nil
+		}
+	}
+	return f
 }
 
 // accepts is the client rule of push contract section 5, made for every push on every stream.
@@ -127,28 +208,80 @@ type hub struct {
 	cfg    hubConfig
 
 	mu          sync.Mutex
-	last        int64   // the highest id dispatched
-	from        int64   // the ring holds every push after from
-	ring        []Entry // the recent pushes; circular once full, head the oldest
+	last        int64    // the highest id dispatched
+	from        int64    // the ring holds every push after from
+	ring        []*frame // the recent pushes; circular once full, head the oldest
 	head        int
 	seen        outboxSeen
 	byTopic     map[string]map[*stream]struct{}
 	byPrincipal map[string]map[*stream]struct{}
 	all         map[*stream]struct{}
+	draining    bool                     // the server's drain began: every stream ended, none opens
+	drains      map[<-chan struct{}]bool // the servers' drain signals being watched
 	wake        chan struct{}
 	following   chan struct{} // closed once the driver follows the log for the first time
 	followOnce  sync.Once
+	stopped     chan struct{} // closed when run returns
+	stopOnce    sync.Once
+
+	pmu   sync.Mutex
+	pages map[int64]*pageRead // log reads of replays in flight, by the id they read after
 }
 
-func newHub(log Log, logger *slog.Logger, clock fw.Clock, m *hubMetrics, cfg hubConfig, latest int64) *hub {
-	h := &hub{
-		log: log, logger: logger, clock: clock, m: m, cfg: cfg, last: latest, from: latest,
+func newHub(log Log, logger *slog.Logger, clock fw.Clock, m *hubMetrics, cfg hubConfig) *hub {
+	return &hub{
+		log: log, logger: logger, clock: clock, m: m, cfg: cfg,
 		seen:    outboxSeen{capacity: max(cfg.recent, 10_000), set: map[int64]struct{}{}},
 		byTopic: map[string]map[*stream]struct{}{}, byPrincipal: map[string]map[*stream]struct{}{},
-		all: map[*stream]struct{}{}, wake: make(chan struct{}, 1), following: make(chan struct{}),
+		all: map[*stream]struct{}{}, drains: map[<-chan struct{}]bool{}, wake: make(chan struct{}, 1),
+		following: make(chan struct{}), stopped: make(chan struct{}), pages: map[int64]*pageRead{},
 	}
-	m.logID.Set(float64(latest))
-	return h
+}
+
+// warm reads where the log stands before the hub serves (push contract section 8): the last id, and
+// the newest push.recent pushes into memory, in one read, so that the clients of an instance that
+// was just started resume from memory too. The memory then holds every push after from: the push
+// before the oldest one read, or, when the log holds no more than push.recent pushes, the highest id
+// the log has deleted (read after the pushes, so a push pruned meanwhile is not counted as held).
+func (h *hub) warm(ctx context.Context) error {
+	latest, err := h.log.Latest(ctx)
+	if err != nil {
+		return err
+	}
+	var entries []Entry
+	trimmed := latest
+	if h.cfg.recent > 0 {
+		if entries, err = h.log.Newest(ctx, h.cfg.recent+1); err != nil {
+			return err
+		}
+		if len(entries) <= h.cfg.recent {
+			if trimmed, err = h.log.Trimmed(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.last, h.from = latest, latest
+	if len(entries) > 0 {
+		if len(entries) > h.cfg.recent {
+			h.from, entries = entries[0].ID, entries[1:]
+		} else {
+			h.from = trimmed
+		}
+		for _, e := range entries {
+			if e.ID <= h.from {
+				continue
+			}
+			h.last = max(h.last, e.ID)
+			if e.OutboxID != 0 && !h.seen.add(e.OutboxID) {
+				continue
+			}
+			h.ring = append(h.ring, newFrame(e))
+		}
+	}
+	h.m.logID.Set(float64(h.last))
+	return nil
 }
 
 // admitLocked checks the limits of section 8 for one more stream of principal.
@@ -175,7 +308,7 @@ func (h *hub) admit(principal string) error {
 type opening struct {
 	latest int64
 	memory bool
-	replay []Entry
+	replay []*frame
 }
 
 // open registers a stream. With hasLast, the replay from memory is taken in the same critical
@@ -183,12 +316,15 @@ type opening struct {
 func (h *hub) open(sub subscription, platform bool, last int64, hasLast bool) (*stream, opening, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.draining {
+		return nil, opening{}, errDraining
+	}
 	if err := h.admitLocked(sub.principal); err != nil {
 		return nil, opening{}, err
 	}
 	s := &stream{
 		sub: sub, platform: platform, topics: make(map[string]struct{}, len(sub.topics)),
-		ch: make(chan Entry, h.cfg.buffer), done: make(chan struct{}),
+		done: make(chan struct{}), ready: make(chan struct{}, 1),
 	}
 	for _, t := range sub.topics {
 		s.topics[t] = struct{}{}
@@ -204,9 +340,9 @@ func (h *hub) open(sub subscription, platform bool, last int64, hasLast bool) (*
 		op.memory = true
 		n := len(h.ring)
 		for i := range n {
-			e := h.ring[(h.head+i)%n]
-			if e.ID > last && s.wants(e) {
-				op.replay = append(op.replay, e)
+			f := h.ring[(h.head+i)%n]
+			if f.ID > last && s.wants(f.Entry) {
+				op.replay = append(op.replay, f)
 			}
 		}
 	}
@@ -276,6 +412,47 @@ func (h *hub) endHolder(holder Holder) {
 	}
 }
 
+// watchDrain watches a server's drain signal (httpfw.Draining): once it closes, every stream ends at
+// once. Each signal is watched once; the watch ends with the hub.
+func (h *hub) watchDrain(signal <-chan struct{}) {
+	h.mu.Lock()
+	watched := h.drains[signal]
+	h.drains[signal] = true
+	h.mu.Unlock()
+	if watched {
+		return
+	}
+	go func() {
+		select {
+		case <-signal:
+			h.drain()
+		case <-h.stopped:
+		}
+	}()
+}
+
+// drain ends every open stream at once with the reason drain, in one pass under the lock, and opens
+// no stream after it (push contract section 8: a draining instance ends its streams; the clients
+// reconnect to another instance after the retry, with jitter). Each stream's goroutine sees done
+// closed and returns, so the server's drain does not wait for a write or a heartbeat.
+func (h *hub) drain() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.draining = true
+	n := len(h.all)
+	for s := range h.all {
+		s.ended, s.reason = true, endDrain
+		close(s.done)
+	}
+	clear(h.all)
+	clear(h.byTopic)
+	clear(h.byPrincipal)
+	h.m.open.Set(0)
+	if n > 0 {
+		h.m.ended.With(endDrain).Add(float64(n))
+	}
+}
+
 // openCount returns the number of open streams (tests).
 func (h *hub) openCount() int {
 	h.mu.Lock()
@@ -293,25 +470,23 @@ func (h *hub) lastID() int64 {
 // dispatch hands a page of the log to the streams of each push's topic, in id order. A stream whose
 // buffer is full is ended (no event: a slow client cannot get one); it resumes from its
 // Last-Event-ID like any other drop.
-func (h *hub) dispatch(page []Entry) {
+func (h *hub) dispatch(page []*frame) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for _, e := range page {
-		if e.ID <= h.last {
+	for _, f := range page {
+		if f.ID <= h.last {
 			continue
 		}
-		h.last = e.ID
-		if e.OutboxID != 0 && !h.seen.add(e.OutboxID) {
+		h.last = f.ID
+		if f.OutboxID != 0 && !h.seen.add(f.OutboxID) {
 			continue // logged twice (A2): delivered once
 		}
-		h.remember(e)
-		for s := range h.byTopic[e.Topic] {
-			if !s.accepts(e) {
+		h.remember(f)
+		for s := range h.byTopic[f.Topic] {
+			if !s.accepts(f.Entry) {
 				continue
 			}
-			select {
-			case s.ch <- e:
-			default:
+			if !s.offer(f, h.cfg.buffer) {
 				h.endLocked(s, endSlow)
 			}
 		}
@@ -319,32 +494,53 @@ func (h *hub) dispatch(page []Entry) {
 	h.m.logID.Set(float64(h.last))
 }
 
-// remember keeps e among the push.recent most recent pushes.
-func (h *hub) remember(e Entry) {
+// remember keeps f among the push.recent most recent pushes.
+func (h *hub) remember(f *frame) {
 	switch {
 	case h.cfg.recent == 0:
-		h.from = e.ID
+		h.from = f.ID
 	case len(h.ring) < h.cfg.recent:
-		h.ring = append(h.ring, e)
+		h.ring = append(h.ring, f)
 	default:
 		h.from = h.ring[h.head].ID
-		h.ring[h.head] = e
+		h.ring[h.head] = f
 		h.head = (h.head + 1) % len(h.ring)
 	}
 }
 
-// catchUp reads the log after the last id dispatched until it has everything.
-func (h *hub) catchUp(ctx context.Context) error {
-	for {
+// framesOf encodes a page of the log, once for every stream.
+func framesOf(page []Entry) []*frame {
+	out := make([]*frame, len(page))
+	for i, e := range page {
+		out[i] = newFrame(e)
+	}
+	return out
+}
+
+// isDraining reports whether the drain began.
+func (h *hub) isDraining() bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.draining
+}
+
+// catchUp reads the log after the last id dispatched until it has everything, until stop ends, or
+// until the drain begins (no stream is left to hear it, and the database is not given work while the
+// instance closes its connections); a read under way then is finished, not cancelled (opTimeout).
+func (h *hub) catchUp(stop context.Context) error {
+	for stop.Err() == nil && !h.isDraining() {
+		ctx, cancel := opContext(stop)
 		page, err := h.log.ReadAfter(ctx, h.lastID(), pageSize)
+		cancel()
 		if err != nil {
 			return err
 		}
-		h.dispatch(page)
+		h.dispatch(framesOf(page))
 		if len(page) < pageSize {
 			return nil
 		}
 	}
+	return nil
 }
 
 // poke wakes the hub to read the log.
@@ -358,6 +554,7 @@ func (h *hub) poke() {
 // run follows the log until ctx ends: woken by the driver, and every poll interval in case a
 // wake-up was missed or the driver's connection is down.
 func (h *hub) run(ctx context.Context) {
+	defer h.stopOnce.Do(func() { close(h.stopped) })
 	go h.follow(ctx)
 	tick := time.NewTicker(h.cfg.poll)
 	defer tick.Stop()
@@ -402,18 +599,63 @@ func (h *hub) follow(ctx context.Context) {
 	}
 }
 
-// replayLog writes the stream's pushes after after, up to upto, from the log, page by page. It
-// returns true when the log no longer keeps everything after the cursor: the caller sends a reset.
-// The check follows each read, so a row pruned before the read is never silently skipped.
+// pageRead is one read of the log for replays, shared by every replay that reads after the same id
+// while it is under way: streams resuming together from the same Last-Event-ID (the followers of a
+// broadcast topic) read each page once.
+type pageRead struct {
+	done    chan struct{}
+	page    []Entry // read-only once done
+	trimmed int64
+	err     error
+}
+
+// readPage reads pageSize entries after after, then the log's Trimmed, sharing the read with any
+// replay already reading after the same id. The read is not cancelled with ctx (another stream may be
+// waiting for it); it is bounded by opTimeout.
+func (h *hub) readPage(ctx context.Context, after int64) ([]Entry, int64, error) {
+	h.pmu.Lock()
+	if r, ok := h.pages[after]; ok {
+		h.pmu.Unlock()
+		select {
+		case <-r.done:
+			return r.page, r.trimmed, r.err
+		case <-ctx.Done():
+			return nil, 0, ctx.Err()
+		}
+	}
+	r := &pageRead{done: make(chan struct{})}
+	h.pages[after] = r
+	h.pmu.Unlock()
+	rctx, cancel := opContext(ctx)
+	r.page, r.err = h.log.ReadAfter(rctx, after, pageSize)
+	if r.err == nil {
+		r.trimmed, r.err = h.log.Trimmed(rctx)
+	}
+	cancel()
+	h.pmu.Lock()
+	delete(h.pages, after)
+	h.pmu.Unlock()
+	close(r.done)
+	return r.page, r.trimmed, r.err
+}
+
+// replayLog writes the stream's pushes after after, up to upto, from the log, one page at a time:
+// it holds one page (at most pageSize entries) and a bounded set of recent outbox ids, whatever the
+// length of the replay. It returns true when the log no longer keeps everything after the cursor:
+// the caller sends a reset. The check follows each read, so a row pruned before the read is never
+// silently skipped.
 func (h *hub) replayLog(ctx context.Context, s *stream, after, upto int64, emit func(Entry) error) (bool, error) {
 	cursor := after
-	var seen map[int64]struct{}
+	// an outbox row logged twice (A2) is logged again by the next relay run, within one relay batch
+	// (at most 5000) of the first: remembering the last 10 000 outbox ids is enough
+	seen := outboxSeen{capacity: 10_000, set: map[int64]struct{}{}}
 	for cursor < upto {
-		page, err := h.log.ReadAfter(ctx, cursor, pageSize)
-		if err != nil {
-			return false, err
+		select {
+		case <-s.done:
+			return false, errEnded
+		default:
 		}
-		trimmed, err := h.log.Trimmed(ctx)
+		page, trimmed, err := h.readPage(ctx, cursor)
 		if err != nil {
 			return false, err
 		}
@@ -425,14 +667,8 @@ func (h *hub) replayLog(ctx context.Context, s *stream, after, upto int64, emit 
 				return false, nil
 			}
 			cursor = e.ID
-			if e.OutboxID != 0 {
-				if seen == nil {
-					seen = map[int64]struct{}{}
-				}
-				if _, dup := seen[e.OutboxID]; dup {
-					continue
-				}
-				seen[e.OutboxID] = struct{}{}
+			if e.OutboxID != 0 && !seen.add(e.OutboxID) {
+				continue
 			}
 			if s.wants(e) {
 				if err := emit(e); err != nil {

@@ -4,7 +4,9 @@ Status: **accepted 2026-11-08 (owner rulings in section 16). P1a built in Go (20
 module (`go/push`), the A1 `postgres` driver, `usecase.Push`, tickets, the HTTP routes, the
 conformance vectors and the A1 contract tests; amendments from that build in section 17. A2
 (`redis`) built in Go the same day (`RedisStreamLog`; the contract tests run on both drivers;
-amendment 10 of section 17). Not yet: Java, the SDK readers, the load test.** Drivers: `postgres` (A1) and
+amendment 10 of section 17). First local load test the same day; its four findings fixed in Go
+(amendment 11 of section 17, 2026-11-08). Not yet: Java, the SDK readers, the load test on the
+target.** Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
 
@@ -86,6 +88,11 @@ One run: take up to `push.relay.batch` (default 500) outbox rows in `id` order, 
 log in that order, delete them, commit (A1: one transaction; A2: append, then delete, section 4).
 The relay runs when `fw_push_outbox` is notified and at least every `push.relay.interval` (default
 1 s) in case a notification was missed.
+
+The lock's lease is `push.relay.lease` (default 5 s), refreshed every third of it. A relay that
+stops cleanly releases the lock, so another instance's relay takes over at once (a rolling deploy).
+After a crash the lock is free when the lease ends: pushes committed meanwhile wait in the outbox
+for up to the lease, then arrive, none lost.
 
 **Why a relay.** Log ids must follow commit order: a client that has seen id 41 must never later
 be owed an id 40. A sequence assigned when the row is inserted does not give that, because two
@@ -265,13 +272,17 @@ against their own issuer's keys; an application host knows only its own (section
   `Last-Event-ID` like any other drop. A slow client therefore never slows the others, and loses
   nothing within retention.
 - Each instance keeps the most recent `push.recent` pushes (default 10 000) in memory and replays
-  from there when it can, from the log only when it must. After a deploy or a restart, thousands of
-  clients resuming together are then served from memory, not the database.
+  from there when it can, from the log only when it must. An instance reads the newest
+  `push.recent` pushes of the log into that memory, in one read, before it serves (amended
+  2026-11-08, section 17.11). After a deploy or a restart, thousands of clients resuming together
+  are then served from memory, not the database, on the restarted instance as on one that stayed up;
+  only a client away for longer than `push.recent` pushes reads the log, one page at a time.
 - Limits, each refused with `429 PUSH_LIMIT` at subscribe:
   - `push.max-streams` per instance (default 50 000);
   - `push.max-streams-per-principal` (default 20).
-- An instance that is draining (HTTP contract 13.1) ends its streams, as for any SSE stream, and
-  answers no new subscribes. Its clients reconnect to another instance.
+- An instance that is draining (HTTP contract 13.1) ends its streams, all at once when the drain
+  begins (not at each stream's next write or heartbeat), and answers no new subscribes or streams
+  (`503`). Its clients reconnect to another instance after the `retry`, with jitter.
 
 ## 9. Clients (the SDKs)
 
@@ -299,6 +310,7 @@ The SDKs provide one reader per platform, all following sections 6 and 7:
 | `push.max-data-bytes` | 16384 | 1 to 65536 |
 | `push.max-topics` | 100 | 1 to 1000 |
 | `push.relay.batch` / `push.relay.interval` | 500 / 1s | 1–5000 / 50ms–10s |
+| `push.relay.lease` | 5s | 1s to 60s |
 | `push.stream.buffer` | 256 | 16 to 10 000 |
 | `push.stream.max-lifetime` | 1h | 1m to 24h |
 | `push.recent` | 10000 | 0 to 1 000 000 |
@@ -416,7 +428,8 @@ Smallest calls made where the text was silent or could not be built as written:
    plan whose only steps are pushes is valid (it is not "appends only"). The runner learns
    `push.max-data-bytes` from `usecase.WithPushMaxDataBytes` (`pushes.RunnerOption()`; default 16384).
    `fw_push_published_total` is counted by the relay as it logs (committed pushes only).
-2. **The relay (section 3)** holds its lock (lease 15 s, refreshed) for as long as it runs: one gated
+2. **The relay (section 3)** holds its lock (lease `push.relay.lease`, default 5 s, refreshed every
+   third of it; 15 s fixed until amendment 11) for as long as it runs: one gated
    run listens on `fw_push_outbox` and drains the outbox until shutdown or the lock is lost; another
    instance retries every `push.relay.interval`. It takes rows with `SELECT ... ORDER BY id LIMIT n
    FOR UPDATE`, always from the head of the queue, never after a remembered id.
@@ -464,3 +477,37 @@ Smallest calls made where the text was silent or could not be built as written:
    `max-deleted-entry-id`; ids are `ms * 2^20 + seq`, not contiguous. A1's and A2's `Log` interface is
    the same. The channel for `End` is `fw:push:end` (`PUBLISH`/`SUBSCRIBE`); both keys take an optional
    prefix.
+11. **After the first load test** (Go, 2026-11-08; [results](../push-load-test-results.md), section
+   "After the fixes"). Four findings fixed:
+   - **Relay failover (sections 3 and 10).** The lease is `push.relay.lease`, default 5 s (1 s to
+     60 s), refreshed every third of it; a cleanly stopping relay releases the lock (it did, once its
+     run returned; a run is now let finish instead of being cancelled, see the drain). After a
+     `kill -9` the pushes committed meanwhile arrived up to 12 to 31 s late; now about 5 s. A shorter
+     lease is also lost sooner when the database stalls (the relay then takes the lock again).
+   - **Memory after a restart (section 8).** The hub reads the newest `push.recent + 1` entries in
+     one read before it serves (`Log.Newest`, a method added to the driver interface: A1 `ORDER BY id
+     DESC LIMIT`, A2 `XREVRANGE`). It then holds every push after the oldest of them; when the log
+     holds no more than `push.recent`, every push after the log's `Trimmed` (read after the entries,
+     so a push pruned meanwhile is not counted as held, and a client below `Trimmed` still gets its
+     reset from the log). A replay from the log holds one page (1000 entries) and the last 10 000
+     outbox ids (an A2 duplicate is logged again within one relay batch, at most 5000), never the
+     whole replay; streams resuming from the same id at the same time share each page read.
+     Overlapping reads from different ids are not merged: with the memory warmed they are the
+     clients away for longer than `push.recent` pushes, and a topic filter in the read would serve
+     them better than merging.
+   - **The drain (section 8).** When the server's drain begins, the hub ends every open stream in
+     one pass (reason `drain`), opens no more (`503 UNAVAILABLE`) and stops reading the log (no
+     stream is left to hear it). The slow shutdown was not the streams: shutdown cancelled the hub's
+     read of the log (and could cancel a relay run) half-way, and pgx then abandons the connection
+     after a cancel request to PostgreSQL that it waits up to 15 s to be acknowledged; closing the
+     pool waited for it (`shutdown action overran` on `db`). A log read or relay run under way at
+     shutdown, or when the lock is lost, is now let finish, bounded by 10 s; a relay run that
+     overlaps the next relay's is safe (section 3: `FOR UPDATE`, A1's primary key, A2's outbox ids).
+     On the test Mac, closing tens of thousands of loopback connections at once also stalls the
+     kernel for seconds; that is the machine's, not the module's.
+   - **Memory per stream (section 8).** The stream buffer holds pointers to the pushes, each encoded
+     once as its SSE event and shared by every stream; it grows only as far as the stream falls
+     behind (an idle stream holds none). `push.stream.buffer` still counts pushes and a full buffer
+     still ends the stream. A stream keeps two goroutines (the handler and net/http's read of the
+     connection, which notices a client that left at once); one would need a hijacked connection
+     that notices a closed client only at its next write.

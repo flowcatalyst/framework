@@ -5,7 +5,9 @@ First run of the load test of [push contract](contracts/push.md) section 11, on 
 the server and PostgreSQL share one Mac and its CPU. It is not the contract's target (one 8 GB
 Fargate task, with the database elsewhere), so read the memory figures as the module's, and the
 delay and CPU figures as "what this code costs", not as a capacity promise.** Nothing was tuned or
-optimised; every number is for the module as it stands (commit of branch `feat/push-load`).
+optimised; every number is for the module as it stands (commit of branch `feat/push-load`). The four
+findings were then fixed; the same tests run again are in [After the fixes](#after-the-fixes-2026-11-08),
+at the end, beside the numbers here, which are kept as they were.
 
 ## What was built
 
@@ -232,3 +234,150 @@ recovery time. A 50 000-way broadcast is bounded by the one write per stream (ab
 - The publisher posts to the demo endpoint over HTTP, so publish concurrency is bounded (48 requests
   of up to 8 parallel `PublishAlone` each); at 5 000/s nothing was skipped.
 - Not run: A2 (`redis`), two tasks, the 75 000 step (100 000 was run directly), TLS.
+
+## After the fixes (2026-11-08)
+
+Branch `feat/push-hardening` fixed the four findings above (contract section 17, amendment 11). The
+same commands were run again on the same Mac in the night of 8 to 9 November (load average 5 to 27,
+lower than the first run's 30 to 57), with the generator unchanged. Where a figure depends on the
+machine's load, the old code (`before`, the commit of the first run) was run again beside the new one
+(`after`) in the same hour, alternating; the original numbers stay in the sections above. Results,
+logs and profiles are in the session's work directory, not the repository.
+
+### What changed
+
+| Finding | Fix |
+|---|---|
+| Relay lease 15 s | `push.relay.lease`, default 5 s (1 s to 60 s), refreshed every third. A cleanly stopping relay already released its lock (`locks.With` releases when the run returns); a run is now let finish instead of being cancelled, so it returns within the drain and the release always happens. |
+| Restart served from the log | Before it serves, the hub reads the newest `push.recent + 1` entries in one read (`Log.Newest`) into its memory. A log replay holds one page (1 000 entries) and at most 10 000 outbox ids, never the whole replay, and streams resuming from the same id at once share each page read. |
+| Slow shutdown | The hub ends every stream at once when the server's drain begins, opens none after it, and stops reading the log. A log read or relay run under way at shutdown finishes rather than being cancelled (bounded by 10 s). |
+| 68 KiB per stream | The stream buffer holds pointers to pushes encoded once and shared, and grows only as far as the stream falls behind (an idle stream holds none). Two goroutines per stream are kept (below). |
+
+### Idle connections
+
+One fresh server per step, as before; "after hold" figures. 0 drops, 0 reconnects at every step.
+
+| Streams | Ramp | Server RSS | Go heap in use | Go stacks | Goroutines | Open fds | Server CPU total | **RSS per stream** (before) | Go heap+stack per stream (before) |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10 000 | 0.5 s | 448 MiB | 222 MiB | 186 MiB | 20 327 | 10 328 | 2.2 s | **44.1 KiB** (68.4) | 41.3 KiB (68.0) |
+| 50 000 | 2.5 s | 2 092 MiB | 1 095 MiB | 917 MiB | 100 327 | 50 328 | 11.7 s | **42.5 KiB** (71.1) | 41.1 KiB (67.5) |
+| 100 000 | 7.0 s | 4 133 MiB | 2 277 MiB | 1 857 MiB | 200 024 | 100 224 | 34.3 s | **42.1 KiB** (56.1, compressed) | 42.3 KiB (69.3) |
+
+- **About 42 to 44 KiB per stream, down from 68 to 71 KiB** (Go heap per stream 22 KiB, was 49 KiB;
+  stacks unchanged at about 19 KiB). 100 000 streams are 4.1 GiB, 50 000 are 2.1 GiB. In the heap
+  profile of the 1 000/s fan-out, `hub.open` is now 4.5 % of the heap in use (was 59 %); net/http's
+  bufio reader and writer (about 9.3 KiB per stream) are now the largest item.
+- **Still two goroutines per stream.** The second is net/http's background read of the connection,
+  which is how a client that leaves is noticed at once (its stream ends, its slot under
+  `push.max-streams-per-principal` is freed, nothing more is written to it). Only hijacking the
+  connection removes it, and then a client that leaves is noticed at the next write, up to the 25 s
+  heartbeat later; the module's tests rely on the prompt release. Not done.
+
+### Fan-out (10 000 streams, 10 000 topics)
+
+`before` and `after` run in the same hour; 0 missing, 0 duplicates, 0 drops in all four.
+
+| Rate | Code | Pushes | p50 | p90 | p95 | p99 | p99.9 | max | Server CPU while publishing | Server RSS |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 000/s | before | 61 680 | 2.65 ms | 4.42 ms | 5.37 ms | 7.35 ms | 19.6 ms | 46.3 ms | 16.1 s | 677 to 920 MiB |
+| 1 000/s | after | 61 580 | 2.76 ms | 4.59 ms | 5.37 ms | **7.07 ms** | 14.9 ms | 31.0 ms | 16.2 s | 437 to 605 MiB |
+| 5 000/s | before | 158 700 | 2.27 ms | 3.23 ms | 3.78 ms | 6.05 ms | 14.9 ms | 18.8 ms | 19.5 s | 684 to 1 035 MiB |
+| 5 000/s | after | 158 500 | 2.36 ms | 3.23 ms | 3.78 ms | **6.05 ms** | 16.8 ms | 34.3 ms | 19.8 s | 431 to 620 MiB |
+
+The delay did not regress (a second `after` run at 5 000/s: p99 6.29 ms, max 112 ms). CPU is the
+same; memory is about 250 to 400 MiB lower. The first run's 43 ms p99 at 5 000/s was the loaded
+machine: the old code gives 6 ms on the quieter one.
+
+### Restart under load (`kill -9`, 10 000 streams, 1 000 pushes/s)
+
+Two rounds, `before` and `after` alternating (round 2 of `before` ran while the load average rose to
+27). 0 lost, 0 duplicates in every run.
+
+| | before 1 | before 2 | after 1 | after 2 |
+|---|---:|---:|---:|---:|
+| All streams back | 5.04 s | 6.46 s | 5.14 s | 4.88 s |
+| **Last push over 1 s late** (after the kill) | 11.9 s | 31.2 s | **5.1 s** | **5.8 s** |
+| **Worst delay** | 8.3 s | 24.4 s | **4.0 s** | **3.8 s** |
+| p99 delay | 7.9 s | 8.9 s | 3.8 s | 1.7 s |
+| Replays from memory / from the log | 0 / 9 999 | 0 / 9 999 | **9 983 / 16** | **8 770 / 1 230** |
+| Server RSS (Go heap) 3 s after all were back | 3 244 MiB (1 928) | 3 015 MiB (1 259) | **453 MiB (240)** | **977 MiB (589)** |
+
+- **The relay is back after the lease:** pushes committed while no relay ran now arrive at most
+  about 5 s after the kill (the 5 s lease), not 12 to 31 s.
+- **A restarted instance resumes from memory.** The streams still read from the log are those whose
+  last push is older than the newest `push.recent` (10 000) pushes when they reconnect: here each
+  topic gets one push every 10 s, so the memory holds about 10 s, and the relay's catch-up after the
+  lease pushes the oldest out while the last clients reconnect (4 to 5 s). With `PUSH_RECENT=30000`
+  every resume came from memory (10 000 / 0), the worst delay was 3.8 s and the last late push 5.1 s
+  after the kill.
+- **The storm costs a few hundred MiB, not 3 GiB**, and a log replay holds one page at a time.
+- Earlier `after` runs while the machine was busy (ramps of 6 s and 21 s instead of 0.5 s) were
+  slower: all back in 7.3 s and 4.6 s, worst delays 9.4 s and 29.8 s, from memory 7 492 and 6 664.
+  The slow part there is the CPU-starved server serving 10 000 resumes, not the lease.
+
+### SIGTERM drain (time from SIGTERM to the process's exit)
+
+| Streams | before | after |
+|---:|---|---|
+| 50 000 | 11.5, 11.3, 34.9, 21.2, 9.0, 4.2, 4.7, 21.6 s | 9.5, 4.2, 3.9, 7.5, 2.5, 0.9 s |
+| 100 000 | 24.3 s (first run: about a minute) | 10.7 s, 14.4 s; 135 s on the degraded machine (below) |
+
+**Why it was slow.** Not the streams: they all see the drain at once (a closed channel) and the HTTP
+server's drain finished within a second even before. Two things took the time:
+
+1. **A database query cancelled half-way.** Shutdown cancelled the hub's read of the log (and could
+   cancel a relay run). pgx then abandons the connection: it sends PostgreSQL a cancel request on a
+   new connection and waits up to 15 s for it to be acknowledged, and closing the pool waits for
+   that. A goroutine dump taken 5 s after SIGTERM showed nothing left but `pgxpool.Close` waiting
+   for a connection whose `CancelRequest` was still reading. The old code logged `shutdown action
+   overran app.shutdown.drain` on `db` in 5 of its 9 runs; the new code in none of the 8 whose log
+   was kept (`db` closes in under 2 ms). The first `after` build, which only bounded the reads instead of stopping
+   them at the drain, still overran in 2 of 3 runs: a read that started during the drain timed out.
+2. **Closing tens of thousands of loopback connections at once on macOS.** With both ends of every
+   connection on one Mac, closing them makes the kernel stall the loopback stack for seconds: new
+   connections to PostgreSQL time out (`connect: operation timed out`), 10 000 goroutines sit in
+   `write` or `close` system calls (Go's 10 000-thread limit was hit twice by each build in the
+   10-push broadcast, below, and once by the generator), and 80 000 to 110 000 orphaned sockets in
+   `FIN_WAIT_1`/`CLOSING` took several minutes to clear (the runner waited for them between steps).
+   In the demo most streams are on its seven extra ports, plain `http.Server`s closed by the
+   `demo:ports` shutdown action: that action took 0.6 to 7 s at 50 000 and overran its 10 s at
+   100 000. In the `after` runs, SIGTERM to "loops stopped, server drained" took 0.3 to 0.7 s at
+   50 000 and 0.5 s and 4.0 s at 100 000; the rest is the demo's ports. The 135 s run came after
+   several 100 000-stream steps had left about 110 000 orphaned sockets: its ramp took 52 s instead
+   of 7, the relay lost its lock 7 times while the streams connected, a log read timed out at
+   +7.9 s and the relay loop did not stop within 10 s (it was in a database call that could not
+   connect).
+
+### Broadcast (one topic, 50 000 streams)
+
+| Run | Code | Time to the last receiver, per push |
+|---|---|---|
+| 5 pushes 12 s apart | after | 0.85, 1.34, 2.00, 2.58, 2.68 s (before, first run: 3.21, 3.89, 2.84, 0.80, 0.77 s) |
+| 10 pushes 2 s apart | after, clean run | 1.21, 1.05, 1.27, 1.54, 5.68, 12.96, 10.53, 8.16, 6.06, 3.82 s; 0 missing |
+
+The 10-push run, which overlaps one push's fan-out with the next, overloads this Mac with either
+code: both `before` runs and two of three `after` runs ended with the server killed by `fatal
+error: thread exhaustion` (about 10 000 goroutines blocked in socket `write` system calls on the
+loopback, above), so their pushes from the crash on count as missing (before: 33 985 and 9 344;
+after: 19 137 and 25 703); nothing was missing while a server ran. An isolated 50 000-way push
+still takes about 1 to 3 s to its last receiver here.
+
+### What else the runs showed
+
+- **A 5 s lease is lost more easily.** While the loopback stalled (100 000 streams connecting, the
+  close storms) the relay's lock refresh failed for longer than the lease 12 times in the `after`
+  runs whose logs were kept (`loop lost its lock while running`, 7 of them in the degraded 100 000
+  run); never in the `before` runs with the old 15 s lease. The relay then stops and
+  takes the lock again; a run under way finishes, and the log is still right (contract section 3).
+  On a database that can stall for seconds, set `push.relay.lease` higher; failover after a crash
+  takes up to the lease.
+- **macOS limits, not the module's:** the thread limit and the loopback stall above, and `lsof` once
+  hung for 15 minutes on the server's fds (the fan-out runs since use `-lsof=false`). Linux behaves
+  differently; the Fargate run is still the one that counts.
+
+### For one 8 GB task (estimate, not measured there)
+
+About 42 KiB per stream: 100 000 streams are about 4.1 GiB, so **100 000 per task now fit 8 GB
+with roughly 2x headroom** before the kernel's socket buffers. A restart storm of 10 000 resumes
+costs hundreds of MiB, not 3 GiB. Keep `push.recent` at least the pushes of the longest gap a client
+may have between its last push and its reconnect (the default 10 000 is 10 s at 1 000 pushes/s).

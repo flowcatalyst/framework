@@ -45,6 +45,19 @@ registers the loops `push-relay` (gated) and `push-retention` (every minute, del
 than `push.retention` but never the newest), the informational health check `push:log`, and the hub,
 which starts with the application once it follows the log and stops at shutdown.
 
+The relay's lock has the lease `push.relay.lease` (default 5 s, 1 s to 60 s), refreshed every third
+of it. A relay that stops cleanly releases the lock, so another instance's relay takes over at once
+(a rolling deploy); after a crash the pushes committed meanwhile wait for the lease, then arrive. A
+database that stalls for longer than the lease makes the relay lose the lock and take it again; set
+the lease higher where that happens.
+A relay run, or a read of the log by the hub, that is under way when the application stops is let
+finish (each is bounded by 10 s) rather than cancelled: a query cancelled half-way makes pgx abandon
+its connection, and closing the pool then waits for PostgreSQL to acknowledge the cancel.
+
+Before anything is served, `Build` reads the newest `push.recent` pushes of the log into the hub's
+memory in one read (`Log.Newest`), so the clients of an instance that was just started or restarted
+resume from memory like those of one that stayed up.
+
 ## Publishing
 
 In a use case, `usecase.Push(topic, type, data)` is a plan step, written in the attempt's
@@ -122,11 +135,22 @@ key (`auth.FieldPrincipal.KeyThumbprint`). `StreamExpiry` caps the stream's life
 ## Streams, backpressure and ends
 
 Each stream has a buffer of `push.stream.buffer` pushes; a stream that falls further behind is ended
-without an event and resumes from its `Last-Event-ID`. Each instance keeps `push.recent` pushes in
+without an event and resumes from its `Last-Event-ID`. The buffer holds pointers to the pushes, each
+encoded once as its SSE event and shared by every stream it goes to, and it grows only as far as the
+stream falls behind: an idle stream holds none. Each instance keeps `push.recent` pushes in
 memory and replays from there when it holds everything after the client's id, from the log
-otherwise. Over `push.max-streams` or `push.max-streams-per-principal` a subscribe, or a stream
-opened with a token, is `429 PUSH_LIMIT`. At the token's expiry the stream sends `auth-expired` and
-ends; at the drain it ends.
+otherwise. A replay from the log reads one page of 1000 entries at a time, whatever its length, and
+streams resuming from the same id at the same moment share each page read. Over `push.max-streams`
+or `push.max-streams-per-principal` a subscribe, or a stream opened with a token, is `429
+PUSH_LIMIT`. At the token's expiry the stream sends `auth-expired` and ends. When the server's drain
+begins (`httpfw.Draining`) the hub ends every open stream at once (reason `drain`), opens no more
+(`503`) and stops reading the log; the clients reconnect to another instance after the `retry`, with
+jitter.
+
+A stream is served by two goroutines: the handler's, and net/http's background read of the
+connection, which is how a client that goes away is noticed at once (its slot under the limits is
+freed and nothing more is written to it). Serving it with one would mean hijacking the connection
+and noticing a closed client only at the next write (up to the 25 s heartbeat), so it is not done.
 
 `EndStreams(ctx, Holder{...})` ends the matching streams on every instance with `auth-expired`. For
 field revocations, the `flowcatalyst` module maps each event:
@@ -145,7 +169,7 @@ built yet.
 `Log` is what the relay, the hub and the HTTP layer use, so another driver plugs in without them
 changing: `Append` (in the relay's transaction for A1; a driver outside the database appends at once
 and keeps `Entry.OutboxID`, and the hub drops an outbox id it has already seen), `ReadAfter`,
-`Latest`, `Trimmed` (the highest id deleted: a `Last-Event-ID` below it gets a `reset`), `Prune`,
+`Newest` (the newest entries, oldest first: the hub's memory at start), `Latest`, `Trimmed` (the highest id deleted: a `Last-Event-ID` below it gets a `reset`), `Prune`,
 `Follow` (wake-ups and the ends of streams), `End` and `Ping`. `PostgresLog` is A1: ids `max(id)+1`
 in the relay's transaction, `pg_notify('fw_push_log', <id>)` and `pg_notify('fw_push_end', <holder>)`.
 
@@ -204,5 +228,7 @@ ticket endpoint, a publish endpoint, several listening ports, `/debug/stats` and
 generator (`loadgen`: idle, fan-out, broadcast and restart modes, delay histogram, loss check, with
 `Last-Event-ID` resumes); `loadtest.sh` starts and stops the processes. The first local run, its
 method, the commands and the findings (about 68 KiB per stream, a 15 s relay-lock delay after a
-`kill -9`, resumes after a restart served from the log) are in
-[the load test results](../../push-load-test-results.md).
+`kill -9`, resumes after a restart served from the log, a slow shutdown) are in
+[the load test results](../../push-load-test-results.md), with the same tests after the fixes: about
+42 KiB per stream, pushes back about 5 s after a `kill -9`, resumes from memory, the framework's
+part of a 50 000-stream shutdown under a second.

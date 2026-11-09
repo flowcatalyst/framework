@@ -37,8 +37,13 @@ const takeSQL = `SELECT id, topic, type, coalesce(client, ''), data, created_at
 FROM fw_push_outbox ORDER BY id LIMIT $1 FOR UPDATE`
 
 // once makes one run: take up to batch rows in id order, append them to the log in that order,
-// delete them, commit. It returns how many rows it moved.
-func (r *relay) once(ctx context.Context) (int, error) {
+// delete them, commit. It returns how many rows it moved. A run is not cancelled with ctx (shutdown,
+// or the lock lost): it is let finish, bounded by opTimeout, because a relay run that a second relay
+// overlaps is safe (FOR UPDATE makes it wait; A1's primary key and A2's outbox ids keep the log
+// right), and a cancelled query costs the pool its connection.
+func (r *relay) once(parent context.Context) (int, error) {
+	ctx, cancel := opContext(parent)
+	defer cancel()
 	tx, err := r.db.Pool().BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return 0, fmt.Errorf("push relay: begin: %w", err)
@@ -93,14 +98,15 @@ func (r *relay) once(ctx context.Context) (int, error) {
 	return len(taken), nil
 }
 
-// drain runs until the outbox is empty (a run that moves fewer than a batch).
+// drain runs until the outbox is empty (a run that moves fewer than a batch) or ctx ends.
 func (r *relay) drain(ctx context.Context) error {
-	for {
+	for ctx.Err() == nil {
 		n, err := r.once(ctx)
 		if err != nil || n < r.batch {
 			return err
 		}
 	}
+	return nil
 }
 
 // run is the loop's task, admitted by the lock gate: it keeps relaying while it holds the lock,

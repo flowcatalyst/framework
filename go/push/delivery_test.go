@@ -490,8 +490,8 @@ func TestSlowStreamIsEndedAndResumesLosslessly(t *testing.T) {
 			t.Fatalf("reason %s", r)
 		}
 		var seen []int64
-		for len(slow.ch) > 0 {
-			seen = append(seen, (<-slow.ch).ID)
+		for f := slow.next(); f != nil; f = slow.next() {
+			seen = append(seen, f.ID)
 		}
 		ids := n.settle(20)
 		if fmt.Sprint(seen) != fmt.Sprint(ids[:16]) {

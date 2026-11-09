@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -141,6 +142,20 @@ func (l *RedisStreamLog) ReadAfter(ctx context.Context, after int64, limit int) 
 	if err != nil {
 		return nil, fmt.Errorf("push: read the log: %w", err)
 	}
+	return entriesOf(msgs)
+}
+
+// Newest implements Log: XREVRANGE of the last limit entries, returned oldest first.
+func (l *RedisStreamLog) Newest(ctx context.Context, limit int) ([]Entry, error) {
+	msgs, err := l.client.XRevRangeN(ctx, l.stream, "+", "-", int64(limit)).Result()
+	if err != nil {
+		return nil, fmt.Errorf("push: read the log: %w", err)
+	}
+	slices.Reverse(msgs)
+	return entriesOf(msgs)
+}
+
+func entriesOf(msgs []redis.XMessage) ([]Entry, error) {
 	out := make([]Entry, 0, len(msgs))
 	for _, m := range msgs {
 		e, err := entryOf(m)

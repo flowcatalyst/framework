@@ -69,8 +69,19 @@ func (l *PostgresLog) Append(ctx context.Context, tx pgx.Tx, rows []OutboxRow, a
 
 // ReadAfter implements Log.
 func (l *PostgresLog) ReadAfter(ctx context.Context, after int64, limit int) ([]Entry, error) {
-	rows, err := l.db.Pool().Query(ctx,
+	return l.read(ctx,
 		`SELECT id, topic, type, coalesce(client, ''), data, logged_at FROM fw_push_log WHERE id > $1 ORDER BY id LIMIT $2`, after, limit)
+}
+
+// Newest implements Log: the newest rows by the primary key, returned oldest first.
+func (l *PostgresLog) Newest(ctx context.Context, limit int) ([]Entry, error) {
+	return l.read(ctx, `SELECT id, topic, type, client, data, logged_at FROM (
+SELECT id, topic, type, coalesce(client, '') AS client, data, logged_at FROM fw_push_log ORDER BY id DESC LIMIT $1
+) newest ORDER BY id`, limit)
+}
+
+func (l *PostgresLog) read(ctx context.Context, sql string, args ...any) ([]Entry, error) {
+	rows, err := l.db.Pool().Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("push: read the log: %w", err)
 	}

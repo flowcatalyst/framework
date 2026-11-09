@@ -89,7 +89,18 @@ func run() int {
 		if err != nil {
 			return nil, err
 		}
-		b.OnShutdown("db", func(context.Context) error { db.Close(); return nil })
+		// the shutdown's phases in the log (a load-test measurement): actions run in reverse order,
+		// so this one runs last, after the database closed
+		b.OnShutdown("demo:mark-end", func(context.Context) error {
+			logger.Warn("demo: shutdown actions done")
+			return nil
+		})
+		b.OnShutdown("db", func(context.Context) error {
+			start := time.Now()
+			db.Close()
+			logger.Warn("demo: database closed", slog.Duration("took", time.Since(start)))
+			return nil
+		})
 		if err := database.ApplyMigrations(ctx, db, []fw.MigrationSet{
 			{Module: dblock.ModuleID, Files: dblock.Migrations()},
 			{Module: push.ModuleID, Files: push.Migrations()},
@@ -116,10 +127,20 @@ func run() int {
 		}
 		extra := &extraPorts{handler: srv.Handler(), first: first, count: ports}
 		b.OnStarted("demo:ports", extra.start)
-		b.OnShutdown("demo:ports", extra.stop)
+		b.OnShutdown("demo:ports", func(ctx context.Context) error {
+			start := time.Now()
+			err := extra.stop(ctx)
+			logger.Warn("demo: further ports closed", slog.Duration("took", time.Since(start)))
+			return err
+		})
 		dbg := &debugServer{addr: net.JoinHostPort("127.0.0.1", strconv.Itoa(debug))}
 		b.OnStarted("demo:debug", dbg.start)
 		b.OnShutdown("demo:debug", dbg.stop)
+		// runs first among the actions: the loops have stopped and the server has drained
+		b.OnShutdown("demo:mark-start", func(context.Context) error {
+			logger.Warn("demo: loops stopped and server drained; shutdown actions begin")
+			return nil
+		})
 		return srv, nil
 	}
 	return app.Launch(context.Background(), os.Args[1:], build)

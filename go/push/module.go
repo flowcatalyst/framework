@@ -59,6 +59,7 @@ type Declared struct {
 	maxTopics       config.Handle[int]
 	relayBatch      config.Handle[int]
 	relayInterval   config.Handle[time.Duration]
+	relayLease      config.Handle[time.Duration]
 	streamBuffer    config.Handle[int]
 	maxLifetime     config.Handle[time.Duration]
 	recent          config.Handle[int]
@@ -102,6 +103,9 @@ func Declare(app *fw.App) *Declared {
 		relayInterval: config.Declare(m, config.Duration("push.relay.interval",
 			"Longest wait between relay runs, and the hubs' poll (50ms to 10s).").
 			WithDefault(time.Second).Checked(config.Between(50*time.Millisecond, 10*time.Second))),
+		relayLease: config.Declare(m, config.Duration("push.relay.lease",
+			"The relay lock's lease: how long pushes wait to be logged after the relay's instance died; refreshed every third of it (1s to 60s).").
+			WithDefault(5*time.Second).Checked(config.Between(time.Second, time.Minute))),
 		streamBuffer: config.Declare(m, config.Int("push.stream.buffer",
 			"Pushes a stream may fall behind before it is ended (16 to 10000).").WithDefault(256).Checked(config.Between(16, 10_000))),
 		maxLifetime: config.Declare(m, config.Duration("push.stream.max-lifetime",
@@ -200,7 +204,8 @@ type Pushes struct {
 
 // Build builds the module: db is the default database instance (the outbox, and the A1 log), lk
 // the lock instances (the relay is gated by svc:push-relay on the default one). It registers the
-// loops push-relay (gated) and push-retention, the health check push:log, the hub (started with the
+// loops push-relay (gated, with the lease push.relay.lease; a relay that stops cleanly releases the
+// lock) and push-retention, the health check push:log, the hub (started with the
 // application, stopped at shutdown) and the routes. Every problem found is reported at once as a
 // *fw.StartupError.
 func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *locks.Locks, opts ...Option) (*Pushes, error) {
@@ -239,7 +244,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	}
 	var gate *locks.Gate
 	if lk != nil {
-		if gate, err = locks.ServiceGate(lk, relayLoop, 15*time.Second); err != nil {
+		if gate, err = locks.ServiceGate(lk, relayLoop, d.relayLease.Get(b)); err != nil {
 			bad("", "the relay's lock: "+err.Error())
 		}
 	}
@@ -262,10 +267,6 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	if err != nil {
 		return nil, err
 	}
-	latest, err := log.Latest(ctx)
-	if err != nil {
-		return nil, err
-	}
 	logger := b.Logger(ModuleID)
 	interval := d.relayInterval.Get(b)
 	jwks, err := keys.jwks()
@@ -281,7 +282,11 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	p.hub = newHub(log, logger, b.Clock(), m, hubConfig{
 		buffer: d.streamBuffer.Get(b), recent: d.recent.Get(b), maxStreams: d.maxStreams.Get(b),
 		maxPerPrincipal: d.maxPerPrincipal.Get(b), poll: interval,
-	}, latest)
+	})
+	// the last id and the newest push.recent pushes, before anything is served
+	if err := p.hub.warm(ctx); err != nil {
+		return nil, err
+	}
 	p.relay = &relay{db: db, log: log, clock: b.Clock(), m: m, batch: d.relayBatch.Get(b), interval: interval}
 
 	hubCtx, stopHub := context.WithCancel(context.WithoutCancel(ctx))

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -149,10 +150,15 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 	}
 	sub := subscription{topics: claims.Topics, client: claims.Client, principal: claims.Principal, device: claims.Device, session: claims.Session}
 	last, hasLast := lastEventID(r)
+	drain := httpfw.Draining(r)
+	p.hub.watchDrain(drain)
 	s, op, err := p.hub.open(sub, claims.Client == platformClient, last, hasLast)
 	if err != nil {
-		if errors.Is(err, errLimit) {
+		switch {
+		case errors.Is(err, errLimit):
 			return pushLimit()
+		case errors.Is(err, errDraining):
+			return unavailable()
 		}
 		return err
 	}
@@ -169,8 +175,10 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	sent := op.latest // live pushes at or below it are already accounted for
-	emit := func(e Entry) error {
-		if !out.send(pushEvent(e)) {
+	var scratch []byte
+	emit := func(e Entry) error { // a push replayed from the log, encoded for this stream
+		scratch = appendPushEvent(scratch[:0], e)
+		if !out.write(scratch) || !out.flush() {
 			return io.ErrClosedPipe
 		}
 		p.metrics.delivered.Inc()
@@ -195,17 +203,22 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 		case last == op.latest:
 		case op.memory:
 			p.metrics.replaySource.With("memory").Inc()
-			for _, e := range op.replay {
-				if emit(e) != nil {
+			for _, f := range op.replay {
+				if !out.write(f.wire) {
 					return nil
 				}
 			}
+			if !out.flush() {
+				return nil
+			}
+			p.metrics.delivered.Add(float64(len(op.replay)))
 		default:
 			p.metrics.replaySource.With("log").Inc()
 			reset, err := p.hub.replayLog(r.Context(), s, last, op.latest, emit)
 			switch {
 			case errors.Is(err, io.ErrClosedPipe):
 				return nil
+			case errors.Is(err, errEnded): // the loop below sees why (auth-expired for a revocation)
 			case err != nil:
 				if r.Context().Err() == nil {
 					p.logger.Warn("push: the replay from the log failed; ending the stream", slog.String("error", err.Error()))
@@ -219,12 +232,12 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
+	scratch = nil
 
 	expiry := time.NewTimer(time.Unix(claims.Exp, 0).Sub(p.clock.Now()))
 	defer expiry.Stop()
 	heartbeat := time.NewTicker(streamHeartbeat)
 	defer heartbeat.Stop()
-	drain := httpfw.Draining(r)
 	for {
 		select {
 		case <-r.Context().Done():
@@ -241,15 +254,26 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 			reason = endExpired
 			out.send(authExpiredEvent())
 			return nil
-		case e := <-s.ch:
-			if e.ID <= sent {
-				continue
+		case <-s.ready:
+			// every push waiting, written in id order and flushed once; the frames are shared
+			n := 0
+			for f := s.next(); f != nil; f = s.next() {
+				if f.ID <= sent {
+					continue
+				}
+				if !out.write(f.wire) {
+					return nil
+				}
+				sent = f.ID
+				n++
 			}
-			if emit(e) != nil {
-				return nil
+			if n > 0 {
+				if !out.flush() {
+					return nil
+				}
+				p.metrics.delivered.Add(float64(n))
+				heartbeat.Reset(streamHeartbeat)
 			}
-			sent = e.ID
-			heartbeat.Reset(streamHeartbeat)
 		case <-heartbeat.C:
 			if !out.send(": ping\n\n") {
 				return nil
@@ -258,7 +282,7 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 	}
 }
 
-// sseWriter writes and flushes text; false once the client has gone.
+// sseWriter writes and flushes; false once the client has gone.
 type sseWriter struct {
 	w  io.Writer
 	rc *http.ResponseController
@@ -268,8 +292,16 @@ func (s *sseWriter) send(text string) bool {
 	if _, err := io.WriteString(s.w, text); err != nil {
 		return false
 	}
-	return s.rc.Flush() == nil
+	return s.flush()
 }
+
+// write writes b (a frame's shared bytes: never kept or changed by the writer) without flushing.
+func (s *sseWriter) write(b []byte) bool {
+	_, err := s.w.Write(b)
+	return err == nil
+}
+
+func (s *sseWriter) flush() bool { return s.rc.Flush() == nil }
 
 // The wire (push contract 6.2 and section 7; conformance/push/wire.json pins these bytes).
 
@@ -277,9 +309,21 @@ func retryField(d time.Duration) string {
 	return "retry: " + strconv.FormatInt(d.Milliseconds(), 10) + "\n\n"
 }
 
-func pushEvent(e Entry) string {
-	return "id: " + strconv.FormatInt(e.ID, 10) + "\nevent: " + e.Type + "\ndata: {\"topic\":" + jsonString(e.Topic) +
-		",\"data\":" + e.Data + "}\n\n"
+func pushEvent(e Entry) string { return string(appendPushEvent(nil, e)) }
+
+// appendPushEvent appends the push event of e to b.
+func appendPushEvent(b []byte, e Entry) []byte {
+	topic := jsonString(e.Topic)
+	b = slices.Grow(b, 40+len(e.Type)+len(topic)+len(e.Data))
+	b = append(b, "id: "...)
+	b = strconv.AppendInt(b, e.ID, 10)
+	b = append(b, "\nevent: "...)
+	b = append(b, e.Type...)
+	b = append(b, "\ndata: {\"topic\":"...)
+	b = append(b, topic...)
+	b = append(b, ",\"data\":"...)
+	b = append(b, e.Data...)
+	return append(b, "}\n\n"...)
 }
 
 func subscribedEvent(granted []string, latest int64) string {

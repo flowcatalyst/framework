@@ -69,6 +69,9 @@ type Log interface {
 	Append(ctx context.Context, tx pgx.Tx, rows []OutboxRow, at time.Time) error
 	// ReadAfter returns at most limit entries with an id above after, in id order.
 	ReadAfter(ctx context.Context, after int64, limit int) ([]Entry, error)
+	// Newest returns the newest limit entries (fewer when the log holds fewer), in id order: what a
+	// starting hub puts in its memory of recent pushes, in one read.
+	Newest(ctx context.Context, limit int) ([]Entry, error)
 	// Latest returns the highest id logged (0 when nothing was).
 	Latest(ctx context.Context) (int64, error)
 	// Trimmed returns the highest id the log no longer keeps, or may no longer keep (0 when
