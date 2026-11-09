@@ -15,17 +15,21 @@ import org.postgresql.ds.PGSimpleDataSource;
 final class BareDb {
 
   final PGSimpleDataSource dataSource = new PGSimpleDataSource();
-  final PostgresLog log;
+  final Log log;
   final PushMetrics metrics = new PushMetrics(Metrics.memory(100, () -> 0));
 
   BareDb(PostgresFixture pg) throws IOException {
+    this(pg, new PostgresBackend());
+  }
+
+  BareDb(PostgresFixture pg, LogBackend backend) throws IOException {
     dataSource.setUrl(pg.jdbcUrl());
     dataSource.setUser(pg.username());
     dataSource.setPassword(pg.password());
     try (InputStream sql = BareDb.class.getResourceAsStream("/db/migration/push/V0001__create_push_tables.sql")) {
       pg.execute(new String(sql.readAllBytes(), StandardCharsets.UTF_8));
     }
-    this.log = new PostgresLog(dataSource);
+    this.log = backend.bare(dataSource);
   }
 
   Relay relay(int batch) {

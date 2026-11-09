@@ -23,7 +23,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** The contract test suite of push contract section 14 on the Postgres driver (A1). */
+/**
+ * The contract test suite of push contract section 14. It runs on the Postgres driver (A1) here and
+ * on every other driver in that driver's module, which extends this class and gives its backend.
+ */
 class DeliveryTest {
 
   static PostgresFixture pg;
@@ -49,12 +52,27 @@ class DeliveryTest {
   @AfterEach
   void stopNodes() {
     nodes.forEach(TestNode::close);
+    backend().close();
+  }
+
+  private LogBackend backend;
+
+  /** Where the nodes keep the log; a driver's test class overrides {@link #newBackend}. */
+  final LogBackend backend() {
+    if (backend == null) {
+      backend = newBackend();
+    }
+    return backend;
+  }
+
+  LogBackend newBackend() {
+    return new PostgresBackend();
   }
 
   TestNode node(TestNode.Config config) throws Exception {
     Path sub = dir.resolve("n" + nodes.size());
     java.nio.file.Files.createDirectories(sub);
-    TestNode n = TestNode.start(pg, sub, config);
+    TestNode n = TestNode.start(pg, sub, config.withBackend(backend()));
     nodes.add(n);
     return n;
   }
@@ -101,8 +119,9 @@ class DeliveryTest {
     }
     String f = c.next();
     assertThat(f).contains("\"tx\":\"first\"");
-    assertThat(n.settle(2)).containsExactly(1L, 2L);
-    assertThat(Sse.idOf(f)).isEqualTo(2L);
+    List<Long> both = n.settle(2);
+    assertThat(both.get(0)).isLessThan(both.get(1));
+    assertThat(Sse.idOf(f)).isEqualTo(both.get(1));
   }
 
   @Test
@@ -128,7 +147,10 @@ class DeliveryTest {
       }
     }
     List<Long> ids = n.settle(50);
-    assertThat(ids).isEqualTo(java.util.stream.LongStream.rangeClosed(1, 50).boxed().toList());
+    assertThat(ids).hasSize(50).doesNotHaveDuplicates().isSorted();
+    if (backend().contiguousIds()) {
+      assertThat(ids).isEqualTo(java.util.stream.LongStream.rangeClosed(1, 50).boxed().toList());
+    }
     // every push arrives once, in log order
     List<Long> got = c.ids(50);
     assertThat(got).isEqualTo(ids);
@@ -136,7 +158,7 @@ class DeliveryTest {
 
   @Test
   void theRelayDrainsTheOutboxAsAQueue() throws Exception {
-    BareDb db = new BareDb(pg);
+    BareDb db = new BareDb(pg, backend());
     Relay relay = db.relay(500);
     try (Connection tx1 = db.dataSource.getConnection();
         Connection tx2 = db.dataSource.getConnection()) {
@@ -166,7 +188,7 @@ class DeliveryTest {
   }
 
   private void runKilled(boolean dies) throws Exception {
-    BareDb db = new BareDb(pg);
+    BareDb db = new BareDb(pg, backend());
     Relay first = db.relay(500);
     Relay second = db.relay(500);
     try (Connection tx = db.dataSource.getConnection()) {
@@ -203,10 +225,16 @@ class DeliveryTest {
       assertThat(secondOutcome.get()).isEqualTo(0);
     }
     assertThat(second.once()).as("a further run").isZero();
-    assertThat(db.log.readAfter(0, 100))
-        .extracting(Entry::data)
-        .containsExactly("{\"note\":\"0\"}", "{\"note\":\"1\"}", "{\"note\":\"2\"}");
-    assertThat(db.log.readAfter(0, 100)).extracting(Entry::id).containsExactly(1L, 2L, 3L);
+    // A2 appends before the commit: the relay that died left its three entries, which the hub drops
+    // by outbox id (the same outbox ids, in the same order); every other case logs each row once
+    List<Entry> entries = db.log.readAfter(0, 100);
+    int logged = !backend().contiguousIds() && dies ? 6 : 3;
+    assertThat(entries).as("entries").hasSize(logged);
+    assertThat(entries).extracting(Entry::id).doesNotHaveDuplicates().isSorted();
+    assertThat(entries.stream().map(Entry::data).distinct().toList()).containsExactly("{\"note\":\"0\"}", "{\"note\":\"1\"}", "{\"note\":\"2\"}");
+    if (!backend().contiguousIds()) { // A2 keeps the outbox id
+      assertThat(entries.stream().map(Entry::outboxId).distinct().count()).isEqualTo(3);
+    }
   }
 
   private static Object outcome(Relay relay) {
@@ -275,21 +303,21 @@ class DeliveryTest {
     for (int i = 0; i < 6; i++) {
       n.publish(ACME, "test:order:1", "order.updated", Map.of("n", i));
     }
-    n.settle(6);
-    n.execute("DELETE FROM fw_push_log WHERE id <= 3"); // retention deleted ids 1 to 3
+    List<Long> ids = n.settle(6);
+    n.deleteUpTo(ids.get(2)); // retention deleted the first three
     String token = n.subscribe(List.of("test:order:1"), List.of(), "X-Client", "acme", "X-Principal", "prn_1", "X-Permissions", "test:order:view");
     // older than retention: the log may have deleted a push after id 2
-    Sse old = n.listen(token, "2");
+    Sse old = n.listen(token, ids.get(1).toString());
     old.greeting();
-    assertThat(old.next()).isEqualTo("id: 6\nevent: reset\ndata: {\"reason\":\"retention\",\"latest\":6}\n\n");
+    assertThat(old.next()).isEqualTo(Wire.resetEvent(Wire.RESET_RETENTION, ids.get(5)));
     // equal to the oldest kept minus one: nothing was lost, a plain replay
-    Sse edge = n.listen(token, "3");
+    Sse edge = n.listen(token, ids.get(2).toString());
     edge.greeting();
-    assertThat(edge.ids(3)).containsExactly(4L, 5L, 6L);
+    assertThat(edge.ids(3)).isEqualTo(ids.subList(3, 6));
     // higher than the log has ever had
-    Sse unknown = n.listen(token, "999");
+    Sse unknown = n.listen(token, Long.toString(ids.get(5) + 1000));
     unknown.greeting();
-    assertThat(unknown.next()).isEqualTo("id: 6\nevent: reset\ndata: {\"reason\":\"unknown-id\",\"latest\":6}\n\n");
+    assertThat(unknown.next()).isEqualTo(Wire.resetEvent(Wire.RESET_UNKNOWN_ID, ids.get(5)));
     assertThat(n.counter("fw_push_resets_total", "retention")).isEqualTo(1);
     assertThat(n.counter("fw_push_resets_total", "unknown-id")).isEqualTo(1);
     assertThat(n.counter("fw_push_replay_source_total", "log")).isEqualTo(2);
@@ -299,12 +327,12 @@ class DeliveryTest {
   void anInvalidLastEventIdGetsAResetThenLive() throws Exception {
     TestNode n = node();
     n.publish(ACME, "test:order:1", "order.updated", Map.of());
-    n.settle(1);
+    long only = n.settle(1).get(0);
     String token = n.subscribe(List.of("test:order:1"), List.of(), "X-Client", "acme", "X-Principal", "prn_1", "X-Permissions", "test:order:view");
     for (String bad : new String[] {"12-34", "abc", "-1"}) {
       Sse c = n.listen(token, bad);
       c.greeting();
-      assertThat(c.next()).as(bad).isEqualTo("id: 1\nevent: reset\ndata: {\"reason\":\"unknown-id\",\"latest\":1}\n\n");
+      assertThat(c.next()).as(bad).isEqualTo(Wire.resetEvent(Wire.RESET_UNKNOWN_ID, only));
       c.close();
     }
     // blank is no cursor
@@ -320,14 +348,18 @@ class DeliveryTest {
     for (int i = 0; i < 3; i++) {
       n.publish(ACME, "test:order:1", "order.updated", Map.of("n", i));
     }
-    n.settle(3);
-    assertThat(n.pushes.log().prune(TestNode.BEGIN.plus(Duration.ofDays(2)))).isEqualTo(2);
-    assertThat(n.logIds()).containsExactly(3L);
-    assertThat(n.pushes.log().trimmed()).isEqualTo(2);
+    List<Long> first = n.settle(3);
+    // an edge after every entry (A1 stamps the relay's clock, A2's ids are the Redis server's: the
+    // real time serves both)
+    assertThat(n.pushes.log().prune(java.time.Instant.now().plus(Duration.ofDays(2)))).isEqualTo(2);
+    assertThat(n.logIds()).containsExactly(first.get(2));
+    assertThat(n.pushes.log().trimmed()).isEqualTo(first.get(1));
     n.publish(ACME, "test:order:1", "order.updated", Map.of("n", 4));
-    assertThat(n.settle(2)).containsExactly(3L, 4L);
-    // nothing older than the cut-off is pruned
-    assertThat(n.pushes.log().prune(TestNode.BEGIN.minus(Duration.ofDays(1)))).isZero();
+    List<Long> second = n.settle(2);
+    assertThat(second.get(0)).isEqualTo(first.get(2));
+    assertThat(second.get(1)).isGreaterThan(first.get(2));
+    // nothing older than the cut-off is pruned (an edge at the epoch deletes nothing, A2 included)
+    assertThat(n.pushes.log().prune(java.time.Instant.EPOCH)).isZero();
   }
 
   @Test
@@ -399,6 +431,7 @@ class DeliveryTest {
     n.publish(ClientId.PLATFORM, "test:public", "news", Map.of());
     n.publish(ACME, "test:public", "news", Map.of());
     n.settle(2);
-    assertThat(n.query("SELECT coalesce(client, '<null>') FROM fw_push_log ORDER BY id")).containsExactly("<null>", "acme");
+    assertThat(backend().storedClients(n)).containsExactly(backend().platformClientStored(), "acme");
+    assertThat(n.pushes.log().readAfter(0, 10)).extracting(Entry::client).containsExactly("", "acme");
   }
 }

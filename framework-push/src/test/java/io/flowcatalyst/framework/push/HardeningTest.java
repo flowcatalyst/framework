@@ -19,7 +19,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** The failover, restart and shutdown behaviour of push contract amendment 11, on real hosts. */
+/**
+ * The failover, restart and shutdown behaviour of push contract amendment 11, on real hosts. Like
+ * {@link DeliveryTest}, a driver's module runs it again on its log.
+ */
 class HardeningTest {
 
   static PostgresFixture pg;
@@ -45,12 +48,27 @@ class HardeningTest {
   @AfterEach
   void stopNodes() {
     nodes.forEach(TestNode::close);
+    backend().close();
+  }
+
+  private LogBackend backend;
+
+  /** Where the nodes keep the log; a driver's test class overrides {@link #newBackend}. */
+  final LogBackend backend() {
+    if (backend == null) {
+      backend = newBackend();
+    }
+    return backend;
+  }
+
+  LogBackend newBackend() {
+    return new PostgresBackend();
   }
 
   TestNode node(TestNode.Config config) throws Exception {
     Path sub = dir.resolve("n" + nodes.size());
     Files.createDirectories(sub);
-    TestNode n = TestNode.start(pg, sub, config);
+    TestNode n = TestNode.start(pg, sub, config.withBackend(backend()));
     nodes.add(n);
     return n;
   }
@@ -95,7 +113,7 @@ class HardeningTest {
   /** A relay run under way when the loop stops (or the lock is lost) is let finish. */
   @Test
   void aRelayRunIsNotInterruptedByTheStop() throws Exception {
-    BareDb db = new BareDb(pg);
+    BareDb db = new BareDb(pg, backend());
     Relay relay = db.relay(500);
     try (Connection tx = db.dataSource.getConnection()) {
       tx.setAutoCommit(false);
@@ -160,7 +178,7 @@ class HardeningTest {
     assertThat(small.counter("fw_push_replay_source_total", "memory")).isEqualTo(1);
     assertThat(small.counter("fw_push_replay_source_total", "log")).isEqualTo(1);
 
-    small.execute("DELETE FROM fw_push_log WHERE id <= " + ids.get(1)); // retention took the first two
+    small.deleteUpTo(ids.get(1)); // retention took the first two
     TestNode trimmed = node(TestNode.Config.defaults());
     Sse reset = trimmed.open("acme", List.of("test:order:1"), ids.get(0).toString());
     long latest = ids.get(29);
@@ -174,16 +192,16 @@ class HardeningTest {
 
   @Test
   void theRetentionLoopPrunesTheLog() throws Exception {
-    TestClock clock = new TestClock(TestNode.BEGIN);
+    TestClock clock = new TestClock(backend().clockStart());
     TestNode n = node(TestNode.Config.defaults().withClock(clock).withEnv("PUSH_RETENTION", "10m"));
     n.publish(ACME, "test:order:1", "order.updated", Map.of("n", 1));
     n.publish(ACME, "test:order:1", "order.updated", Map.of("n", 2));
     n.settle(2);
     clock.advance(Duration.ofMinutes(11));
     n.publish(ACME, "test:order:1", "order.updated", Map.of("n", 3));
-    n.settle(3);
+    List<Long> ids = n.settle(3);
     // the loop runs every minute: the same step the loop takes
     n.pushes.log().prune(clock.instant().minus(n.pushes.settings().retention()));
-    assertThat(n.logIds()).containsExactly(3L);
+    assertThat(n.logIds()).containsExactly(ids.get(2));
   }
 }

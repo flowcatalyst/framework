@@ -6,6 +6,16 @@ public final class LogException extends RuntimeException {
   private static final long serialVersionUID = 1L;
 
   /**
+   * Creates the exception for a failure that has no exception of its own (a stored entry that
+   * cannot be read, for example).
+   *
+   * @param message what failed
+   */
+  public LogException(String message) {
+    super(message);
+  }
+
+  /**
    * Creates the exception.
    *
    * @param message what failed

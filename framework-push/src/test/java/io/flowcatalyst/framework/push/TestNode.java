@@ -74,10 +74,11 @@ final class TestNode implements AutoCloseable {
   static final ObjectMapper JSON = JsonMapper.builder().build();
 
   /** What a test node is started with. */
-  record Config(Map<String, String> env, @Nullable TestClock clock, Consumer<PushModule.Builder> push, List<Module> extra, boolean useCases) {
+  record Config(
+      Map<String, String> env, @Nullable TestClock clock, Consumer<PushModule.Builder> push, List<Module> extra, boolean useCases, LogBackend backend) {
 
     static Config defaults() {
-      return new Config(Map.of(), null, b -> {}, List.of(), false);
+      return new Config(Map.of(), null, b -> {}, List.of(), false, new PostgresBackend());
     }
 
     Config withEnv(String... pairs) {
@@ -85,23 +86,27 @@ final class TestNode implements AutoCloseable {
       for (int i = 0; i + 1 < pairs.length; i += 2) {
         m.put(pairs[i], pairs[i + 1]);
       }
-      return new Config(m, clock, push, extra, useCases);
+      return new Config(m, clock, push, extra, useCases, backend);
     }
 
     Config withClock(TestClock c) {
-      return new Config(env, c, push, extra, useCases);
+      return new Config(env, c, push, extra, useCases, backend);
     }
 
     Config withPush(Consumer<PushModule.Builder> p) {
-      return new Config(env, clock, p, extra, useCases);
+      return new Config(env, clock, p, extra, useCases, backend);
     }
 
     Config withExtra(Module... modules) {
-      return new Config(env, clock, push, List.of(modules), useCases);
+      return new Config(env, clock, push, List.of(modules), useCases, backend);
     }
 
     Config withUseCases() {
-      return new Config(env, clock, push, extra, true);
+      return new Config(env, clock, push, extra, true, backend);
+    }
+
+    Config withBackend(LogBackend b) {
+      return new Config(env, clock, push, extra, useCases, b);
     }
   }
 
@@ -151,10 +156,12 @@ final class TestNode implements AutoCloseable {
   final TestClock clock;
   final HttpClient http = HttpClient.newHttpClient();
   final DataSource dataSource;
+  final LogBackend backend;
   private final List<Sse> streams = new ArrayList<>();
 
-  private TestNode(App app, TestClock clock) {
+  private TestNode(App app, TestClock clock, LogBackend backend) {
     this.app = app;
+    this.backend = backend;
     this.pushes = app.get(Pushes.class);
     this.clock = clock;
     this.base = "http://127.0.0.1:" + app.get(HttpServer.class).port();
@@ -171,7 +178,8 @@ final class TestNode implements AutoCloseable {
           instances:
             main: { url: %s, username: %s, password: %s }
         """
-            .formatted(pg.jdbcUrl(), pg.username(), pg.password()));
+            .formatted(pg.jdbcUrl(), pg.username(), pg.password())
+            + config.backend().yaml());
     Map<String, String> env = new LinkedHashMap<>();
     env.put("APP_ENV", "test");
     env.put("HTTP_HOST", "127.0.0.1");
@@ -179,10 +187,12 @@ final class TestNode implements AutoCloseable {
     env.put("PUSH_STREAM_SECRET", SECRET);
     env.put("PUSH_TICKET_KEY", KEY_CURRENT + "," + KEY_PREVIOUS);
     env.put("PUSH_RELAY_INTERVAL", "50ms");
+    env.putAll(config.backend().env());
     env.putAll(config.env());
     TestClock clock = config.clock() == null ? new TestClock(BEGIN) : config.clock();
     PushModule.Builder builder = PushModule.builder().application(new io.flowcatalyst.framework.context.ApplicationCode("test")).authenticate(lookup -> HEADER_AUTH);
     defaultRules(builder);
+    config.backend().builder(builder);
     config.push().accept(builder);
     AppBuilder app =
         App.builder()
@@ -197,11 +207,14 @@ final class TestNode implements AutoCloseable {
       app.module(new OutboxModule()).module(new UseCaseModule());
     }
     app.module(new JettyHttpModule());
+    for (Module m : config.backend().modules()) {
+      app.module(m);
+    }
     for (Module m : config.extra()) {
       app.module(m);
     }
     app.module(builder.build());
-    return new TestNode(app.start(), clock);
+    return new TestNode(app.start(), clock, config.backend());
   }
 
   /** Writes a push for a client in its own transaction. */
@@ -215,7 +228,12 @@ final class TestNode implements AutoCloseable {
 
   /** The log's ids, in order. */
   List<Long> logIds() {
-    return query("SELECT id FROM fw_push_log ORDER BY id").stream().map(Long::parseLong).toList();
+    return pushes.log().readAfter(0, 100_000).stream().map(Entry::id).toList();
+  }
+
+  /** Deletes the log's entries up to an id, as retention would. */
+  void deleteUpTo(long id) {
+    backend.deleteUpTo(this, id);
   }
 
   List<String> query(String sql) {

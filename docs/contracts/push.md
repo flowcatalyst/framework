@@ -9,7 +9,9 @@ amendment 10 of section 17). First local load test the same day; its four findin
 `Last-Event-ID` (amendments 12 and 13 of section 17, 2026-11-09). P2a built in Java (2026-11-09):
 module `framework-push` (the core, the A1 `postgres` driver, `Plan.andPush`, tickets, the routes,
 the four conformance vector files, the contract test suite of section 14 on A1; amendment 14 of
-section 17). Not yet: the Java Redis driver (A2), the SDK readers, the load test on the target.**
+section 17). The Java Redis driver (A2) built the same day: module `framework-push-redis`, the contract
+tests of section 14 on both drivers (amendment 15 of section 17). Not yet: the SDK readers, the load
+test on the target.**
 Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
@@ -557,8 +559,8 @@ Smallest calls made where the text was silent or could not be built as written:
       on the default database and the relay is database-bound, so there is no database-free core to
       split off as `framework-locks` / `framework-locks-database` are. The `Log` interface is public,
       so a Redis driver can be its own module (`framework-push-redis`, like `framework-locks-redis`);
-      `PushModule.Builder.log(provider)` plugs one in, and `push.driver` `redis` without it is a
-      start-up problem. The value `Push` and the writing of the outbox row (`PushOutbox`) are in
+      `PushModule.Builder.redis(provider)` plugs the Redis one in, and `push.driver` `redis` without it
+      is a start-up problem (amendment 15 replaced the first form of this, `Builder.log`). The value `Push` and the writing of the outbox row (`PushOutbox`) are in
       `framework-usecase`, which the runner needs and which `framework-push` depends on, as Go's
       `internal/pushrow` is shared by `usecase` and `push`.
     - **Publishing (section 2).** `plan.andPush(push)` adds a push after the steps added so far (and
@@ -596,3 +598,29 @@ Smallest calls made where the text was silent or could not be built as written:
     - **Configuration (section 10).** The ranges are checked when the module is built and reported
       together as a start-up failure; topic rules are declared on the module's builder (`topic`,
       `publicTopic`), and an open rule is a start-up problem as in Go.
+15. **The Java Redis driver (A2, 2026-11-09).** `framework-push-redis` (`RedisPushLog`, `RedisPushLogs`)
+    is the Go `RedisStreamLog` on Jedis: the same keys (`<prefix>fw:push`, `<prefix>fw:push:end`), the
+    same fields in the same order, the same payload on the end channel, the same id mapping
+    (`ms * 2^20 + seq`, a sequence of 2^20 or more is an error), `Append` as one `MULTI`/`EXEC` of
+    `XADD`, `ReadAfter` by exclusive `XRANGE`, `Newest` by `XREVRANGE`, `Latest` the stream's
+    `last-generated-id`, `Trimmed` its `max-deleted-entry-id`, `Prune` by `XDEL` in batches of 1000
+    that never deletes the newest and sends nothing for an edge at or before the epoch, and `Follow`
+    by `XREAD BLOCK` (one second) plus a subscription to the end channel. The contract tests of
+    section 14 and the wire and replay vectors run on both drivers. What differs from Go, and why:
+    - **Selection.** Go's `RedisClients(clients, prefix)` option becomes
+      `PushModule.Builder.redis(RedisPushLogs.redis(prefix))`: the provider reads `push.redis-instance`
+      (the default Redis instance when unset) from the framework's `RedisConnections`, so `RedisModule`
+      is listed too. `push.driver=redis` without the builder call is a start-up problem naming it;
+      with `push.driver=postgres` the call is ignored, as in Go. `Builder.log(provider)` stays for a
+      driver of your own and wins over both settings. This is amendment 14's "layout" rule, refined:
+      `framework-push` cannot depend on the driver module (no scanning, no reflection for wiring).
+    - **Failure.** `Follow` throws `LogException` where Go returns an error; `LogException` gained a
+      constructor with a message only (a stored entry that cannot be read has no cause).
+    - **Connections.** Jedis has no cancellable blocked read, so the subscription runs on a virtual
+      thread of its own and `follow` unsubscribes and joins it when it returns; a follower holds two
+      pooled connections (the subscription and the `XREAD`).
+    - **Tests.** The Java contract suites take a `LogBackend`; `framework-push` publishes its test
+      classes (a `test-jar`) and `framework-push-redis` extends them. The replay vector's host starts
+      its clock at the epoch for every driver, because A2's vector ids are milliseconds near 0 and a
+      retention edge of "clock less retention" would otherwise prune them while the test loads the log
+      (the same race Go fixed).

@@ -59,7 +59,7 @@ public final class PushModule implements Module {
   public enum Driver {
     /** The table {@code fw_push_log} (A1, the default). */
     POSTGRES,
-    /** A Redis stream (A2); give the driver with {@link Builder#log}. */
+    /** A Redis stream (A2); give the driver with {@link Builder#redis} ({@code framework-push-redis}). */
     REDIS
   }
 
@@ -258,8 +258,15 @@ public final class PushModule implements Module {
     }
     Driver driver = config.get(DRIVER);
     Provider<? extends Log> custom = b.log;
-    if (driver == Driver.REDIS && custom == null) {
-      problems.add(Problem.of(ID, DRIVER.key(), "is redis, but PushModule.builder().log(...) was not given the redis driver"));
+    if (custom == null && driver == Driver.REDIS) {
+      custom = b.redis;
+      if (custom == null) {
+        problems.add(
+            Problem.of(
+                ID,
+                DRIVER.key(),
+                "is redis, but PushModule.builder().redis(...) was not given the redis driver (RedisPushLogs.redis() in framework-push-redis)"));
+      }
     }
     if (!problems.isEmpty() || keys == null || application == null) {
       throw new StartupException(problems);
@@ -335,6 +342,7 @@ public final class PushModule implements Module {
     private String basePath = "";
     private @Nullable Provider<? extends PushAuthenticator> authenticator;
     private @Nullable Provider<? extends Log> log;
+    private @Nullable Provider<? extends Log> redis;
     private final List<Rule> rules = new ArrayList<>();
     private final List<String> problems = new ArrayList<>();
 
@@ -377,7 +385,22 @@ public final class PushModule implements Module {
     }
 
     /**
-     * Gives the log driver, used instead of the Postgres one (the Redis driver, A2).
+     * Gives the Redis log driver (A2), used when {@code push.driver} is {@code redis} and ignored
+     * when it is {@code postgres}: {@code RedisPushLogs.redis()} of {@code framework-push-redis},
+     * which reads the instance {@code push.redis-instance}. Without it, {@code push.driver=redis} is
+     * a start-up problem.
+     *
+     * @param provider the driver
+     * @return this
+     */
+    public Builder redis(Provider<? extends Log> provider) {
+      this.redis = provider;
+      return this;
+    }
+
+    /**
+     * Gives a log driver that is used whatever {@code push.driver} says, instead of the Postgres
+     * one: for a driver of your own. The Redis driver is given with {@link #redis}.
      *
      * @param provider the driver
      * @return this

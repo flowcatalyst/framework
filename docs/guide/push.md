@@ -1,4 +1,4 @@
-<!-- types: PushModule, Pushes, Push, PushOutbox, InvalidPushException, Rule, Holder, Log, Entry, OutboxRow, Follower, PostgresLog, LogException, Credentials, PushAuthenticator, PushAuth, TicketOptions, Denial, PushHolders, Plan, UseCases, FieldPrincipal, AuthContextResolver, HttpServer, Tx -->
+<!-- types: PushModule, Pushes, Push, PushOutbox, InvalidPushException, Rule, Holder, Log, Entry, OutboxRow, Follower, PostgresLog, RedisPushLog, RedisPushLogs, LogException, Credentials, PushAuthenticator, PushAuth, TicketOptions, Denial, PushHolders, Plan, UseCases, FieldPrincipal, AuthContextResolver, HttpServer, Tx -->
 # Push to clients
 
 Module `framework-push` implements the [push contract](../contracts/push.md) (P2a): small messages
@@ -6,8 +6,8 @@ to browsers, apps and field devices listening over server-sent events. A push is
 transaction as the change it announces, so it is sent only if that transaction commits; one relay
 at a time moves committed pushes, in order, into a log every instance follows; each instance's hub
 fans them out to its streams, replays what a reconnecting client missed and sends a `reset` to one
-that was away too long. This build has the `postgres` log driver (A1, `PostgresLog`, the default);
-the Redis driver (A2) is not built in Java yet, and the `Log` interface is what it will implement.
+that was away too long. Two log drivers: `postgres` (A1, `PostgresLog`, the default, in this module) and
+`redis` (A2, `RedisPushLog`, in `framework-push-redis`: [the Redis driver](#the-redis-driver-a2)).
 The Go framework has the same module ([Go: push to clients](go/push.md)); a Java host and a Go host
 on one database share the tables, the notification channels and the relay lock. Snippets come from
 the module's tests (`framework-push/src/test`); the vectors in `conformance/push/` pass.
@@ -178,7 +178,58 @@ id it has already seen), `readAfter`, `newest` (the newest entries, oldest first
 start), `latest`, `trimmed` (the highest id deleted: a `Last-Event-ID` below it gets a `reset`),
 `prune`, `follow` (wake-ups and the ends of streams), `end` and `ping`; failures are a `LogException`.
 `PostgresLog` is A1: ids `max(id)+1` in the relay's transaction, `pg_notify('fw_push_log', <id>)`.
-`PushModule.Builder.log(provider)` gives another driver.
+`PushModule.Builder.redis(provider)` gives the Redis driver, used when `push.driver` is `redis`
+(ignored when it is `postgres`, as in Go); `Builder.log(provider)` gives a driver of your own, used
+whatever `push.driver` says.
+
+### The Redis driver (A2)
+
+Add `framework-push-redis`, list `RedisModule` (the connection is configuration), set
+`push.driver=redis` and give the builder the driver. `push.redis-instance` names the Redis instance
+(the default instance when it is not set). The database still holds the outbox and the relay still
+takes its lock there; only the log moves. From `RedisBackend` in the module's tests, the
+configuration, the environment and the builder call of a node:
+
+```java
+return "redis:\n  instances:\n    default: { url: \"" + redis.url() + "\" }\n";
+return Map.of("PUSH_DRIVER", "redis");
+builder.redis(RedisPushLogs.redis(prefix));
+```
+
+`RedisPushLogs.redis()` has no prefix (production); `redis(prefix)` puts one before both keys, so
+tests give each test its own. `new RedisPushLog(client, prefix)` builds the driver on a Jedis
+`RedisClient` of your own. The driver is the Go framework's `RedisStreamLog` key for key and field
+for field; a Java and a Go host can share one stream (the layout is asserted in
+`RedisPushLogTest.appendWritesTheFieldsOfTheGoDriverInOrder`; a run against a Go host is not part of
+the tests).
+
+- **Keys.** The stream `<prefix>fw:push` (one entry per push with the fields `topic`, `type`,
+  `client`, `data`, `outbox`, `logged_at` in that order; `logged_at` is microseconds since the epoch)
+  and the pub/sub channel `<prefix>fw:push:end`, whose message is the `Holder`'s JSON. Redis 6.2 or
+  Valkey is needed (exclusive range ids); one standalone server.
+- **Ids.** The entry id `ms-seq` is sent as `ms * 2^20 + seq`: ids increase but are not contiguous and
+  are far above the 1, 2, 3 of A1. A sequence of 2^20 or more is a `LogException`, not a wrong id
+  (`RedisPushLogTest.aSequenceOf2To20IsRefused`).
+- **Append** is one `MULTI`/`EXEC` of `XADD` in the relay's order, before the relay deletes the outbox
+  rows. A crash between the two adds the rows again; each entry keeps its outbox id and the hub drops
+  one it has already seen, live and in a replay (`RedisDriverTest.aDuplicateOutboxIdIsDeliveredOnce`).
+  The replay remembers the last 10 000 outbox ids.
+- **Follow** subscribes to the end channel on a virtual thread, calls `grown` and then blocks in
+  `XREAD BLOCK`, one second at a time, so a stopped follower returns within about a second; `grown`
+  is called after every wake-up. When a connection fails `follow` throws a `LogException`; the hub
+  calls it again after a pause (one second, doubling to thirty) and polls every `push.relay.interval`
+  meanwhile (`RedisDriverTest.theHubRecoversWhenRedisDropsItsConnections`). An end published while the
+  subscription is down is lost. The follower holds two pooled connections (the subscription and the
+  read): keep the instance's `pool.max` above that.
+- **Retention.** `prune` deletes (`XDEL`, in batches of 1000) the entries whose id is below the Redis
+  server's millisecond of the edge, never the newest; it does not use `XTRIM`, because only `XDEL`
+  moves `max-deleted-entry-id`, which is what `trimmed` reports. An edge at or before the epoch
+  deletes nothing (it would send the range `(0-0`, which Redis refuses). The ids are the server's
+  clock, so keep it within seconds of the application's. `latest` is the stream's
+  `last-generated-id`, which stays right when the stream is empty or trimmed.
+- **Tests.** `DeliveryTest`, `HardeningTest`, `CursorTest` and the wire and replay vectors of
+  `VectorsTest` are written against `LogBackend`; `framework-push` publishes its test classes and
+  `framework-push-redis` runs them again as `RedisDeliveryTest` and the like, on a Redis container.
 
 ## Metrics
 
@@ -189,5 +240,5 @@ start), `latest`, `trimmed` (the highest id deleted: a `Last-Event-ID` below it 
 
 ## What is not built
 
-The Redis driver (A2), the SDK readers, a sign-out hook, and the load test of contract section 11 on
+The SDK readers, a sign-out hook, and the load test of contract section 11 on
 the target (the Go module has a local run: [load test results](../push-load-test-results.md)).

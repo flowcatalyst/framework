@@ -26,12 +26,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
 
-/** The conformance vectors of conformance/push/ (push contract section 13). */
+/**
+ * The conformance vectors of conformance/push/ (push contract section 13). A driver's module runs
+ * the wire and replay vectors again on its log by extending this class.
+ */
 class VectorsTest {
 
   static PostgresFixture pg;
 
   @TempDir Path dir;
+
+  /** Where the nodes keep the log; a driver's test class overrides this. */
+  LogBackend newBackend() {
+    return new PostgresBackend();
+  }
 
   @BeforeAll
   static void startPostgres() {
@@ -212,13 +220,15 @@ class VectorsTest {
   void wireOverHttp() throws Exception {
     JsonNode v = vector("wire.json");
     pg.reset();
-    try (TestNode n = TestNode.start(pg, dir, TestNode.Config.defaults())) {
+    LogBackend backend = newBackend();
+    try (TestNode n = TestNode.start(pg, dir, TestNode.Config.defaults().withBackend(backend)); backend) {
       String token = n.subscribe(List.of("test:order:ord_1", "test:user:prn_1"), List.of(), "X-Client", "acme", "X-Principal", "prn_1", "X-Permissions", "test:order:view");
       Sse c = n.listen(token, null);
       assertThat(c.next()).isEqualTo(v.path("streamStart").path("bytes").asString());
       assertThat(c.next()).isEqualTo(Wire.subscribedEvent(List.of("test:order:ord_1", "test:user:prn_1"), 0));
       n.publish(TestNode.ACME, "test:order:ord_1", "order.updated", java.util.Map.of("orderId", "ord_1", "version", 7));
-      assertThat(c.next()).isEqualTo("id: 1\nevent: order.updated\ndata: {\"topic\":\"test:order:ord_1\",\"data\":{\"orderId\":\"ord_1\",\"version\":7}}\n\n");
+      long id = n.settle(1).get(0);
+      assertThat(c.next()).isEqualTo("id: " + id + "\nevent: order.updated\ndata: {\"topic\":\"test:order:ord_1\",\"data\":{\"orderId\":\"ord_1\",\"version\":7}}\n\n");
       assertThat(c.response.headers().firstValue("Content-Type")).contains("text/event-stream");
       assertThat(c.response.headers().firstValue("Cache-Control")).contains("no-cache");
       assertThat(c.response.headers().firstValue("X-Accel-Buffering")).contains("no");
@@ -235,21 +245,20 @@ class VectorsTest {
     for (JsonNode c : v.path("cases")) {
       pg.reset();
       // a host whose memory holds nothing, so the replay reads the log; one per case, so that the
-      // live push that ends a case does not move the next case's latest
-      try (TestNode n = TestNode.start(pg, dir.resolve("case-" + c.path("name").asString().hashCode()), TestNode.Config.defaults().withEnv("PUSH_RECENT", "0"))) {
+      // live push that ends a case does not move the next case's latest. Its clock starts at the
+      // epoch, so the retention loop's edge (the clock less push.retention) is before every entry:
+      // the vector's A2 ids are milliseconds near 0, and a prune overlapping the load would delete
+      // some of them and move trimmed
+      LogBackend backend = newBackend();
+      TestNode.Config config = TestNode.Config.defaults().withEnv("PUSH_RECENT", "0").withClock(new TestClock(Instant.EPOCH)).withBackend(backend);
+      try (TestNode n = TestNode.start(pg, dir.resolve("case-" + c.path("name").asString().hashCode()), config);
+          backend) {
+        List<Entry> logged = new ArrayList<>();
         for (JsonNode r : v.path("log")) {
-          String client = r.path("client").isNull() ? null : r.path("client").asString();
-          try (var conn = n.dataSource.getConnection();
-              var ps = conn.prepareStatement("INSERT INTO fw_push_log (id, topic, type, client, data, logged_at) VALUES (?, ?, ?, ?, ?, ?)")) {
-            ps.setLong(1, r.path("id").asLong());
-            ps.setString(2, r.path("topic").asString());
-            ps.setString(3, r.path("type").asString());
-            ps.setString(4, client);
-            ps.setString(5, TestNode.JSON.writeValueAsString(r.path("data")));
-            ps.setTimestamp(6, java.sql.Timestamp.from(TestNode.BEGIN));
-            ps.executeUpdate();
-          }
+          String client = r.path("client").isNull() ? "" : r.path("client").asString();
+          logged.add(new Entry(r.path("id").asLong(), r.path("topic").asString(), r.path("type").asString(), client, TestNode.JSON.writeValueAsString(r.path("data")), TestNode.BEGIN));
         }
+        backend.load(n, logged, trimmed);
         TestNode.await("the hub to follow the log", () -> n.pushes.hub().lastId() == latest);
         assertThat(n.pushes.log().trimmed()).isEqualTo(trimmed);
         List<String> topics = strings(c.path("topics"));

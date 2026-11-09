@@ -36,15 +36,24 @@ class CursorTest {
     pg.close();
   }
 
+  private LogBackend backend;
+
+  /** Where the node keeps the log; a driver's test class overrides {@link #newBackend}. */
+  LogBackend newBackend() {
+    return new PostgresBackend();
+  }
+
   @BeforeEach
   void start() throws Exception {
     pg.reset();
-    n = TestNode.start(pg, dir, TestNode.Config.defaults());
+    backend = newBackend();
+    n = TestNode.start(pg, dir, TestNode.Config.defaults().withBackend(backend));
   }
 
   @AfterEach
   void close() {
     n.close();
+    backend.close();
   }
 
   @Test

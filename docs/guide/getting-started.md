@@ -168,6 +168,8 @@ The modules, and what each is for:
 | `framework-locks` | `LocksModule` (stores named in code; `LockStores.memory()`) | [locks](locks.md) |
 | `framework-locks-database` | `LocksDatabaseModule` (the `fw_lock` migration); `DatabaseLockStores` | [locks](locks.md) |
 | `framework-locks-redis` | none; `RedisLockStores` | [locks](locks.md) |
+| `framework-push` | `PushModule` (the `postgres` log driver) | [push](push.md) |
+| `framework-push-redis` | none; `RedisPushLogs`, given to `PushModule.Builder.redis`; list `RedisModule` too | [push](push.md#the-redis-driver-a2) |
 | `framework-usecase` | `OutboxModule`, `UseCaseModule` | [write path](write-path.md) |
 | `framework-http` | none; the HTTP types and `TestClient`, no server. Depends on `framework-core` and Jackson only ([what it pulls in](http.md#what-framework-http-pulls-in)) | [http](http.md) |
 | `framework-http-jetty` | `JettyHttpModule` | [http](http.md) |
