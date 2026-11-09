@@ -1,0 +1,351 @@
+{
+  "description" : "PUSH outbox rows (docs/push-gateway-spec.md section 6.1; framework push contract section 12, push.driver=platform) as the Go SDK writes them into outbox_messages. Same shapes as outbox.json: each case has the context, the clock, the events, the pushes and the audit entry, and every row read back in insertion order (events, dispatch jobs, pushes, audit row). A push input: id (the row id and the payload's pushId), topic, type, data, clientCode (overrides the writer's), ungrouped (no message group), messageGroup (replaces the topic as the group). The payload members are in the order topic, type, data, clientCode, pushId; data is the object itself. invalidPushes: builder inputs (dataText is the data as JSON text; padBytes makes the data an object of that many bytes) and the refusal code. Kept apart from outbox.json because the framework's writers do not write PUSH outbox rows until push.driver=platform.",
+  "cases" : [ {
+    "name" : "pushes: grouped by topic, an explicit client, ungrouped, a group override, after the event and before the audit row",
+    "now" : "2026-10-08T10:15:33Z",
+    "context" : {
+      "client" : "acme",
+      "correlation" : "corr-5"
+    },
+    "events" : [ {
+      "kind" : "cancelled",
+      "eventId" : "0ABCDEFGHJKMT",
+      "type" : "shop:sales:order:cancelled",
+      "subjectId" : "ord_2",
+      "fields" : {
+        "orderId" : "ord_2",
+        "reason" : "duplicate"
+      }
+    } ],
+    "dispatchJobs" : [ ],
+    "pushes" : [ {
+      "id" : "0PQRSTVWXYZ01",
+      "topic" : "shop:orders:ord_2",
+      "type" : "order.updated",
+      "data" : {
+        "status" : "cancelled",
+        "lines" : 0
+      }
+    }, {
+      "id" : "0PQRSTVWXYZ02",
+      "topic" : "shop:board",
+      "type" : "refresh",
+      "data" : { },
+      "clientCode" : "globex",
+      "ungrouped" : true
+    }, {
+      "id" : "0PQRSTVWXYZ03",
+      "topic" : "shop:orders:ord_2",
+      "type" : "note",
+      "data" : {
+        "text" : "ünï \"q\" <b> & co"
+      },
+      "messageGroup" : "shop:custom"
+    } ],
+    "audit" : {
+      "entityType" : "Order",
+      "entityId" : "ord_2",
+      "operation" : "cancel-order",
+      "source" : "shop:sales"
+    },
+    "rows" : [ {
+      "id" : "0ABCDEFGHJKMT",
+      "type" : "EVENT",
+      "message_group" : "sales:order:ord_2",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 281,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:33.000000Z",
+      "updated_at" : "2026-10-08T10:15:33.000000Z",
+      "payload" : {
+        "specVersion" : "1.0",
+        "type" : "shop:sales:order:cancelled",
+        "source" : "shop:sales",
+        "subject" : "sales.order.ord_2",
+        "data" : {
+          "orderId" : "ord_2",
+          "reason" : "duplicate"
+        },
+        "correlationId" : "corr-5",
+        "deduplicationId" : "0ABCDEFGHJKMT",
+        "messageGroup" : "sales:order:ord_2",
+        "clientCode" : "acme"
+      },
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:sales:order:cancelled\",\"source\":\"shop:sales\",\"subject\":\"sales.order.ord_2\",\"data\":\"{\\\"orderId\\\":\\\"ord_2\\\",\\\"reason\\\":\\\"duplicate\\\"}\",\"correlationId\":\"corr-5\",\"deduplicationId\":\"0ABCDEFGHJKMT\",\"messageGroup\":\"sales:order:ord_2\",\"clientCode\":\"acme\"}"
+    }, {
+      "id" : "0PQRSTVWXYZ01",
+      "type" : "PUSH",
+      "message_group" : "shop:orders:ord_2",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 137,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:33.000000Z",
+      "updated_at" : "2026-10-08T10:15:33.000000Z",
+      "payload" : {
+        "topic" : "shop:orders:ord_2",
+        "type" : "order.updated",
+        "data" : {
+          "status" : "cancelled",
+          "lines" : 0
+        },
+        "clientCode" : "acme",
+        "pushId" : "0PQRSTVWXYZ01"
+      },
+      "payloadText" : "{\"topic\":\"shop:orders:ord_2\",\"type\":\"order.updated\",\"data\":{\"status\":\"cancelled\",\"lines\":0},\"clientCode\":\"acme\",\"pushId\":\"0PQRSTVWXYZ01\"}"
+    }, {
+      "id" : "0PQRSTVWXYZ02",
+      "type" : "PUSH",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 96,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:33.000000Z",
+      "updated_at" : "2026-10-08T10:15:33.000000Z",
+      "payload" : {
+        "topic" : "shop:board",
+        "type" : "refresh",
+        "data" : { },
+        "clientCode" : "globex",
+        "pushId" : "0PQRSTVWXYZ02"
+      },
+      "payloadText" : "{\"topic\":\"shop:board\",\"type\":\"refresh\",\"data\":{},\"clientCode\":\"globex\",\"pushId\":\"0PQRSTVWXYZ02\"}"
+    }, {
+      "id" : "0PQRSTVWXYZ03",
+      "type" : "PUSH",
+      "message_group" : "shop:custom",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 127,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:33.000000Z",
+      "updated_at" : "2026-10-08T10:15:33.000000Z",
+      "payload" : {
+        "topic" : "shop:orders:ord_2",
+        "type" : "note",
+        "data" : {
+          "text" : "ünï \"q\" <b> & co"
+        },
+        "clientCode" : "acme",
+        "pushId" : "0PQRSTVWXYZ03"
+      },
+      "payloadText" : "{\"topic\":\"shop:orders:ord_2\",\"type\":\"note\",\"data\":{\"text\":\"ünï \\\"q\\\" <b> & co\"},\"clientCode\":\"acme\",\"pushId\":\"0PQRSTVWXYZ03\"}"
+    }, {
+      "id" : "<tsid>",
+      "type" : "AUDIT_LOG",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "acme",
+      "payload_size" : 172,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:33.000000Z",
+      "updated_at" : "2026-10-08T10:15:33.000000Z",
+      "payload" : {
+        "entityType" : "Order",
+        "entityId" : "ord_2",
+        "operation" : "cancel-order",
+        "performedAt" : "2026-10-08T10:15:33Z",
+        "source" : "shop:sales",
+        "correlationId" : "corr-5",
+        "clientCode" : "acme"
+      },
+      "payloadText" : "{\"entityType\":\"Order\",\"entityId\":\"ord_2\",\"operation\":\"cancel-order\",\"performedAt\":\"2026-10-08T10:15:33Z\",\"source\":\"shop:sales\",\"correlationId\":\"corr-5\",\"clientCode\":\"acme\"}"
+    } ]
+  }, {
+    "name" : "pushes in the platform's context: no clientCode",
+    "now" : "2026-10-08T10:15:34Z",
+    "context" : {
+      "client" : "_platform",
+      "correlation" : "corr-6"
+    },
+    "events" : [ {
+      "kind" : "cancelled",
+      "eventId" : "0ABCDEFGHJKMV",
+      "type" : "shop:sales:order:cancelled",
+      "subjectId" : "ord_3",
+      "fields" : {
+        "orderId" : "ord_3",
+        "reason" : "sweep"
+      }
+    } ],
+    "dispatchJobs" : [ ],
+    "pushes" : [ {
+      "id" : "0PQRSTVWXYZ04",
+      "topic" : "shop:board:ops",
+      "type" : "refresh",
+      "data" : {
+        "reason" : "sweep"
+      }
+    } ],
+    "audit" : {
+      "entityType" : "Order",
+      "entityId" : "ord_3",
+      "operation" : "sweep-orders",
+      "source" : "shop:sales"
+    },
+    "rows" : [ {
+      "id" : "0ABCDEFGHJKMV",
+      "type" : "EVENT",
+      "message_group" : "sales:order:ord_3",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "_platform",
+      "payload_size" : 282,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:34.000000Z",
+      "updated_at" : "2026-10-08T10:15:34.000000Z",
+      "payload" : {
+        "specVersion" : "1.0",
+        "type" : "shop:sales:order:cancelled",
+        "source" : "shop:sales",
+        "subject" : "sales.order.ord_3",
+        "data" : {
+          "orderId" : "ord_3",
+          "reason" : "sweep"
+        },
+        "correlationId" : "corr-6",
+        "deduplicationId" : "0ABCDEFGHJKMV",
+        "messageGroup" : "sales:order:ord_3",
+        "clientCode" : "_platform"
+      },
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:sales:order:cancelled\",\"source\":\"shop:sales\",\"subject\":\"sales.order.ord_3\",\"data\":\"{\\\"orderId\\\":\\\"ord_3\\\",\\\"reason\\\":\\\"sweep\\\"}\",\"correlationId\":\"corr-6\",\"deduplicationId\":\"0ABCDEFGHJKMV\",\"messageGroup\":\"sales:order:ord_3\",\"clientCode\":\"_platform\"}"
+    }, {
+      "id" : "0PQRSTVWXYZ04",
+      "type" : "PUSH",
+      "message_group" : "shop:board:ops",
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "_platform",
+      "payload_size" : 94,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:34.000000Z",
+      "updated_at" : "2026-10-08T10:15:34.000000Z",
+      "payload" : {
+        "topic" : "shop:board:ops",
+        "type" : "refresh",
+        "data" : {
+          "reason" : "sweep"
+        },
+        "pushId" : "0PQRSTVWXYZ04"
+      },
+      "payloadText" : "{\"topic\":\"shop:board:ops\",\"type\":\"refresh\",\"data\":{\"reason\":\"sweep\"},\"pushId\":\"0PQRSTVWXYZ04\"}"
+    }, {
+      "id" : "<tsid>",
+      "type" : "AUDIT_LOG",
+      "message_group" : null,
+      "status" : 0,
+      "retry_count" : 0,
+      "client_id" : "_platform",
+      "payload_size" : 177,
+      "headers" : null,
+      "error_message" : null,
+      "created_at" : "2026-10-08T10:15:34.000000Z",
+      "updated_at" : "2026-10-08T10:15:34.000000Z",
+      "payload" : {
+        "entityType" : "Order",
+        "entityId" : "ord_3",
+        "operation" : "sweep-orders",
+        "performedAt" : "2026-10-08T10:15:34Z",
+        "source" : "shop:sales",
+        "correlationId" : "corr-6",
+        "clientCode" : "_platform"
+      },
+      "payloadText" : "{\"entityType\":\"Order\",\"entityId\":\"ord_3\",\"operation\":\"sweep-orders\",\"performedAt\":\"2026-10-08T10:15:34Z\",\"source\":\"shop:sales\",\"correlationId\":\"corr-6\",\"clientCode\":\"_platform\"}"
+    } ]
+  } ],
+  "invalidPushes" : [ {
+    "topic" : "Shop:orders",
+    "type" : "order.updated",
+    "data" : { },
+    "code" : "TOPIC_INVALID"
+  }, {
+    "topic" : "shop",
+    "type" : "order.updated",
+    "data" : { },
+    "code" : "TOPIC_INVALID"
+  }, {
+    "topic" : "shop:or ders",
+    "type" : "order.updated",
+    "data" : { },
+    "code" : "TOPIC_INVALID"
+  }, {
+    "topic" : "shop:",
+    "type" : "order.updated",
+    "data" : { },
+    "code" : "TOPIC_INVALID"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "Order.Updated",
+    "data" : { },
+    "code" : "TYPE_INVALID"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "order..updated",
+    "data" : { },
+    "code" : "TYPE_INVALID"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "",
+    "data" : { },
+    "code" : "TYPE_INVALID"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "reset",
+    "data" : { },
+    "code" : "TYPE_RESERVED"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "auth-expired",
+    "data" : { },
+    "code" : "TYPE_RESERVED"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "subscribed",
+    "data" : { },
+    "code" : "TYPE_RESERVED"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "fw.test",
+    "data" : { },
+    "code" : "TYPE_RESERVED"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "order.updated",
+    "dataText" : "[1,2]",
+    "code" : "DATA_NOT_OBJECT"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "order.updated",
+    "dataText" : "\"text\"",
+    "code" : "DATA_NOT_OBJECT"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "order.updated",
+    "dataText" : "null",
+    "code" : "DATA_NOT_OBJECT"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "order.updated",
+    "dataText" : "{\"a\":",
+    "code" : "DATA_INVALID"
+  }, {
+    "topic" : "shop:orders",
+    "type" : "order.updated",
+    "code" : "DATA_TOO_LARGE",
+    "padBytes" : 17000
+  } ]
+}
