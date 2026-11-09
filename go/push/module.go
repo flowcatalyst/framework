@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -368,6 +369,26 @@ func (p *Pushes) PublishAlone(ctx context.Context, cx fw.Context, push Push) err
 	return pgx.BeginTxFunc(ctx, p.db.Pool(), pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
 		return p.Publish(ctx, tx, cx, push)
 	})
+}
+
+// Cursor returns the push cursor for a snapshot (push contract section 9.1): the id of the newest
+// push this instance has dispatched, as a decimal string, "0" for an empty log. An endpoint that
+// returns state a client keeps current by pushes returns the cursor with it, and the client opens
+// its first listen with the cursor as Last-Event-ID (field-js: the lastEventId option of
+// PushStream), so a change committed between the read and the listen is not missed.
+//
+// Call it BEFORE reading the state: before the read transaction takes its snapshot (in a REPEATABLE
+// READ transaction, before its first statement; in READ COMMITTED, before the state query). Every
+// push at or below the cursor was in the log when the cursor was read, and the relay logs a push
+// only after the publishing transaction committed, so the change behind it is visible to a state
+// read that starts afterwards. A change the snapshot lacks therefore has a push above the cursor,
+// and the listen delivers it. A push for a change the snapshot already holds is harmless: pushes
+// are signals to read again.
+//
+// The cursor may lag the log (this instance has not dispatched the newest pushes yet). That is safe,
+// since a lagging cursor only replays more pushes; it costs no I/O.
+func (p *Pushes) Cursor() string {
+	return strconv.FormatInt(p.hub.lastID(), 10)
 }
 
 // TicketOptions binds a ticket further ([Pushes.TicketWith]).

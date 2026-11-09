@@ -298,11 +298,14 @@ func TestReplayVector(t *testing.T) {
 				// the vector's topics are application fulfil's; the stream token is signed here, as a
 				// subscribe would
 				sub := subscription{topics: topics, client: str(c["client"])}
-				last, hasLast := int64(0), c["lastEventId"] != nil
-				if hasLast {
-					last = int64(c["lastEventId"].(float64))
+				lastText := ""
+				switch l := c["lastEventId"].(type) {
+				case float64:
+					lastText = fmt.Sprint(int64(l))
+				case string:
+					lastText = l
 				}
-				got := replayThrough(t, n, sub, last, hasLast)
+				got := replayThrough(t, n, sub, lastText)
 				if !sameJSONValue(got, c["expect"]) {
 					t.Errorf("got %v, want %v", got, c["expect"])
 				}
@@ -351,16 +354,12 @@ func loadLog(t *testing.T, n *node, rows []any, trimmed int64) {
 
 // replayThrough opens a stream on the hub and runs the handler's replay decision (6.2 step 2) over
 // the real log, returning {"ids": [...]} or {"reset": {"reason", "id"}}.
-func replayThrough(t *testing.T, n *node, sub subscription, last int64, hasLast bool) map[string]any {
+func replayThrough(t *testing.T, n *node, sub subscription, lastText string) map[string]any {
 	t.Helper()
 	claims := streamClaims{Client: sub.client, Topics: sub.topics, Exp: n.clock.Now().Add(time.Hour).Unix()}
 	token, err := n.p.tokens.sign(claims)
 	if err != nil {
 		t.Fatal(err)
-	}
-	lastText := ""
-	if hasLast {
-		lastText = fmt.Sprint(last)
 	}
 	c := n.listen(token, lastText)
 	c.greeting()

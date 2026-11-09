@@ -5,7 +5,8 @@ module (`go/push`), the A1 `postgres` driver, `usecase.Push`, tickets, the HTTP 
 conformance vectors and the A1 contract tests; amendments from that build in section 17. A2
 (`redis`) built in Go the same day (`RedisStreamLog`; the contract tests run on both drivers;
 amendment 10 of section 17). First local load test the same day; its four findings fixed in Go
-(amendment 11 of section 17, 2026-11-08). Not yet: Java, the SDK readers, the load test on the
+(amendment 11 of section 17, 2026-11-08). The snapshot cursor (9.1) and the reset for an invalid
+`Last-Event-ID` (amendments 12 and 13 of section 17, 2026-11-09). Not yet: Java, the SDK readers, the load test on the
 target.** Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
@@ -257,7 +258,9 @@ against their own issuer's keys; an application host knows only its own (section
   `event: reset` with `data: {"reason":"retention","latest":<id>}` and the id `latest`, then
   continues live. The client must reload its state from the API. A `Last-Event-ID` **higher** than
   the highest id the host has (the log was rebuilt, or the client talked to another host) gets the
-  same reset with the reason `unknown-id`.
+  same reset with the reason `unknown-id`; so does a `Last-Event-ID` that is present but is not a
+  non-negative integer (the host never starts such a stream live without telling the client). An
+  empty value is no `Last-Event-ID`.
 - **Expiry:** at the stream token's expiry the host sends `event: auth-expired`, data `{}`, and ends
   the stream. The client subscribes again (new token, new tickets if it used them) and resumes with
   its `Last-Event-ID`: nothing is lost. A stream token presented after its expiry is `401`.
@@ -299,6 +302,27 @@ The SDKs provide one reader per platform, all following sections 6 and 7:
 - **Android (field-android):** the same reader in the foreground. In the background a device does
   not hold a stream: a mobile push notification (out of scope here) wakes it, and it resumes with
   its last id.
+
+### 9.1 Snapshot with a cursor
+
+A client loads its state through an ordinary read endpoint and then listens. A change committed
+between the read and the listen would be missed. So the read endpoint also returns the push cursor
+(a push log id, as a decimal string), and the client opens its first listen with it as
+`Last-Event-ID`: it then receives every push after the cursor. Pushes are signals ("read X again"),
+so a push for a change the snapshot already holds is harmless; a missed one is not.
+
+- **The rule:** the host reads the cursor BEFORE it reads the state (before the read transaction
+  takes its snapshot: in a REPEATABLE READ transaction before its first statement, in READ COMMITTED
+  before the state query). Every push at or below the cursor was in the log when the cursor was
+  read, and the relay logs a push only after the publishing transaction committed, so the change
+  behind it is visible to a state read that starts afterwards. A change the snapshot lacks therefore
+  has a push above the cursor.
+- **A cursor that lags the log is correct** (more pushes are replayed), so a host may use its
+  in-memory last id: no I/O. Go: `pushes.Cursor()`; `"0"` for an empty log, which replays everything
+  after 0 (or resets with `retention` if the log has trimmed past it).
+- The endpoint chooses the field name; `pushCursor` is recommended for JSON bodies.
+- The client passes it as `Last-Event-ID` on its first listen (field-js: the `lastEventId` option of
+  `PushStream`). After a `reset` it reloads its state, taking a new cursor with it.
 
 ## 10. Configuration
 
@@ -511,3 +535,12 @@ Smallest calls made where the text was silent or could not be built as written:
      still ends the stream. A stream keeps two goroutines (the handler and net/http's read of the
      connection, which notices a client that left at once); one would need a hijacked connection
      that notices a closed client only at its next write.
+12. **Snapshot cursor (section 9.1, 2026-11-09).** Go `pushes.Cursor()` returns the hub's highest
+    dispatched id as a decimal string ("0" for an empty log), with no context and no error. It is
+    read before the state; a lagging cursor is safe. `Last-Event-ID: 0` works as any other id: it
+    replays everything after 0, or resets with `retention` if the log has trimmed past it.
+13. **Invalid `Last-Event-ID` (section 7, 2026-11-09).** A `Last-Event-ID` (header or `lastEventId`
+    query) that is present but not a non-negative integer (`12-34`, `abc`, `-1`) is answered with
+    `reset` (reason `unknown-id`, id `latest`) after `subscribed`, then the stream continues live.
+    Before, it was treated as absent and the client silently missed changes. An empty or blank value
+    is still no cursor. `conformance/push/replay.json` has the case.

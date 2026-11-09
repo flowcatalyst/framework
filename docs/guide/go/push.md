@@ -99,7 +99,9 @@ the state through the API, with its normal access checks.
 token, its expiry and the granted and denied topics. A topic is granted by a rule for the request's
 Context or by a ticket. `GET {base}/push/stream?st=<token>` is the stream: the `retry` field, a
 `subscribed` event, then the pushes missed since `Last-Event-ID` (the header or `lastEventId`) or a
-`reset`, then the live pushes. `GET {base}/push/keys` is the ticket keys' JWKS. The answers and the
+`reset`, then the live pushes. A `Last-Event-ID` that is present but not a non-negative integer
+(`abc`, `12-34`) gets a `reset` with the reason `unknown-id`, never a silent live start; an empty one
+is no cursor. `GET {base}/push/keys` is the ticket keys' JWKS. The answers and the
 bytes are the contract's (sections 6 and 7) and `conformance/push/wire.json`; the access log never
 records the query string, so the stream token is not logged.
 
@@ -108,6 +110,27 @@ DPoP proof, or the session cookie with its CSRF rule. A request with none of the
 needs a valid ticket, which then names the stream's client. Bad credentials are `401` even with good
 tickets. Any other scheme implements `Authenticator` (a `Credentials` value: the Context, the
 credential's expiry, and for a field worker the DPoP key thumbprint, device and login family).
+
+### Snapshot with a cursor
+
+A client that loads its state from a read endpoint and then listens can miss a change committed
+between the two. Return the push cursor with the state, and have the client open its first listen with
+it as `Last-Event-ID` (field-js: the `lastEventId` option of `PushStream`). Take the cursor BEFORE
+reading the state: every push at or below it was logged before, so its change is in a read that starts
+after; any change the read lacks has a push above the cursor. A cursor that lags the log only replays
+more pushes, so `Cursor` is the hub's in-memory last id and does no I/O. After a `reset` the client
+reloads its state and takes a new cursor.
+
+```go
+func (a *API) getOrder(ctx context.Context, id string) (OrderView, error) {
+	cursor := a.pushes.Cursor() // before the state
+	order, err := a.orders.Find(ctx, id)
+	if err != nil {
+		return OrderView{}, err
+	}
+	return OrderView{Order: order, PushCursor: cursor}, nil // PushCursor `json:"pushCursor"`
+}
+```
 
 ## Rules and tickets
 

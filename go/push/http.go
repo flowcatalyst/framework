@@ -149,7 +149,7 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 		return httpfw.NewError(http.StatusUnauthorized, code, msg)
 	}
 	sub := subscription{topics: claims.Topics, client: claims.Client, principal: claims.Principal, device: claims.Device, session: claims.Session}
-	last, hasLast := lastEventID(r)
+	last, hasLast, badLast := lastEventID(r)
 	drain := httpfw.Draining(r)
 	p.hub.watchDrain(drain)
 	s, op, err := p.hub.open(sub, claims.Client == platformClient, last, hasLast)
@@ -183,6 +183,12 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 		}
 		p.metrics.delivered.Inc()
 		return nil
+	}
+	if badLast { // a cursor that names no push cannot be resumed from: the client reloads its state
+		p.metrics.resets.With(resetUnknownID).Inc()
+		if !out.send(resetEvent(resetUnknownID, op.latest)) {
+			return nil
+		}
 	}
 	if hasLast {
 		switch {
@@ -344,22 +350,24 @@ func jsonString(s string) string {
 }
 
 // lastEventID reads the client's cursor: the Last-Event-ID header, else the lastEventId query
-// parameter (an EventSource cannot set headers). Anything but a non-negative integer is no cursor.
-func lastEventID(r *http.Request) (int64, bool) {
+// parameter (an EventSource cannot set headers). Empty or blank is no cursor (hasLast false). A
+// value that is not a non-negative integer is a cursor that names no push (bad true, hasLast
+// false): the stream is answered with a reset, never silently started live.
+func lastEventID(r *http.Request) (last int64, hasLast, bad bool) {
 	raw := strings.TrimSpace(r.Header.Get("Last-Event-ID"))
 	if raw == "" {
 		v, _, err := httpfw.QueryValue(r, "lastEventId")
 		if err != nil {
-			return 0, false
+			return 0, false, false
 		}
 		raw = strings.TrimSpace(v)
 	}
 	if raw == "" {
-		return 0, false
+		return 0, false, false
 	}
 	n, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || n < 0 {
-		return 0, false
+		return 0, false, true
 	}
-	return n, true
+	return n, true, false
 }

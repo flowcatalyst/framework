@@ -1,5 +1,5 @@
 {
-  "description": "Replay and reset on a resumed stream (push contract 6.2 step 2, sections 5 and 7). 'log' is what the log keeps (ids 5 to 12); 'trimmed' is the highest id retention deleted (A1: the oldest kept minus one), so the log holds everything after it. Each case opens a stream on 'topics' for 'client' ('_platform' is the platform client; a push's client null is the platform client) with a Last-Event-ID (null: none), on a host whose memory holds nothing (push.recent 0, so the replay reads the log). Expected: the ids sent before the live pushes, or a reset with its reason and id ('latest', the highest id the host has). A Last-Event-ID equal to trimmed loses nothing: everything after it is kept.",
+  "description": "Replay and reset on a resumed stream (push contract 6.2 step 2, sections 5 and 7). 'log' is what the log keeps (ids 5 to 12); 'trimmed' is the highest id retention deleted (A1: the oldest kept minus one), so the log holds everything after it. Each case opens a stream on 'topics' for 'client' ('_platform' is the platform client; a push's client null is the platform client) with a Last-Event-ID (null: none; a string is sent as is, and one that is not a non-negative integer gets the unknown-id reset), on a host whose memory holds nothing (push.recent 0, so the replay reads the log). Expected: the ids sent before the live pushes, or a reset with its reason and id ('latest', the highest id the host has). A Last-Event-ID equal to trimmed loses nothing: everything after it is kept.",
   "howToRun": "Load the log (A1: insert the rows with these ids into fw_push_log; trimmed then follows), start the hub, open each case's stream and read what comes after the subscribed event, up to the first live push. Compare the ids, or the reset's reason and id.",
   "trimmed": 4,
   "latest": 12,
@@ -22,6 +22,8 @@
     {"name": "a platform stream hears every client", "topics": ["fulfil:order:1"], "client": "_platform", "lastEventId": 7, "expect": {"ids": [8, 9, 11, 12]}},
     {"name": "several topics, in id order", "topics": ["fulfil:news", "fulfil:order:2"], "client": "acme", "lastEventId": 4, "expect": {"ids": [6, 10]}},
     {"name": "up to date", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 12, "expect": {"ids": []}},
-    {"name": "higher than anything logged here", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 13, "expect": {"reset": {"reason": "unknown-id", "id": 12}}}
+    {"name": "higher than anything logged here", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": 13, "expect": {"reset": {"reason": "unknown-id", "id": 12}}},
+    {"name": "not an id: reset, never a silent live start", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": "12-34", "expect": {"reset": {"reason": "unknown-id", "id": 12}}},
+    {"name": "a negative number is not an id", "topics": ["fulfil:order:1"], "client": "acme", "lastEventId": "-1", "expect": {"reset": {"reason": "unknown-id", "id": 12}}}
   ]
 }
