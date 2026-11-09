@@ -31,6 +31,9 @@ const (
 type subscribeBody struct {
 	Topics  []string `json:"topics"`
 	Tickets []string `json:"tickets"`
+	// Client is the client the subscriber wants the stream for (push contract 17.16); nil when the
+	// member is absent.
+	Client *string `json:"client"`
 }
 
 type subscribeAnswer struct {
@@ -40,12 +43,16 @@ type subscribeAnswer struct {
 	Denied      []Denial `json:"denied"`
 }
 
-func draining(r *http.Request) bool {
+// draining reports whether the request's server began to drain, or the module's own drain ([Pushes.Drain])
+// did.
+func (p *Pushes) draining(r *http.Request) bool {
 	select {
 	case <-httpfw.Draining(r):
 		return true
+	case <-p.drainSignal:
+		return true
 	default:
-		return false
+		return p.hub.isDraining()
 	}
 }
 
@@ -53,13 +60,20 @@ func unavailable() error {
 	return httpfw.NewError(http.StatusServiceUnavailable, "UNAVAILABLE", "the server is shutting down; reconnect to another instance")
 }
 
-func pushLimit() error {
+// pushLimit answers a subscribe or a listen over a limit: the host's, or, naming the scope and the
+// application, an application's (push contract 17.16).
+func pushLimit(err error) error {
+	if ae, ok := errors.AsType[*appLimitError](err); ok {
+		return httpfw.NewError(http.StatusTooManyRequests, "PUSH_LIMIT",
+			"too many push streams of the application "+ae.app+" are open; try again later",
+			httpfw.Detail{Key: "scope", Value: "application"}, httpfw.Detail{Key: "application", Value: ae.app})
+	}
 	return httpfw.NewError(http.StatusTooManyRequests, "PUSH_LIMIT", "too many push streams are open; try again later")
 }
 
 // subscribe is POST {base}/push/subscriptions (push contract 6.1).
 func (p *Pushes) subscribe(w http.ResponseWriter, r *http.Request) error {
-	if draining(r) {
+	if p.draining(r) {
 		return unavailable()
 	}
 	body, err := httpfw.DecodeJSON[subscribeBody](r)
@@ -70,21 +84,35 @@ func (p *Pushes) subscribe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	want := ""
+	if body.Client != nil {
+		if want = *body.Client; !validClient(want) {
+			return httpfw.Validation("client is not a client id: [A-Za-z0-9._-]{1,100}")
+		}
+	}
 	creds, present := Credentials{}, false
-	if p.auth != nil {
-		c, ok, err := p.auth.Authenticate(r)
+	switch a := p.auth.(type) {
+	case nil:
+	case ClientAuthenticator:
+		c, ok, err := a.AuthenticateClient(r, want)
+		if err != nil {
+			return err
+		}
+		creds, present = c, ok
+	default:
+		c, ok, err := a.Authenticate(r)
 		if err != nil {
 			return err
 		}
 		creds, present = c, ok
 	}
 	now := p.clock.Now()
-	d, err := p.granter.decide(topics, body.Tickets, creds, present, now)
+	d, err := p.granter.decideFor(topics, body.Tickets, creds, want, present, now)
 	if err != nil {
 		return err
 	}
-	if err := p.hub.admit(d.sub.principal); err != nil {
-		return pushLimit()
+	if err := p.hub.admit(d.sub.principal, p.appCaps(d.granted)); err != nil {
+		return pushLimit(err)
 	}
 	token, err := p.tokens.sign(streamClaims{
 		Client: d.sub.client, Principal: d.sub.principal, Device: d.sub.device, Session: d.sub.session,
@@ -133,7 +161,7 @@ func (p *Pushes) keys(w http.ResponseWriter, _ *http.Request) error {
 
 // listen is GET {base}/push/stream?st=... (push contract 6.2 and section 7).
 func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
-	if draining(r) {
+	if p.draining(r) {
 		return unavailable()
 	}
 	st, _, err := httpfw.QueryValue(r, "st")
@@ -152,11 +180,11 @@ func (p *Pushes) listen(w http.ResponseWriter, r *http.Request) error {
 	last, hasLast, badLast := lastEventID(r)
 	drain := httpfw.Draining(r)
 	p.hub.watchDrain(drain)
-	s, op, err := p.hub.open(sub, claims.Client == platformClient, last, hasLast)
+	s, op, err := p.hub.openIn(sub, claims.Client == platformClient, last, hasLast, p.appCaps(claims.Topics))
 	if err != nil {
 		switch {
 		case errors.Is(err, errLimit):
-			return pushLimit()
+			return pushLimit(err)
 		case errors.Is(err, errDraining):
 			return unavailable()
 		}

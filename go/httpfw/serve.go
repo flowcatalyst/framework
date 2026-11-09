@@ -82,7 +82,7 @@ func NewServer(b *fw.Boot, d *Declared, tables []*Routes, opts ...Option) (*Serv
 	base := []Option{
 		withCORS(crossOrigin),
 		WithEnvironment(b.Environment()), WithMaxBodyBytes(d.maxBody.Get(b)), WithLogger(log), WithClock(b.Clock()),
-		WithMetrics(b.Metrics()), WithDeclared(d.declaredOperations()...), withDrain(s.drain),
+		WithMetrics(b.Metrics()), WithDeclared(d.declaredOperations()...), WithDrain(s.drain),
 	}
 	disp, err := Compile(all, append(base, opts...)...)
 	if docProblems := d.documentProblems(); len(docProblems) > 0 {

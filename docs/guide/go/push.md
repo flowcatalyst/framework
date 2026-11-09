@@ -1,4 +1,4 @@
-<!-- types: Pushes, Declared, Push, Rule, RuleOption, Option, Driver, Log, Entry, OutboxRow, Holder, Follower, PostgresLog, RedisStreamLog, Credentials, Authenticator, AuthenticatorFunc, TicketOptions, Denial, InvalidPushError -->
+<!-- types: Pushes, Declared, Push, Rule, RuleOption, Option, Driver, Log, Entry, OutboxRow, Holder, Follower, PostgresLog, RedisStreamLog, Credentials, Authenticator, AuthenticatorFunc, TicketOptions, Denial, InvalidPushError, DeclareOption, MultiOption, RuleProvider, TicketKeyResolver, AppLimits, AppLimitProvider, ClientAuthenticator, ClientAuthenticatorFunc, Publication -->
 # Go: push to clients
 
 Package `push` implements the [push contract](../../contracts/push.md) (P1a): small messages to
@@ -154,6 +154,102 @@ bound, _ := n.p.TicketWith(fw.ContextFor(acme), TicketOptions{ProofKey: "jkt-1"}
 A ticket is an EdDSA JWS, valid for two minutes, for the Context's client. `TicketOptions.ProofKey`
 binds it to a device key: the subscribe must then be authenticated with a field token bound to that
 key (`auth.FieldPrincipal.KeyThumbprint`). `StreamExpiry` caps the stream's life.
+
+## Multi-application hosts
+
+A host that serves the topics of many applications, such as the platform's push gateway
+([contract amendment 16](../../contracts/push.md)), builds the module with `MultiApplication`. Go
+only. The rules, the ticket keys and the limits of each application come from providers that the
+host may change while it runs; the module reads them for every subscribe and listen and keeps
+nothing. From `go/push/multi_test.go`:
+
+```go
+func (w *world) multi(extra ...Option) nodeConfig {
+	return nodeConfig{
+		declare:     func(*Declared) {},
+		declareOpts: []DeclareOption{OptionalTicketKey()},
+		opts:        append([]Option{MultiApplication(w, w, AppLimitsFrom(w))}, extra...),
+	}
+}
+```
+
+`w` here is a `RuleProvider` (`Rules(application) []Rule`), a `TicketKeyResolver`
+(`PublicKey(issuer, kid) (ed25519.PublicKey, bool)`) and an `AppLimitProvider`
+(`AppLimits(application) AppLimits`). Each has a `...Func` adapter.
+
+- **Rules.** A topic is granted only by the rules of its own application (its first segment). An
+  application the provider knows nothing of has its topics denied (`TOPIC_FORBIDDEN`), never an error
+  for the whole subscribe. The rules declared on `Declared` are a start-up problem in this mode.
+- **Tickets.** A ticket is checked with the key the resolver gives for its `iss` and `kid` and may
+  grant topics of its issuer's application only. Tickets of several issuers compose in one subscribe;
+  a ticket for another client than the stream's grants nothing (`TICKET_INVALID`).
+  `DeclareWith(app, OptionalTicketKey())` makes `push.ticket.key` optional for a host that mints
+  nothing; `Ticket` then fails and `GET /push/keys` lists no key.
+- **Limits.** `AppLimits{MaxStreams, MaxDataBytes}` per application, with `DefaultAppLimits` as the
+  default (20 000 streams, push.max-data-bytes). A stream counts against every application of its
+  granted topics. Over the limit a subscribe or a listen is `429 PUSH_LIMIT` with
+  `"details":{"scope":"application","application":"beta"}`; the host-wide limits keep their body.
+  `MaxDataBytes` replaces push.max-data-bytes for the application's pushes. Publish rate and the
+  pause are the gateway's, at its ingest.
+
+### The client member
+
+A subscribe body may name the client it wants: `"client": "globex"`. A host whose credentials can act
+for several clients gives `Authenticate` an authenticator that is also a `ClientAuthenticator`; the
+module passes it the client named ("" when none):
+
+```go
+var multiClientAuth = ClientAuthenticatorFunc(func(r *http.Request, client string) (Credentials, bool, error) {
+	list := strings.Split(r.Header.Get("X-Clients"), ",")
+	if r.Header.Get("X-Clients") == "" {
+		return Credentials{}, false, nil
+	}
+	switch {
+	case client == "" && len(list) != 1:
+		return Credentials{}, true, httpfw.Validation("the credential has several clients; name one in client")
+	case client == "":
+		client = list[0]
+	case !slices.Contains(list, client):
+		return Credentials{}, true, httpfw.Forbidden("CLIENT_FORBIDDEN", "the credential cannot use that client")
+	}
+	cx := fw.ContextFor(fw.MustClientID(client)).WithPrincipal(fw.MustPrincipalID("prn_1")).WithPermissions(fw.MustPermission("test:order:view"))
+	return Credentials{Context: cx}, true, nil
+})
+```
+
+For any authenticator the module then requires a named client to equal the Context's client
+(`403 CLIENT_FORBIDDEN`); with `AuthModule` and no `client` nothing changes.
+
+### Without the framework HTTP server
+
+`Pushes.Handler()` serves the three routes under `BasePath` as an `http.Handler`, with the error
+envelope, the body limit and an access log that never records the query. Mount it in the host's own
+router without stripping the prefix, and call `Pushes.Drain()` when the host shuts down: the hub ends
+every stream at once and a subscribe or listen is `503` (the module also drains when the application
+shuts down). `httpfw.WithDrain` is the matching option for any dispatcher. A host that owns the tables
+declares the module with `DeclareWith(app, ExternalMigrations())` and creates them byte for byte from
+`go/push/migrations/V0001__create_push_tables.sql`. From the tests:
+
+```go
+n := startNode(t, fwtest.NewDatabase(t).URL, nodeConfig{handler: true})
+n.p.Drain()
+```
+
+### Publishing a batch
+
+`PublishBatch(ctx, tx, items...)` and `PublishBatchAlone(ctx, items...)` write pushes, each with its
+own client, in one statement: all or none. Every item is checked first.
+
+```go
+err := n.p.PublishBatchAlone(ctx,
+	item(acme, "alpha:feed", "one", map[string]any{}),
+	item(globex, "alpha:feed", "two", map[string]any{}),
+	item(fw.PlatformClient, "beta:feed", "three", map[string]any{}),
+	item(acme, "beta:feed", "four", map[string]any{}),
+)
+```
+
+(`item` builds a `Publication{Context: fw.ContextFor(client), Push: p}`.)
 
 ## Streams, backpressure and ends
 

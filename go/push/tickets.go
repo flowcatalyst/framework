@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/flowcatalyst/framework/go/internal/pushrow"
 )
 
 // Ticket facts of push contract section 6.4.
@@ -181,15 +183,31 @@ type ticket struct {
 
 // ticketCheck is what a ticket is checked against.
 type ticketCheck struct {
-	application string        // the host's application code: the only issuer it knows
+	application string        // the host's application code: the only issuer it knows (single-application hosts)
 	now         time.Time     // the host's clock
 	proofKey    string        // the thumbprint of the request's verified DPoP key, "" for none
 	maxLifetime time.Duration // push.stream.max-lifetime: the default stream-exp is exp + it
+
+	// multi makes the ticket's iss the application whose topics it may grant, and publicKey (set
+	// by the caller) the keys it is verified with, looked up by (iss, kid); application is then
+	// unused (push contract 17.16).
+	multi     bool
+	publicKey func(iss, kid string) (ed25519.PublicKey, bool)
 }
 
-// check verifies one ticket (push contract 6.4). It returns errMalformedTicket for a ticket that is
-// not a JWS compact with a JSON header and JSON claims.
+// check verifies one ticket against this key set, the only issuer being c.application (push
+// contract 6.4).
 func (k *ticketKeys) check(raw string, c ticketCheck) (ticket, error) {
+	c.publicKey = func(_, kid string) (ed25519.PublicKey, bool) {
+		key, ok := k.byKid(kid)
+		return key.public, ok
+	}
+	return checkTicket(raw, c)
+}
+
+// checkTicket verifies one ticket (push contract 6.4). It returns errMalformedTicket for a ticket
+// that is not a JWS compact with a JSON header and JSON claims.
+func checkTicket(raw string, c ticketCheck) (ticket, error) {
 	parts := strings.Split(raw, ".")
 	if len(parts) != 3 || len(raw) > 64*1024 {
 		return ticket{}, errMalformedTicket
@@ -214,14 +232,24 @@ func (k *ticketKeys) check(raw string, c ticketCheck) (ticket, error) {
 		return bad(reasonAlg)
 	}
 	kid, _ := header["kid"].(string)
-	key, ok := k.byKid(kid)
-	if !ok {
+	iss, _ := claims["iss"].(string)
+	application := c.application
+	if c.multi {
+		// the issuer names the application, and so the keys; one that is not an application code
+		// has none
+		if !pushrow.IsApplication(iss) {
+			return bad(reasonIss)
+		}
+		application = iss
+	}
+	pub, ok := c.publicKey(iss, kid)
+	if !ok || len(pub) != ed25519.PublicKeySize { // a resolver's key of the wrong size is no key (Verify panics on it)
 		return bad(reasonKid)
 	}
-	if len(sig) != ed25519.SignatureSize || !ed25519.Verify(key.public, []byte(parts[0]+"."+parts[1]), sig) {
+	if len(sig) != ed25519.SignatureSize || !ed25519.Verify(pub, []byte(parts[0]+"."+parts[1]), sig) {
 		return bad(reasonSignature)
 	}
-	if iss, _ := claims["iss"].(string); iss != c.application {
+	if iss != application {
 		return bad(reasonIss)
 	}
 	if aud, _ := claims["aud"].(string); aud != TicketAudience {
@@ -244,7 +272,7 @@ func (k *ticketKeys) check(raw string, c ticketCheck) (ticket, error) {
 		return bad(reasonTopics)
 	}
 	for _, p := range t.pats {
-		if p.application() != c.application {
+		if p.application() != application {
 			return bad(reasonOutsideIss)
 		}
 	}

@@ -208,8 +208,12 @@ func WithDeclared(ops ...Described) Option {
 	return func(o *options) { o.declared, o.declaredSet = append(o.declared, ops...), true }
 }
 
-// withDrain gives the dispatcher the server's drain signal ([Draining]).
-func withDrain(ch <-chan struct{}) Option { return func(o *options) { o.drain = ch } }
+// WithDrain gives the dispatcher a drain signal, the one [Draining] returns to a handler: the
+// channel is closed when the host begins to shut down. [NewServer] passes its own. A host that
+// serves a dispatcher without a [Server] (a module's Handler mounted in another router) passes the
+// signal of its own shutdown, so a handler that keeps its response open, such as a push stream,
+// ends. Without it the signal is never closed.
+func WithDrain(ch <-chan struct{}) Option { return func(o *options) { o.drain = ch } }
 
 // Compile checks the tables together, seals them and builds the dispatcher. Every problem is
 // reported at once as a *fw.StartupError: a malformed or duplicate route, a route that requires a

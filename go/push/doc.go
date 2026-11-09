@@ -4,7 +4,9 @@
 // one), so it is sent only if that transaction commits; one relay at a time moves the committed
 // pushes, in order, into a log every instance follows (the A1 driver, [PostgresLog], keeps it in
 // fw_push_log); each instance's hub fans them out to its streams by topic and client, replays what
-// a reconnecting client missed and sends a reset to one that was away too long.
+// a reconnecting client missed and sends a reset to one that was away too long. A host that serves
+// many applications (a push gateway) builds the module with [MultiApplication]; see the contract's
+// amendment 16.
 //
 //	pd := push.Declare(app)                                       // in main: settings, migration, rules
 //	pd.Topic("fulfil:order:{id}", push.Requires("fulfil:order:view"))

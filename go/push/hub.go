@@ -42,8 +42,17 @@ var errDraining = errors.New("push: draining")
 // revocation, a slow stream).
 var errEnded = errors.New("push: the stream ended")
 
-// errLimit is a subscribe or a listen over push.max-streams or push.max-streams-per-principal.
+// errLimit is a subscribe or a listen over push.max-streams or push.max-streams-per-principal, or
+// over an application's stream limit (an *appLimitError, which matches it).
 var errLimit = errors.New("push: stream limit")
+
+// appLimitError is a subscribe or a listen over an application's stream limit (push contract 17.16).
+type appLimitError struct{ app string }
+
+func (e *appLimitError) Error() string { return "push: stream limit of application " + e.app }
+
+// Is makes errors.Is(err, errLimit) true.
+func (e *appLimitError) Is(target error) bool { return target == errLimit }
 
 // subscription is what a stream listens to and who holds it: a stream token's claims.
 type subscription struct {
@@ -65,7 +74,8 @@ func newFrame(e Entry) *frame { return &frame{Entry: e, wire: appendPushEvent(ni
 type stream struct {
 	sub      subscription
 	topics   map[string]struct{}
-	platform bool // opened in the platform client's context: hears every client
+	platform bool     // opened in the platform client's context: hears every client
+	apps     []string // the applications of its topics, counted by the hub (multi-application hosts)
 	done     chan struct{}
 	reason   string // why it ended, set before done is closed
 	ended    bool
@@ -196,6 +206,7 @@ func newHubMetrics(reg *metrics.Registry) (*hubMetrics, error) {
 type hubConfig struct {
 	buffer, recent, maxStreams, maxPerPrincipal int
 	poll                                        time.Duration
+	perApp                                      bool // count streams per application (multi-application hosts)
 }
 
 // hub is this instance's view of the log (push contract section 8): it follows the log, keeps the
@@ -215,6 +226,7 @@ type hub struct {
 	seen        outboxSeen
 	byTopic     map[string]map[*stream]struct{}
 	byPrincipal map[string]map[*stream]struct{}
+	byApp       map[string]int // open streams per application; a stream counts once for each it spans
 	all         map[*stream]struct{}
 	draining    bool                     // the server's drain began: every stream ended, none opens
 	drains      map[<-chan struct{}]bool // the servers' drain signals being watched
@@ -233,7 +245,7 @@ func newHub(log Log, logger *slog.Logger, clock fw.Clock, m *hubMetrics, cfg hub
 		log: log, logger: logger, clock: clock, m: m, cfg: cfg,
 		seen:    outboxSeen{capacity: max(cfg.recent, 10_000), set: map[int64]struct{}{}},
 		byTopic: map[string]map[*stream]struct{}{}, byPrincipal: map[string]map[*stream]struct{}{},
-		all: map[*stream]struct{}{}, drains: map[<-chan struct{}]bool{}, wake: make(chan struct{}, 1),
+		byApp: map[string]int{}, all: map[*stream]struct{}{}, drains: map[<-chan struct{}]bool{}, wake: make(chan struct{}, 1),
 		following: make(chan struct{}), stopped: make(chan struct{}), pages: map[int64]*pageRead{},
 	}
 }
@@ -284,22 +296,29 @@ func (h *hub) warm(ctx context.Context) error {
 	return nil
 }
 
-// admitLocked checks the limits of section 8 for one more stream of principal.
-func (h *hub) admitLocked(principal string) error {
+// admitLocked checks the limits of section 8 for one more stream of principal, and the stream limit
+// of each application in caps (17.16).
+func (h *hub) admitLocked(principal string, caps []appCap) error {
 	if len(h.all) >= h.cfg.maxStreams {
 		return errLimit
 	}
 	if principal != "" && len(h.byPrincipal[principal]) >= h.cfg.maxPerPrincipal {
 		return errLimit
 	}
+	for _, c := range caps {
+		if h.byApp[c.app] >= c.max {
+			return &appLimitError{app: c.app}
+		}
+	}
 	return nil
 }
 
-// admit reports whether a subscribe of principal is within the limits now.
-func (h *hub) admit(principal string) error {
+// admit reports whether a subscribe of principal, spanning the applications of caps, is within the
+// limits now.
+func (h *hub) admit(principal string, caps []appCap) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.admitLocked(principal)
+	return h.admitLocked(principal, caps)
 }
 
 // opening is what a stream starts from: the highest id dispatched when it was registered (pushes
@@ -314,12 +333,17 @@ type opening struct {
 // open registers a stream. With hasLast, the replay from memory is taken in the same critical
 // section, so nothing is evicted between deciding and reading.
 func (h *hub) open(sub subscription, platform bool, last int64, hasLast bool) (*stream, opening, error) {
+	return h.openIn(sub, platform, last, hasLast, nil)
+}
+
+// openIn is open within the stream limits of the applications in caps (17.16).
+func (h *hub) openIn(sub subscription, platform bool, last int64, hasLast bool, caps []appCap) (*stream, opening, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.draining {
 		return nil, opening{}, errDraining
 	}
-	if err := h.admitLocked(sub.principal); err != nil {
+	if err := h.admitLocked(sub.principal, caps); err != nil {
 		return nil, opening{}, err
 	}
 	s := &stream{
@@ -332,6 +356,12 @@ func (h *hub) open(sub subscription, platform bool, last int64, hasLast bool) (*
 	}
 	if sub.principal != "" {
 		add(h.byPrincipal, sub.principal, s)
+	}
+	if h.cfg.perApp {
+		s.apps = applicationsOf(sub.topics)
+		for _, a := range s.apps {
+			h.byApp[a]++
+		}
 	}
 	h.all[s] = struct{}{}
 	h.m.open.Set(float64(len(h.all)))
@@ -384,6 +414,11 @@ func (h *hub) endLocked(s *stream, reason string) {
 	}
 	if s.sub.principal != "" {
 		remove(h.byPrincipal, s.sub.principal, s)
+	}
+	for _, a := range s.apps {
+		if h.byApp[a]--; h.byApp[a] <= 0 {
+			delete(h.byApp, a)
+		}
 	}
 	delete(h.all, s)
 	h.m.open.Set(float64(len(h.all)))
@@ -447,6 +482,7 @@ func (h *hub) drain() {
 	clear(h.all)
 	clear(h.byTopic)
 	clear(h.byPrincipal)
+	clear(h.byApp)
 	h.m.open.Set(0)
 	if n > 0 {
 		h.m.ended.With(endDrain).Add(float64(n))

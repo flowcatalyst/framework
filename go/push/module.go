@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -73,6 +75,29 @@ type Declared struct {
 	problems []string
 }
 
+// DeclareOption changes how [DeclareWith] declares the module.
+type DeclareOption func(*declareOptions)
+
+type declareOptions struct {
+	externalMigrations bool
+	optionalTicketKey  bool
+}
+
+// ExternalMigrations leaves the module's migration set out: the host creates fw_push_outbox and
+// fw_push_log itself, byte for byte as go/push/migrations/V0001__create_push_tables.sql (a host
+// with migrations of its own, such as the platform gateway, copies the file into its set). The
+// module then applies nothing and does not check the tables; a missing table fails at the first
+// publish or log read.
+func ExternalMigrations() DeclareOption {
+	return func(o *declareOptions) { o.externalMigrations = true }
+}
+
+// OptionalTicketKey makes push.ticket.key optional, for a host that mints no tickets (a
+// multi-application gateway, [MultiApplication]). Without a key [Pushes.Ticket] fails and
+// GET {base}/push/keys lists no key; a single-application host still needs the key to verify the
+// tickets it receives, and Build reports its absence.
+func OptionalTicketKey() DeclareOption { return func(o *declareOptions) { o.optionalTicketKey = true } }
+
 func atLeastOne(v int) string {
 	if v < 1 {
 		return fmt.Sprintf("must be at least 1, was %d", v)
@@ -83,10 +108,24 @@ func atLeastOne(v int) string {
 // Declare declares the push module (push contract section 10): the settings push.*, the claim on
 // the configuration component "push" (a misspelt key under it fails start-up) and the migration set
 // (module push, applied to the default database instance).
-func Declare(app *fw.App) *Declared {
+func Declare(app *fw.App) *Declared { return DeclareWith(app) }
+
+// DeclareWith is [Declare] with options: [ExternalMigrations], [OptionalTicketKey].
+func DeclareWith(app *fw.App, opts ...DeclareOption) *Declared {
+	var do declareOptions
+	for _, f := range opts {
+		f(&do)
+	}
 	m := app.Module(ModuleID)
 	m.ClaimComponent("push")
-	m.Migrations(Migrations())
+	if !do.externalMigrations {
+		m.Migrations(Migrations())
+	}
+	ticketKey := config.SecretValue("push.ticket.key",
+		"Ticket signing keys: <kid>:<base64url of a 32-byte Ed25519 seed>, comma-separated, the current key first, then the previous one.")
+	if !do.optionalTicketKey {
+		ticketKey = ticketKey.Required()
+	}
 	return &Declared{
 		driver: config.Declare(m, config.Enum("push.driver", "Where the push log lives: postgres (fw_push_log) or redis (a Redis stream).",
 			DriverPostgres, DriverRedis).WithDefault(DriverPostgres)),
@@ -119,8 +158,7 @@ func Declare(app *fw.App) *Declared {
 			"Most streams of one principal on one instance (at least 1).").WithDefault(20).Checked(atLeastOne)),
 		streamSecret: config.Declare(m, config.SecretValue("push.stream.secret",
 			"The key that signs stream tokens (HMAC-SHA256), at least 32 characters, the same on every instance.").Required()),
-		ticketKey: config.Declare(m, config.SecretValue("push.ticket.key",
-			"Ticket signing keys: <kid>:<base64url of a 32-byte Ed25519 seed>, comma-separated, the current key first, then the previous one.").Required()),
+		ticketKey: config.Declare(m, ticketKey),
 	}
 }
 
@@ -158,6 +196,7 @@ type options struct {
 	app      string
 	base     string
 	redisLog func(ctx context.Context, b *fw.Boot, instance string) (Log, error)
+	multi    *multiApp
 }
 
 // Authenticate sets how a subscribe request is authenticated: [AuthModule] for the auth module.
@@ -201,6 +240,10 @@ type Pushes struct {
 	metrics *hubMetrics
 	cfg     settings
 	routes  *httpfw.Routes
+
+	multi       *multiApp // non-nil: many applications ([MultiApplication])
+	drainSignal chan struct{}
+	drainOnce   sync.Once
 }
 
 // Build builds the module: db is the default database instance (the outbox, and the A1 log), lk
@@ -221,12 +264,20 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	for _, msg := range d.problems {
 		bad("", msg)
 	}
-	if !pushrow.IsApplication(o.app) {
+	if !pushrow.IsApplication(o.app) && o.multi == nil {
 		bad("", "the application code must match [a-z][a-z0-9-]*: "+o.app)
 	}
 	for _, r := range d.rules {
-		if r.pat.application() != o.app {
+		if o.multi == nil && r.pat.application() != o.app {
 			bad("", fmt.Sprintf("push rule %s: a topic starts with the application's code (%s)", r.Pattern(), o.app))
+		}
+	}
+	if o.multi != nil {
+		if o.multi.rules == nil || o.multi.keys == nil {
+			bad("", errNoProviders.Error())
+		}
+		if len(d.rules) > 0 {
+			bad("", "a multi-application host takes its rules from the RuleProvider only; the rules declared on push.Declared are not used")
 		}
 	}
 	if o.base != "" && (!strings.HasPrefix(o.base, "/") || strings.HasSuffix(o.base, "/")) {
@@ -239,9 +290,12 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	if len(secret) < 32 {
 		bad("push.stream.secret", "must be at least 32 characters")
 	}
-	keys, err := parseTicketKeys(d.ticketKey.Get(b).Reveal())
-	if err != nil {
-		bad("push.ticket.key", err.Error())
+	var keys *ticketKeys
+	var err error
+	if text, set := d.ticketKey.Lookup(b); o.multi == nil || (set && text.Reveal() != "") {
+		if keys, err = parseTicketKeys(d.ticketKey.Get(b).Reveal()); err != nil {
+			bad("push.ticket.key", err.Error())
+		}
 	}
 	var gate *locks.Gate
 	if lk != nil {
@@ -253,7 +307,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	if driver == DriverRedis && o.redisLog == nil {
 		bad("push.driver", "is redis, but Build was not given push.RedisLog(...)")
 	}
-	if len(problems) > 0 || keys == nil {
+	if len(problems) > 0 || (keys == nil && o.multi == nil) {
 		return nil, &fw.StartupError{Problems: problems}
 	}
 
@@ -270,19 +324,22 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	}
 	logger := b.Logger(ModuleID)
 	interval := d.relayInterval.Get(b)
-	jwks, err := keys.jwks()
-	if err != nil {
-		return nil, err
+	jwks := []byte(`{"keys":[]}`) // a multi-application host that mints nothing has no key to list
+	if keys != nil {
+		if jwks, err = keys.jwks(); err != nil {
+			return nil, err
+		}
 	}
 	p := &Pushes{
 		app: o.app, db: db, log: log, auth: o.auth, clock: b.Clock(), logger: logger, metrics: m,
 		tokens: streamTokens{secret: []byte(secret)}, keysSet: keys, jwks: jwks,
 		cfg:     settings{maxData: d.maxDataBytes.Get(b), maxTopics: d.maxTopics.Get(b), retention: d.retention.Get(b)},
-		granter: &granter{application: o.app, rules: append([]Rule(nil), d.rules...), keys: keys, maxLifetime: d.maxLifetime.Get(b)},
+		granter: &granter{application: o.app, rules: append([]Rule(nil), d.rules...), keys: keys, maxLifetime: d.maxLifetime.Get(b), multi: o.multi},
+		multi:   o.multi, drainSignal: make(chan struct{}),
 	}
 	p.hub = newHub(log, logger, b.Clock(), m, hubConfig{
 		buffer: d.streamBuffer.Get(b), recent: d.recent.Get(b), maxStreams: d.maxStreams.Get(b),
-		maxPerPrincipal: d.maxPerPrincipal.Get(b), poll: interval,
+		maxPerPrincipal: d.maxPerPrincipal.Get(b), poll: interval, perApp: o.multi != nil,
 	})
 	// the last id and the newest push.recent pushes, before anything is served
 	if err := p.hub.warm(ctx); err != nil {
@@ -313,6 +370,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 		return nil
 	})
 	b.OnShutdown("push:hub", func(context.Context) error {
+		p.Drain() // a host that serves Handler has no server to begin the drain: end its streams now
 		stopHub()
 		if hubStarted.Load() {
 			<-hubDone
@@ -358,10 +416,87 @@ func (p *Pushes) Publish(ctx context.Context, tx pgx.Tx, cx fw.Context, push Pus
 	if push.IsZero() {
 		return errors.New("push: Publish of the zero Push (use push.New)")
 	}
-	if len(push.data) > p.cfg.maxData {
-		return &InvalidPushError{Reason: pushrow.DataTooLarge, Message: fmt.Sprintf("the data is %d bytes, more than %d (push.max-data-bytes)", len(push.data), p.cfg.maxData)}
+	if err := p.checkSize(push); err != nil {
+		return err
 	}
 	return pushrow.Insert(ctx, tx, push.topic, push.typ, cx.Client(), push.data, p.clock.Now())
+}
+
+// checkSize refuses data over the limit: push.max-data-bytes, or on a multi-application host the
+// application's own ([AppLimits.MaxDataBytes]).
+func (p *Pushes) checkSize(push Push) error {
+	limit := p.maxDataFor(push.topic)
+	if len(push.data) <= limit {
+		return nil
+	}
+	which := "push.max-data-bytes"
+	if p.multi != nil {
+		which = "the limit of application " + applicationOf(push.topic)
+	}
+	return &InvalidPushError{Reason: pushrow.DataTooLarge, Message: fmt.Sprintf("the data is %d bytes, more than %d (%s)", len(push.data), limit, which)}
+}
+
+// Publication is a push and the Context whose client it is for, one item of [Pushes.PublishBatch].
+type Publication struct {
+	Context fw.Context
+	Push    Push
+}
+
+// PublishBatch writes pushes, each for its own Context's client, in a transaction the caller owns,
+// with one statement: either every row and the notification exist when tx commits, or none. Every
+// item is checked first (a zero Context, a zero Push, data over the limit), so a refused item is
+// reported, with its position, before anything is written. The rows get outbox ids in the order
+// given, so the log keeps that order. An empty batch writes nothing. The platform gateway writes
+// the items of an ingest request with it.
+func (p *Pushes) PublishBatch(ctx context.Context, tx pgx.Tx, items ...Publication) error {
+	if len(items) == 0 {
+		return nil
+	}
+	rows := make([]pushrow.Row, len(items))
+	for i, it := range items {
+		switch {
+		case it.Context.IsZero():
+			return fmt.Errorf("push: PublishBatch item %d: %w", i, fw.ErrZeroContext)
+		case it.Push.IsZero():
+			return fmt.Errorf("push: PublishBatch item %d: the zero Push (use push.New)", i)
+		}
+		if err := p.checkSize(it.Push); err != nil {
+			return fmt.Errorf("push: PublishBatch item %d: %w", i, err)
+		}
+		rows[i] = pushrow.Row{Topic: it.Push.topic, Type: it.Push.typ, Client: it.Context.Client(), Data: it.Push.data}
+	}
+	return pushrow.InsertBatch(ctx, tx, rows, p.clock.Now())
+}
+
+// PublishBatchAlone is [Pushes.PublishBatch] in a transaction of its own on the default database
+// instance.
+func (p *Pushes) PublishBatchAlone(ctx context.Context, items ...Publication) error {
+	return pgx.BeginTxFunc(ctx, p.db.Pool(), pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+		return p.PublishBatch(ctx, tx, items...)
+	})
+}
+
+// Handler serves the module's three routes (POST {base}/push/subscriptions, GET {base}/push/stream,
+// GET {base}/push/keys, the base being [BasePath]) as an http.Handler, for a host that has no
+// httpfw server: mount it at the base path in the host's own router (it matches the full path, so
+// do not strip the prefix). It runs the routes through the framework's dispatcher: the error
+// envelope, the correlation id, the body limit, and an access log that never holds the query (the
+// stream token) or a body. Its drain signal is [Pushes.Drain], which the host calls when it
+// shuts down; opts are the dispatcher's own (httpfw.WithMaxBodyBytes, httpfw.WithMetrics, ...) and
+// come after the module's (httpfw.WithLogger, WithClock, WithDrain). The host does CORS and
+// anything else around it.
+func (p *Pushes) Handler(opts ...httpfw.Option) (http.Handler, error) {
+	base := []httpfw.Option{httpfw.WithLogger(p.logger), httpfw.WithClock(p.clock), httpfw.WithDrain(p.drainSignal)}
+	return httpfw.Compile([]*httpfw.Routes{p.routes}, append(base, opts...)...)
+}
+
+// Drain begins the module's drain, for a host without an httpfw server to do it (and for one that
+// has): every open stream ends at once with the reason drain, and a subscribe or a listen after it
+// is answered 503 (push contract section 8 and amendment 17.11). It is safe to call more than once,
+// and the module calls it itself when the application shuts down.
+func (p *Pushes) Drain() {
+	p.drainOnce.Do(func() { close(p.drainSignal) })
+	p.hub.drain()
 }
 
 // PublishAlone is [Pushes.Publish] in a transaction of its own on the default database instance.
@@ -413,6 +548,9 @@ func (p *Pushes) Ticket(cx fw.Context, topics ...string) (string, error) {
 func (p *Pushes) TicketWith(cx fw.Context, o TicketOptions, topics ...string) (string, error) {
 	if cx.IsZero() {
 		return "", fw.ErrZeroContext
+	}
+	if p.keysSet == nil {
+		return "", errors.New("push: no push.ticket.key is configured; this host mints no tickets")
 	}
 	if len(topics) == 0 || len(topics) > MaxTicketTopics {
 		return "", fmt.Errorf("push: a ticket grants 1 to %d topic patterns", MaxTicketTopics)

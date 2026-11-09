@@ -10,8 +10,11 @@ amendment 10 of section 17). First local load test the same day; its four findin
 module `framework-push` (the core, the A1 `postgres` driver, `Plan.andPush`, tickets, the routes,
 the four conformance vector files, the contract test suite of section 14 on A1; amendment 14 of
 section 17). The Java Redis driver (A2) built the same day: module `framework-push-redis`, the contract
-tests of section 14 on both drivers (amendment 15 of section 17). Not yet: the SDK readers, the load
-test on the target.**
+tests of section 14 on both drivers (amendment 15 of section 17). The framework changes the A4 platform
+push gateway needs, built in Go (2026-11-09, amendment 16 of section 17): many applications in one
+host, per-application stream limits, the optional `client` member of the subscribe body, `Handler`,
+`Drain`, `ExternalMigrations`, `PublishBatch`. Not yet: the SDK readers, the load test on the target,
+the Java side of amendment 16, `push.driver=platform`.**
 Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
@@ -374,6 +377,12 @@ done, on one 8 GB Fargate task:
 
 ## 12. A4: a platform push gateway (sketch, not in P0 to P4)
 
+The platform's specification of the gateway is `docs/push-gateway-spec.md` of the platform repository
+(accepted 2026-11-09); it turns this sketch into a buildable plan, and its section 2.1 lists the
+framework changes, built in Go as amendment 16 of section 17 (multi-application hosts, per-application
+limits, the `client` member, hosting without the framework HTTP server, batch publishing). The one
+item not built is `push.driver=platform`, the publish sink for framework applications.
+
 The platform will host a push gateway, its own service (like the router), built on this module.
 Applications that cannot hold streams themselves use it, Laravel and PHP-FPM in particular. So do
 clients that listen to several applications on one stream (a field device), and operations that
@@ -624,3 +633,77 @@ Smallest calls made where the text was silent or could not be built as written:
       its clock at the epoch for every driver, because A2's vector ids are milliseconds near 0 and a
       retention edge of "clock less retention" would otherwise prune them while the test loads the log
       (the same race Go fixed).
+16. **Multi-application hosts (A4, Go, 2026-11-09).** The framework side of the platform gateway
+    (`docs/push-gateway-spec.md` of the platform repository, sections 2.1, 4, 9 and 10), in Go only for
+    now (the gateway is Go; the Java module has none of it). A host that serves one application
+    behaves exactly as before: every item below is opt-in, and the error bodies and codes of the
+    existing limits and denials are unchanged.
+    - **Many applications in one host (6.3, 6.4, 1).** `push.MultiApplication(rules, keys, opts...)`
+      is a `Build` option. `rules` is a `RuleProvider` (`Rules(application) []Rule`), `keys` a
+      `TicketKeyResolver` (`PublicKey(issuer, kid) (ed25519.PublicKey, bool)`). Both are read for every
+      subscribe and listen, so the host may change what they answer at any time (the gateway reloads on
+      sync); the module caches nothing. A topic is granted by a rule of its own application only: the
+      application is the topic's first segment, and the rules are `rules.Rules(application)`, those
+      of another application's pattern ignored. A ticket is verified with the key the resolver gives
+      for its `iss` and `kid` (an `iss` that is not an application code, an unknown issuer or kid
+      grants nothing), and grants topics of its issuer's application only (a ticket of `alpha` naming
+      a `beta` topic grants nothing: `topic-outside-iss`). Tickets of several issuers compose in one
+      subscribe. A ticket naming another client than the stream's grants nothing, as 17.4 says: the
+      stream's client is the credentials' or, without credentials, that of the first valid ticket (or
+      the client the body names, below), whatever the issuers. An application the providers do not
+      know has its topics denied `TOPIC_FORBIDDEN` (or `TICKET_INVALID` when a ticket that fails
+      names the topic), never an error for the whole subscribe. In this mode the rules declared on
+      `Declared` (`Topic`, `PublicTopic`) are a start-up problem: the providers are the only source.
+      `push.ticket.key` is used only to mint tickets (`Ticket` mints for the host's `Application`) and
+      to serve `GET {base}/push/keys`; `DeclareWith(app, OptionalTicketKey())` makes it optional for a
+      host that mints nothing, and the endpoint then answers `{"keys":[]}` and `Ticket` fails. A
+      single-application host still needs the key, and `Build` reports its absence.
+    - **Limits per application (8).** `AppLimits{MaxStreams, MaxDataBytes}` come from an
+      `AppLimitProvider` (`AppLimitsFrom(p)`, read for every subscribe, listen and publish, so the
+      gateway's console edits apply at once), with a default (`DefaultAppLimits(l)`; initially
+      `DefaultAppMaxStreams` = 20 000 streams and push.max-data-bytes); a field that is zero or less
+      takes the default. The hub counts the open streams of each application on the instance; a stream
+      whose granted topics span several applications counts against each of them. A subscribe or a
+      listen that would take an application over its `MaxStreams` is `429 PUSH_LIMIT`, checked with
+      the existing limits (after them), with the scope and the application in the envelope's
+      `details`: `{"error":"PUSH_LIMIT","message":"...","details":{"scope":"application","application":"beta"}}`.
+      The existing limits keep their body without `details`. `MaxDataBytes` replaces
+      push.max-data-bytes for the topics of the application (at most 65536) when a push is
+      published: `Publish`, `PublishAlone` and `PublishBatch` accept a push for any application in
+      this mode and refuse data over its application's limit with `DATA_TOO_LARGE`. Left to the
+      gateway: publish rate and the pause (it limits at ingest, before it writes), refusing pushes for
+      an application it does not know, and the `usecase.Push` runner, whose limit stays the host's
+      push.max-data-bytes.
+    - **The `client` member (6.1).** The subscribe body takes an optional `client`
+      (`[A-Za-z0-9._-]{1,100}`, else `400 VALIDATION`): `{"topics":[...],"tickets":[...],"client":"..."}`.
+      An authenticator that can act for several clients implements `ClientAuthenticator`
+      (`AuthenticateClient(r, client)`, `client` being "" when the body names none), which the
+      module calls instead of `Authenticate`; it answers `400 VALIDATION` for a credential with
+      several clients and none named, and `403 CLIENT_FORBIDDEN` for one that cannot use the client
+      named. The module checks once more, for every authenticator, that a client named equals the
+      Context's client, else `403 CLIENT_FORBIDDEN`; an `Authenticator` that is not a
+      `ClientAuthenticator` (`AuthModule`) behaves as before when `client` is absent. Without
+      credentials the stream's client is the first valid ticket's that names the client given; if
+      none does, `401`. A platform-wide stream is a `client` of the platform client's value
+      (`_platform`) that the authenticator permits.
+    - **Hosting without the framework server.** `Pushes.Handler(opts ...httpfw.Option)` serves the
+      three routes under `BasePath` as an `http.Handler` (mount it without stripping the prefix),
+      through the framework's dispatcher: the error envelope, the correlation id, the body limit and
+      an access log that never records the query (so the stream token is not logged). `httpfw.WithDrain`
+      (new, public) gives a dispatcher the drain signal that `httpfw.Draining` returns.
+      `Pushes.Drain()` begins the module's drain for a host without an httpfw server: the hub ends
+      every stream at once (reason `drain`) and a subscribe or listen is `503 UNAVAILABLE` (8, 17.11).
+      It is idempotent, and the module also calls it when the application shuts down.
+      `DeclareWith(app, ExternalMigrations())` leaves the module's migration set out: the host
+      creates `fw_push_outbox` and `fw_push_log` itself, byte for byte as
+      `go/push/migrations/V0001__create_push_tables.sql`, and keeps them identical to it when the
+      module changes.
+    - **Batch publishing (2).** `Pushes.PublishBatch(ctx, tx, items ...Publication)` and
+      `PublishBatchAlone(ctx, items...)` write pushes, each a `Publication{Context, Push}` with its
+      own client, with one statement in the caller's transaction (or one of its own): all of the rows
+      and the one notification exist when it commits, or none. Every item is checked before anything
+      is written (a zero Context or Push, data over its limit), and the error names the item's
+      position. The rows get outbox ids in the order given, so the log keeps it.
+    - **Release.** The core module `github.com/flowcatalyst/framework/go` is versioned by the tag
+      `go/vX.Y.Z` (`make -C go release-go BUMP=0.1.0` for the first); the platform imports it from the
+      first such tag.

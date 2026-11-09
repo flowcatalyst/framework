@@ -174,3 +174,41 @@ func Insert(ctx context.Context, tx Execer, topic, typ string, client fw.ClientI
 	}
 	return nil
 }
+
+// Row is one checked push to write: its client is already known to be set.
+type Row struct {
+	Topic, Type string
+	Client      fw.ClientID
+	Data        string
+}
+
+// insertBatch writes the rows in the order given (the ordinality column) and notifies
+// fw_push_outbox once, in one statement: all of them exist only if the transaction commits.
+const insertBatch = `WITH woken AS (SELECT pg_notify('fw_push_outbox', ''))
+INSERT INTO fw_push_outbox (topic, type, client, data, created_at)
+SELECT u.topic, u.type, u.client, u.data, $5
+FROM unnest($1::text[], $2::text[], $3::text[], $4::text[]) WITH ORDINALITY AS u(topic, type, client, data, n), woken
+ORDER BY u.n`
+
+// InsertBatch writes checked pushes in the caller's transaction with one statement. The platform
+// client is written as NULL (push contract section 5).
+func InsertBatch(ctx context.Context, tx Execer, rows []Row, at time.Time) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	topics, types, clients, data := make([]string, len(rows)), make([]string, len(rows)), make([]*string, len(rows)), make([]string, len(rows))
+	for i, r := range rows {
+		if r.Client.IsZero() {
+			return fw.ErrZeroContext
+		}
+		topics[i], types[i], data[i] = r.Topic, r.Type, r.Data
+		if r.Client != fw.PlatformClient {
+			s := r.Client.String()
+			clients[i] = &s
+		}
+	}
+	if _, err := tx.Exec(ctx, insertBatch, topics, types, clients, data, at); err != nil {
+		return fmt.Errorf("push: write to fw_push_outbox: %w", err)
+	}
+	return nil
+}

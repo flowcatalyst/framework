@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -89,6 +90,11 @@ type nodeConfig struct {
 	logs    io.Writer
 	// backend is the log driver and its servers; nil is A1 on the database the node is given.
 	backend *backend
+	// declareOpts and opts are given to DeclareWith and Build (the multi-application tests).
+	declareOpts []DeclareOption
+	opts        []Option
+	// handler serves the routes through Pushes.Handler on an httptest server, with no httpfw server.
+	handler bool
 }
 
 // The log drivers the contract tests run against.
@@ -137,6 +143,8 @@ type node struct {
 	clock   *fwtest.Clock
 	db      *database.DB
 	metrics *metrics.Registry
+	// migrationModules are the modules that declared a migration set.
+	migrationModules []string
 }
 
 // defaultRules are the rules every test node declares unless the test sets its own.
@@ -185,7 +193,7 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 		fw.WithOutput(io.Discard, io.Discard), fw.WithLogger(slog.New(slog.NewTextHandler(logs, nil))))
 	web := httpfw.Declare(app)
 	ld := locks.Declare(app)
-	pd := Declare(app)
+	pd := DeclareWith(app, c.declareOpts...)
 	var rd *redisfw.Declared
 	if c.backend != nil && c.backend.driver == driverRedis {
 		rd = redisfw.Declare(app)
@@ -210,6 +218,7 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 			return nil, err
 		}
 		opts := []Option{Authenticate(headerAuth)}
+		opts = append(opts, c.opts...)
 		if rd != nil {
 			clients, err := redisfw.Connect(ctx, b, rd)
 			if err != nil {
@@ -222,6 +231,19 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 			return nil, err
 		}
 		n.p, n.db, n.metrics = p, db, b.Metrics()
+		for _, set := range b.MigrationSets() {
+			n.migrationModules = append(n.migrationModules, set.Module)
+		}
+		if c.handler {
+			h, err := p.Handler()
+			if err != nil {
+				return nil, err
+			}
+			ts := httptest.NewServer(h)
+			t.Cleanup(ts.Close)
+			n.base = ts.URL
+			return fw.ServeFunc(func(ctx context.Context) error { <-ctx.Done(); return nil }), nil
+		}
 		srv, err = httpfw.NewServer(b, web, []*httpfw.Routes{p.Routes()})
 		return srv, err
 	})
@@ -230,6 +252,9 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 	}
 	n.run = run
 	t.Cleanup(func() { _ = run.Shutdown() })
+	if c.handler {
+		return n, nil
+	}
 	if srv == nil {
 		t.Fatal("no server was built")
 	}

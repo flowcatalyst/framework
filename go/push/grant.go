@@ -14,6 +14,9 @@ import (
 const (
 	codeTopicForbidden = "TOPIC_FORBIDDEN"
 	codeTicketInvalid  = "TICKET_INVALID"
+
+	// codeClientForbidden answers a subscribe that names a client the credentials cannot use.
+	codeClientForbidden = "CLIENT_FORBIDDEN"
 )
 
 // Denial is a topic a subscribe did not get, with why: TOPIC_FORBIDDEN (no rule allows it and no
@@ -29,6 +32,7 @@ type granter struct {
 	rules       []Rule
 	keys        *ticketKeys
 	maxLifetime time.Duration
+	multi       *multiApp // non-nil: many applications, application, rules and keys unused
 }
 
 // decision is what a subscribe gets.
@@ -39,16 +43,34 @@ type decision struct {
 	denied   []Denial
 	expires  time.Time
 	tickets  []ticket
+	apps     []string // the applications of the granted topics (multi-application hosts)
 }
 
 // decide applies sections 6.1, 6.3 and 6.4. topics are checked and without duplicates. The errors
 // are the answers: 400 for a malformed ticket, 401 for a request without credentials and without a
 // valid ticket (it has no client), 403 NO_TOPICS when nothing was granted.
 func (g *granter) decide(topics, rawTickets []string, creds Credentials, present bool, now time.Time) (decision, error) {
+	return g.decideFor(topics, rawTickets, creds, "", present, now)
+}
+
+// decideFor is decide for a subscribe that names the client it wants (the body's client member, ""
+// for none; push contract 17.16). With credentials the stream's client is the credentials' and a
+// different one named is 403 CLIENT_FORBIDDEN; without, it is the first valid ticket's client that
+// is the one named.
+func (g *granter) decideFor(topics, rawTickets []string, creds Credentials, want string, present bool, now time.Time) (decision, error) {
 	check := ticketCheck{application: g.application, now: now, proofKey: creds.ProofKey, maxLifetime: g.maxLifetime}
+	if g.multi != nil {
+		check.multi, check.publicKey = true, g.multi.keys.PublicKey
+	}
 	d := decision{}
 	for i, raw := range rawTickets {
-		t, err := g.keys.check(raw, check)
+		var t ticket
+		var err error
+		if g.multi != nil {
+			t, err = checkTicket(raw, check)
+		} else {
+			t, err = g.keys.check(raw, check)
+		}
 		if err != nil {
 			return decision{}, httpfw.Validation(fmt.Sprintf("tickets[%d] is malformed: not a JWS compact with a JSON header and claims", i))
 		}
@@ -59,9 +81,12 @@ func (g *granter) decide(topics, rawTickets []string, creds Credentials, present
 	case present:
 		cx = creds.Context
 		d.sub.client = cx.Client().String()
+		if want != "" && want != d.sub.client {
+			return decision{}, httpfw.Forbidden(codeClientForbidden, "the credentials cannot subscribe for the client named")
+		}
 	default:
 		for _, t := range d.tickets {
-			if t.valid {
+			if t.valid && (want == "" || t.client == want) {
 				d.sub.client = t.client
 				break
 			}
@@ -126,11 +151,18 @@ func (g *granter) decide(topics, rawTickets []string, creds Credentials, present
 		d.sub.device, d.sub.session = creds.Device, creds.Session
 	}
 	d.sub.topics = d.granted
+	if g.multi != nil {
+		d.apps = applicationsOf(d.granted)
+	}
 	return d, nil
 }
 
 func (g *granter) ruleAllows(cx fw.Context, topic string) bool {
-	for _, r := range g.rules {
+	rules := g.rules
+	if g.multi != nil { // only the rules of the topic's own application
+		rules = g.multi.rulesOf(applicationOf(topic))
+	}
+	for _, r := range rules {
 		if r.Allows(cx, topic) {
 			return true
 		}
