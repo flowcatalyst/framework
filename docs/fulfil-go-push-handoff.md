@@ -75,7 +75,7 @@ was missed, so reload only on `reset`.
 ## Clients
 
 ```ts
-import { PushStream } from "@flowcatalyst/field-react-native"; // the release after v0.1.0
+import { PushStream } from "@flowcatalyst/field-react-native"; // github:flowcatalyst/field-react-native#v0.2.0
 
 const stream = new PushStream({
   baseUrl: env.apiBase,                     // the base the push routes are mounted under
