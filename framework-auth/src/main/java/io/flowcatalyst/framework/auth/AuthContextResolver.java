@@ -42,6 +42,33 @@ public final class AuthContextResolver implements ContextResolver {
   record FieldAuth(
       FieldVerifier verifier, FieldNonces nonces, FieldPermissionResolver permissions, FieldTokens tokens, String publicBase, ApplicationCode application) {}
 
+  /**
+   * Whether the request presents credentials at all: an {@code Authorization} header (bearer or
+   * DPoP) or the session cookie. A route that also serves callers without credentials (a push
+   * subscribe with tickets only) resolves the context only when this is true, so a bad credential
+   * is still a 401.
+   *
+   * @param request the request
+   * @return true when it carries an {@code Authorization} header or the session cookie
+   */
+  public boolean carriesCredentials(Request request) {
+    if (!request.headers("Authorization").isEmpty()) {
+      return true;
+    }
+    return Cookies.read(request, sessions.cookies().sessionName()) != null;
+  }
+
+  /**
+   * What {@link #resolve} authenticated the request as: the source, the credential's expiry and,
+   * for a field worker, the device key, device and login family.
+   *
+   * @param request a request that {@link #resolve} has resolved
+   * @return the authentication, empty when the request was not resolved (or failed)
+   */
+  public static Optional<Authenticated> authenticated(Request request) {
+    return Optional.ofNullable(request.attribute(RequestState.AUTHENTICATED));
+  }
+
   @Override
   public Context resolve(Request request) throws Exception {
     Authenticated a = authenticate(request);

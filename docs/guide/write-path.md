@@ -1,4 +1,4 @@
-<!-- types: Appender, Load, LoadedCheck, LoadedExecute, DispatchJob, Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet -->
+<!-- types: Appender, Load, LoadedCheck, LoadedExecute, DispatchJob, Aggregate, AggregateId, Repository, Tx, UseCase, UseCases, UseCaseResult, UseCaseError, ErrorKind, Check, Authorize, Execute, Decision, Plan, Rejected, ConflictPolicy, DomainEvent, EventMetadata, EventType, Events, AuditData, AuditEntry, Sink, OutboxWriter, OutboxModule, UseCaseModule, Jdbc, Row, RowMapper, Ids, Context, Database, Databases, MigrationSet, Push -->
 # The write path
 
 All behaviour that changes data goes through a **use case**. A use case validates, authorizes,
@@ -220,6 +220,11 @@ written) or a `Plan`:
   same transaction ([Dispatch jobs](#dispatch-jobs)).
 - `.andAppend(row, appender)` adds an append-only row, written in the same transaction
   ([Append-only rows](#append-only-rows)).
+- `.andPush(Push.of(topic, type, data))` adds a [push to clients](push.md): a row of
+  `fw_push_outbox`, written in the same transaction right after the steps added so far, for the
+  context's client, and sent only if the transaction commits. It is not an event (not audited, never
+  the result). An invalid push, or data over `push.max-data-bytes`, fails the run as `INTERNAL` /
+  `INVALID_PUSH`; a failure writing it is `INTERNAL` / `PUSH`.
 
 Every plan carries at least one event; the **first is the use case's result**. Events are written
 in step order. `Plan.save` is generic in the aggregate type, so the repository must match it.

@@ -1,4 +1,4 @@
-<!-- types: FieldOptions, FieldPermissions, FieldPermissionResolver, FieldPrincipal, FieldTokens, FieldTokenResult, FieldReplayCache, RedisFieldReplayCache, TestFieldDevice, RequireLiveField, FieldRevocation, FieldIntrospection, Receivers, PlatformClient, AuthModule, Authenticated, Auth, AuthTesting, TestOidcProvider, PrincipalKind, Context -->
+<!-- types: FieldOptions, FieldPermissions, FieldPermissionResolver, FieldPrincipal, FieldTokens, FieldTokenResult, FieldReplayCache, RedisFieldReplayCache, TestFieldDevice, RequireLiveField, FieldRevocation, FieldIntrospection, Receivers, PlatformClient, AuthModule, Authenticated, Auth, AuthTesting, TestOidcProvider, PrincipalKind, Context, PushHolders -->
 # Field workers
 
 Drivers, pickers and yard-gate staff do not have platform accounts. They sign in to the **platform**
@@ -96,7 +96,7 @@ Optional<FieldPrincipal> worker = Auth.current(request).orElseThrow().field();
 ```
 
 `FieldPrincipal` holds `workerId`, `workerCode`, `name`, `clientId`, `clientIdentifier`, `appCode`,
-`deviceId` (empty/null when unenrolled), `deviceMode` (`PERSONAL`, `SHARED` or `UNENROLLED`), `actor` (who is signed in as the worker, from `act`), `test`, `linkedPrincipalId` (the platform user the worker is linked to, from `linked_principal_id`; null when not linked. It is for audit correlation only and grants nothing: no permission, role or tier comes from it), `amr`, `authTime`, `sessionId` and `expiresAt`. A
+`deviceId` (empty/null when unenrolled), `deviceMode` (`PERSONAL`, `SHARED` or `UNENROLLED`), `actor` (who is signed in as the worker, from `act`), `test`, `linkedPrincipalId` (the platform user the worker is linked to, from `linked_principal_id`; null when not linked. It is for audit correlation only and grants nothing: no permission, role or tier comes from it), `amr`, `authTime`, `sessionId`, `expiresAt` and `keyThumbprint` (the RFC 7638 thumbprint of the device key the token is bound to, `cnf.jkt`; `""` when the token has none; a [push](push.md) ticket bound to a key is checked against it). A
 field worker has no roles, applications, clients or tier: no platform authority.
 
 **Permissions are yours to map**, separately from sessions and bearer tokens
@@ -162,6 +162,10 @@ receivers.onFieldRevocation((ctx, event) -> {
 Declare the subscription so the definition sync registers it: `FieldRevocation.subscription(code,
 "/fc/dispatch")`. The handler may run more than once for one event; make it idempotent. Data that lacks
 what its type needs is rejected, not retried.
+
+An application that serves [push streams](push.md) ends a revoked worker's streams from the same
+handler: `pushes.endStreams(PushHolders.of(event))` (`PushHolders`, in this module; `framework-push`
+is an optional dependency). The streams send `auth-expired` and the client subscribes again.
 
 `SessionRevoked` names what the platform names: the login family (`sessionId`, the platform's `familyId`) only when one family was revoked (a rotated refresh token presented again); otherwise the worker or the device whose sessions ended. It also carries `clientId` and `reason`. An event that lacks the identifier it is about is rejected, not retried.
 

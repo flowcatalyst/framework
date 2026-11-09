@@ -61,6 +61,7 @@ public final class UseCases {
   private final MonotonicClock monotonic;
   private final Counter runs;
   private final Timer durations;
+  private volatile int pushMaxDataBytes = Push.DEFAULT_MAX_DATA_BYTES;
 
   /**
    * Creates a runner.
@@ -119,6 +120,21 @@ public final class UseCases {
             "fw_usecase_duration_seconds",
             "Use case run duration, all attempts included.",
             "usecase");
+  }
+
+  /**
+   * Sets the largest push data the runner writes ({@code push.max-data-bytes}, push contract
+   * section 10; the default is {@link Push#DEFAULT_MAX_DATA_BYTES}). The push module sets it when
+   * it starts; a plan with a push over it fails as {@code INTERNAL} / {@code INVALID_PUSH}.
+   *
+   * @param bytes 1 to {@link Push#MAX_DATA_BYTES}
+   * @throws IllegalArgumentException when out of range
+   */
+  public void pushMaxDataBytes(int bytes) {
+    if (bytes < 1 || bytes > Push.MAX_DATA_BYTES) {
+      throw new IllegalArgumentException("push.max-data-bytes is 1 to " + Push.MAX_DATA_BYTES);
+    }
+    this.pushMaxDataBytes = bytes;
   }
 
   /**
@@ -256,9 +272,26 @@ public final class UseCases {
           context.client());
       return done(failed(UseCaseError.internal("CROSS_CLIENT_WRITE")));
     }
+    String oversize = oversizePush(plan);
+    if (oversize != null) {
+      LOG.error("BUG: use case {} planned a push that breaks the push contract: {}", useCase.name(), oversize);
+      return done(failed(UseCaseError.internal("INVALID_PUSH")));
+    }
     return joined == null
         ? persist(useCase, context, command, plan)
         : persistJoined(useCase, context, command, plan, joined);
+  }
+
+  /** The first push over push.max-data-bytes, described; null when every push fits. */
+  private @Nullable String oversizePush(Plan<?> plan) {
+    int limit = pushMaxDataBytes;
+    for (Plan.Pushed pushed : plan.pushes()) {
+      int bytes = pushed.push().data().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+      if (bytes > limit) {
+        return "the data of " + pushed.push().topic() + " is " + bytes + " bytes, more than " + limit + " (push.max-data-bytes)";
+      }
+    }
+    return null;
   }
 
   private <C, E extends DomainEvent> Attempt<E> persist(
@@ -321,7 +354,9 @@ public final class UseCases {
       throws Exception {
     step[0] = "PERSIST";
     List<Plan.Appended<?>> appends = plan.appends();
+    List<Plan.Pushed> pushes = plan.pushes();
     int next = 0;
+    int nextPush = 0;
     List<Plan.Step> steps = plan.steps();
     for (int i = 0; i < steps.size(); i++) {
       if (!apply(steps.get(i), tx)) {
@@ -329,6 +364,13 @@ public final class UseCases {
       }
       while (next < appends.size() && appends.get(next).after() == i + 1) {
         appends.get(next++).write(tx);
+      }
+      if (nextPush < pushes.size() && pushes.get(nextPush).after() == i + 1) {
+        step[0] = "PUSH";
+        while (nextPush < pushes.size() && pushes.get(nextPush).after() == i + 1) {
+          PushOutbox.insert(tx.connection(), pushes.get(nextPush++).push(), context.client(), clock.instant());
+        }
+        step[0] = "PERSIST";
       }
     }
 
@@ -459,8 +501,24 @@ public final class UseCases {
         return done(failed(uniqueViolation(sql)));
       }
     }
+    InvalidPushException refused = firstInvalidPush(cause);
+    if (refused != null) {
+      LOG.error("BUG: use case {} built a push that breaks the push contract (section 1)", useCase.name(), refused);
+      return done(failed(UseCaseError.internal("INVALID_PUSH")));
+    }
     LOG.error("use case {} failed at step {}", useCase.name(), step, cause);
     return done(failed(UseCaseError.internal(step)));
+  }
+
+  private static @Nullable InvalidPushException firstInvalidPush(Throwable start) {
+    Throwable t = start;
+    for (int depth = 0; t != null && depth < 20; depth++) {
+      if (t instanceof InvalidPushException refused) {
+        return refused;
+      }
+      t = t.getCause();
+    }
+    return null;
   }
 
   private static @Nullable SQLException firstSqlException(Throwable start) {

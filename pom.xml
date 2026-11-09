@@ -55,6 +55,7 @@
     <module>framework-httpclient</module>
     <module>framework-httpclient-module</module>
     <module>framework-admin</module>
+    <module>framework-push</module>
     <module>framework-flowcatalyst</module>
     <module>framework-auth</module>
     <module>framework-auth-database</module>

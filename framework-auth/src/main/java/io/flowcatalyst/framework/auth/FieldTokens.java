@@ -105,7 +105,8 @@ public final class FieldTokens {
             Jwt.seconds(claims.get("exp")),
             actor,
             test,
-            Jwt.text(claims, "linked_principal_id")); // absent when the worker is not linked
+            Jwt.text(claims, "linked_principal_id"), // absent when the worker is not linked
+            jkt == null ? "" : jkt);
     return new FieldTokenResult.Valid(worker, jkt == null ? "" : jkt);
   }
 

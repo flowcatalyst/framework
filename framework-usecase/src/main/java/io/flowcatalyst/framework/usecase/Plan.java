@@ -15,9 +15,15 @@ import java.util.List;
  *     section 7a), in order
  * @param appends append-only rows ({@link #andAppend}), each written right after the step it
  *     follows, in the order they were added
+ * @param pushes pushes to clients ({@link #andPush}), each written right after the step it follows
+ *     (after the appends of that step), in the order they were added
  */
 public record Plan<E extends DomainEvent>(
-    E result, List<Step> steps, List<DispatchJob> dispatchJobs, List<Appended<?>> appends)
+    E result,
+    List<Step> steps,
+    List<DispatchJob> dispatchJobs,
+    List<Appended<?>> appends,
+    List<Pushed> pushes)
     implements Decision<E> {
 
   /** One write of a plan, with the event it produces. */
@@ -83,6 +89,14 @@ public record Plan<E extends DomainEvent>(
   }
 
   /**
+   * A push to clients of the plan ({@link #andPush}).
+   *
+   * @param after how many steps are written before it (1 for the first)
+   * @param push the push
+   */
+  public record Pushed(int after, Push push) {}
+
+  /**
    * Copies the lists, and requires at least one step and appends that each follow one.
    *
    * @throws IllegalArgumentException when there is no step (a plan of appends only is refused: the
@@ -93,6 +107,7 @@ public record Plan<E extends DomainEvent>(
     steps = List.copyOf(steps);
     dispatchJobs = List.copyOf(dispatchJobs);
     appends = List.copyOf(appends);
+    pushes = List.copyOf(pushes);
     if (steps.isEmpty()) {
       throw new IllegalArgumentException(
           appends.isEmpty()
@@ -107,6 +122,26 @@ public record Plan<E extends DomainEvent>(
       }
       last = a.after();
     }
+    last = 1;
+    for (Pushed p : pushes) {
+      if (p.after() < last || p.after() > steps.size()) {
+        throw new IllegalArgumentException(
+            "a push follows a step: position " + p.after() + " of " + steps.size() + " steps");
+      }
+      last = p.after();
+    }
+  }
+
+  /**
+   * A plan with appends and no pushes.
+   *
+   * @param result the first event
+   * @param steps the writes in order
+   * @param dispatchJobs the dispatch jobs
+   * @param appends the append-only rows
+   */
+  public Plan(E result, List<Step> steps, List<DispatchJob> dispatchJobs, List<Appended<?>> appends) {
+    this(result, steps, dispatchJobs, appends, List.of());
   }
 
   /**
@@ -117,7 +152,7 @@ public record Plan<E extends DomainEvent>(
    * @param dispatchJobs the dispatch jobs
    */
   public Plan(E result, List<Step> steps, List<DispatchJob> dispatchJobs) {
-    this(result, steps, dispatchJobs, List.of());
+    this(result, steps, dispatchJobs, List.of(), List.of());
   }
 
   /**
@@ -127,7 +162,7 @@ public record Plan<E extends DomainEvent>(
    * @param steps the writes in order
    */
   public Plan(E result, List<Step> steps) {
-    this(result, steps, List.of(), List.of());
+    this(result, steps, List.of(), List.of(), List.of());
   }
 
   /**
@@ -219,7 +254,7 @@ public record Plan<E extends DomainEvent>(
   public Plan<E> andDispatch(DispatchJob job) {
     List<DispatchJob> more = new ArrayList<>(dispatchJobs);
     more.add(job);
-    return new Plan<>(result, steps, more, appends);
+    return new Plan<>(result, steps, more, appends, pushes);
   }
 
   /**
@@ -237,12 +272,30 @@ public record Plan<E extends DomainEvent>(
   public <R> Plan<E> andAppend(R row, Appender<? super R> appender) {
     List<Appended<?>> more = new ArrayList<>(appends);
     more.add(new Appended<>(steps.size(), row, appender));
-    return new Plan<>(result, steps, dispatchJobs, more);
+    return new Plan<>(result, steps, dispatchJobs, more, pushes);
+  }
+
+  /**
+   * Adds a push to clients (push contract, section 2): a small signal for the browsers, apps and
+   * devices listening on the push's topic, written to {@code fw_push_outbox} in the same
+   * transaction right after the steps added so far, for the context's client, and sent only if the
+   * transaction commits. It is not an event: it is not audited, is never the use case's result and
+   * does not count toward "every plan carries an event". A failed attempt writes none. A push over
+   * {@code push.max-data-bytes} fails the run as {@code INTERNAL} / {@code INVALID_PUSH}; a failure
+   * writing it is {@code INTERNAL} at step {@code PUSH}.
+   *
+   * @param push the push ({@link Push#of})
+   * @return the extended plan
+   */
+  public Plan<E> andPush(Push push) {
+    List<Pushed> more = new ArrayList<>(pushes);
+    more.add(new Pushed(steps.size(), push));
+    return new Plan<>(result, steps, dispatchJobs, appends, more);
   }
 
   private Plan<E> with(Step step) {
     List<Step> more = new ArrayList<>(steps);
     more.add(step);
-    return new Plan<>(result, more, dispatchJobs, appends);
+    return new Plan<>(result, more, dispatchJobs, appends, pushes);
   }
 }

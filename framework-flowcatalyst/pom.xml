@@ -72,6 +72,13 @@
       <artifactId>framework-httpclient-module</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- PushHolders (a field revocation to the push streams it ends); optional: an application that
+         does not use push does not get the push module. -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-push</artifactId>
+      <optional>true</optional>
+    </dependency>
     <!-- The outbox table for the outbox health check's tests (framework-http no longer brings it). -->
     <dependency>
       <groupId>io.flowcatalyst.framework</groupId>

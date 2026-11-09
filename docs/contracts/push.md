@@ -6,8 +6,11 @@ conformance vectors and the A1 contract tests; amendments from that build in sec
 (`redis`) built in Go the same day (`RedisStreamLog`; the contract tests run on both drivers;
 amendment 10 of section 17). First local load test the same day; its four findings fixed in Go
 (amendment 11 of section 17, 2026-11-08). The snapshot cursor (9.1) and the reset for an invalid
-`Last-Event-ID` (amendments 12 and 13 of section 17, 2026-11-09). Not yet: Java, the SDK readers, the load test on the
-target.** Drivers: `postgres` (A1) and
+`Last-Event-ID` (amendments 12 and 13 of section 17, 2026-11-09). P2a built in Java (2026-11-09):
+module `framework-push` (the core, the A1 `postgres` driver, `Plan.andPush`, tickets, the routes,
+the four conformance vector files, the contract test suite of section 14 on A1; amendment 14 of
+section 17). Not yet: the Java Redis driver (A2), the SDK readers, the load test on the target.**
+Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
 
@@ -544,3 +547,52 @@ Smallest calls made where the text was silent or could not be built as written:
     `reset` (reason `unknown-id`, id `latest`) after `subscribed`, then the stream continues live.
     Before, it was treated as absent and the client silently missed changes. An empty or blank value
     is still no cursor. `conformance/push/replay.json` has the case.
+
+14. **The Java build (P2a, 2026-11-09).** `framework-push` implements sections 1 to 11 and the amendments
+    above; a Java host and a Go host on one database share the tables `fw_push_outbox` and
+    `fw_push_log`, the channels `fw_push_outbox`, `fw_push_log` and `fw_push_end` (the same payloads),
+    the relay lock `svc:push-relay` and the migration history key `push`. Stream tokens are valid on
+    the hosts that share `push.stream.secret` only, as before. What the Java build settled:
+    - **Layout.** One module, `framework-push`, holds the core and the A1 driver: the outbox is always
+      on the default database and the relay is database-bound, so there is no database-free core to
+      split off as `framework-locks` / `framework-locks-database` are. The `Log` interface is public,
+      so a Redis driver can be its own module (`framework-push-redis`, like `framework-locks-redis`);
+      `PushModule.Builder.log(provider)` plugs one in, and `push.driver` `redis` without it is a
+      start-up problem. The value `Push` and the writing of the outbox row (`PushOutbox`) are in
+      `framework-usecase`, which the runner needs and which `framework-push` depends on, as Go's
+      `internal/pushrow` is shared by `usecase` and `push`.
+    - **Publishing (section 2).** `plan.andPush(push)` adds a push after the steps added so far (and
+      after the appends of the last of them), written by the runner in the attempt's transaction
+      (step code `PUSH`); a plan always has an event step, so the Go case "a plan of pushes only" does
+      not arise. `Push.of(topic, type, data)` (a map, a record or a Jackson tree; map keys sorted) and
+      `Push.ofJson(...)` refuse a bad topic, type or data with an `InvalidPushException` (an
+      `IllegalArgumentException` with the reason code of `topics.json`); thrown while a use case is
+      decided it fails the run as `INTERNAL` / `INVALID_PUSH` (not `EXECUTE`), logged as a bug, as does
+      a push over `push.max-data-bytes`. The module tells the runner the limit when it boots
+      (`UseCases.pushMaxDataBytes`; default 16384). `Pushes.publish(tx, context, push)` takes the
+      framework's `Tx`; over the limit it throws `InvalidPushException` `DATA_TOO_LARGE`.
+    - **Relay (section 3, amendments 2 and 11).** The loop `push-relay` is gated by the lock
+      `svc:push-relay` with the lease `push.relay.lease`; its task holds the lock for as long as it
+      runs, listening on `fw_push_outbox` (a connection of its own) and polling every
+      `push.relay.interval`. The lock's loss interrupts the loop's thread; a run is made on a thread
+      of its own that nothing interrupts and is waited for up to 10 s, so a stop or a lost lock never
+      leaves a run half-way.
+    - **The hub.** Streams run on the HTTP server's virtual threads, one each, parked on a queue; the
+      hub keeps two virtual threads (the reader of the log and the driver's follower, whose pooled
+      connection it holds for as long as it runs). It warms its memory when the application boots,
+      before the server is started, and the application's start waits up to 10 s for the follower.
+      The server's drain reaches the hub through `HttpServer.beforeDrain`, so every stream ends at
+      once. **Difference from Go:** a client that went away is noticed at the stream's next write,
+      at the latest at the heartbeat (`http.sse.heartbeat`, 25 s by default, which the push stream
+      uses), not at once; its slot under the limits of section 8 is freed then.
+    - **Authentication (6.1).** `PushAuth.authModule()` authenticates a subscribe through the auth
+      module as Go's `AuthModule` does. The build added `AuthContextResolver.carriesCredentials` and
+      `AuthContextResolver.authenticated` and `FieldPrincipal.keyThumbprint` (the token's
+      `cnf.jkt`), the parallels of Go's `Module.CarriesCredentials`, `auth.Current` and
+      `FieldPrincipal.KeyThumbprint`.
+    - **Revocation (amendment 7).** `PushHolders.of(FieldRevocation)` in `framework-flowcatalyst` is
+      Go's `flowcatalyst.PushHolder` (the module depends on `framework-push` optionally);
+      `Pushes.endStreams(Holder)` is `EndStreams`.
+    - **Configuration (section 10).** The ranges are checked when the module is built and reported
+      together as a start-up failure; topic rules are declared on the module's builder (`topic`,
+      `publicTopic`), and an open rule is a start-up problem as in Go.
