@@ -37,6 +37,9 @@ const (
 	CategoryProcesses
 	CategoryScheduledJobs
 	CategoryDocs
+	// CategoryPush is the push gateway's topic rules and ticket keys; only with
+	// push.driver=platform and [WithPushes].
+	CategoryPush
 )
 
 func (c Category) String() string {
@@ -57,6 +60,8 @@ func (c Category) String() string {
 		return "SCHEDULED_JOBS"
 	case CategoryDocs:
 		return "DOCS"
+	case CategoryPush:
+		return "PUSH"
 	}
 	return "UNKNOWN"
 }
@@ -220,7 +225,8 @@ func (p *Platform) steps() []step {
 
 // Sync pushes the definitions to the platform (flowcatalyst contract section 2): one SDK call per
 // category, in the order roles, event types, connections, dispatch pools, subscriptions,
-// processes, scheduled jobs, docs, so one category's failure does not stop the others. A dry run
+// processes, scheduled jobs, docs, then (push.driver=platform with [WithPushes]) the push
+// gateway's rules and ticket keys, so one category's failure does not stop the others. A dry run
 // validates (the catalog was validated at Build) and reports what would be sent; it makes no
 // request. It returns a [*SyncError], with the report, when any category failed after all were
 // attempted. Sync is idempotent; removing a definition from code does not delete it on the
@@ -248,6 +254,11 @@ func (p *Platform) Sync(ctx context.Context, mode SyncMode) (SyncReport, error) 
 			out := sy.Sync(ctx, set, opts)
 			res = fromSDK(st, st.pick(out))
 		}
+		p.log.Info("sync " + res.Describe())
+		report.Categories = append(report.Categories, res)
+	}
+	if p.pushes != nil && p.pushes.UsesPlatform() {
+		res := p.syncPush(ctx, mode)
 		p.log.Info("sync " + res.Describe())
 		report.Categories = append(report.Categories, res)
 	}

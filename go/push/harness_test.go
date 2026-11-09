@@ -181,6 +181,7 @@ func tryNode(t *testing.T, url string, c nodeConfig) (*node, error) {
 		}
 	}
 	maps.Copy(env, c.env)
+	maps.DeleteFunc(env, func(_, v string) bool { return v == "" }) // "" removes a variable
 	clock := c.clock
 	if clock == nil {
 		clock = fwtest.NewClock(begin)

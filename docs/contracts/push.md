@@ -14,7 +14,8 @@ tests of section 14 on both drivers (amendment 15 of section 17). The framework 
 push gateway needs, built in Go (2026-11-09, amendment 16 of section 17): many applications in one
 host, per-application stream limits, the optional `client` member of the subscribe body, `Handler`,
 `Drain`, `ExternalMigrations`, `PublishBatch`. Not yet: the SDK readers, the load test on the target,
-the Java side of amendment 16, `push.driver=platform`.**
+the Java side of amendment 16 and of `push.driver=platform`. `push.driver=platform`, the publish sink
+for applications that use the gateway, is built in Go (2026-11-09, amendment 17 of section 17).**
 Drivers: `postgres` (A1) and
 `redis` (A2), behind one contract. A platform push gateway (A4) is sketched in section 12 so that
 nothing here rules it out.
@@ -336,7 +337,7 @@ so a push for a change the snapshot already holds is harmless; a missed one is n
 
 | key | default | range |
 |---|---|---|
-| `push.driver` | `postgres` | `postgres`, `redis` |
+| `push.driver` | `postgres` | `postgres`, `redis`, `platform` (amendment 17) |
 | `push.redis-instance` | the default Redis instance | a configured instance |
 | `push.retention` | 24h | 10m to 24h |
 | `push.max-data-bytes` | 16384 | 1 to 65536 |
@@ -347,7 +348,7 @@ so a push for a change the snapshot already holds is harmless; a missed one is n
 | `push.stream.max-lifetime` | 1h | 1m to 24h |
 | `push.recent` | 10000 | 0 to 1 000 000 |
 | `push.max-streams` / `push.max-streams-per-principal` | 50000 / 20 | |
-| `push.stream.secret`, `push.ticket.key` | (secrets, required) | |
+| `push.stream.secret`, `push.ticket.key` | (secrets, required) | `push.stream.secret` is not needed with `platform` (amendment 17) |
 
 ## 11. Metrics, health and the load test
 
@@ -380,8 +381,8 @@ done, on one 8 GB Fargate task:
 The platform's specification of the gateway is `docs/push-gateway-spec.md` of the platform repository
 (accepted 2026-11-09); it turns this sketch into a buildable plan, and its section 2.1 lists the
 framework changes, built in Go as amendment 16 of section 17 (multi-application hosts, per-application
-limits, the `client` member, hosting without the framework HTTP server, batch publishing). The one
-item not built is `push.driver=platform`, the publish sink for framework applications.
+limits, the `client` member, hosting without the framework HTTP server, batch publishing), and
+`push.driver=platform`, the publish sink for framework applications, as amendment 17 (Go; not Java).
 
 The platform will host a push gateway, its own service (like the router), built on this module.
 Applications that cannot hold streams themselves use it, Laravel and PHP-FPM in particular. So do
@@ -707,3 +708,64 @@ Smallest calls made where the text was silent or could not be built as written:
     - **Release.** The core module `github.com/flowcatalyst/framework/go` is versioned by the tag
       `go/vX.Y.Z` (`make -C go release-go BUMP=0.1.0` for the first); the platform imports it from the
       first such tag.
+17. **`push.driver=platform` (A4, Go, 2026-11-09).** The publish sink for an application that uses
+    the platform's push gateway (`docs/push-gateway-spec.md` of the platform repository, sections 2.1
+    item 4, 6.1, 6.4 and 8) instead of hosting push itself. Application code does not change
+    (`usecase.Push`, `Pushes.Publish`); the application moves between the two by configuration.
+    - **Setting.** `push.driver` accepts `platform` next to `postgres` and `redis`. With it the module
+      keeps no log, hub, relay or retention loop and no `push:log` health check, serves **no routes**
+      (`Routes()` is empty, `Handler()` answers 404, `Drain()` does nothing), and needs no
+      `push.stream.secret` (a value that is set is ignored, so a deployment can switch by changing one
+      key; `Authenticate` and `RedisLog` options are ignored with a warning, `BasePath` has no effect).
+      `push.ticket.key` is **required** (tickets are still minted here and verified by the gateway),
+      the lock instances are not used, the default database instance is. `platform` with
+      `MultiApplication` is a start-up problem (a gateway does not publish through another).
+    - **The row.** `usecase.Push` (any use case), `Pushes.Publish`, `PublishAlone`, `PublishBatch` and
+      `PublishBatchAlone` write one `PUSH` row per push to the application's `outbox_messages`, in the
+      caller's transaction (the run's transaction for `usecase.Push`, in plan order; the caller's `tx`
+      for `Publish` and `PublishBatch`; its own for the `...Alone` forms), with the columns of the
+      shared `insert.sql` and the statement `WITH woken AS (SELECT pg_notify('fc_outbox_push', ''))
+      INSERT ... SELECT ... FROM woken`, so the platform's outbox processor wakes when the transaction
+      commits and not before. Row: `id` a TSID (or the push's own id), `type` `PUSH`, `message_group`
+      the **topic** by default, `status` 0, `client_id` the Context's client, `payload_size` the
+      payload's bytes, `headers` null. Payload, compact, members in this order: `topic`, `type`,
+      `data` (the JSON object itself), `clientCode` (the Context's client, absent for the platform
+      client, like a dispatch job), `pushId` (= the row id). It is the vector
+      `conformance/outbox/outbox-push.json`, which the Go outbox conformance test writes and compares
+      byte for byte, with its `invalidPushes` (the codes of section 1, and `PUSH_ID_INVALID`,
+      `CLIENT_INVALID`).
+    - **Options.** `usecase.Push(topic, type, data, opts...)` takes `PushUngrouped()` (no message
+      group: the processor sends such rows concurrently, no order), `PushMessageGroup(g)`,
+      `PushID(id)` (the row id and `pushId`, `[0-9A-Za-z_-]{1,26}`) and `PushClientCode(code)` (a
+      client other than the Context's, by identifier). The first two are ordering hints the hosted
+      drivers ignore (they log in commit order). `PushID` and `PushClientCode` exist only in this row:
+      with a hosted driver a push that carries them fails the run as `INTERNAL` / `INVALID_PUSH`
+      (reason `OPTION_UNSUPPORTED`) rather than lose them silently. The runner learns the driver from
+      `Pushes.RunnerOption()` (`usecase.WithPlatformPushes`); `usecase.NewRunner(b, outbox, db,
+      pushes.RunnerOption())` is unchanged. The data limit is `push.max-data-bytes`, as before.
+    - **Ordering.** The guarantee "log order = commit order" is the gateway's (spec 6.5): the pushes
+      of one message group (default one topic) of this application arrive in outbox order.
+    - **Sync.** The `flowcatalyst` module (`flowcatalyst.WithPushes(pushes)`) sends the gateway the
+      rules declared on `push.Declared` and the JWKS of `push.ticket.key` with
+      `POST /api/applications/{app}/push/sync`, body `{"rules": [{"pattern", "requires", "public"}],
+      "keys": <JWKS>}` (`Pushes.GatewaySync()`), a declarative full replace, as a category `PUSH` after
+      the definitions: by the `sync` command (with `--dry-run` it lists the patterns and sends
+      nothing) and, when `flowcatalyst.sync.on-boot` is set, at start-up (a failure is logged, never
+      fatal). Without `WithPushes`, or with another driver, the module does nothing for push. With the
+      module disabled the rules are not synced (warned at start). The private seeds never leave the
+      application.
+    - **No local cursor.** The gateway owns the log, so `Pushes.Cursor()` returns `""` (and
+      `HasCursor()` is false) instead of a number that means nothing to the gateway. A snapshot
+      endpoint that returns `""` gives the client nothing to send as `Last-Event-ID`; its first listen
+      is then live, and the client closes the gap between its state read and the listen by reading the
+      state once more when its stream reports `subscribed` (section 9.1's reasoning, applied by the
+      client). A cursor read from the gateway is a platform API that does not exist yet.
+    - **Streams.** `Pushes.EndStreams` and `EndPrincipal` return `ErrPlatformDriver`: the gateway ends
+      the streams of a platform sign-out and of a revoked field login itself (spec section 5). An
+      application's own ticket-only sessions cannot be ended from here yet.
+    - **Moving between hosting and the gateway.** The clients' `baseUrl` changes and they reload once;
+      their last ids mean nothing on the other host (`reset` with `unknown-id`, spec 6.4).
+    - **Java** has none of this (`framework-push`, `Plan.andPush`, the `flowcatalyst` sync): it would
+      need the same `platform` driver value, a `PUSH` row writer in `framework-usecase` for
+      `Plan.andPush` and `Pushes.publish`, `Pushes` without hub or routes, and the push category in
+      the `flowcatalyst` module's sync.

@@ -3,6 +3,7 @@ package conformance_test
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -17,10 +18,14 @@ import (
 	"github.com/flowcatalyst/framework/go/fwtest"
 	"github.com/flowcatalyst/framework/go/internal/conformance"
 	"github.com/flowcatalyst/framework/go/internal/dbtx"
+	"github.com/flowcatalyst/framework/go/internal/pushrow"
 	"github.com/flowcatalyst/framework/go/usecase"
 )
 
-const outboxVector = "outbox/outbox.json"
+const (
+	outboxVector     = "outbox/outbox.json"
+	outboxPushVector = "outbox/outbox-push.json"
+)
 
 type outboxDoc struct {
 	Cases []struct {
@@ -43,6 +48,7 @@ type outboxDoc struct {
 			Fields       jsontext.Value `json:"fields"`
 		} `json:"events"`
 		DispatchJobs []jsontext.Value `json:"dispatchJobs"`
+		Pushes       []pushVector     `json:"pushes"`
 		Audit        struct {
 			EntityType string         `json:"entityType"`
 			EntityID   string         `json:"entityId"`
@@ -53,6 +59,27 @@ type outboxDoc struct {
 		Rows []outboxRowVector `json:"rows"`
 	} `json:"cases"`
 	InvalidDispatchJobs []jsontext.Value `json:"invalidDispatchJobs"`
+	InvalidPushes       []invalidPush    `json:"invalidPushes"`
+}
+
+// pushVector is a push of outbox-push.json: the options are the ones usecase.Push takes.
+type pushVector struct {
+	ID           string         `json:"id"`
+	Topic        string         `json:"topic"`
+	Type         string         `json:"type"`
+	Data         jsontext.Value `json:"data"`
+	ClientCode   string         `json:"clientCode"`
+	Ungrouped    bool           `json:"ungrouped"`
+	MessageGroup string         `json:"messageGroup"`
+}
+
+type invalidPush struct {
+	Topic    string         `json:"topic"`
+	Type     string         `json:"type"`
+	Data     jsontext.Value `json:"data"`
+	DataText *string        `json:"dataText"`
+	PadBytes int            `json:"padBytes"`
+	Code     string         `json:"code"`
 }
 
 type outboxRowVector struct {
@@ -105,10 +132,18 @@ func TestOutboxInsertIsTheSharedStatement(t *testing.T) {
 // TestOutboxVector writes every case's events, dispatch jobs and audit entry with the Go outbox
 // writer and compares every stored column with the rows the Java writer stored, the payload text
 // byte for byte.
-func TestOutboxVector(t *testing.T) {
+func TestOutboxVector(t *testing.T) { checkOutboxVector(t, outboxVector) }
+
+// TestOutboxPushVector writes outbox-push.json's PUSH rows (push.driver=platform, push contract
+// amendment 17.17) with the same writer and compares them the same way, and checks that a push the
+// vector lists as invalid is refused with its code.
+func TestOutboxPushVector(t *testing.T) { checkOutboxVector(t, outboxPushVector) }
+
+func checkOutboxVector(t *testing.T, file string) {
+	t.Helper()
 	t.Parallel()
 	var doc outboxDoc
-	conformance.ReadJSON(t, outboxVector, &doc)
+	conformance.ReadJSON(t, file, &doc)
 	if len(doc.Cases) == 0 {
 		t.Fatal("no cases")
 	}
@@ -152,6 +187,10 @@ func TestOutboxVector(t *testing.T) {
 				}
 				jobs = append(jobs, j)
 			}
+			var pushes []usecase.PlatformPush
+			for _, p := range c.Pushes {
+				pushes = append(pushes, usecase.PlatformPush{Context: cx, Step: vectorPush(p)})
+			}
 			entry := usecase.AuditEntry{
 				EntityType: c.Audit.EntityType, EntityID: c.Audit.EntityID, Operation: c.Audit.Operation,
 				PerformedAt: now, Source: c.Audit.Source, CorrelationID: cx.Correlation().String(), Client: cx.Client(),
@@ -179,12 +218,17 @@ func TestOutboxVector(t *testing.T) {
 						return err
 					}
 				}
+				if len(pushes) > 0 {
+					if err := writer.WritePushes(ctx, wtx, pushes...); err != nil {
+						return err
+					}
+				}
 				return writer.WriteAudit(ctx, wtx, entry)
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
-			compareRows(t, c.Name, c.Rows, readOutbox(t, db))
+			compareRows(t, file, c.Name, c.Rows, readOutbox(t, db))
 		})
 	}
 	for i, raw := range doc.InvalidDispatchJobs {
@@ -195,11 +239,63 @@ func TestOutboxVector(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err := dispatchJob(t, raw)
-		where := conformance.Where(outboxVector, "invalidDispatchJobs "+strconv.Itoa(i), "error")
+		where := conformance.Where(file, "invalidDispatchJobs "+strconv.Itoa(i), "error")
 		if err == nil || err.Error() != want.Error {
 			t.Errorf("%s: got %v, want %q", where, err, want.Error)
 		}
 	}
+	for i, p := range doc.InvalidPushes {
+		got := refusedPush(p)
+		where := conformance.Where(file, "invalidPushes "+strconv.Itoa(i), "code")
+		if got != p.Code {
+			t.Errorf("%s: got %q, want %q", where, got, p.Code)
+		}
+	}
+}
+
+func vectorPush(p pushVector) usecase.Step {
+	opts := []usecase.PushOption{usecase.PushID(p.ID)}
+	if p.ClientCode != "" {
+		opts = append(opts, usecase.PushClientCode(p.ClientCode))
+	}
+	if p.Ungrouped {
+		opts = append(opts, usecase.PushUngrouped())
+	}
+	if p.MessageGroup != "" {
+		opts = append(opts, usecase.PushMessageGroup(p.MessageGroup))
+	}
+	return usecase.Push(p.Topic, p.Type, p.Data, opts...)
+}
+
+// refusedPush is the code a push of outbox-push.json's invalidPushes is refused with, "" when it
+// is accepted: the framework's own checks, in the order the push is built (topic, type, data with
+// the default limit).
+func refusedPush(p invalidPush) string {
+	var data any = p.Data
+	switch {
+	case p.DataText != nil:
+		data = []byte(*p.DataText)
+	case p.PadBytes > 0:
+		data = map[string]string{"pad": strings.Repeat("x", p.PadBytes)}
+	case len(p.Data) == 0:
+		data = map[string]any{}
+	}
+	for _, err := range []error{pushrow.CheckTopic(p.Topic), pushrow.CheckType(p.Type)} {
+		if err != nil {
+			return pushReason(err)
+		}
+	}
+	if _, err := pushrow.Encode(data, pushrow.DefaultMaxDataBytes); err != nil {
+		return pushReason(err)
+	}
+	return ""
+}
+
+func pushReason(err error) string {
+	if pe, ok := errors.AsType[*pushrow.Error](err); ok {
+		return pe.Reason
+	}
+	return err.Error()
 }
 
 func vectorEvent(t *testing.T, kind string, meta event.Metadata, fields jsontext.Value) event.Event {
@@ -390,10 +486,10 @@ func readOutbox(t *testing.T, db *database.DB) []outboxRowVector {
 	return out
 }
 
-func compareRows(t *testing.T, name string, want, got []outboxRowVector) {
+func compareRows(t *testing.T, file, name string, want, got []outboxRowVector) {
 	t.Helper()
 	if len(got) != len(want) {
-		t.Fatalf("%s: %d rows, want %d", conformance.Where(outboxVector, name, "rows"), len(got), len(want))
+		t.Fatalf("%s: %d rows, want %d", conformance.Where(file, name, "rows"), len(got), len(want))
 	}
 	str := func(p *string) string {
 		if p == nil {
@@ -403,7 +499,7 @@ func compareRows(t *testing.T, name string, want, got []outboxRowVector) {
 	}
 	for i, w := range want {
 		g := got[i]
-		where := func(field string) string { return conformance.Where(outboxVector, name+" row "+strconv.Itoa(i), field) }
+		where := func(field string) string { return conformance.Where(file, name+" row "+strconv.Itoa(i), field) }
 		if w.ID == "<tsid>" {
 			if !fw.CanonicalTSID(g.ID) {
 				t.Errorf("%s: %q is not a TSID", where("id"), g.ID)
@@ -441,7 +537,7 @@ func parsedPayload(t *testing.T, text string) []byte {
 		t.Fatalf("payload is not JSON: %v", err)
 	}
 	for _, k := range []string{"data", "operationData"} {
-		if v, ok := m[k]; ok {
+		if v, ok := m[k]; ok && v.Kind() == '"' { // a PUSH row's data is the object itself
 			var s string
 			if err := json.Unmarshal(v, &s); err != nil {
 				t.Fatal(err)

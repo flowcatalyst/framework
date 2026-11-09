@@ -35,6 +35,45 @@ const (
 	DataTooLarge  = "DATA_TOO_LARGE"
 )
 
+// The reasons only the platform driver's outbox row has (the codes of the platform's ingest).
+const (
+	IDInvalid         = "PUSH_ID_INVALID"
+	ClientInvalid     = "CLIENT_INVALID"
+	OptionUnsupported = "OPTION_UNSUPPORTED"
+)
+
+// MaxGroupLength is the longest outbox message group.
+const MaxGroupLength = 255
+
+// CheckID checks a push id (the outbox row id and the payload's pushId): [0-9A-Za-z_-]{1,26}.
+func CheckID(id string) error {
+	ok := id != "" && len(id) <= 26
+	for i := 0; ok && i < len(id); i++ {
+		c := id[i]
+		ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-'
+	}
+	if !ok {
+		return refuse(IDInvalid, "id must match [0-9A-Za-z_-]{1,26}")
+	}
+	return nil
+}
+
+// CheckClientCode checks the client a push names: 1 to 100 characters, not blank.
+func CheckClientCode(code string) error {
+	if len(code) > 100 || strings.TrimSpace(code) == "" {
+		return refuse(ClientInvalid, "clientCode must be 1 to 100 characters")
+	}
+	return nil
+}
+
+// CheckGroup checks an outbox message group: at most 255 characters.
+func CheckGroup(group string) error {
+	if len(group) > MaxGroupLength {
+		return refuse(TopicInvalid, "messageGroup is at most %d characters", MaxGroupLength)
+	}
+	return nil
+}
+
 // ErrInvalid is what every refused push matches with errors.Is.
 var ErrInvalid = errors.New("invalid push")
 

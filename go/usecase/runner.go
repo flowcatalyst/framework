@@ -45,6 +45,8 @@ type Runner struct {
 	runs      *metrics.Counter
 	durations *metrics.Timer
 	pushMax   int // push.max-data-bytes
+	// platformPush writes a push as a PUSH row of the outbox (push.driver=platform)
+	platformPush bool
 }
 
 // RunnerOption configures [NewRunner].

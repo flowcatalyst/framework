@@ -1,4 +1,4 @@
-<!-- types: Pushes, Declared, Push, Rule, RuleOption, Option, Driver, Log, Entry, OutboxRow, Holder, Follower, PostgresLog, RedisStreamLog, Credentials, Authenticator, AuthenticatorFunc, TicketOptions, Denial, InvalidPushError, DeclareOption, MultiOption, RuleProvider, TicketKeyResolver, AppLimits, AppLimitProvider, ClientAuthenticator, ClientAuthenticatorFunc, Publication -->
+<!-- types: Pushes, Declared, Push, Rule, RuleOption, Option, Driver, Log, Entry, OutboxRow, Holder, Follower, PostgresLog, RedisStreamLog, Credentials, Authenticator, AuthenticatorFunc, TicketOptions, Denial, InvalidPushError, DeclareOption, MultiOption, RuleProvider, TicketKeyResolver, AppLimits, AppLimitProvider, ClientAuthenticator, ClientAuthenticatorFunc, Publication, GatewaySync, GatewayRule, PushOption, PlatformPush -->
 # Go: push to clients
 
 Package `push` implements the [push contract](../../contracts/push.md) (P1a): small messages to
@@ -282,6 +282,37 @@ flowcatalyst.OnFieldRevocation(receivers, func(ctx context.Context, cx fw.Contex
 
 (from the doc comment of `flowcatalyst.PushHolder`). Ending streams when a session signs out is not
 built yet.
+
+## Publishing through the platform gateway
+
+With `push.driver=platform` (contract amendment 17) the application does not host push: its pushes go
+to the platform's push gateway, which holds the log and serves the routes. Nothing changes in the
+code that publishes (`usecase.Push`, `Publish`, `PublishAlone`, `PublishBatch`); `RunnerOption()`
+tells the runner. The module then keeps no log, hub, relay or retention loop, serves no routes
+(`Routes()` is empty, `Handler()` answers 404), needs no `push.stream.secret` (ignored if set), and
+requires `push.ticket.key`: tickets are minted here with `Ticket` / `TicketWith` as before and the
+gateway verifies them. A push is a `PUSH` row of the application's `outbox_messages`
+(`conformance/outbox/outbox-push.json`), written in the use case's transaction (or `tx` of
+`Publish`) together with a `pg_notify('fc_outbox_push')` so the platform's outbox processor delivers
+it as soon as the transaction commits. `usecase.Push` takes the options `PushUngrouped()`,
+`PushMessageGroup(g)`, `PushID(id)` and `PushClientCode(code)`; the message group is the topic by
+default, so the pushes of one topic reach the gateway in order. The last two exist only in this row
+and fail the run as `INVALID_PUSH` with a hosted driver.
+
+The `flowcatalyst` module sends the gateway the topic rules and the public ticket keys
+(`flowcatalyst.WithPushes(pushes)`), as the category `PUSH` of `sync` and of sync on boot:
+
+```go
+p, err := pd.Build(ctx, b, db, lk)
+fc, err := flowcatalyst.Build(ctx, b, fcd, flowcatalyst.WithPushes(p))
+```
+
+**No cursor.** The gateway owns the log, so `Cursor()` returns `""` and `HasCursor()` is false: a
+snapshot endpoint has nothing to hand the client as `Last-Event-ID`, the client's first listen is
+live, and it reads its state once more when the stream reports `subscribed` to close the gap. A
+cursor from the gateway is future platform work. `EndStreams` and `EndPrincipal` return
+`ErrPlatformDriver`: the gateway ends the streams of a platform sign-out and of a revoked field
+login. Java does not have this driver yet.
 
 ## The log driver
 

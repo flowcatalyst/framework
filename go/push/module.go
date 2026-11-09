@@ -3,6 +3,7 @@ package push
 import (
 	"context"
 	"embed"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -21,6 +22,7 @@ import (
 	"github.com/flowcatalyst/framework/go/database"
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/httpfw"
+	"github.com/flowcatalyst/framework/go/internal/dbtx"
 	"github.com/flowcatalyst/framework/go/internal/pushrow"
 	"github.com/flowcatalyst/framework/go/locks"
 	"github.com/flowcatalyst/framework/go/usecase"
@@ -51,6 +53,10 @@ type Driver string
 const (
 	DriverPostgres Driver = "postgres"
 	DriverRedis    Driver = "redis"
+	// DriverPlatform publishes through the platform's push gateway (push contract section 12 and
+	// amendment 17.17): the module writes PUSH rows to the application's outbox, serves no routes
+	// and runs no relay, hub or retention loop.
+	DriverPlatform Driver = "platform"
 )
 
 // Declared is the push module's declaration, from [Declare]: its settings and its topic rules.
@@ -127,8 +133,8 @@ func DeclareWith(app *fw.App, opts ...DeclareOption) *Declared {
 		ticketKey = ticketKey.Required()
 	}
 	return &Declared{
-		driver: config.Declare(m, config.Enum("push.driver", "Where the push log lives: postgres (fw_push_log) or redis (a Redis stream).",
-			DriverPostgres, DriverRedis).WithDefault(DriverPostgres)),
+		driver: config.Declare(m, config.Enum("push.driver", "Where the push log lives: postgres (fw_push_log), redis (a Redis stream), or platform (the platform's push gateway holds it; the application writes PUSH rows to its outbox).",
+			DriverPostgres, DriverRedis, DriverPlatform).WithDefault(DriverPostgres)),
 		redisInstance: config.Declare(m, config.String("push.redis-instance",
 			"The Redis instance of the redis driver (default: the default instance).")),
 		retention: config.Declare(m, config.Duration("push.retention",
@@ -157,7 +163,7 @@ func DeclareWith(app *fw.App, opts ...DeclareOption) *Declared {
 		maxPerPrincipal: config.Declare(m, config.Int("push.max-streams-per-principal",
 			"Most streams of one principal on one instance (at least 1).").WithDefault(20).Checked(atLeastOne)),
 		streamSecret: config.Declare(m, config.SecretValue("push.stream.secret",
-			"The key that signs stream tokens (HMAC-SHA256), at least 32 characters, the same on every instance.").Required()),
+			"The key that signs stream tokens (HMAC-SHA256), at least 32 characters, the same on every instance. Required unless push.driver is platform (checked by Build).")),
 		ticketKey: config.Declare(m, ticketKey),
 	}
 }
@@ -241,6 +247,8 @@ type Pushes struct {
 	cfg     settings
 	routes  *httpfw.Routes
 
+	platform *usecase.OutboxWriter // non-nil: push.driver=platform, pushes go to the outbox
+
 	multi       *multiApp // non-nil: many applications ([MultiApplication])
 	drainSignal chan struct{}
 	drainOnce   sync.Once
@@ -257,6 +265,8 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	for _, f := range opts {
 		f(&o)
 	}
+	driver := d.driver.Get(b)
+	platform := driver == DriverPlatform
 	var problems []fw.Problem
 	bad := func(key, msg string) {
 		problems = append(problems, fw.Problem{Module: ModuleID, Key: key, Message: msg})
@@ -283,27 +293,48 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	if o.base != "" && (!strings.HasPrefix(o.base, "/") || strings.HasSuffix(o.base, "/")) {
 		bad("", "the base path starts with / and does not end with one: "+o.base)
 	}
-	if db == nil || lk == nil {
-		bad("", "push needs the default database instance and the lock instances")
+	switch {
+	case db == nil:
+		bad("", "push needs the default database instance")
+	case lk == nil && !platform:
+		bad("", "push needs the lock instances")
 	}
-	secret := d.streamSecret.Get(b).Reveal()
-	if len(secret) < 32 {
+	secret, hasSecret := d.streamSecret.Lookup(b)
+	switch {
+	case platform:
+		// the gateway signs the stream tokens: an application that moves between hosting push and
+		// the gateway by configuration keeps its secret set, and it is unused
+	case !hasSecret:
+		bad("push.stream.secret", "required unless push.driver is platform; at least 32 characters")
+	case len(secret.Reveal()) < 32:
 		bad("push.stream.secret", "must be at least 32 characters")
+	}
+	if platform && o.multi != nil {
+		bad("push.driver", "platform cannot be the driver of a multi-application host (the gateway publishes to its own log)")
 	}
 	var keys *ticketKeys
 	var err error
 	if text, set := d.ticketKey.Lookup(b); o.multi == nil || (set && text.Reveal() != "") {
-		if keys, err = parseTicketKeys(d.ticketKey.Get(b).Reveal()); err != nil {
+		if !set {
+			bad("push.ticket.key", "required: the application verifies the tickets it receives (and with push.driver=platform syncs its public keys to the gateway)")
+		} else if keys, err = parseTicketKeys(text.Reveal()); err != nil {
 			bad("push.ticket.key", err.Error())
 		}
 	}
+	if platform {
+		if o.auth != nil {
+			b.Logger(ModuleID).Warn("push: push.driver=platform serves no routes; Authenticate(...) is not used")
+		}
+		if o.redisLog != nil {
+			b.Logger(ModuleID).Warn("push: push.driver=platform keeps no log; RedisLog(...) is not used")
+		}
+	}
 	var gate *locks.Gate
-	if lk != nil {
+	if lk != nil && !platform {
 		if gate, err = locks.ServiceGate(lk, relayLoop, d.relayLease.Get(b)); err != nil {
 			bad("", "the relay's lock: "+err.Error())
 		}
 	}
-	driver := d.driver.Get(b)
 	if driver == DriverRedis && o.redisLog == nil {
 		bad("push.driver", "is redis, but Build was not given push.RedisLog(...)")
 	}
@@ -311,6 +342,9 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 		return nil, &fw.StartupError{Problems: problems}
 	}
 
+	if platform {
+		return d.buildPlatform(b, db, o, keys)
+	}
 	var log Log = NewPostgresLog(db)
 	if driver == DriverRedis {
 		instance, _ := d.redisInstance.Lookup(b)
@@ -332,7 +366,7 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 	}
 	p := &Pushes{
 		app: o.app, db: db, log: log, auth: o.auth, clock: b.Clock(), logger: logger, metrics: m,
-		tokens: streamTokens{secret: []byte(secret)}, keysSet: keys, jwks: jwks,
+		tokens: streamTokens{secret: []byte(secret.Reveal())}, keysSet: keys, jwks: jwks,
 		cfg:     settings{maxData: d.maxDataBytes.Get(b), maxTopics: d.maxTopics.Get(b), retention: d.retention.Get(b)},
 		granter: &granter{application: o.app, rules: append([]Rule(nil), d.rules...), keys: keys, maxLifetime: d.maxLifetime.Get(b), multi: o.multi},
 		multi:   o.multi, drainSignal: make(chan struct{}),
@@ -393,16 +427,30 @@ func (d *Declared) Build(ctx context.Context, b *fw.Boot, db *database.DB, lk *l
 }
 
 // Routes is the module's route table: POST {base}/push/subscriptions, GET {base}/push/stream and
-// GET {base}/push/keys. Pass it among the tables of httpfw.NewServer.
+// GET {base}/push/keys. Pass it among the tables of httpfw.NewServer. With push.driver=platform it
+// is empty (the gateway serves the routes), so a host that passes it keeps working.
 func (p *Pushes) Routes() *httpfw.Routes { return p.routes }
+
+// UsesPlatform reports whether push.driver is platform: pushes are PUSH rows of the application's
+// outbox, delivered by the platform's push gateway, which also serves the routes and holds the log.
+func (p *Pushes) UsesPlatform() bool { return p.platform != nil }
+
+// ErrPlatformDriver is what the operations that need a local log or hub return when push.driver is
+// platform: the platform's gateway owns them.
+var ErrPlatformDriver = errors.New("push: push.driver is platform, the platform's push gateway owns the log and the streams")
 
 // Rules returns the declared topic rules (data, for a gateway to apply).
 func (p *Pushes) Rules() []Rule { return append([]Rule(nil), p.granter.rules...) }
 
 // RunnerOption passes push.max-data-bytes to the use-case runner, so usecase.Push refuses what
-// Publish refuses: usecase.NewRunner(b, outbox, db, pushes.RunnerOption()).
+// Publish refuses, and with push.driver=platform makes the runner write pushes as PUSH rows of the
+// outbox: usecase.NewRunner(b, outbox, db, pushes.RunnerOption()).
 func (p *Pushes) RunnerOption() usecase.RunnerOption {
-	return usecase.WithPushMaxDataBytes(p.cfg.maxData)
+	size := usecase.WithPushMaxDataBytes(p.cfg.maxData)
+	if p.platform == nil {
+		return size
+	}
+	return func(r *usecase.Runner) { size(r); usecase.WithPlatformPushes()(r) }
 }
 
 // Publish writes a push in a transaction the caller owns (push contract section 2), for cx's
@@ -419,7 +467,20 @@ func (p *Pushes) Publish(ctx context.Context, tx pgx.Tx, cx fw.Context, push Pus
 	if err := p.checkSize(push); err != nil {
 		return err
 	}
+	if p.platform != nil {
+		return p.writePlatform(ctx, tx, Publication{Context: cx, Push: push})
+	}
 	return pushrow.Insert(ctx, tx, push.topic, push.typ, cx.Client(), push.data, p.clock.Now())
+}
+
+// writePlatform writes the items as PUSH rows of the application's outbox, in order, in tx (push
+// contract amendment 17.17): the row id is a TSID, the message group the topic.
+func (p *Pushes) writePlatform(ctx context.Context, tx pgx.Tx, items ...Publication) error {
+	pp := make([]usecase.PlatformPush, len(items))
+	for i, it := range items {
+		pp[i] = usecase.PlatformPush{Context: it.Context, Step: usecase.Push(it.Push.topic, it.Push.typ, jsontext.Value(it.Push.data))}
+	}
+	return p.platform.WritePushes(ctx, dbtx.New(tx), pp...)
 }
 
 // checkSize refuses data over the limit: push.max-data-bytes, or on a multi-application host the
@@ -465,6 +526,9 @@ func (p *Pushes) PublishBatch(ctx context.Context, tx pgx.Tx, items ...Publicati
 		}
 		rows[i] = pushrow.Row{Topic: it.Push.topic, Type: it.Push.typ, Client: it.Context.Client(), Data: it.Push.data}
 	}
+	if p.platform != nil {
+		return p.writePlatform(ctx, tx, items...)
+	}
 	return pushrow.InsertBatch(ctx, tx, rows, p.clock.Now())
 }
 
@@ -496,7 +560,9 @@ func (p *Pushes) Handler(opts ...httpfw.Option) (http.Handler, error) {
 // and the module calls it itself when the application shuts down.
 func (p *Pushes) Drain() {
 	p.drainOnce.Do(func() { close(p.drainSignal) })
-	p.hub.drain()
+	if p.hub != nil {
+		p.hub.drain()
+	}
 }
 
 // PublishAlone is [Pushes.Publish] in a transaction of its own on the default database instance.
@@ -522,9 +588,21 @@ func (p *Pushes) PublishAlone(ctx context.Context, cx fw.Context, push Push) err
 //
 // The cursor may lag the log (this instance has not dispatched the newest pushes yet). That is safe,
 // since a lagging cursor only replays more pushes; it costs no I/O.
+//
+// With push.driver=platform the platform's gateway owns the log, so this host has no cursor: Cursor
+// returns "" (use [Pushes.HasCursor] to tell). A client that opens its first listen without a
+// Last-Event-ID gets pushes from the moment it is subscribed, so the gap between the state read and
+// the listen is closed by the client reading the state once more when its stream reports
+// "subscribed" (contract amendment 17.17). A platform API for the gateway's cursor is future work.
 func (p *Pushes) Cursor() string {
+	if p.hub == nil {
+		return ""
+	}
 	return strconv.FormatInt(p.hub.lastID(), 10)
 }
+
+// HasCursor reports whether [Pushes.Cursor] returns a real cursor: false with push.driver=platform.
+func (p *Pushes) HasCursor() bool { return p.hub != nil }
 
 // TicketOptions binds a ticket further ([Pushes.TicketWith]).
 type TicketOptions struct {
@@ -587,6 +665,9 @@ func (p *Pushes) EndStreams(ctx context.Context, h Holder) error {
 	if h.IsZero() {
 		return errors.New("push: EndStreams of a holder that names nobody")
 	}
+	if p.hub == nil {
+		return ErrPlatformDriver // the platform ends the streams of a sign-out and of a revoked field login itself
+	}
 	p.hub.endHolder(h)
 	return p.log.End(ctx, h)
 }
@@ -595,3 +676,56 @@ func (p *Pushes) EndStreams(ctx context.Context, h Holder) error {
 func (p *Pushes) EndPrincipal(ctx context.Context, principal string) error {
 	return p.EndStreams(ctx, Holder{Principal: principal})
 }
+
+// buildPlatform builds the module for push.driver=platform (push contract amendment 17.17): pushes
+// are PUSH rows of the application's outbox, which the platform's outbox processor hands to the
+// push gateway. The module keeps no log, hub, relay, retention loop or health check, serves no
+// routes and needs no push.stream.secret; it still holds the topic rules and the ticket keys
+// (tickets are minted here and verified by the gateway, which gets the public keys and the rules
+// from the flowcatalyst module's sync, [Pushes.GatewaySync]).
+func (d *Declared) buildPlatform(b *fw.Boot, db *database.DB, o options, keys *ticketKeys) (*Pushes, error) {
+	if keys == nil {
+		return nil, errors.New("push: push.driver=platform needs push.ticket.key") // Build reports it first
+	}
+	jwks, err := keys.jwks()
+	if err != nil {
+		return nil, err
+	}
+	return &Pushes{
+		app: o.app, db: db, auth: o.auth, clock: b.Clock(), logger: b.Logger(ModuleID),
+		keysSet: keys, jwks: jwks, routes: httpfw.NewRoutes(ModuleID),
+		cfg:      settings{maxData: d.maxDataBytes.Get(b), maxTopics: d.maxTopics.Get(b), retention: d.retention.Get(b)},
+		granter:  &granter{application: o.app, rules: append([]Rule(nil), d.rules...), keys: keys, maxLifetime: d.maxLifetime.Get(b)},
+		platform: usecase.NewOutboxWriter(b.Ids(), b.Clock()), drainSignal: make(chan struct{}),
+	}, nil
+}
+
+// GatewayRule is a topic rule as the platform's sync endpoint takes it.
+type GatewayRule struct {
+	Pattern  string   `json:"pattern"`
+	Requires []string `json:"requires,omitempty"`
+	Public   bool     `json:"public,omitzero"`
+}
+
+// GatewaySync is the body of the platform's POST /api/applications/{appCode}/push/sync (the
+// platform's push-gateway specification section 8): the declared rules and the JWKS of the public
+// ticket keys, a declarative full replace.
+type GatewaySync struct {
+	Rules []GatewayRule  `json:"rules"`
+	Keys  jsontext.Value `json:"keys"`
+}
+
+// GatewaySync returns what the application syncs to the platform's gateway: the rules declared on
+// [Declared] and the JWKS of push.ticket.key (the same set GET /push/keys lists). The flowcatalyst
+// module sends it at start-up and with `sync` when push.driver is platform.
+func (p *Pushes) GatewaySync() GatewaySync {
+	rules := make([]GatewayRule, 0, len(p.granter.rules))
+	for _, r := range p.granter.rules {
+		rules = append(rules, GatewayRule{Pattern: r.Pattern(), Requires: r.Required(), Public: r.Public()})
+	}
+	return GatewaySync{Rules: rules, Keys: jsontext.Value(p.jwks)}
+}
+
+// Application returns the application code: the first segment of every topic and the iss of the
+// tickets this host mints.
+func (p *Pushes) Application() string { return p.app }

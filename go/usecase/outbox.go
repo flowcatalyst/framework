@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"io/fs"
 	"strconv"
@@ -137,6 +138,89 @@ func (w *OutboxWriter) WriteAudit(ctx context.Context, tx *database.Tx, e AuditE
 		return err
 	}
 	return w.insert(ctx, tx, []outboxRow{{id: w.ids.Generate(), typ: "AUDIT_LOG", payload: payload, client: e.Client.String()}})
+}
+
+// PlatformPush is one push for [OutboxWriter.WritePushes]: a Step made by [Push] and the Context
+// whose client the push is for.
+type PlatformPush struct {
+	Context fw.Context
+	Step    Step
+}
+
+// pushNotifyChannel is the channel the platform's outbox processor LISTENs on for PUSH rows.
+const pushNotifyChannel = "fc_outbox_push"
+
+// insertPushSQL writes a PUSH row and notifies pushNotifyChannel in one statement, so the
+// processor wakes when the transaction commits and not before. The columns are the shared
+// insert.sql's.
+const insertPushSQL = "WITH woken AS (SELECT pg_notify('" + pushNotifyChannel + "', ''))\n" +
+	"INSERT INTO outbox_messages (\n" +
+	"  id, type, message_group, payload, status, created_at, updated_at,\n" +
+	"  client_id, payload_size, headers\n" +
+	")\n" +
+	"SELECT $1::text, $2::text, $3::text, $4::text, $5::smallint, $6::timestamptz, $7::timestamptz,\n" +
+	"  $8::text, $9::integer, $10::jsonb\n" +
+	"FROM woken"
+
+// WritePushes writes one PUSH row per push, in order, with one round trip (push.driver=platform,
+// push contract section 12 and amendment 17.17; the platform's push-gateway specification
+// section 6.1): the row id is the push id (generated unless [PushID] set one), the message group
+// the topic unless [PushMessageGroup] or [PushUngrouped] says otherwise, client_id the Context's
+// client, and the payload topic, type, data (the object itself), clientCode and pushId, in that
+// order. clientCode is [PushClientCode], else the Context's client unless it is
+// [fw.PlatformClient] (a platform-scoped push names none), as for a dispatch job. A step that
+// [Push] refused returns its error; the caller checks the size limit.
+func (w *OutboxWriter) WritePushes(ctx context.Context, tx *database.Tx, pushes ...PlatformPush) error {
+	now := w.clock.Now()
+	batch := &pgx.Batch{}
+	for _, pp := range pushes {
+		if pp.Context.IsZero() {
+			return fw.ErrZeroContext
+		}
+		p, ok := pp.Step.(pushStep)
+		if !ok {
+			return errors.New("usecase: WritePushes takes the steps made by usecase.Push")
+		}
+		if p.err != nil {
+			return p.err
+		}
+		id := p.id
+		if id == "" {
+			id = w.ids.Generate()
+		}
+		group := ""
+		if !p.ungrouped {
+			if group = p.group; group == "" {
+				group = p.topic
+			}
+		}
+		code := p.clientCode
+		if code == "" && pp.Context.Client() != fw.PlatformClient {
+			code = pp.Context.Client().String()
+		}
+		payload := pushPayload(p, code, id)
+		var g any
+		if group != "" {
+			g = group
+		}
+		batch.Queue(insertPushSQL, id, "PUSH", g, payload, int16(0), now, now, pp.Context.Client().String(), int32(len(payload)), nil) //nolint:gosec // a push is far below 2 GiB
+	}
+	return tx.Conn().SendBatch(ctx, batch).Close()
+}
+
+// pushPayload is the PUSH row's payload, members in the order topic, type, data, clientCode (when
+// the push names a client), pushId. Not escaped for Java: the data is the object itself and the
+// text is written as it is.
+func pushPayload(p pushStep, clientCode, id string) string {
+	var o object
+	o.str("topic", p.topic)
+	o.str("type", p.typ)
+	o.raw("data", []byte(p.data))
+	if clientCode != "" {
+		o.str("clientCode", clientCode)
+	}
+	o.str("pushId", id)
+	return string(append(o.b, '}'))
 }
 
 func (w *OutboxWriter) insert(ctx context.Context, tx *database.Tx, rows []outboxRow) error {

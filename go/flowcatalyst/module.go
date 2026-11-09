@@ -15,15 +15,24 @@ import (
 	"github.com/flowcatalyst/framework/go/fw"
 	"github.com/flowcatalyst/framework/go/httpfw"
 	"github.com/flowcatalyst/framework/go/locks"
+	"github.com/flowcatalyst/framework/go/push"
 )
 
 // BuildOption gives [Build] the capabilities the module uses when the application has them.
 type BuildOption func(*buildConfig)
 
 type buildConfig struct {
-	dbs   *database.Databases
-	locks *locks.Locks
+	dbs    *database.Databases
+	locks  *locks.Locks
+	pushes *push.Pushes
 }
+
+// WithPushes gives the module the push module: with push.driver=platform, sync (and sync on boot)
+// also sends the push gateway its topic rules and the public ticket keys, as
+// POST /api/applications/{app}/push/sync (the platform's push-gateway specification section 8;
+// push contract amendment 17.17), a category PUSH after the definitions. With any other driver it
+// does nothing.
+func WithPushes(p *push.Pushes) BuildOption { return func(c *buildConfig) { c.pushes = p } }
 
 // WithDatabases lets the module watch the outbox (the outbox health check, on the default instance,
 // when it has an outbox_messages table) and purge old Once records (when it has fw_dispatch_once).
@@ -45,6 +54,7 @@ type Platform struct {
 	ctx     context.Context
 	log     *slog.Logger
 	cfg     buildConfig
+	pushes  *push.Pushes
 
 	targetBase string
 	ready      atomic.Bool
@@ -76,11 +86,14 @@ func Build(ctx context.Context, b *fw.Boot, d *Declared, opts ...BuildOption) (*
 	for _, o := range opts {
 		o(&cfg)
 	}
-	p := &Platform{s: d.s, b: b, ctx: context.WithoutCancel(ctx), log: b.Logger(ModuleID), cfg: cfg, recv: newReceivers(), catalog: &Catalog{}}
+	p := &Platform{s: d.s, b: b, ctx: context.WithoutCancel(ctx), log: b.Logger(ModuleID), cfg: cfg, pushes: cfg.pushes, recv: newReceivers(), catalog: &Catalog{}}
 	b.Command("sync", p.syncCommand)
 	if !d.s.enabled.Get(b) {
 		p.client = disabledClient()
 		p.log.Info("flowcatalyst is disabled (flowcatalyst.enabled=false)")
+		if cfg.pushes != nil && cfg.pushes.UsesPlatform() {
+			p.log.Warn("flowcatalyst: push.driver is platform but the module is disabled; the push rules and ticket keys are not synced to the gateway")
+		}
 		b.OnStarted("flowcatalyst:open", p.open)
 		return p, nil
 	}
