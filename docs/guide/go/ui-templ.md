@@ -1,4 +1,4 @@
-<!-- types: Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, PermissionDeniedDialogProps, CardProps, AvatarProps, SeparatorProps, KbdProps, ProgressProps, JSONBlockProps, AccordionProps, TooltipProps, HoverCardProps, DropdownMenuProps, AlertDialogProps, RadioGroupProps, DirtyFormProps, Views, Patches, PageOption, Declared, Module, Failure -->
+<!-- types: Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, Brand, PermissionDeniedDialogProps, CardProps, AvatarProps, SeparatorProps, KbdProps, ProgressProps, JSONBlockProps, AccordionProps, TooltipProps, HoverCardProps, DropdownMenuProps, AlertDialogProps, RadioGroupProps, DirtyFormProps, Views, Patches, PageOption, Declared, Module, Failure -->
 # Go: server-rendered pages with templ and Datastar (optional)
 
 > **Optional, and secondary to the Nuxt UI package.** The framework's primary UI is the shared
@@ -95,6 +95,30 @@ content and footer regions only when the slot renders something (it renders them
 text stay as given; `kit.JSONValue(v)` encodes a Go value for it without HTML escapes. `ProgressProps.Value` is a
 `*float64` (nil = indeterminate, 0 is a value). `AlertDialog.ConfirmVariant` is `ButtonDestructive` (default) or
 `ButtonPrimary`; any other value panics.
+
+### The app shell's brand and colours
+
+`AppShellProps.Brand` (`kit.Brand`, app-shell.md "Brand") puts an application's logo in place of the FlowCatalyst
+bolt, in the sidebar header and the narrow-screen top bar; the zero value renders the bolt at 32px, byte for byte
+as before. `LogoURL` is an image URL (it passes `kit.URL`, so `data:` is refused); `LogoSVG` is SVG markup that
+the kit writes as `<img src="data:image/svg+xml;base64,...">`, never inline, so whatever the markup holds
+cannot run (contract section 3 rule 3 as amended); `LogoHeight` is the header height in pixels (0 is 32: a URL
+image is at most that high, an SVG image and the bolt exactly that); `Name` is the image's `alt` (default `Logo`)
+or the bolt's `aria-label` (default `FlowCatalyst`).
+
+```go
+props := kit.AppShellProps{
+	LogoHref: "/ui/",
+	Brand:    kit.Brand{Name: "Acme", LogoURL: "https://cdn.example.com/acme.png", LogoHeight: 40},
+	// Nav, User, ...
+}
+```
+
+The sidebar and top bar colours are CSS custom properties with the navy look as fallbacks
+(`--fc-sidebar-background`, `--fc-topbar-background`, `--fc-sidebar-accent`; app-shell.md "Theming"): a page
+re-colours the shell by setting them on `:root` in its own stylesheet or a `<style>` element, after validating
+any value that comes from configuration. `kit/brand_test.go` and the `app-sidebar/brand-*` and `app-shell/brand`
+fixtures cover the brand.
 
 ## Conformance with the fixtures
 

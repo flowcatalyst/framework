@@ -112,9 +112,46 @@ Language-neutral parameters (see `_conventions.md`, Props). Fixtures, from the u
 | `signOutAction` | string | - | POST target |
 | `signOutAttrs` | attrs | - | on the Sign Out form |
 | `theme` | enum(system\|light\|dark) | - | the user's theme choice; set, it renders the theme picker in the user menu (pressed state from this value) |
+| `brand` | {name, logoUrl, logoSvg, logoHeight} | - | the application's logo in place of the bolt (see Brand); absent renders the bolt at 32px, exactly as before |
 | `default` | slot | - | page content inside `<main>` |
 
 The `<html>` attributes (`data-signals:sidebar-collapsed` with the literal from the `fc_sidebar` cookie, `data-class:fc-collapsed`, `data-signals:sidebar-mobile-open="false"`, `data-class:fc-mobile-open`, and the theme attributes below) belong to the page layout, not to this component; the fixtures cover the `<body>` content (`fixtures/user-menu/theme` the picker).
+
+## Brand
+
+`brand` replaces the FlowCatalyst bolt with the application's logo, in the sidebar header and in the narrow-screen top bar. Every field is optional; with none set the markup is the Structure's, unchanged. Fixtures: `fixtures/app-sidebar/brand-image`, `brand-svg`, `brand-bolt`, `brand-blocked-url` and `fixtures/app-shell/brand`.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `name` | string | - | the logo's accessible name: the image's `alt`, or the bolt's `aria-label`; empty is `Logo` for an image, `FlowCatalyst` for the bolt |
+| `logoUrl` | string | - | an image URL, `<img src>`; it passes the URL check (contract server-rendered-ui.md section 3 rule 3), so `data:` and script schemes become `about:invalid#blocked` |
+| `logoSvg` | string | - | SVG markup, used when `logoUrl` is empty. Rendered as an image whose `src` is `data:image/svg+xml;base64,` + the markup's UTF-8 bytes in standard base64, built by the kit; **never inline** (an SVG in an `<img>` runs no script and loads nothing) |
+| `logoHeight` | int | 32 | the logo height in the sidebar header in CSS pixels; 0 or less is 32 |
+
+Sidebar header link, `h` = `logoHeight` (or 32):
+
+```html
+<!-- an image from logoUrl: at most h high, not scaled up -->
+<a href="{logoHref}" class="fc-sidebar-logo" style="height: {h}px"><img src="{logoUrl}" alt="{name|Logo}" style="height: auto; max-height: {h}px"></a>
+<!-- an image from logoSvg: fills the link's height (kit.css) -->
+<a href="{logoHref}" class="fc-sidebar-logo" style="height: {h}px"><img src="data:image/svg+xml;base64,{base64}" alt="{name|Logo}"></a>
+<!-- no image: the bolt at h -->
+<a href="{logoHref}" class="fc-sidebar-logo" style="height: {h}px"><span style="width: {h}px; height: {h}px"><svg ... aria-label="{name|FlowCatalyst}">...</svg></span></a>
+```
+
+Top bar (below 768px): with an image, `<a href="{logoHref}" class="fc-topbar-logo fc-topbar-logo-image"><img src="{same src}" alt="{name|Logo}"></a>` (28px high, up to 160px wide); without one, the bolt as in the Structure with `aria-label="{name|FlowCatalyst}"`.
+
+## Theming
+
+The sidebar and top bar colours are CSS custom properties with the navy look as their fallbacks, so a host page can re-colour the shell with a `<style>` (or its own stylesheet) setting them on `:root`; nothing changes when they are unset.
+
+| Property | Default (fallback) | Used by |
+|---|---|---|
+| `--fc-sidebar-background` | `linear-gradient(180deg, #102a43 0%, #0a1929 100%)` | `.fc-sidebar` background |
+| `--fc-topbar-background` | `linear-gradient(90deg, #102a43 0%, #0a1929 100%)` | `.fc-topbar` background (below 768px) |
+| `--fc-sidebar-accent` | `#47a3f3` | the bolt, the current item (text, 3px rule, and its background at 15% / a current child's at 10%, by `color-mix`), the top bar buttons' focus outline |
+
+The values are CSS, so a host that takes them from configuration validates them first (a colour or a gradient, never free text inside the `<style>`).
 
 ## Accessibility
 
@@ -146,6 +183,6 @@ The `<html>` attributes (`data-signals:sidebar-collapsed` with the literal from 
 
 ## Notes for a template author
 
-- Parameters: logo (URL / svg / default bolt), logo height, nav tree, current path, user name/email/initials, platform-admin flag, version string, IdP-managed flag (switches Reset Password between a link and a dialog).
+- Parameters: logo (URL / svg / default bolt) and logo height (`brand`, above), nav tree, current path, user name/email/initials, platform-admin flag, version string, IdP-managed flag (switches Reset Password between a link and a dialog).
 - The `html` element carries Datastar attributes, so render them in the layout template. Datastar processes `<html>` (verified).
 - The class names `fc-*` live in `theme/fc-components.css` and need no Tailwind scanning.

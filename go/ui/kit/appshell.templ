@@ -49,6 +49,9 @@ type AppShellProps struct {
 	// Theme is the user's theme choice (ThemeSystem, ThemeLight, ThemeDark);
 	// non-empty renders the theme picker in the user menu.
 	Theme ThemeChoice `json:"theme"`
+	// Brand replaces the FlowCatalyst bolt with the application's logo and
+	// sets the logo height (app-shell.md, Brand); the zero value is the bolt.
+	Brand Brand `json:"brand"`
 }
 
 // SidebarCollapsedSignal is the app shell's collapse signal (on <html>).
@@ -88,9 +91,31 @@ const (
 	mobileEscapeExpr = "evt.key === 'Escape' && $sidebarMobileOpen && !document.querySelector('dialog[open], [popover]:popover-open') && ($sidebarMobileOpen = false, document.getElementById('fc-topbar-menu').focus())"
 )
 
-// logoSVG is the FlowCatalyst bolt (app-shell.md).
-templ logoSVG() {
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="100%" height="100%" aria-label="FlowCatalyst"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+// logoSVG is the FlowCatalyst bolt (app-shell.md), labelled.
+templ logoSVG(label string) {
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="100%" height="100%" aria-label={ label }><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+}
+
+// sidebarLogo is the content of the sidebar header's logo link: the brand's
+// image, else the bolt, at the brand's logo height (app-shell.md, Brand).
+templ sidebarLogo(b Brand) {
+	if b.hasImage() {
+		<img src={ templ.SafeURL(b.imageSrc()) } alt={ b.imageAlt() } { b.style(b.sidebarImageStyle())... }/>
+	} else {
+		<span { b.style("width: " + b.height() + "px; height: " + b.height() + "px")... }>
+			@logoSVG(b.boltLabel())
+		</span>
+	}
+}
+
+// topbarLogo is the content of the narrow-screen top bar's logo link: the
+// brand's image (28px high), else the bolt.
+templ topbarLogo(b Brand) {
+	if b.hasImage() {
+		<img src={ templ.SafeURL(b.imageSrc()) } alt={ b.imageAlt() }/>
+	} else {
+		@logoSVG(b.boltLabel())
+	}
 }
 
 // AppShell is app-shell.md: the navy sidebar, the user-menu popover and the
@@ -104,8 +129,8 @@ templ AppShell(p AppShellProps) {
 			<button type="button" id="fc-topbar-menu" class="fc-topbar-menu" aria-label={ i18n.T(ctx, "kit.appshell.open_nav") } aria-controls="fc-sidebar" aria-expanded="false" data-attr:aria-expanded="$sidebarMobileOpen ? 'true' : 'false'" data-on:click={ mobileOpenExpr }>
 				@Icon(IconProps{Name: "menu", Class: "size-[1.25rem]"})
 			</button>
-			<a href={ SafeURL(p.LogoHref) } class="fc-topbar-logo">
-				@logoSVG()
+			<a href={ SafeURL(p.LogoHref) } class={ p.Brand.topbarClass() }>
+				@topbarLogo(p.Brand)
 			</a>
 		</header>
 		<main class="p-[24px]">
@@ -118,10 +143,8 @@ templ AppShell(p AppShellProps) {
 templ AppSidebar(p AppShellProps) {
 	<aside id="fc-sidebar" class="fc-sidebar">
 		<div class="fc-sidebar-header">
-			<a href={ SafeURL(p.LogoHref) } class="fc-sidebar-logo" style="height: 32px">
-				<span style="width: 32px; height: 32px">
-					@logoSVG()
-				</span>
+			<a href={ SafeURL(p.LogoHref) } class="fc-sidebar-logo" { p.Brand.style("height: " + p.Brand.height() + "px")... }>
+				@sidebarLogo(p.Brand)
 			</a>
 			<button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label={ i18n.T(ctx, "kit.appshell.close_nav") } data-on:click={ mobileCloseExpr }>
 				@Icon(IconProps{Name: "x", Class: "size-[1.25rem]"})

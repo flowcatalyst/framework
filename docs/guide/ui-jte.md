@@ -1,4 +1,4 @@
-<!-- types: Kit, Props, Markup, JsonPretty, MarkdownHtml, Views, Patches, UiAssets, UiModule, ViewCsp, Theme, Flash, Classes, AppShells, Datastar, TestClient, RouteOptions, CsrfGuard, Response -->
+<!-- types: Kit, Props, Markup, JsonPretty, MarkdownHtml, Views, Patches, UiAssets, UiModule, ViewCsp, Theme, Flash, Classes, AppShells, ShellBrand, Datastar, TestClient, RouteOptions, CsrfGuard, Response -->
 # Server-rendered pages with JTE (optional)
 
 > **Optional, and secondary to the Nuxt UI package.** The framework's UI is the shared Nuxt UI package
@@ -100,6 +100,13 @@ permission-denied dialog, search select, markdown, code editor and diagram, and 
 components that had only a spec: accordion, alert dialog, avatar, card, dirty form, dropdown menu, hover card, JSON
 block, kbd, progress, radio group, separator and tooltip. Not components of the kit and not
 here: login pages (the platform hosts login), and anything the specs mark NP.
+
+The app shell's `brand` (`Props.Brand`: name, logo URL, logo SVG, logo height; app-shell.md "Brand") is the last
+component of `Props.AppShell`; the nine-argument constructor without it is kept and renders the FlowCatalyst bolt
+as before. `ShellBrand` holds the rules the templates apply: the logo URL passes `Markup.url`, the SVG is written as
+an `<img>` whose `src` is a `data:image/svg+xml;base64` URL the kit builds (never inline markup), and a height of 0
+is 32. The shell's colours are the CSS custom properties `--fc-sidebar-background`, `--fc-topbar-background` and
+`--fc-sidebar-accent`, whose fallbacks are the navy look (app-shell.md "Theming").
 
 `FixtureConformanceTest.NOT_YET` (fixture directories without a renderer) is empty. A new fixture directory must
 get its renderer in the same change, or be listed there first.

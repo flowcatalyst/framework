@@ -48,6 +48,9 @@ The Go module's packages that are plain `net/http` (`kit`, `ds`, `assets`, `view
    up to `0x20` and `0x7f` are ignored when finding the scheme (the part before the first `:` that comes before
    any `/`, `?` or `#`); no scheme, or `http`, `https`, `mailto`, `tel` (any case), keeps the URL; anything else
    (`javascript:`, `data:`, `vbscript:`, ...) becomes `about:invalid#blocked`.
+   *Amended 2026-11-09:* the one `data:` URL the kit writes is the app shell's brand logo
+   (`app-shell.md`, Brand): the kit builds `data:image/svg+xml;base64,...` itself from the `logoSvg` prop, for
+   an `<img src>` only, so no caller-supplied URL bypasses the check (the brand's `logoUrl` still passes it).
 4. Datastar attribute values are code. An id, a signal name or a path that enters an expression is validated and
    refused: id `[A-Za-z][A-Za-z0-9_-]*`, signal `[A-Za-z][A-Za-z0-9]*` (its attribute form is kebab-case, a `-`
    before each capital that follows a lower-case letter or digit, then lower-cased), path `/[A-Za-z0-9/_-]*` not starting with `//` (*amended 2026-11-02:* `//host` would fetch from another host; Java's

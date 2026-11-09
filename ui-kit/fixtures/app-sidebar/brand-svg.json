@@ -1,0 +1,67 @@
+{
+  "props": {
+    "logoHref": "#",
+    "nav": [
+      {
+        "label": "Platform",
+        "items": [
+          {
+            "label": "Dashboard",
+            "href": "#",
+            "icon": "layout-dashboard",
+            "current": true
+          },
+          {
+            "label": "Authorization",
+            "icon": "shield-check",
+            "open": true,
+            "children": [
+              {
+                "label": "Roles",
+                "href": "#",
+                "icon": "key-round"
+              },
+              {
+                "label": "Users",
+                "href": "#",
+                "icon": "users"
+              }
+            ]
+          },
+          {
+            "label": "Event types",
+            "href": "#",
+            "icon": "workflow"
+          }
+        ]
+      },
+      {
+        "label": "Settings",
+        "items": [
+          {
+            "label": "General",
+            "href": "#",
+            "icon": "settings"
+          }
+        ]
+      }
+    ],
+    "user": {
+      "name": "Ada Lovelace",
+      "email": "ada@example.com",
+      "initials": "AL"
+    },
+    "version": "1.0.0",
+    "profileHref": "#",
+    "resetPasswordHref": "#",
+    "signOutAction": "#",
+    "signOutAttrs": {
+      "data-on:submit": "void 0"
+    },
+    "brand": {
+      "logoSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><rect width=\"10\" height=\"10\" fill=\"#47a3f3\"/></svg>"
+    }
+  },
+  "source": "written from the spec (app-shell.md, Brand): gallery/app-shell.html's <aside class=\"fc-sidebar\"> with the logo link of the case",
+  "notes": "an SVG logo, shown as an <img> data URL (never inline), filling the default 32px; no name: alt Logo"
+}

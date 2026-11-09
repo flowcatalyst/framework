@@ -219,6 +219,47 @@ class EscapingTest {
   }
 
   @Test
+  void aBrandSvgIsAnImageDataUrlNeverInlineMarkupAndItsUrlIsChecked() {
+    String svg =
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert(1)\"><script>alert(2)</script>"
+            + "<foreignObject><img src=x onerror=alert(3)></foreignObject></svg>";
+    String out =
+        html(
+            Kit.appShell(
+                new Props.AppShell(
+                    "/", null, new Props.ShellUser("A", "a@b.c", "A"), null, null, null, null, null, null,
+                    new Props.Brand(XSS, null, svg, 0)),
+                null));
+    org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parseBodyFragment(out);
+    assertThat(doc.select("script, foreignObject")).isEmpty();
+    assertThat(out).doesNotContain("onload").doesNotContain("alert(3)");
+    org.jsoup.select.Elements imgs = doc.select("img");
+    assertThat(imgs).hasSize(2);
+    for (org.jsoup.nodes.Element img : imgs) {
+      String src = img.attr("src");
+      assertThat(src).startsWith("data:image/svg+xml;base64,");
+      assertThat(
+              new String(
+                  java.util.Base64.getDecoder().decode(src.substring(src.indexOf(',') + 1)),
+                  java.nio.charset.StandardCharsets.UTF_8))
+          .isEqualTo(svg);
+      assertThat(img.attr("alt")).isEqualTo(XSS);
+    }
+    for (String bad : new String[] {"javascript:alert(1)", "data:image/svg+xml,<svg onload=alert(1)>"}) {
+      String shell =
+          html(
+              Kit.appShell(
+                  new Props.AppShell(
+                      "/", null, new Props.ShellUser("A", "a@b.c", "A"), null, null, null, null, null, null,
+                      new Props.Brand(null, bad, null, 0)),
+                  null));
+      for (org.jsoup.nodes.Element img : org.jsoup.Jsoup.parseBodyFragment(shell).select("img")) {
+        assertThat(img.attr("src")).isEqualTo(Markup.BLOCKED_URL);
+      }
+    }
+  }
+
+  @Test
   void aPathRefusesTheProtocolRelativeForm() {
     assertThat(Markup.path("/orders/new")).isEqualTo("/orders/new");
     assertThatThrownBy(() -> Markup.path("//evil.example")).isInstanceOf(IllegalArgumentException.class);

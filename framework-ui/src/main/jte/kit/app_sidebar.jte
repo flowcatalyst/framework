@@ -3,7 +3,7 @@
 @param Props.AppShell p
 <aside id="fc-sidebar" class="fc-sidebar">
 <div class="fc-sidebar-header">
-<a href="${url(p.logoHref())}" class="fc-sidebar-logo" style="height: 32px"><span style="width: 32px; height: 32px">@template.kit.logo()</span></a>
+!{var b = p.brand(); var h = ShellBrand.height(b);}<a href="${url(p.logoHref())}" class="fc-sidebar-logo" style="height: ${h}px">@if(b != null && ShellBrand.hasImage(b))<img src="${ShellBrand.imageSrc(b)}" alt="${ShellBrand.imageAlt(b)}" style="${ShellBrand.sidebarImageStyle(b)}">@else<span style="width: ${h}px; height: ${h}px">@template.kit.logo(label = ShellBrand.boltLabel(b))</span>@endif</a>
 <button type="button" id="fc-sidebar-close" class="fc-sidebar-close" aria-label="${Kit.t("kit.appshell.close_nav")}" data-on:click="${AppShells.MOBILE_CLOSE}">@template.kit.icon(name = "x", cls = "size-[1.25rem]")</button>
 <button type="button" class="fc-collapse-btn" aria-label="${Kit.t("kit.appshell.collapse")}" aria-expanded="true" data-attr:aria-expanded="$sidebarCollapsed ? 'false' : 'true'" data-on:click="${AppShells.COLLAPSE}">@template.kit.icon(name = "chevron-left", cls = "size-[1rem]")</button>
 </div>

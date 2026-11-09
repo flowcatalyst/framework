@@ -2897,6 +2897,7 @@ public final class Props {
    * @param signOutAction the POST target of the Sign Out form
    * @param signOutAttrs attributes for the Sign Out form
    * @param theme system, light or dark; non-empty renders the theme picker
+   * @param brand the application's logo in place of the FlowCatalyst bolt; null is the bolt
    */
   public record AppShell(
       @Nullable String logoHref,
@@ -2907,7 +2908,59 @@ public final class Props {
       @Nullable String resetPasswordHref,
       @Nullable String signOutAction,
       @Nullable Map<String, Object> signOutAttrs,
-      @Nullable String theme) {}
+      @Nullable String theme,
+      @Nullable Brand brand) {
+
+    /**
+     * The shell without a brand (the FlowCatalyst bolt), as before {@code brand} existed.
+     *
+     * @param logoHref the logo's link
+     * @param nav the navigation groups
+     * @param user the user
+     * @param version the version text
+     * @param profileHref the profile link
+     * @param resetPasswordHref empty hides the item (IdP-managed users)
+     * @param signOutAction the POST target of the Sign Out form
+     * @param signOutAttrs attributes for the Sign Out form
+     * @param theme system, light or dark; non-empty renders the theme picker
+     */
+    public AppShell(
+        @Nullable String logoHref,
+        @Nullable List<NavGroup> nav,
+        @Nullable ShellUser user,
+        @Nullable String version,
+        @Nullable String profileHref,
+        @Nullable String resetPasswordHref,
+        @Nullable String signOutAction,
+        @Nullable Map<String, Object> signOutAttrs,
+        @Nullable String theme) {
+      this(
+          logoHref,
+          nav,
+          user,
+          version,
+          profileHref,
+          resetPasswordHref,
+          signOutAction,
+          signOutAttrs,
+          theme,
+          null);
+    }
+  }
+
+  /**
+   * app-shell.md, Brand: the application's logo in the shell, in place of the FlowCatalyst bolt.
+   * Every field is optional; with none set the shell renders the bolt at 32px.
+   *
+   * @param name the logo's accessible name (the image's alt, the bolt's aria-label); empty is
+   *     "Logo" for an image, "FlowCatalyst" for the bolt
+   * @param logoUrl an image URL for {@code <img src>}; passes {@link Markup#url} (data: is refused)
+   * @param logoSvg SVG markup, used when {@code logoUrl} is empty: shown as an {@code <img>} with a
+   *     {@code data:image/svg+xml;base64} URL the kit builds, never inline
+   * @param logoHeight the logo height in the sidebar header in CSS pixels; 0 (or less) is 32
+   */
+  public record Brand(
+      @Nullable String name, @Nullable String logoUrl, @Nullable String logoSvg, int logoHeight) {}
 
   // ---- document
 

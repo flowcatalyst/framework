@@ -1,0 +1,69 @@
+{
+  "props": {
+    "logoHref": "#",
+    "nav": [
+      {
+        "label": "Platform",
+        "items": [
+          {
+            "label": "Dashboard",
+            "href": "#",
+            "icon": "layout-dashboard",
+            "current": true
+          },
+          {
+            "label": "Authorization",
+            "icon": "shield-check",
+            "open": true,
+            "children": [
+              {
+                "label": "Roles",
+                "href": "#",
+                "icon": "key-round"
+              },
+              {
+                "label": "Users",
+                "href": "#",
+                "icon": "users"
+              }
+            ]
+          },
+          {
+            "label": "Event types",
+            "href": "#",
+            "icon": "workflow"
+          }
+        ]
+      },
+      {
+        "label": "Settings",
+        "items": [
+          {
+            "label": "General",
+            "href": "#",
+            "icon": "settings"
+          }
+        ]
+      }
+    ],
+    "user": {
+      "name": "Ada Lovelace",
+      "email": "ada@example.com",
+      "initials": "AL"
+    },
+    "version": "1.0.0",
+    "profileHref": "#",
+    "resetPasswordHref": "#",
+    "signOutAction": "#",
+    "signOutAttrs": {
+      "data-on:submit": "void 0"
+    },
+    "brand": {
+      "name": "Acme & Co",
+      "logoUrl": "https://cdn.example.com/acme.png?v=1&s=2",
+      "logoHeight": 40
+    }
+  },
+  "source": "written from the spec (app-shell.md, Brand): gallery/app-shell.html's <aside class=\"fc-sidebar\"> with the logo link of the case",
+  "notes": "an image logo from a URL, at most 40px high; the alt text is the brand name"
+}
