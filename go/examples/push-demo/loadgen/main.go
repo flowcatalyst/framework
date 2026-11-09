@@ -528,7 +528,7 @@ func (g *gen) dial(ctx context.Context, s *stream) (net.Conn, error) {
 			LocalAddr: &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: lp},
 			Control: func(_, _ string, rc syscall.RawConn) error {
 				return rc.Control(func(fd uintptr) {
-					_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+					_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, soReusePort, 1)
 					_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
 				})
 			},

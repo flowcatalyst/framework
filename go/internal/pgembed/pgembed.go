@@ -16,6 +16,8 @@ import (
 	"time"
 
 	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
+
+	"github.com/flowcatalyst/framework/go/internal/stdoutlock"
 )
 
 // Ports nobody started here may touch: the platform's development PostgreSQL and its HTTP server.
@@ -84,7 +86,11 @@ func Start(ctx context.Context) (string, func(), error) {
 		return "", nil, err
 	}
 	var log bytes.Buffer // the server's own output, shown only when it fails to start
-	pg := embeddedpostgres.NewDatabase(embeddedpostgres.DefaultConfig().
+	// DefaultConfig reads os.Stdout, which jetgen may be replacing.
+	stdoutlock.Lock()
+	cfg := embeddedpostgres.DefaultConfig()
+	stdoutlock.Unlock()
+	pg := embeddedpostgres.NewDatabase(cfg.
 		Version(embeddedpostgres.V18).
 		Logger(&log).
 		Port(uint32(port)). //nolint:gosec // a TCP port fits in uint32

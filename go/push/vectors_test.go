@@ -288,7 +288,10 @@ func TestReplayVector(t *testing.T) {
 		t.Run(str(c["name"]), func(t *testing.T) {
 			t.Parallel()
 			eachDriver(t, func(t *testing.T, b backend) {
-				n := b.start(t, nodeConfig{env: map[string]string{"PUSH_RECENT": "0"}})
+				// the clock starts at the epoch, so the retention loop's edge (the clock less
+				// push.retention) is before every entry: the vector's Redis ids are milliseconds near
+				// 0, and a prune overlapping loadLog would delete some and move Trimmed
+				n := b.start(t, nodeConfig{env: map[string]string{"PUSH_RECENT": "0"}, clock: fwtest.NewClock(time.Unix(0, 0).UTC())})
 				loadLog(t, n, v["log"].([]any), int64(v["trimmed"].(float64)))
 				waitFor(t, "the hub to follow the log", func() bool { return n.p.hub.lastID() == latest })
 				if trimmed, _ := n.p.log.Trimmed(t.Context()); trimmed != int64(v["trimmed"].(float64)) {

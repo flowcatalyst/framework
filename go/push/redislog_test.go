@@ -141,6 +141,9 @@ func TestRedisLogPruneKeepsTheNewest(t *testing.T) {
 	if n, err := log.Prune(t.Context(), time.Now().Add(-time.Hour)); err != nil || n != 0 {
 		t.Fatalf("prune before everything: %d, %v", n, err)
 	}
+	if n, err := log.Prune(t.Context(), time.Unix(0, 0).Add(-time.Hour)); err != nil || n != 0 {
+		t.Fatalf("prune with an edge before the epoch: %d, %v", n, err)
+	}
 	n, err := log.Prune(t.Context(), time.Now().Add(time.Hour))
 	if err != nil || n != 2499 {
 		t.Fatalf("pruned %d, %v; want all but the newest", n, err)

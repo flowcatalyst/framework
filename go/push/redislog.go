@@ -245,6 +245,9 @@ func (l *RedisStreamLog) Prune(ctx context.Context, before time.Time) (int64, er
 	}
 	// delete ids below the edge, and below the newest entry
 	upto := min(max(before.UnixMilli(), 0)<<seqBits, top)
+	if upto == 0 { // nothing is below 0-0 (and Redis refuses the interval "(0-0")
+		return 0, nil
+	}
 	var deleted int64
 	for {
 		msgs, err := l.client.XRangeN(ctx, l.stream, "-", "("+intToID(upto), pruneBatch).Result()

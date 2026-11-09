@@ -391,11 +391,20 @@ func TestDatabaseURLMustPointAtAnEmptyDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close(ctx)
-	if _, err := conn.Exec(ctx, "CREATE DATABASE sqlfw_empty"); err != nil {
+	// named after the test's database, so a repeated run (-count) on the shared server never meets
+	// one left behind; dropped on a connection of its own (conn is closed before cleanups run)
+	name := db.Name + "_empty"
+	if _, err := conn.Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = conn.Exec(context.WithoutCancel(ctx), "DROP DATABASE sqlfw_empty WITH (FORCE)") })
-	empty := strings.Replace(db.URL, "/"+db.Name, "/sqlfw_empty", 1)
+	t.Cleanup(func() {
+		ctx := context.WithoutCancel(ctx)
+		if c, err := pgx.Connect(ctx, db.URL); err == nil {
+			_, _ = c.Exec(ctx, "DROP DATABASE "+name+" WITH (FORCE)")
+			_ = c.Close(ctx)
+		}
+	})
+	empty := strings.Replace(db.URL, "/"+db.Name, "/"+name, 1)
 	t.Setenv("FW_SQL_DATABASE_URL", empty)
 	r = runOn(t, dir, fixtureSets(dir), "", "check")
 	if r.code != 0 {

@@ -13,17 +13,15 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync"
 
 	"github.com/go-jet/jet/v2/generator/metadata"
 	jetpostgres "github.com/go-jet/jet/v2/generator/postgres"
 	"github.com/go-jet/jet/v2/generator/template"
 	"github.com/go-jet/jet/v2/postgres"
 	_ "github.com/lib/pq" // the driver of the generator's database/sql connection
-)
 
-// stdoutMu serialises the redirection of os.Stdout, which jet's generator writes progress to.
-var stdoutMu sync.Mutex
+	"github.com/flowcatalyst/framework/go/internal/stdoutlock"
+)
 
 // Generate writes the jet table, view and enum code of schema in the database at dsn (a
 // postgres:// URL) to dir/<schema>/{table,view,enum}. Whatever is in dir/<schema> is removed
@@ -48,13 +46,14 @@ func Generate(ctx context.Context, dsn, schema, dir string, log io.Writer) error
 	})
 }
 
-// captureStdout runs f with os.Stdout redirected to w (discarded when nil).
+// captureStdout runs f with os.Stdout redirected to w (discarded when nil), under stdoutlock so
+// that nothing else in the module reads os.Stdout meanwhile.
 func captureStdout(w io.Writer, f func() error) error {
 	if w == nil {
 		w = io.Discard
 	}
-	stdoutMu.Lock()
-	defer stdoutMu.Unlock()
+	stdoutlock.Lock()
+	defer stdoutlock.Unlock()
 	r, pw, err := os.Pipe()
 	if err != nil {
 		return err
