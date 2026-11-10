@@ -37,6 +37,10 @@
 #   release-go-ui    tag and push a release of the go/ui module: BUMP=patch|minor|major|X.Y.Z (tag go/ui/vX.Y.Z;
 #                    checks a clean main, no replace and no framework require in ui/go.mod, ui-verify and the
 #                    module's tests, then asks before tagging and pushing; RELEASE_DRY_RUN=1 checks only)
+#   release-go-flowcatalyst  tag and push a release of the flowcatalyst module: BUMP=patch|minor|major|X.Y.Z
+#                    (tag go/flowcatalyst/vX.Y.Z; checks a clean main, that go.mod requires a released core
+#                    version, and build, vet and tests as a consumer sees the module (its replace stripped),
+#                    then asks before tagging and pushing; RELEASE_DRY_RUN=1 checks only)
 #   tools            build golangci-lint and NilAway (pinned in tools/go.mod) into bin/
 #   fc-modfile       with FCSDK=<path> set, write flowcatalyst/go.local.work and go.local.mod (not committed):
 #                    a replace of the fcsdk module by that checkout, to develop against unreleased fcsdk
@@ -65,7 +69,7 @@ FWUI = cd ui/fwui &&
 LINT := $(CURDIR)/bin/golangci-lint
 NILAWAY := $(CURDIR)/bin/nilaway
 
-.PHONY: release-go release-go-ui e2e-orders e2e-orders-templ e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
+.PHONY: release-go release-go-ui release-go-flowcatalyst e2e-orders e2e-orders-templ e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
 
 go-check: fc-modfile fmt-check lint vet nilaway test sql-check ui-verify
 
@@ -166,3 +170,7 @@ release-go:
 release-go-ui:
 	@[ -n "$(BUMP)" ] || { echo "usage: make -C go release-go-ui BUMP=patch|minor|major|X.Y.Z"; exit 2; }
 	@../scripts/release-go-ui.sh "$(BUMP)"
+
+release-go-flowcatalyst:
+	@[ -n "$(BUMP)" ] || { echo "usage: make -C go release-go-flowcatalyst BUMP=patch|minor|major|X.Y.Z (the first release: BUMP=0.1.0)"; exit 2; }
+	@../scripts/release-go-flowcatalyst.sh "$(BUMP)"
