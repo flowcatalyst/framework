@@ -48,7 +48,7 @@ git checkout -- .          # put the poms back
 
 Or depend on the published artifacts (the status note at the top of this page).
 
-The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.11` (the
+The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.29` (the
 FlowCatalyst Java SDK). **That artifact is not published to Maven Central or to any other remote
 repository.** Its source is `clients/java-sdk` in the platform repository,
 `github.com/flowcatalyst/flowcatalyst`; that repository has no workflow that publishes it (nor has `flowcatalyst-javalin`, where the
@@ -60,14 +60,14 @@ Central):
 ```
 git clone https://github.com/flowcatalyst/flowcatalyst.git
 cd flowcatalyst
-git checkout java-sdk/v0.0.11
+git checkout java-sdk/v0.0.29
 cd clients/java-sdk
 mvn install -DskipTests
 ```
 
-This installs `io.flowcatalyst:flowcatalyst-sdk:0.0.11` into `~/.m2/repository`. (Checked by
+This installs `io.flowcatalyst:flowcatalyst-sdk:0.0.29` into `~/.m2/repository`. (Checked by
 extracting that tag and running `mvn package -DskipTests` against an empty local repository, which
-produced `flowcatalyst-sdk-0.0.11.jar`; `install` is the same build plus the copy.) The version has
+produced `flowcatalyst-sdk-0.0.29.jar`; `install` is the same build plus the copy.) The version has
 to match `flowcatalyst-sdk.version` in `framework-bom/pom.xml`. Drop `-DskipTests` to run
 its tests too. A repository (GitHub Packages, an internal Nexus) that serves the SDK works equally:
 the framework does not care where the artifact comes from.

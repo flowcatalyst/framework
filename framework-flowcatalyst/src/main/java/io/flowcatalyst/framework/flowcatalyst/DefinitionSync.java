@@ -209,6 +209,16 @@ public final class DefinitionSync {
               f.deleted(),
               f.syncedCodes(),
               f.error());
+      case SyncResult.Category.PushSynced p ->
+          new CategoryResult(
+              step.category(),
+              CategoryResult.Outcome.SYNCED,
+              step.codes().size(),
+              p.created(),
+              p.updated(),
+              p.deleted(),
+              p.syncedPatterns(),
+              null);
       case SyncResult.Category.Skipped s ->
           new CategoryResult(step.category(), CategoryResult.Outcome.SKIPPED, 0, 0, 0, 0, List.of(), null);
     };
