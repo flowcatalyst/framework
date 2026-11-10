@@ -73,7 +73,8 @@ if ! git merge-base --is-ancestor "$core_tag" HEAD; then
 	echo "✗ $core_tag is not an ancestor of HEAD." >&2
 	exit 1
 fi
-if ! git diff --quiet "$core_tag" HEAD -- go ':!go/flowcatalyst' ':!go/ui'; then
+# Only what the core module ships counts: build tooling and docs in go/ are not part of it.
+if ! git diff --quiet "$core_tag" HEAD -- go ':!go/flowcatalyst' ':!go/ui' ':!go/Makefile' ':!go/tools' ':!go/**/*.md' ':!go/*.md'; then
 	echo "✗ the core module changed since $core_tag: release it first (make -C go release-go), then require the new version." >&2
 	exit 1
 fi
