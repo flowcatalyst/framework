@@ -62,11 +62,11 @@ jobs:
           sdk=$(./mvnw -B -q -f framework-bom/pom.xml help:evaluate -Dexpression=flowcatalyst-sdk.version -DforceStdout)
           echo "sdk=$sdk" >> "$GITHUB_OUTPUT"
 
-      # framework-flowcatalyst depends on io.flowcatalyst:flowcatalyst-sdk, which no remote
-      # repository serves. Build it from the platform repository's tag into the runner's local
-      # repository so the framework compiles. It is NOT published here (owner ruling pending,
-      # docs/contracts/build.md section 4). PLATFORM_REPO_TOKEN is only needed if that repository
-      # is private.
+      # framework-flowcatalyst depends on io.flowcatalyst:flowcatalyst-sdk. From 0.0.30 the
+      # platform publishes it to GitHub Packages (flowcatalyst/flowcatalyst), but this build still
+      # compiles it from the platform repository's tag: it needs no cross-repository package
+      # permission and works for versions that were never published. It is NOT published here.
+      # PLATFORM_REPO_TOKEN is only needed if that repository is private.
       - name: Check out the FlowCatalyst Java SDK
         uses: actions/checkout@v4
         with:

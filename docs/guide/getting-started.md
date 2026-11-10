@@ -48,29 +48,34 @@ git checkout -- .          # put the poms back
 
 Or depend on the published artifacts (the status note at the top of this page).
 
-The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.29` (the
-FlowCatalyst Java SDK). **That artifact is not published to Maven Central or to any other remote
-repository.** Its source is `clients/java-sdk` in the platform repository,
-`github.com/flowcatalyst/flowcatalyst`; that repository has no workflow that publishes it (nor has `flowcatalyst-javalin`, where the
-SDK is mirrored from), its `pom.xml` has no `distributionManagement`, and `make release-java-sdk`
-only bumps the version and pushes a `java-sdk/vX.Y.Z` tag. So the only way to get it is to build it into your local Maven
-repository **before** step 1 (JDK 25 and Maven; the build downloads its own dependencies from Maven
-Central):
+The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.30` (the
+FlowCatalyst Java SDK). From 0.0.30 the platform repository publishes it to GitHub Packages, not to
+Maven Central: `make release-java-sdk` pushes a `java-sdk/vX.Y.Z` tag and the platform's
+`release-java-sdk.yml` workflow deploys that version to
+`https://maven.pkg.github.com/flowcatalyst/flowcatalyst`. Add that repository next to the
+framework's own (GitHub Packages needs a token with `read:packages` even for public packages, in a
+`<server>` entry of `~/.m2/settings.xml` whose id matches the repository id):
+
+```xml
+<repository>
+  <id>flowcatalyst-platform</id>
+  <url>https://maven.pkg.github.com/flowcatalyst/flowcatalyst</url>
+</repository>
+```
+
+Or build it into your local Maven repository from the tag (JDK 25 and Maven):
 
 ```
 git clone https://github.com/flowcatalyst/flowcatalyst.git
 cd flowcatalyst
-git checkout java-sdk/v0.0.29
+git checkout java-sdk/v0.0.30
 cd clients/java-sdk
 mvn install -DskipTests
 ```
 
-This installs `io.flowcatalyst:flowcatalyst-sdk:0.0.29` into `~/.m2/repository`. (Checked by
-extracting that tag and running `mvn package -DskipTests` against an empty local repository, which
-produced `flowcatalyst-sdk-0.0.29.jar`; `install` is the same build plus the copy.) The version has
-to match `flowcatalyst-sdk.version` in `framework-bom/pom.xml`. Drop `-DskipTests` to run
-its tests too. A repository (GitHub Packages, an internal Nexus) that serves the SDK works equally:
-the framework does not care where the artifact comes from.
+Either way the version has to match `flowcatalyst-sdk.version` in `framework-bom/pom.xml`; the
+framework does not care where the artifact comes from. Versions before 0.0.30 were never published
+and can only be built from their tags.
 
 ## 2. Import `framework-bom`
 

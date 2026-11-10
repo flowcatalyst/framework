@@ -134,9 +134,9 @@ row of `implementation-plan.md`) or a milestone.
   Redlock.
 - **No external config stores**, no hot reload: config is read once at start-up.
 - **Docs sync is skipped**: `Definitions.docs(...)` is accepted but the Java SDK cannot sync docs.
-- **The FlowCatalyst Java SDK dependency** (`io.flowcatalyst:flowcatalyst-sdk:0.0.29`) is **not
-  published to any remote repository** that was found; it must be built from the tag `java-sdk/v0.0.29`
-  of `github.com/flowcatalyst/flowcatalyst` into the local repository first. Exact commands in
+- **The FlowCatalyst Java SDK dependency** (`io.flowcatalyst:flowcatalyst-sdk:0.0.30`) is published
+  to GitHub Packages (`https://maven.pkg.github.com/flowcatalyst/flowcatalyst`), not Maven Central;
+  add that repository, or build the SDK from the tag `java-sdk/v0.0.30`. Exact steps in
   [Getting started](getting-started.md#1-install-the-framework-into-your-local-repository).
 - **No TLS, HTTP/2, WebSockets, multipart or compression** in the HTTP layer. CORS is off unless
   `http.cors.allowed-origins` is set (Java and Go, since 2026-11-07, HTTP contract section 13.4), and
