@@ -23,6 +23,9 @@
   "references": [
     {
       "path": "../api-runtime/tsconfig.generated.json"
+    },
+    {
+      "path": "../push/tsconfig.app.json"
     }
   ]
 }

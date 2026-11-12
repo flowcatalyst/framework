@@ -1,0 +1,8 @@
+{
+  "$comment": "tsconfig.app.json for this package's own `tsc` (TypeScript 7): the same files and settings, with its own output and build info, so the two compilers do not rebuild each other's.",
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "outDir": "./node_modules/.tmp/app-ts7",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.ts7.tsbuildinfo"
+  }
+}

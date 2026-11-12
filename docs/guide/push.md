@@ -127,6 +127,86 @@ String cursor = n.pushes.cursor(); // before the state read
 n.publish(ACME, "test:order:1", "order.updated", Map.of("v", "B"));
 ```
 
+## Reading pushes in a Vue app
+
+The reader for the shared UI has two parts. `@flowcatalyst/push` (`ui/packages/push`) is the reader
+itself: `PushCore` follows contract sections 6 and 7 (subscribe, listen with `fetch` or `EventSource`,
+keep the last id, reconnect with jitter, subscribe again on `auth-expired`, report `reset`, `denied`
+and errors) and has no DOM; `PushStream` is its `EventTarget` face. `src/core.ts` is the one source of
+the core: the platform's `@flowcatalyst/field-js` and `@flowcatalyst/field-react-native` carry synced
+copies. `@flowcatalyst/ui` adds the Vue layer in `src/push/`, exported from the package and from the
+subpath `@flowcatalyst/ui/push` (which imports no Nuxt UI): one stream per page, and two composables.
+Its tests use a fake streaming `fetch`; the reader passes the contract's vectors (`conformance/push/`:
+wire and replay, and the reader's half of tickets and topics; verifying tickets is the server's).
+`ui/samples/push-live-list` keeps a list current against `go/examples/push-demo`.
+
+**One stream per page.** The application provides a hub once and components declare topics:
+
+```ts
+// main component / app setup
+providePushHub({ baseUrl: "/api", getTickets });
+// in a component
+usePushTopics(() => ["fulfil:order:" + props.orderId]);
+```
+
+`providePushHub(options)` creates one `PushCore`-backed stream (`createPushHub` is the same without
+`provide`, for tests). The subscribe goes through the application's HTTP: by default `fetch` with
+`credentials: "same-origin"`, so the session cookie goes with it and the CSRF rule (Fetch Metadata and
+`Origin`) needs no header; pass `fetch` for anything else. The stream GET uses `streamFetch` (default
+`globalThis.fetch`: the stream token is the capability). `usePushTopics` holds topics from mount to
+unmount (a ref or getter is watched). Topics are reference-counted: two components asking for the same
+topic make one entry, which goes when the last drops. Changes in one tick are batched into one
+`setTopics`; the core keeps its last id, and the host replays every push after it on the new topic set
+(contract 6.2 step 2), so nothing is lost. The stream starts with the first topic and stops with the
+last. More than 100 topics are not truncated: the hub keeps the previous subscription and reports
+`PushError` `PUSH_LIMIT` ("at most 100 topics") in `hub.error`; the server's `PUSH_LIMIT` (20 streams
+per principal, section 8) is reported the same way. The hub also exposes `state`, `lastPushAt`, `denied`
+(the denied topics of the subscribe answer), `on(pattern, fn)` and `onReset(fn)`, each unsubscribe
+returning a function.
+
+**A list that stays current: `useLiveList`.**
+
+```ts
+const { rows, status, lastAppliedAt, apply, reload } = useLiveList({
+  topics: ["fulfil:order:board"],
+  load: async (signal) => { /* GET the rows and pushCursor */ return { rows, pushCursor }; },
+  id: (row) => row.id,
+  version: (row) => row.version,
+  toChange: rowChange,
+});
+```
+
+`toChange(push)` returns `{ kind: "put", row }`, `{ kind: "remove", id, version }` or null.
+`rowChange` is the one for `row.upserted {id, version, row}` and `row.removed {id, version}` (the push
+`type` names, `data` the object). `rows` is a readonly array in load order, rows first seen by a push
+appended. `status` is `loading`, `live`, `reconnecting` or `stopped`; `lastAppliedAt` is when the list
+was last made current (a load finished, or a push or `apply` changed it).
+
+- **The version rule.** A push replaces the held row only when its version is higher; a repeat changes
+  nothing; an unknown id is added. A version is a number or a string: when both parse as numbers they
+  are compared numerically (integers exactly, however large), otherwise as strings. A removal removes
+  the row and remembers `id` with its version; a later put for that id with a version that is not
+  higher is ignored. A removal older than the held row is ignored. `apply(change)` follows the same rule:
+  a screen applies the answer to its own command at once, and an older push still on the stream cannot
+  bring the row back.
+- **The removed-id memory** holds at most 10 000 ids, the oldest dropped first (`REMOVED_MEMORY_LIMIT`).
+  A `reset` or a change of topics clears it: the snapshot is authoritative.
+- **The ordering rule** (contract 9.1, no gap between the snapshot and the stream). If the hub is not
+  streaming, the list loads first and the stream opens with the load's `pushCursor` as `Last-Event-ID`;
+  the endpoint must read the cursor BEFORE its rows. If the hub is already streaming (another list, or
+  a change of this list's topics), the list adds its topics FIRST, waits until the stream confirms them
+  (`subscribed`; at most 10 s, then it loads anyway), THEN loads; pushes that arrive while it loads
+  are buffered and applied after the load by the version rule. Two lists that start in the same tick
+  open one stream from the lower cursor. A load without a `pushCursor` cannot be followed gap-free.
+- **`reset`** loads again from scratch; `reload()` does the same. A failed load keeps the rows and sets
+  `error`.
+
+**A record: `useLiveRecord`.** For a detail page: `topics`, `load(signal)`, `version(record)` and
+`signal(push)`, which returns the version a push signals or null when the push is not about the record.
+The record is read again when a signal's version is higher than the held one, with at most one read in
+flight and one queued for a burst, and again on `reset`. It returns `{ record, status, lastAppliedAt,
+error, reload }`. Its load returns no cursor, so the stream is opened and confirmed first.
+
 ## Rules and tickets
 
 A rule (`PushModule.Builder.topic`, `Rule.of`) lets a context subscribe without a ticket:
@@ -240,6 +320,7 @@ the tests).
 
 ## What is not built
 
-A reader in the shared UI packages (`@flowcatalyst/ui`; the platform's `@flowcatalyst/field-js` and
-`@flowcatalyst/field-react-native` have one, `PushStream`), a sign-out hook, and the load test of
-contract section 11 on the target (the Go module has a local run: [load test results](../push-load-test-results.md)).
+A sign-out hook, and the load test of contract section 11 on the target (the Go module has a local
+run: [load test results](../push-load-test-results.md)). The Vue reader reads one hub per page; a
+page that must stay inside 20 streams per principal across many tabs is not helped by it (each tab is
+a stream). `useLiveList` keeps no state across a page reload and has no offline queue.

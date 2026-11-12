@@ -12,6 +12,7 @@
     ".": "./src/index.ts",
     "./csp": "./src/csp.ts",
     "./e2e": "./src/e2e/index.ts",
+    "./push": "./src/push/index.ts",
     "./theme": "./src/theme/index.ts",
     "./theme.css": "./src/theme/theme.css",
     "./vite": "./src/vite.ts",
@@ -42,7 +43,8 @@
     "zod": "^4.6.5"
   },
   "dependencies": {
-    "@flowcatalyst/api-runtime": "workspace:*"
+    "@flowcatalyst/api-runtime": "workspace:*",
+    "@flowcatalyst/push": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",

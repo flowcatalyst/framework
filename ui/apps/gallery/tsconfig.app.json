@@ -29,6 +29,9 @@
     },
     {
       "path": "../../packages/api-runtime/tsconfig.generated.json"
+    },
+    {
+      "path": "../../packages/push/tsconfig.app.json"
     }
   ]
 }

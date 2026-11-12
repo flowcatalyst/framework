@@ -23,12 +23,16 @@ ui/
   packages/api-runtime/ @flowcatalyst/api-runtime: the configured hey-api client, the error envelope, the
                         browser session and its guard, Zod's CSP setting, the shared openapi-ts config,
                         and the generated client of the framework's own endpoints (auth.json)
+  packages/push/        @flowcatalyst/push: the push reader (docs/contracts/push.md sections 6 and 7): PushCore (no DOM; src/core.ts is
+                        the one source, the platform's field-js and field-react-native carry synced copies) and PushStream; vectors
+                        in conformance/push (source only)
   apps/gallery/         @flowcatalyst/gallery: the platform behaviour checklist (src/behaviours.ts), on FwAppShell,
                         a generated orders client against an in-page fake server; strict-CSP server, Playwright
   apps/orders/          @flowcatalyst/orders-web (U3): the orders application on the Java examples/orders-demo, built into its
                         web/dist, Playwright against the real backend (../docs/ui/u3.md)
   apps/tickets/         @flowcatalyst/tickets-web (M4f): the second application, support tickets on the Java examples/tickets-trial,
                         built into its web/dist, Playwright against the real backend (../docs/m4f-trial-service.md)
+  samples/push-live-list/  a minimal Vue page that keeps a list current with useLiveList against go/examples/push-demo
   samples/openapi/      a hand-written OpenAPI 3.1 document and the hey-api client generated from it (U0 check)
 ```
 
@@ -42,7 +46,7 @@ Node 24 and pnpm 10.27 (`packageManager`); nothing is installed globally. From `
 | `pnpm build` | writes Nuxt UI's generated theme types (`node_modules/.nuxt-ui`) and builds the gallery; run it before `typecheck` |
 | `pnpm typecheck` | `tsc --build` (TypeScript 7) for the tooling and every `.ts`-only project, `vue-tsc --build` (TypeScript 6) for the projects with `.vue` files; see "Which TypeScript runs where" |
 | `pnpm lint` | ESLint, type-aware |
-| `pnpm test` | vitest (components, composables, api-runtime, the generated clients' checks) |
+| `pnpm test` | vitest (components, composables, the push reader and its Vue layer, api-runtime, the generated clients' checks) |
 | `pnpm api:drift` | regenerates every generated client (api-runtime, gallery, sample) and fails on a modified or new file |
 | `pnpm licences` | fails on a dependency licence that is not permissive and not reviewed, or when `THIRD-PARTY-NOTICES` does not match the gallery build (run after `pnpm build`) |
 | `pnpm licences:write` | rewrites `THIRD-PARTY-NOTICES` from the gallery build (an application: `node scripts/check-licences.ts --write --dist <dist> --out <file>`) |
@@ -107,14 +111,19 @@ The application's `tsconfig` maps `#build/ui` and `#build/ui/*` to its own `node
 scratch consumer at U0: one Vue in the bundle, `vue-tsc` clean, the package's Tailwind classes and icons
 present).
 
+**Push.** `@flowcatalyst/ui` exports `providePushHub`, `usePushTopics`, `useLiveList` and `useLiveRecord`
+(also at `@flowcatalyst/ui/push`, which imports no Nuxt UI); see
+[`../docs/guide/push.md`](../docs/guide/push.md), "Reading pushes in a Vue app". The application's
+`tsconfig.app.json` references `@flowcatalyst/push`'s declarations project (exception 2 below).
+
 **Everything the package imports is a peer dependency** (2026-10-16). pnpm installs nothing for a
 `link:` package, and the bundler resolves its imports from its real path, which is this repository's
 `node_modules`, outside your lockfile (the first application found its fonts there: the package's CSS
 imports `@fontsource-variable/ibm-plex-sans`, which its lockfile did not contain). So an application
 declares `@nuxt/ui`, `tailwindcss`, `vue`, `vue-router`, `zod`, `@vueuse/core`, `reka-ui` and
 `@fontsource-variable/ibm-plex-sans` itself (`strictPeerDependencies` makes a missing one an install
-error), at the versions of this workspace's catalog (`pnpm-workspace.yaml`). The only dependency is
-`@flowcatalyst/api-runtime`, which the application links too. `test/peer-dependencies.test.ts` fails
+error), at the versions of this workspace's catalog (`pnpm-workspace.yaml`). The only dependencies are
+`@flowcatalyst/api-runtime` and `@flowcatalyst/push`, which the application links too. `test/peer-dependencies.test.ts` fails
 when the source imports a package that is not a peer.
 
 The strict CSP header the server sends is `strictContentSecurityPolicy()` from `@flowcatalyst/ui/csp`;
@@ -276,7 +285,17 @@ The settings are `tsconfig.base.json` (the platform SPA's plus `exactOptionalPro
    `client.gen.ts` compile with the flag on. Because the packages are consumed as source, every project
    that imports `@flowcatalyst/api-runtime` references its `tsconfig.generated.json`, so the runtime
    files are read through their declarations instead of being compiled under the consumer's settings.
-2. `vueCompilerOptions.dataAttributes: ["data-*", "aria-*"]`: `strictTemplates` reports any attribute
+2. **The push reader core** (`packages/push/src/core.ts`) compiles without `noImplicitOverride`
+   (`packages/push/tsconfig.app.json`, and `tsconfig.test.json` for the tests): it is copied verbatim
+   into the platform's field-js and field-react-native, which do not set the flag, and its `PushError`
+   declares `readonly cause?: unknown` over `Error`'s. As with the generated client, the packages are
+   consumed as source, so every project that imports `@flowcatalyst/ui` (which exports the push
+   composables) references `packages/push/tsconfig.app.json` (declarations only), and the core is read
+   through its declarations instead of being compiled under the consumer's settings. From another
+   repository: `{ "path": "./node_modules/@flowcatalyst/push/tsconfig.app.json" }`, or by the real path
+   when the imports resolve there (the pitfall above). `packages/push/tsconfig.app.ts7.json` is the same
+   project for that package's own TypeScript 7 build.
+3. `vueCompilerOptions.dataAttributes: ["data-*", "aria-*"]`: `strictTemplates` reports any attribute
    that is not a declared prop of a component as unknown, including `aria-label` falling through to a
    Nuxt UI button. Only `data-*` and `aria-*` pass; any other unknown prop or event is still an error.
 

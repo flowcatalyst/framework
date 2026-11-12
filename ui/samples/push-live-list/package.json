@@ -1,0 +1,25 @@
+{
+  "name": "@flowcatalyst/push-live-list-sample",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "A minimal Vue page that keeps a list current over push with useLiveList, against go/examples/push-demo",
+  "scripts": {
+    "dev": "vite --port 5177 --strictPort",
+    "build": "vite build",
+    "typecheck": "tsc --build tsconfig.node.json && vue-tsc --build tsconfig.app.json"
+  },
+  "dependencies": {
+    "@flowcatalyst/ui": "link:../../packages/ui",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vue-tsc": "catalog:"
+  }
+}

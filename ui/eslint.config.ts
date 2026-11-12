@@ -26,6 +26,12 @@ export default defineConfig(
       "apps/*/src/api/**",
       // Plain JavaScript a consumer runs with node (the drift bin); its types are bin/*.d.mts and test/api-drift.test.ts.
       "packages/api-runtime/bin/**",
+      // The push reader core and its two ported test files are verbatim copies of the platform's
+      // field-js (the core is the source of the copies there): they follow that repository's lint
+      // rules, and a change here would make the copies differ. The rest of @flowcatalyst/push is linted.
+      "packages/push/src/core.ts",
+      "packages/push/test/push.test.ts",
+      "packages/push/test/push-utf8.test.ts",
     ],
   },
   tseslint.configs.strictTypeChecked,

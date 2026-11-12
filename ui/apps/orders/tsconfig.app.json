@@ -11,5 +11,5 @@
   },
   "include": ["src/**/*.ts", "src/**/*.vue"],
   "exclude": ["src/api/*/client/**", "src/api/*/core/**"],
-  "references": [{ "path": "./tsconfig.generated.json" }, { "path": "../../packages/api-runtime/tsconfig.generated.json" }]
+  "references": [{ "path": "./tsconfig.generated.json" }, { "path": "../../packages/api-runtime/tsconfig.generated.json" }, { "path": "../../packages/push/tsconfig.app.json" }]
 }

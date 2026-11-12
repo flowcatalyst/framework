@@ -1,0 +1,27 @@
+{
+  "name": "@flowcatalyst/push",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FlowCatalyst push reader (docs/contracts/push.md): subscribe, listen over SSE, resume, reset. The core has no DOM and is the source of the copies in the platform's field-js and field-react-native",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tsconfig.app.json": "./tsconfig.app.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "tsconfig.app.json"
+  ],
+  "scripts": {
+    "typecheck": "tsc --build",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

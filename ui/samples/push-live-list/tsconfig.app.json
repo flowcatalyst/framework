@@ -1,0 +1,10 @@
+{
+  "$comment": "Browser source. @flowcatalyst/ui/push is compiled from source, and it imports @flowcatalyst/push, whose verbatim core needs the scoped exception: reference its declarations project (ui/README.md, 'Strict TypeScript: exceptions').",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue"],
+  "references": [{ "path": "../../packages/push/tsconfig.app.json" }]
+}

@@ -2,7 +2,7 @@
 // package, and the bundler resolves the package's imports from its real location, that is from this
 // repository's node_modules, outside the consumer's lockfile (Camel feedback 2026-10-16, item c). So
 // everything the source imports is a peerDependency (the consumer installs and pins it) except the
-// one sibling package it links with.
+// sibling packages it links with (@flowcatalyst/api-runtime and @flowcatalyst/push).
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -54,11 +54,11 @@ function importedPackages(): Set<string> {
 }
 
 describe("dependencies of a package consumed with link:", () => {
-  it("the only dependency is the sibling package it links with", () => {
-    expect(Object.keys(manifest.dependencies)).toEqual(["@flowcatalyst/api-runtime"]);
+  it("the only dependencies are the sibling packages it links with", () => {
+    expect(Object.keys(manifest.dependencies)).toEqual(["@flowcatalyst/api-runtime", "@flowcatalyst/push"]);
   });
 
-  it("every package the source imports is a peer dependency (or that sibling)", () => {
+  it("every package the source imports is a peer dependency (or one of those siblings)", () => {
     const allowed = new Set([...Object.keys(manifest.peerDependencies), ...Object.keys(manifest.dependencies)]);
     // `vite` is imported for types only, by the Vite plugin, which runs in the consumer's Vite.
     allowed.add("vite");

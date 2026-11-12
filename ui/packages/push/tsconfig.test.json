@@ -1,0 +1,10 @@
+{
+  "$comment": "The tests and the source they import. noImplicitOverride is off for the same reason as in tsconfig.app.json (the verbatim core).",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noImplicitOverride": false,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["test/**/*.ts", "src/**/*.ts"]
+}
