@@ -74,6 +74,30 @@ func TestAPerRouteBodyLimitRefusesALargerBodyWhileOtherRoutesKeepTheGlobalOne(t 
 	}
 }
 
+// The default limit is 5 MiB, as in the Java framework (http contract).
+func TestTheDefaultBodyLimitIsFiveMiB(t *testing.T) {
+	t.Parallel()
+	rt := httpfw.NewRoutes("test")
+	rt.Handle("POST /global", func(w http.ResponseWriter, r *http.Request) error {
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			return err
+		}
+		return jsonBody(w, `{}`)
+	})
+	d := compile(t, nil, rt)
+	for _, c := range []struct {
+		size   int
+		status int
+	}{
+		{5 << 20, 200},
+		{5<<20 + 1, 413},
+	} {
+		if got := do(d, "POST", "/global", body(c.size), "Content-Type", "application/json"); got.status != c.status {
+			t.Errorf("%d bytes: %d, want %d", c.size, got.status, c.status)
+		}
+	}
+}
+
 func TestAPerRouteBodyLimitMustBePositive(t *testing.T) {
 	t.Parallel()
 	rt := httpfw.NewRoutes("test")

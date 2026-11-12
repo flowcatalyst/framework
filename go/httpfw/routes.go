@@ -179,8 +179,9 @@ type options struct {
 	cors        *cors
 }
 
-// DefaultMaxBodyBytes is http.max-body-bytes' default.
-const DefaultMaxBodyBytes = 1 << 20
+// DefaultMaxBodyBytes is http.max-body-bytes' default: 5 MiB, the same as the Java
+// framework (http contract).
+const DefaultMaxBodyBytes = 5 << 20
 
 // WithEnvironment sets APP_ENV, which decides whether an SPA without index.html may start (local,
 // test). Unset, a missing index.html is a start-up problem.
