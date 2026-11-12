@@ -240,5 +240,6 @@ the tests).
 
 ## What is not built
 
-The SDK readers, a sign-out hook, and the load test of contract section 11 on
-the target (the Go module has a local run: [load test results](../push-load-test-results.md)).
+A reader in the shared UI packages (`@flowcatalyst/ui`; the platform's `@flowcatalyst/field-js` and
+`@flowcatalyst/field-react-native` have one, `PushStream`), a sign-out hook, and the load test of
+contract section 11 on the target (the Go module has a local run: [load test results](../push-load-test-results.md)).

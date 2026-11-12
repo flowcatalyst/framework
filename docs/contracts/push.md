@@ -13,7 +13,8 @@ section 17). The Java Redis driver (A2) built the same day: module `framework-pu
 tests of section 14 on both drivers (amendment 15 of section 17). The framework changes the A4 platform
 push gateway needs, built in Go (2026-11-09, amendment 16 of section 17): many applications in one
 host, per-application stream limits, the optional `client` member of the subscribe body, `Handler`,
-`Drain`, `ExternalMigrations`, `PublishBatch`. Not yet: the SDK readers, the load test on the target,
+`Drain`, `ExternalMigrations`, `PublishBatch`. Readers: `PushStream` in the platform's `field-js` and `field-react-native`; not yet one in the shared UI
+packages. Not yet: the load test on the target,
 the Java side of amendment 16 and of `push.driver=platform`. `push.driver=platform`, the publish sink
 for applications that use the gateway, is built in Go (2026-11-09, amendment 17 of section 17).**
 Drivers: `postgres` (A1) and
