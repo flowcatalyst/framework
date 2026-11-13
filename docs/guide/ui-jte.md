@@ -264,6 +264,20 @@ application's own inline script by hash. The headers `Cross-Origin-Opener-Policy
 `nosniff` go with it. The weaker script policy is the main security reason to prefer the Nuxt UI package for
 untrusted content.
 
+Images from another host, a map's tiles for example, are blocked by `img-src 'self' data:`. Name the host on
+the builder, once per host:
+
+```java
+Views views = Views.builder(assets).imageSource("https://tile.openstreetmap.org").build();
+```
+
+Each source follows `'self' data:` in `img-src`, in the order given, a duplicate once
+(`ViewCsp.policy(hashes, sources)` builds it). A source is an `https` origin, `https://host` or
+`https://host:port`, optionally with one leading wildcard label (`https://*.example.org`), with nothing after
+the host or port (no path, not even a trailing `/`); anything else (`*`, `https:`, `data:`, `blob:`,
+`http://...`, quotes, `;`) makes `build()` throw `IllegalArgumentException`. Without the call the policy is
+exactly as above, and no other directive can be widened (contract section 6 rule 1, amended 2026-11-12).
+
 ## Theme, icons and the stylesheet
 
 `kit.css` is the Tailwind 4.3.2 build of `ui-kit/theme` plus the classes this module and the demo use. It is

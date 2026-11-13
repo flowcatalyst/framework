@@ -60,6 +60,7 @@ type config struct {
 	loginPath    string
 	loginParam   string
 	hashes       []string
+	imageSources []string
 	flashes      map[string]kit.FlashMessageProps
 	plainCookies bool
 }
@@ -92,6 +93,15 @@ func WithScriptHash(hashes ...string) Option {
 	return func(c *config) { c.hashes = append(c.hashes, hashes...) }
 }
 
+// WithImageSources lets documents load images from other hosts, for example a map's tile server:
+// each source is added to the policy's img-src after 'self' data: (contract section 6 rule 1,
+// amended 2026-11-12). A source is an https origin, https://host or https://host:port, optionally
+// with one leading wildcard label (https://*.example.org), with nothing after the host or port;
+// anything else is an error at [New] (see [CSPWithImageSources]). Nothing else in the policy changes.
+func WithImageSources(sources ...string) Option {
+	return func(c *config) { c.imageSources = append(c.imageSources, sources...) }
+}
+
 // WithFlashes registers the messages a flash key stands for (contract section 9). Keys are
 // [a-z0-9-]{1,64}; the cookie carries only a key, so no request data is ever rendered as a message.
 func WithFlashes(messages map[string]kit.FlashMessageProps) Option {
@@ -115,7 +125,8 @@ var (
 )
 
 // New builds the views for an assets instance: the stylesheet, Datastar and the sprite the
-// documents reference. It fails on a malformed login path or parameter, script hash or flash.
+// documents reference. It fails on a malformed login path or parameter, script hash, image source or
+// flash.
 func New(a *assets.Assets, opts ...Option) (*Views, error) {
 	if a == nil {
 		return nil, errors.New("views: no assets")
@@ -124,7 +135,7 @@ func New(a *assets.Assets, opts ...Option) (*Views, error) {
 	for _, o := range opts {
 		o(&c)
 	}
-	csp, err := CSP(c.hashes...)
+	csp, err := CSPWithImageSources(c.hashes, c.imageSources)
 	if err != nil {
 		return nil, err
 	}

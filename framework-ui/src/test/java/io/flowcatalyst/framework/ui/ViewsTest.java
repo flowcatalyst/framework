@@ -185,6 +185,103 @@ class ViewsTest {
     assertThat(ViewCsp.policy("sha256-abc=")).contains("'sha256-abc='");
   }
 
+  // ---- extra image sources (contract section 6 rule 1, amended 2026-11-12) ----------------------
+  // The same cases are written out in Go's views_test.go (imageSourcesAccepted, imageSourcesRefused).
+
+  /** The policy of contract section 6 rule 1, byte for byte. */
+  private static final String DEFAULT_CSP =
+      "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; "
+          + "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
+          + "form-action 'self'; object-src 'none'";
+
+  /** The sources given, and the img-src directive they give. */
+  private record Accepted(List<String> sources, String imgSrc) {}
+
+  private static final List<Accepted> IMAGE_SOURCES_ACCEPTED =
+      List.of(
+          new Accepted(List.of(), "img-src 'self' data:"),
+          new Accepted(List.of("https://tile.openstreetmap.org"), "img-src 'self' data: https://tile.openstreetmap.org"),
+          new Accepted(
+              List.of("https://tile.openstreetmap.org", "https://tiles.example.org", "https://cdn.example.net"),
+              "img-src 'self' data: https://tile.openstreetmap.org https://tiles.example.org https://cdn.example.net"),
+          new Accepted(List.of("https://*.tile.openstreetmap.org"), "img-src 'self' data: https://*.tile.openstreetmap.org"),
+          new Accepted(List.of("https://tiles.example.org:8443"), "img-src 'self' data: https://tiles.example.org:8443"),
+          new Accepted(List.of("https://*.example.org:443"), "img-src 'self' data: https://*.example.org:443"),
+          new Accepted(
+              List.of("https://localhost:65535", "https://192.168.0.10:1"),
+              "img-src 'self' data: https://localhost:65535 https://192.168.0.10:1"),
+          new Accepted(List.of("https://tile-1.example.org"), "img-src 'self' data: https://tile-1.example.org"),
+          new Accepted(List.of("HTTPS://Tile.OpenStreetMap.ORG"), "img-src 'self' data: https://tile.openstreetmap.org"),
+          new Accepted(
+              List.of("https://b.example.org", "https://a.example.org", "https://b.example.org", "HTTPS://A.example.org"),
+              "img-src 'self' data: https://b.example.org https://a.example.org"));
+
+  /** Each is refused on its own. */
+  private static final List<String> IMAGE_SOURCES_REFUSED =
+      List.of(
+          "", "*", "https:", "https://", "https:/tile.example.org", "data:", "blob:", "'self'", "'none'",
+          "http://tile.example.org", "wss://tile.example.org", "tile.example.org", "//tile.example.org",
+          "https://tile.example.org/", "https://tile.example.org/tiles/{z}/{x}/{y}.png", "https://tile.example.org?x=1",
+          "https://tile.example.org#x", "https://user@tile.example.org", "https://user:pw@tile.example.org",
+          " https://tile.example.org", "https://tile.example.org ", "https://tile.example .org", "https://tile.example.org\t",
+          "https://tile.example.org\n", "'https://tile.example.org'", "\"https://tile.example.org\"",
+          "https://a.example.org,https://b.example.org", "https://a.example.org;", "https://a.example.org; script-src *",
+          "https://*", "https://*.", "https://*.*.example.org", "https://a.*.example.org", "https://*example.org",
+          "https://tile.example.org:", "https://tile.example.org:0", "https://tile.example.org:080",
+          "https://tile.example.org:65536", "https://tile.example.org:99999", "https://tile.example.org:*",
+          "https://tile..example.org", "https://.example.org", "https://example.org.", "https://tile_1.example.org",
+          "https://[::1]", "https://tile.Kexample.org", "https://tilé.example.org");
+
+  @Test
+  void imageSourcesWidenOnlyImgSrc() {
+    assertThat(ViewCsp.policy()).isEqualTo(DEFAULT_CSP);
+    assertThat(ViewCsp.policy(List.of(), List.of())).isEqualTo(DEFAULT_CSP);
+    for (Accepted c : IMAGE_SOURCES_ACCEPTED) {
+      assertThat(ViewCsp.policy(List.of(), c.sources()))
+          .as("%s", c.sources())
+          .isEqualTo(DEFAULT_CSP.replace("img-src 'self' data:", c.imgSrc()));
+    }
+    assertThat(ViewCsp.policy(List.of("sha256-abc="), List.of("https://tile.openstreetmap.org")))
+        .contains("'unsafe-eval' 'sha256-abc='; style-src")
+        .contains("; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self';");
+
+    // documents send it; without the call the header is unchanged; a Datastar answer has none
+    Routes routes = new Routes("test");
+    Views plain = Views.builder(ASSETS).build();
+    Views map =
+        Views.builder(ASSETS)
+            .imageSource("https://tile.openstreetmap.org")
+            .imageSource("https://*.example.org:8443")
+            .imageSource("https://tile.openstreetmap.org")
+            .build();
+    routes.get("/plain", r -> plain.page(r, "Plain", content(r)));
+    routes.get("/map", r -> map.page(r, "Map", content(r)));
+    ASSETS.register(routes.forModule("ui"));
+    TestClient c = TestClient.of(routes);
+    assertThat(c.get("/plain").send().header("Content-Security-Policy")).isEqualTo(DEFAULT_CSP);
+    assertThat(c.get("/map").send().header("Content-Security-Policy"))
+        .isEqualTo(
+            DEFAULT_CSP.replace(
+                "img-src 'self' data:", "img-src 'self' data: https://tile.openstreetmap.org https://*.example.org:8443"));
+    assertThat(c.get("/map").header("Datastar-Request", "true").send().header("Content-Security-Policy")).isNull();
+  }
+
+  @Test
+  void imageSourcesOutsideTheRuleAreRefused() {
+    for (String bad : IMAGE_SOURCES_REFUSED) {
+      assertThatThrownBy(() -> ViewCsp.policy(List.of(), List.of("https://ok.example.org", bad)))
+          .as("%s", bad)
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("image source")
+          .hasMessageContaining("https origin");
+      assertThatThrownBy(() -> Views.builder(ASSETS).imageSource(bad).build())
+          .as("builder %s", bad)
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+    assertThatThrownBy(() -> Views.builder(ASSETS).imageSource(null).build())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
   // ---- returnTo (contract section 8 rule 1) -----------------------------------------------------
 
   @Test

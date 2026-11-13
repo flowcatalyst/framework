@@ -40,7 +40,8 @@ func WithAssets(opts ...assets.Option) Option {
 }
 
 // WithViews passes options to views.New: the shell, the title suffix, the login, the flash
-// messages. Build adds views.WithPlainHTTPCookies itself when APP_ENV is local or test.
+// messages, extra image hosts for the page policy (views.WithImageSources, for a map's tiles).
+// Build adds views.WithPlainHTTPCookies itself when APP_ENV is local or test.
 func WithViews(opts ...views.Option) Option {
 	return func(o *options) { o.views = append(o.views, opts...) }
 }

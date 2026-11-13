@@ -388,6 +388,25 @@ func TestBuildFailuresAreStartupErrorsNamingTheModule(t *testing.T) {
 	if !errors.As(err, &se) || !strings.Contains(se.Problems[0].Message, "prefix") {
 		t.Errorf("prefix err = %v", err)
 	}
+	_, err = start(t, setup{opts: []fwui.Option{fwui.WithViews(views.WithImageSources("https://tile.openstreetmap.org/"))}})
+	if !errors.As(err, &se) || se.Problems[0].Module != "ui" || !strings.Contains(se.Problems[0].Message, "image source") {
+		t.Errorf("image source err = %v", err)
+	}
+}
+
+// Extra image hosts (contract section 6 rule 1, amended 2026-11-12) reach the documents through
+// WithViews, and widen img-src only.
+func TestImageSourcesThroughWithViews(t *testing.T) {
+	r := mustStart(t, setup{opts: []fwui.Option{fwui.WithViews(views.WithImageSources("https://tile.openstreetmap.org"))}})
+	got := r.send("GET", "/orders", "")
+	want, err := views.CSPWithImageSources(nil, []string{"https://tile.openstreetmap.org"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if csp := got.Header().Get("Content-Security-Policy"); got.Code != 200 || csp != want ||
+		!strings.Contains(csp, "; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self';") {
+		t.Errorf("%d CSP %q", got.Code, csp)
+	}
 }
 
 func decoder(t *testing.T, coding string, r io.Reader) io.Reader {

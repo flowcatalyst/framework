@@ -115,6 +115,22 @@ The Go module's packages that are plain `net/http` (`kit`, `ds`, `assets`, `view
    'none'; form-action 'self'; object-src 'none'`
    (`'unsafe-eval'`: Datastar compiles expressions with `Function`; `style-src-attr`: a few kit `style`
    attributes. Nothing else is relaxed.)
+   *Amended 2026-11-12 (owner ruling):* an application may name **extra image sources**, for images it loads from
+   another host (a map's tiles from `https://tile.openstreetmap.org`, which `img-src 'self' data:` blocks). They
+   follow `data:` in `img-src`, in the order given, a duplicate kept once:
+   `img-src 'self' data:[ <source>]...`. Every implementation of this contract offers it (Go:
+   `views.WithImageSources(sources...)`, through `fwui.WithViews`, and `views.CSPWithImageSources(hashes,
+   sources)`; Java: `Views.Builder.imageSource(source)` and `ViewCsp.policy(hashes, sources)`); Go and Java have
+   it built as of this date, and the Rust implementation has no server-rendered UI yet, so it takes this rule
+   with the module. A source, after ASCII upper case is lowered, is an `https` origin, `https://host` or
+   `https://host:port`, optionally with one leading wildcard label (`https://*.example.org`): host labels of
+   letters, digits and hyphens, a port of 1 to 65535 without a leading zero, nothing after the authority (no
+   path, query or fragment, not even a trailing `/`), no user-info; so never a bare `*`, a bare scheme
+   (`https:`), `data:`, `blob:`, `http`, a keyword (`'self'`), whitespace, quotes, commas or semicolons. Any other
+   source is refused at build, as a malformed hash is. **With no extra sources the policy is unchanged, byte for
+   byte.** Only `img-src` can be widened; there is no such option for any other directive. Every implementation
+   tests the same list of accepted and refused sources, written out in its own tests (Go
+   `views/views_test.go`, Java `ViewsTest`; a new implementation copies the list).
 2. The answer helpers (Java `Patches`, Go `views.Patches`), each one `datastar-patch-elements` event unless said:
    `outer(content)` (morph by root ids), `page(content)` (the wrapped page), `replace(selector, content)` (mode
    `replace`: remove and insert, for a modal dialog the answer closes), `inner`, `append`, `prepend`,

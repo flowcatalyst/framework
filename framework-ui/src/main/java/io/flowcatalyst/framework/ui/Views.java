@@ -74,7 +74,7 @@ public final class Views {
     this.loginParam = b.loginParam;
     this.flashes = Map.copyOf(b.flashes);
     this.plainCookies = b.plainCookies;
-    this.csp = ViewCsp.policy(b.scriptHashes.toArray(String[]::new));
+    this.csp = ViewCsp.policy(b.scriptHashes, b.imageSources);
   }
 
   /**
@@ -97,6 +97,7 @@ public final class Views {
     private final Map<String, Props.FlashMessage> flashes = new LinkedHashMap<>();
     private boolean plainCookies;
     private final List<String> scriptHashes = new ArrayList<>();
+    private final List<String> imageSources = new ArrayList<>();
     private LocaleResolver locales = LocaleResolver.englishOnly();
     private Bundle bundle = Bundle.kit();
 
@@ -222,9 +223,26 @@ public final class Views {
     }
 
     /**
+     * Lets pages load images from another host, for example a map's tile server: the source is
+     * added to the policy's {@code img-src} after {@code 'self' data:} (contract section 6 rule 1,
+     * amended 2026-11-12). Nothing else in the policy changes. Call it once per host; a host given
+     * twice appears once, where it was first given.
+     *
+     * @param source an {@code https} origin, {@code https://host} or {@code https://host:port},
+     *     optionally with one leading wildcard label ({@code https://*.example.org}), with nothing
+     *     after the host or port; checked by {@link #build()} ({@link ViewCsp#policy(List, List)})
+     * @return this
+     */
+    public Builder imageSource(String source) {
+      this.imageSources.add(source);
+      return this;
+    }
+
+    /**
      * Builds the helper.
      *
      * @return the views
+     * @throws IllegalArgumentException for a malformed script hash or image source
      */
     public Views build() {
       return new Views(this);

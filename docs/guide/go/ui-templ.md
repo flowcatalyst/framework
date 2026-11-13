@@ -239,6 +239,14 @@ err = v.Stream(w, r, func(p *views.Patches) error {                    // severa
   hashes (`WithScriptHash`) are `sha256-`, `sha384-` or `sha512-` plus base64, without quotes; a malformed one is
   an error at `New`. The policy is weaker than the single-page application's strict one because of
   `'unsafe-eval'`; the kit escapes every dynamic value, and the policy is the second line.
+- **Images from another host** (a map's tiles, for example): `views.WithImageSources("https://tile.openstreetmap.org")`
+  (or `fwui.WithViews(views.WithImageSources(...))`) adds each source to `img-src` after `'self' data:`, in the
+  order given, a duplicate once; `views.CSPWithImageSources(hashes, sources)` is the builder behind it. A source
+  is an `https` origin, `https://host` or `https://host:port`, optionally with one leading wildcard label
+  (`https://*.example.org`), with nothing after the host or port (no path, not even a trailing `/`); anything
+  else (`*`, `https:`, `data:`, `blob:`, `http://...`, quotes, `;`) is an error at `New`. Without the option the
+  policy is exactly as above, and no other directive can be widened (contract section 6 rule 1, amended
+  2026-11-12).
 - **Session expiry** (`WithLogin(path, param)`): the document's `<body>` listens for a Datastar fetch answered
   `401` and navigates to `<path>?<param>=<current path and query, percent-encoded>`. The parameter is `returnTo`
   unless named; the path must be a local path of letters, digits, `/`, `_` and `-`.

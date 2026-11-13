@@ -813,6 +813,104 @@ func TestCSPBuilder(t *testing.T) {
 	}
 }
 
+// The extra image sources of contract section 6 rule 1 (amended 2026-11-12). The same cases are
+// written out in Java's ViewsTest (imageSourcesWidenOnlyImgSrc, imageSourcesOutsideTheRuleAreRefused).
+
+// imageSourcesAccepted: the sources given, and the img-src directive they give.
+var imageSourcesAccepted = []struct {
+	sources []string
+	imgSrc  string
+}{
+	{nil, "img-src 'self' data:"},
+	{[]string{}, "img-src 'self' data:"},
+	{[]string{"https://tile.openstreetmap.org"}, "img-src 'self' data: https://tile.openstreetmap.org"},
+	{
+		[]string{"https://tile.openstreetmap.org", "https://tiles.example.org", "https://cdn.example.net"},
+		"img-src 'self' data: https://tile.openstreetmap.org https://tiles.example.org https://cdn.example.net",
+	},
+	{[]string{"https://*.tile.openstreetmap.org"}, "img-src 'self' data: https://*.tile.openstreetmap.org"},
+	{[]string{"https://tiles.example.org:8443"}, "img-src 'self' data: https://tiles.example.org:8443"},
+	{[]string{"https://*.example.org:443"}, "img-src 'self' data: https://*.example.org:443"},
+	{[]string{"https://localhost:65535", "https://192.168.0.10:1"}, "img-src 'self' data: https://localhost:65535 https://192.168.0.10:1"},
+	{[]string{"https://tile-1.example.org"}, "img-src 'self' data: https://tile-1.example.org"},
+	{[]string{"HTTPS://Tile.OpenStreetMap.ORG"}, "img-src 'self' data: https://tile.openstreetmap.org"},
+	{
+		[]string{"https://b.example.org", "https://a.example.org", "https://b.example.org", "HTTPS://A.example.org"},
+		"img-src 'self' data: https://b.example.org https://a.example.org",
+	},
+}
+
+// imageSourcesRefused: each is refused on its own.
+var imageSourcesRefused = []string{
+	"", "*", "https:", "https://", "https:/tile.example.org", "data:", "blob:", "'self'", "'none'",
+	"http://tile.example.org", "wss://tile.example.org", "tile.example.org", "//tile.example.org",
+	"https://tile.example.org/", "https://tile.example.org/tiles/{z}/{x}/{y}.png", "https://tile.example.org?x=1",
+	"https://tile.example.org#x", "https://user@tile.example.org", "https://user:pw@tile.example.org",
+	" https://tile.example.org", "https://tile.example.org ", "https://tile.example .org", "https://tile.example.org\t",
+	"https://tile.example.org\n", "'https://tile.example.org'", `"https://tile.example.org"`,
+	"https://a.example.org,https://b.example.org", "https://a.example.org;", "https://a.example.org; script-src *",
+	"https://*", "https://*.", "https://*.*.example.org", "https://a.*.example.org", "https://*example.org",
+	"https://tile.example.org:", "https://tile.example.org:0", "https://tile.example.org:080",
+	"https://tile.example.org:65536", "https://tile.example.org:99999", "https://tile.example.org:*",
+	"https://tile..example.org", "https://.example.org", "https://example.org.", "https://tile_1.example.org",
+	"https://[::1]", "https://tile.\u212Aexample.org", "https://til\u00e9.example.org",
+}
+
+func TestImageSourcesWidenOnlyImgSrc(t *testing.T) {
+	for _, c := range imageSourcesAccepted {
+		got, err := views.CSPWithImageSources(nil, c.sources)
+		if err != nil {
+			t.Errorf("%q: %v", c.sources, err)
+			continue
+		}
+		if want := strings.Replace(wantCSP, "img-src 'self' data:", c.imgSrc, 1); got != want {
+			t.Errorf("%q:\n got %s\nwant %s", c.sources, got, want)
+		}
+	}
+	// with hashes too, and the default is byte for byte CSP()'s
+	got, err := views.CSPWithImageSources([]string{"sha256-abc="}, []string{"https://tile.openstreetmap.org"})
+	if err != nil || !strings.Contains(got, "'unsafe-eval' 'sha256-abc='; style-src") ||
+		!strings.Contains(got, "; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self';") {
+		t.Errorf("hashes and sources: %q, %v", got, err)
+	}
+	if got, err := views.CSPWithImageSources(nil, nil); err != nil || got != wantCSP {
+		t.Errorf("no sources: %q, %v", got, err)
+	}
+	// documents send it; without the option, or with it empty, the header is unchanged
+	for _, opts := range [][]views.Option{nil, {views.WithImageSources()}} {
+		if csp := newRig(t, false, opts...).get("/orders").Header().Get("Content-Security-Policy"); csp != wantCSP {
+			t.Errorf("default document CSP: %s", csp)
+		}
+	}
+	g := newRig(t, false,
+		views.WithImageSources("https://tile.openstreetmap.org"), views.WithImageSources("https://*.example.org:8443", "https://tile.openstreetmap.org"))
+	want := strings.Replace(wantCSP, "img-src 'self' data:", "img-src 'self' data: https://tile.openstreetmap.org https://*.example.org:8443", 1)
+	if csp := g.get("/orders").Header().Get("Content-Security-Policy"); csp != want {
+		t.Errorf("document CSP:\n got %s\nwant %s", csp, want)
+	}
+	// a Datastar answer still carries no policy
+	if csp := g.datastar("/orders").Header().Get("Content-Security-Policy"); csp != "" {
+		t.Errorf("Datastar answer has a CSP: %s", csp)
+	}
+}
+
+func TestImageSourcesOutsideTheRuleAreRefused(t *testing.T) {
+	a := loadAssets(t)
+	for _, bad := range imageSourcesRefused {
+		_, err := views.CSPWithImageSources(nil, []string{"https://ok.example.org", bad})
+		if err == nil {
+			t.Errorf("image source %q accepted", bad)
+			continue
+		}
+		if !strings.Contains(err.Error(), "image source") || !strings.Contains(err.Error(), "https origin") {
+			t.Errorf("image source %q: message %q", bad, err)
+		}
+		if _, err := views.New(a, views.WithImageSources(bad)); err == nil {
+			t.Errorf("New accepted image source %q", bad)
+		}
+	}
+}
+
 func TestPageOptionsStatusAndIslandScripts(t *testing.T) {
 	g := newRig(t, false)
 	page := func(opts ...views.PageOption) (*httptest.ResponseRecorder, error) {
