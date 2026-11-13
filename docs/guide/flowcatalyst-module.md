@@ -163,6 +163,23 @@ The methods are `eventType`, `permission`, `role` (a name and permission codes, 
 `Subscription.viaConnection`, `viaSharedConnection`, `inPool`, `withMode`, `ScheduledJob.tracking`,
 `inZone`).
 
+A `Definition.Role` has `withDisplayName`, `withDescription` and `withClientManaged()`. The last
+marks the role client-managed (the record component `clientManaged`, the platform's flag of that
+name): a client's own administrators may assign it to their users. The sync sends
+`clientManaged: true` for such a role and leaves the field off for the others, which the platform
+stores as false, so a role marked client-managed on the platform but not in code loses the flag at
+the next sync ([contract](../contracts/flowcatalyst.md) section 2):
+
+```java
+                    .role(
+                        Definition.Role.of("operator", "orders:sales:order:read")
+                            .withDisplayName("Operator")
+                            .withClientManaged()
+                            .withDescription("Runs the day's orders."))
+```
+
+(from `DefinitionSyncTest`).
+
 Validation, which is **stricter than the platform's** (owner may relax it): lowercase
 `[a-z0-9][a-z0-9_-]*` segments; event type, permission and process codes start with
 `flowcatalyst.application`; role names carry no `app:` prefix (the platform adds it); cron

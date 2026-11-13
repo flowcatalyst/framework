@@ -70,6 +70,15 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
 - The framework's own modules contribute their permissions and roles the same way: the admin
   sections' permissions and a suggested role `admin` join the catalog automatically (M4e, admin
   contract section 11; skipped when the application declares its own role `admin`).
+- **Client-managed roles (2026-11-13, owner request).** A role can be marked client-managed (Java
+  `Definition.Role.withClientManaged()`, Go `Role.WithClientManaged()`): the platform's
+  `clientManaged` flag, which lets a client's own administrators assign the role to their users.
+  The sync sends `clientManaged: true` for a marked role and leaves the field off for any other
+  role, as the Go SDK does; the platform's role sync stores a missing flag as false and sets the
+  flag of an SDK-sourced role it updates to what was sent, so a role marked client-managed on the
+  platform and not in code loses the flag at the next sync (platform
+  `internal/platform/sdksync/api.go`, `internal/platform/role/operations/sync.go`). Roles are not client-managed unless
+  marked (the admin module's suggested role `admin` is not).
 - **Docs sync:** the platform has `POST /api/applications/{appCode}/docs/sync` but the Java SDK
   has no docs category. Platform/SDK work: add it to the SDK; until then `docs(...)` definitions
   are accepted and skipped with a warning.

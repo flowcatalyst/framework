@@ -38,17 +38,36 @@ public sealed interface Definition {
    * @param permissions permission codes the role grants, each {@code app:context:aggregate:action}
    * @param displayName display name, if different from the name
    * @param description what the role is for
+   * @param clientManaged whether a client's own administrators may assign the role to their users
+   *     (the platform's {@code clientManaged}); false means only platform administrators can
    */
   record Role(
       String name,
       List<String> permissions,
       @Nullable String displayName,
-      @Nullable String description)
+      @Nullable String description,
+      boolean clientManaged)
       implements Definition {
 
     /** Copies the permission list. */
     public Role {
       permissions = List.copyOf(permissions);
+    }
+
+    /**
+     * A role that is not client-managed.
+     *
+     * @param name the role name without the application prefix
+     * @param permissions the permission codes it grants
+     * @param displayName display name, if different from the name
+     * @param description what the role is for
+     */
+    public Role(
+        String name,
+        List<String> permissions,
+        @Nullable String displayName,
+        @Nullable String description) {
+      this(name, permissions, displayName, description, false);
     }
 
     /**
@@ -59,7 +78,7 @@ public sealed interface Definition {
      * @return the role
      */
     public static Role of(String name, String... permissions) {
-      return new Role(name, List.of(permissions), null, null);
+      return new Role(name, List.of(permissions), null, null, false);
     }
 
     /**
@@ -69,7 +88,7 @@ public sealed interface Definition {
      * @return a copy
      */
     public Role withDisplayName(String displayName) {
-      return new Role(name, permissions, displayName, description);
+      return new Role(name, permissions, displayName, description, clientManaged);
     }
 
     /**
@@ -79,7 +98,18 @@ public sealed interface Definition {
      * @return a copy
      */
     public Role withDescription(String description) {
-      return new Role(name, permissions, displayName, description);
+      return new Role(name, permissions, displayName, description, clientManaged);
+    }
+
+    /**
+     * Marks the role client-managed: a client's own administrators may assign it to their users.
+     * The sync sends {@code clientManaged: true}; a role not marked is sent without the flag, which
+     * the platform stores as false (only platform administrators can assign it).
+     *
+     * @return a copy
+     */
+    public Role withClientManaged() {
+      return new Role(name, permissions, displayName, description, true);
     }
   }
 

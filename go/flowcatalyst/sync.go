@@ -303,7 +303,7 @@ func (p *Platform) definitionSet() *fcsync.DefinitionSet {
 	c := p.catalog
 	set := fcsync.ForApplication(p.client.app.String())
 	for _, r := range c.roles {
-		set.AddRole(fcsync.RoleDefinition{Name: r.Name, DisplayName: r.DisplayName, Description: r.Description, Permissions: r.Permissions})
+		set.AddRole(fcsync.RoleDefinition{Name: r.Name, DisplayName: r.DisplayName, Description: r.Description, Permissions: r.Permissions, ClientManaged: r.ClientManaged})
 	}
 	for _, e := range c.eventTypes {
 		set.AddEventType(fcsync.EventTypeDefinition{Code: e.Code, Name: e.Name, Description: e.Description})

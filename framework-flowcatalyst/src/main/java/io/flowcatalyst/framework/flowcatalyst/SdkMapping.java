@@ -44,7 +44,10 @@ final class SdkMapping {
 
   private static Definitions.Role role(Definition.Role r) {
     List<PermissionRef> permissions = r.permissions().stream().map(PermissionRef::raw).toList();
-    return new Definitions.Role(r.name(), r.displayName(), r.description(), permissions, null);
+    // clientManaged: true when marked; otherwise left off, as the Go SDK does (the platform reads a
+    // missing flag as false)
+    return new Definitions.Role(
+        r.name(), r.displayName(), r.description(), permissions, r.clientManaged() ? Boolean.TRUE : null);
   }
 
   private static Definitions.Subscription subscription(Definition.Subscription s) {

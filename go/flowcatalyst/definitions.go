@@ -28,12 +28,14 @@ type Permission struct {
 }
 
 // Role is a role of the application: Name without the "app:" prefix (the platform adds it) and the
-// codes of the permissions it grants.
+// codes of the permissions it grants. ClientManaged lets a client's own administrators assign the
+// role to their users (the platform's clientManaged); false leaves that to platform administrators.
 type Role struct {
-	Name        string
-	Permissions []string
-	DisplayName string
-	Description string
+	Name          string
+	Permissions   []string
+	DisplayName   string
+	Description   string
+	ClientManaged bool
 }
 
 // NewRole starts a role.
@@ -46,6 +48,11 @@ func (r Role) WithDisplayName(s string) Role { r.DisplayName = s; return r }
 
 // WithDescription returns a copy with a description.
 func (r Role) WithDescription(s string) Role { r.Description = s; return r }
+
+// WithClientManaged returns a copy marked client-managed: a client's own administrators may assign
+// it. The sync sends clientManaged true; a role not marked is sent without the flag, which the
+// platform stores as false.
+func (r Role) WithClientManaged() Role { r.ClientManaged = true; return r }
 
 // DeliveryMode is how a subscription delivers.
 type DeliveryMode string

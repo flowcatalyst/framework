@@ -82,6 +82,19 @@ six-field crons, subscriptions with at least one event type, a path target only 
 at once naming the contributing module. Optional numbers (`MaxRetries`, `RateLimit`, ...) are 0 for
 "the platform's default" and negative is a problem (Java's nullable `Integer` rejects 0 too).
 
+A role has `WithDisplayName`, `WithDescription` and `WithClientManaged` copies. `WithClientManaged()`
+sets `Role.ClientManaged`, the platform's `clientManaged` flag: a client's own administrators may
+assign the role to their users. The sync sends `clientManaged: true` for such a role and leaves the
+field off for the others, which the platform stores as false, so a role marked client-managed on the
+platform but not in code loses the flag at the next sync (contract section 2):
+
+```go
+			Role(flowcatalyst.NewRole("operator", "orders:sales:order:read").
+				WithDisplayName("Operator").WithClientManaged().WithDescription("Runs the day's orders.")).
+```
+
+(from `flowcatalyst/sync_test.go`).
+
 `Platform.Sync(ctx, mode)` sends one SDK call per category in the order roles, event types,
 connections, dispatch pools, subscriptions, processes, scheduled jobs, docs, never stopping at a
 failed category, and returns a `SyncReport` (a `*SyncError` carrying it when any failed). A

@@ -164,6 +164,45 @@ class DefinitionSyncTest {
   }
 
   @Test
+  void aClientManagedRoleIsSentWithTheFlagAndAnotherRoleWithout() {
+    Contributor roles =
+        Contributor.of(
+            "orders",
+            d ->
+                d.permission("orders:sales:order:read", "Read orders")
+                    .role(
+                        Definition.Role.of("operator", "orders:sales:order:read")
+                            .withDisplayName("Operator")
+                            .withClientManaged()
+                            .withDescription("Runs the day's orders."))
+                    .role("auditor", "orders:sales:order:read"));
+    try (App app = start(Contributor.env(platform), roles)) {
+      app.get(DefinitionSync.class).run(Mode.APPLY);
+
+      JsonNode sent = call("roles").json().get("roles");
+      JsonNode operator = sent.get(0);
+      assertThat(operator.get("name").asString()).isEqualTo("operator");
+      assertThat(operator.get("displayName").asString()).isEqualTo("Operator");
+      // a later with... copy keeps the flag
+      assertThat(operator.get("description").asString()).isEqualTo("Runs the day's orders.");
+      assertThat(operator.get("clientManaged").isBoolean()).isTrue();
+      assertThat(operator.get("clientManaged").asBoolean()).isTrue();
+      // not marked: the flag is left off, which the platform stores as false
+      JsonNode auditor = sent.get(1);
+      assertThat(auditor.get("name").asString()).isEqualTo("auditor");
+      assertThat(auditor.has("clientManaged")).isFalse();
+    }
+  }
+
+  @Test
+  void aRoleIsNotClientManagedUnlessMarked() {
+    assertThat(Definition.Role.of("clerk").clientManaged()).isFalse();
+    assertThat(new Definition.Role("clerk", List.of(), "Clerk", null).clientManaged()).isFalse();
+    assertThat(Definition.Role.of("clerk").withClientManaged().withDisplayName("Clerk").clientManaged())
+        .isTrue();
+  }
+
+  @Test
   void aDryRunWritesNothingAndDoesNotEvenCallThePlatform() {
     try (App app = start(Contributor.env(platform), orders())) {
       SyncReport report = app.get(DefinitionSync.class).run(Mode.DRY_RUN);

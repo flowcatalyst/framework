@@ -259,6 +259,43 @@ func TestRefusedCredentialsFailEveryCategoryWithoutLosingTheReport(t *testing.T)
 	}
 }
 
+func TestAClientManagedRoleIsSentWithTheFlagAndAnotherRoleWithout(t *testing.T) {
+	r := startRig(t, rigOptions{define: func(d *flowcatalyst.Declared) {
+		d.Definitions("orders").
+			Permission("orders:sales:order:read", "Read orders").
+			Role(flowcatalyst.NewRole("operator", "orders:sales:order:read").
+				WithDisplayName("Operator").WithClientManaged().WithDescription("Runs the day's orders.")).
+			Role(flowcatalyst.NewRole("auditor", "orders:sales:order:read"))
+	}})
+	if _, err := r.fc.Sync(t.Context(), flowcatalyst.SyncApply); err != nil {
+		t.Fatal(err)
+	}
+	req, ok := r.platform.syncOf("roles")
+	if !ok {
+		t.Fatal("no sync of roles")
+	}
+	sent := req.json(t)["roles"].([]any)
+	operator, auditor := sent[0].(map[string]any), sent[1].(map[string]any)
+	// a later With... copy keeps the flag
+	if operator["name"] != "operator" || operator["displayName"] != "Operator" || operator["description"] != "Runs the day's orders." ||
+		operator["clientManaged"] != true {
+		t.Errorf("operator %v: want clientManaged true", operator)
+	}
+	// not marked: the flag is left off, which the platform stores as false
+	if _, has := auditor["clientManaged"]; auditor["name"] != "auditor" || has {
+		t.Errorf("auditor %v: want no clientManaged", auditor)
+	}
+}
+
+func TestARoleIsNotClientManagedUnlessMarked(t *testing.T) {
+	if flowcatalyst.NewRole("clerk").ClientManaged {
+		t.Error("a new role is client-managed")
+	}
+	if !flowcatalyst.NewRole("clerk").WithClientManaged().WithDisplayName("Clerk").ClientManaged {
+		t.Error("WithClientManaged did not mark the role, or a later copy lost it")
+	}
+}
+
 func TestNothingDeclaredMeansNothingIsSent(t *testing.T) {
 	r := startRig(t, rigOptions{})
 	report, err := r.fc.Sync(t.Context(), flowcatalyst.SyncApply)
