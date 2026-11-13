@@ -48,7 +48,7 @@ git checkout -- .          # put the poms back
 
 Or depend on the published artifacts (the status note at the top of this page).
 
-The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.30` (the
+The module `framework-flowcatalyst` depends on `io.flowcatalyst:flowcatalyst-sdk:0.0.31` (the
 FlowCatalyst Java SDK). From 0.0.30 the platform repository publishes it to GitHub Packages, not to
 Maven Central: `make release-java-sdk` pushes a `java-sdk/vX.Y.Z` tag and the platform's
 `release-java-sdk.yml` workflow deploys that version to
@@ -68,7 +68,7 @@ Or build it into your local Maven repository from the tag (JDK 25 and Maven):
 ```
 git clone https://github.com/flowcatalyst/flowcatalyst.git
 cd flowcatalyst
-git checkout java-sdk/v0.0.30
+git checkout java-sdk/v0.0.31
 cd clients/java-sdk
 mvn install -DskipTests
 ```

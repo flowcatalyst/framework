@@ -136,7 +136,7 @@ Section `users` (`/admin/users`): `GET /api/admin/users[/{id}]`, `GET /api/admin
 Permissions: `{app}:admin:users:view` (lists and reads), `:invite`, `:resend`, `:revoke`; give an auditor only
 `view` and the pages offer nothing to change (the demo's `orders-demo:auditor`). Behind them the application
 calls the platform's application-user routes as its own service account, **over plain HTTP** until the
-SDK that has them is released (the pinned SDK is 0.0.30; the interim is `PlatformHttp`, one retry after a `401`).
+SDK that has them is released (the pinned SDK is 0.0.31; the interim is `PlatformHttp`, one retry after a `401`).
 The platform's `application-service` role needs the user and invitation permissions of platform change F20, and
 **every application service account must mint a new token** to carry them.
 
