@@ -2,7 +2,7 @@
 # govulncheck, over the four modules (core, go/flowcatalyst, go/ui, go/ui/fwui) and the templ check (ui-verify).
 # The Java build is separate (publish.yml runs it on tags); this workflow runs only when the Go tree,
 # the shared conformance vectors, the UI kit or its static files, or this file change. The toolchain
-# is Go 1.27.3 (the go directive in go/go.mod); the lint tools are pinned in go/tools/go.mod and
+# is Go 1.27.4 (the go directive in go/go.mod); the lint tools are pinned in go/tools/go.mod and
 # built by it.
 # Written in G0; every job's command was run locally on 2026-10-18 (docs/go/milestones.md); a first run
 # on GitHub is still to happen.
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache-dependency-path: |
             go/go.sum
             go/ui/go.sum
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache-dependency-path: |
             go/go.sum
             go/ui/go.sum
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache-dependency-path: go/go.sum
       - run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
       - run: make sql-check
@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache-dependency-path: go/go.sum
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./... # the flowcatalyst module is its own go.mod
