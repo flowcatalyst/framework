@@ -3,8 +3,8 @@ module github.com/flowcatalyst/framework/go/flowcatalyst
 go 1.27
 
 require (
-	github.com/flowcatalyst/framework/go v0.2.0
-	github.com/flowcatalyst/go-sdk v0.0.17
+	github.com/flowcatalyst/framework/go v0.2.1
+	github.com/flowcatalyst/go-sdk v0.0.19
 	github.com/jackc/pgx/v5 v5.9.2
 )
 
