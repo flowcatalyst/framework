@@ -380,7 +380,8 @@ func TestABodyOverTheLimitIsRefusedBeforeAnyHandler(t *testing.T) {
 		ran.Store(true)
 		return flowcatalyst.Ack{}, nil
 	}, rigOptions{})
-	big := `{"id":"dj_0HZXEQ5Y8JY5Z","type":"` + evt + `","attemptNumber":1,"data":"` + strings.Repeat("x", 1<<20) + `"}`
+	// Over the default of http.max-body-bytes (5 MiB).
+	big := `{"id":"dj_0HZXEQ5Y8JY5Z","type":"` + evt + `","attemptNumber":1,"data":"` + strings.Repeat("x", 5<<20) + `"}`
 	got := r.dispatch(big, nil)
 	if got.status != 413 || ran.Load() {
 		t.Fatalf("%d (handler ran: %v)", got.status, ran.Load())
