@@ -1,0 +1,9 @@
+package kit
+
+// documentMain is the wrapper of a document that has no app shell: the flash stack and the page
+// are its children. The class string is the look's (a copy of the kit changes it freely).
+templ documentMain() {
+	<main class="mx-auto max-w-xl p-[24px]">
+		{ children... }
+	</main>
+}

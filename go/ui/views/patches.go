@@ -7,7 +7,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/flowcatalyst/framework/go/ui/ds"
-	"github.com/flowcatalyst/framework/go/ui/kit"
+	"github.com/flowcatalyst/framework/go/ui/look"
 )
 
 // PageID is the id of the element a page's content is wrapped in; a Datastar page answer morphs it.
@@ -20,7 +20,10 @@ const FlashStackID = "flash-stack"
 // datastar-patch-elements event (Signals: datastar-patch-signals), rendering the component to a
 // buffer first so a failing render sends nothing. A handled Datastar request answers 200 with at
 // least one patch; an expected failure patches the error where it belongs or flashes it.
-type Patches struct{ sse *ds.SSE }
+type Patches struct {
+	sse  *ds.SSE
+	look look.Look
+}
 
 // wrapPage wraps content in <div id="fw-page">.
 func wrapPage(content templ.Component) templ.Component {
@@ -86,8 +89,8 @@ func (p *Patches) ReplaceURL(path string) error { return p.sse.ReplaceURL(path) 
 // Flash appends a flash message to the page's flash stack (flash-stack.md). Success and info
 // messages remove themselves after 3 and 5 seconds; warn and error stay until dismissed. detail may
 // be empty. An unknown kind panics (contract section 3 rule 5).
-func (p *Patches) Flash(kind kit.FlashKind, summary, detail string) error {
-	return p.sse.Patch(kit.FlashMessage(kit.FlashMessageProps{Kind: kind, Summary: summary, Detail: detail}),
+func (p *Patches) Flash(kind look.FlashKind, summary, detail string) error {
+	return p.sse.Patch(p.look.FlashMessage(look.Flash{Kind: kind, Summary: summary, Detail: detail}),
 		ds.Append("#"+FlashStackID))
 }
 

@@ -13,6 +13,9 @@
 #   ui-generate      templ generate in the ui and ui/fwui modules (the generated *_templ.go files are committed)
 #   ui-verify        ui-generate, then fail when a generated file changed or appeared: the committed
 #                    *_templ.go files are the templates' output (templ v0.3.1020, pinned by ui/go.mod and ui/fwui/go.mod)
+#   ui-copy-check    prove that an application can render pages with its own copy of go/ui/kit under another import
+#                    path (views.WithLook): scripts/check-ui-kit-copy.sh builds a temporary module from a copy of the kit
+#                    and vets and tests it (offline when the module cache is warm)
 #   sql-check        the examples' checked SQL (orders-demo, and the tickets-trial of the flowcatalyst module): schema
 #                    dir, sqlc vet (db-prepare) and diff, jet code
 #                    (needs sqlc v1.31.1 on PATH: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1)
@@ -69,9 +72,9 @@ FWUI = cd ui/fwui &&
 LINT := $(CURDIR)/bin/golangci-lint
 NILAWAY := $(CURDIR)/bin/nilaway
 
-.PHONY: release-go release-go-ui release-go-flowcatalyst e2e-orders e2e-orders-templ e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify
+.PHONY: release-go release-go-ui release-go-flowcatalyst e2e-orders e2e-orders-templ e2e-tickets go-check fmt fmt-check lint vet nilaway test sql-check go-sync-shared fc-modfile fc-tidy tools ui-generate ui-verify ui-copy-check
 
-go-check: fc-modfile fmt-check lint vet nilaway test sql-check ui-verify
+go-check: fc-modfile fmt-check lint vet nilaway test sql-check ui-verify ui-copy-check
 
 # The pinned tools (tools/go.mod), built by the local Go into bin/.
 tools:
@@ -124,6 +127,9 @@ test: fc-modfile
 sql-check:
 	cd examples/orders-demo && $(GO) run ./tools/fwsql check
 	$(FC) cd examples/tickets-trial && $(GO) run ./tools/fwsql check
+
+ui-copy-check:
+	@../scripts/check-ui-kit-copy.sh
 
 go-sync-shared:
 	@sh internal/conformance/sync-shared.sh

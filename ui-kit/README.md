@@ -9,6 +9,8 @@
 
 A language-neutral port of the FlowCatalyst server-rendered UI components (the Topcoat UI components themed for the product, plus the hand-built admin components) to plain **HTML + Tailwind CSS + Datastar**. No Topcoat, no Rust, no Node. Server templates in any language (JTE, Rust, TypeScript, ...) are written from the specs in `components/`; the gallery proves the markup and behaviour in a real browser.
 
+- **Your own copy (Go):** an application that wants its own look can keep a copy of the Go kit (`go/ui/kit`) and of `theme/` in its own repository and render pages with it; see `docs/guide/go/ui-own-look.md`. The module's conformance fixtures then no longer describe the copy.
+
 - **Datastar:** 1.0.4 (stable, released 2026-09-21). Pinned in `gallery/*.html` as `https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.4/bundles/datastar.js`. All attribute names/separators in the specs are that release's (`data-on:click`, `data-attr:aria-current`, `data-signals:my-signal`, SSE events `datastar-patch-elements` / `datastar-patch-signals`).
 - **Tailwind CSS:** 4.3.2 standalone CLI (the same version fc-web builds with); downloaded to `.bin/` by `build.sh`.
 - **Components:** 55 specs (31 Topcoat UI components + 24 hand-built/composite/new), see `components/README.md`.

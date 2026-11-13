@@ -79,6 +79,7 @@
     - { title: "Go: checked SQL", path: guide/go/checked-sql.md }
     - { title: "Go: money and units", path: guide/go/measure.md }
     - { title: "Go: server-rendered pages (templ)", path: guide/go/ui-templ.md }
+    - { title: "Go: pages with your own kit", path: guide/go/ui-own-look.md }
     - { title: "Go: languages and locale formatting", path: guide/go/i18n.md }
 - group: Reference and status
   items:

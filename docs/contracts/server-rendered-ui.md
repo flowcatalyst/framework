@@ -105,6 +105,24 @@ The Go module's packages that are plain `net/http` (`kit`, `ds`, `assets`, `view
    compares the `#fw-page` element).
 6. Flash messages given to a document render into its flash stack (section 9); a Datastar answer ignores them and
    patches a message instead (section 6, `flash`).
+7. *Amended 2026-11-13 (owner ruling):* an application may render its documents with **its own copy of the
+   kit** instead of the module's. What the copy supplies is six things, which the page layer asks of it: the
+   **stylesheet** (an asset name, linked first), the **render context** (what its components read from the context,
+   the module's kit puts the icon sprite's URL there), the **`<html>` attributes** for the request (the theme's
+   and, with a shell, the shell's), the **wrapper of a document without a shell** (the bare `<main>` of rule 3 is
+   the module kit's), the **flash stack** with the id `flash-stack`, and **one flash message**; plus, optionally, the
+   application's own **shell component**, a function of the request whose children are the flash stack and the page
+   (section 7 is then the copy's, not the module's). What stays the module's: the document skeleton (the doctype,
+   `<html lang>`, the head's title, the Datastar script and the island scripts, the body and its session-expired
+   listener), the page policy and the document headers (rule 4, section 6), the flash cookie (section 9), the
+   `fw-page` wrapper and the patches (section 6); the flash types (kind and message) are shared by the module's kit
+   and the copy. An application may also link **further stylesheets**, by asset name, after the look's own, in the
+   order given and once each; each must be a CSS asset, and a stylesheet that is no asset is an error at build, as is
+   a look whose stylesheet is no asset. Go: `views.WithLook(look.Look)` (the interface and `look.Flash` are in the
+   leaf package `go/ui/look`; the module's kit is `kit.Look`, the default), `views.WithShellComponent`,
+   `views.WithStylesheets`; giving `WithShell` and `WithShellComponent` together is an error. **With none of these
+   options the output is unchanged, byte for byte** (Go `views/golden_test.go`). Go has it built as of this date;
+   the Java module (`framework-ui`) does not, and has no such options.
 
 ## 6. The page policy and the answer helpers
 

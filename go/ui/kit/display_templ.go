@@ -12,6 +12,7 @@ import (
 	"context"
 
 	"github.com/flowcatalyst/framework/go/ui/i18n"
+	"github.com/flowcatalyst/framework/go/ui/look"
 )
 
 // BadgeVariant is badge.md's `variant` option.
@@ -84,7 +85,7 @@ func Badge(p BadgeProps) templ.Component {
 			var templ_7745c5c3_Var3 templ.SafeURL
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(p.Href))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 47, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 48, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -235,7 +236,7 @@ func Tag(p TagProps) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 80, Col: 168}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 81, Col: 168}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -322,7 +323,7 @@ func Alert(p AlertProps) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 121, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 122, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -358,7 +359,7 @@ func Alert(p AlertProps) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.role())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 125, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 126, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -387,7 +388,7 @@ func Alert(p AlertProps) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 132, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 133, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -406,7 +407,7 @@ func Alert(p AlertProps) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(p.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 135, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 136, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -430,15 +431,16 @@ func Alert(p AlertProps) templ.Component {
 }
 
 // FlashKind is the `kind` option of flash-banner.md (success, error) and of
-// flash-stack.md's flash message (all four).
-type FlashKind string
+// flash-stack.md's flash message (all four). It is declared in package look, which the views and a
+// copy of the kit share.
+type FlashKind = look.FlashKind
 
 // Flash kinds. FlashBanner supports success and error only.
 const (
-	FlashSuccess FlashKind = "success"
-	FlashInfo    FlashKind = "info"
-	FlashWarn    FlashKind = "warn"
-	FlashError   FlashKind = "error"
+	FlashSuccess = look.FlashSuccess
+	FlashInfo    = look.FlashInfo
+	FlashWarn    = look.FlashWarn
+	FlashError   = look.FlashError
 )
 
 // FlashBannerProps mirrors flash-banner.md's Props table.
@@ -485,7 +487,7 @@ func FlashBanner(p FlashBannerProps) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(oneOf("flash banner role", p.Role, "status", "status", "alert"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 166, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 168, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 		if templ_7745c5c3_Err != nil {
@@ -521,7 +523,7 @@ func FlashBanner(p FlashBannerProps) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(p.Message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 171, Col: 13}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 173, Col: 13}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -535,22 +537,16 @@ func FlashBanner(p FlashBannerProps) templ.Component {
 	})
 }
 
-// FlashMessageProps mirrors flash-stack.md's flash-message Props table.
-type FlashMessageProps struct {
-	Kind    FlashKind `json:"kind"`
-	Summary string    `json:"summary"`
-	Detail  string    `json:"detail"`
-	// Persistent keeps a success or info message (warn and error always stay).
-	Persistent bool             `json:"persistent"`
-	Attrs      templ.Attributes `json:"attrs"`
-}
+// FlashMessageProps mirrors flash-stack.md's flash-message Props table. It is declared in package
+// look ([look.Flash]), which the views and a copy of the kit share.
+type FlashMessageProps = look.Flash
 
-func (p FlashMessageProps) kind() FlashKind {
+func flashKind(p FlashMessageProps) FlashKind {
 	return oneOf("flash kind", p.Kind, FlashSuccess, FlashSuccess, FlashInfo, FlashWarn, FlashError)
 }
 
-func (p FlashMessageProps) icon() string {
-	switch p.kind() {
+func flashIcon(p FlashMessageProps) string {
+	switch flashKind(p) {
 	case FlashInfo:
 		return "info"
 	case FlashWarn:
@@ -562,20 +558,22 @@ func (p FlashMessageProps) icon() string {
 	return "circle-check"
 }
 
-// lifetime is the auto-dismiss delay ("" = stays): the SPA's 3s for
+// flashLifetime is the auto-dismiss delay ("" = stays): the SPA's 3s for
 // success and 5s for info.
-func (p FlashMessageProps) lifetime() string {
+func flashLifetime(p FlashMessageProps) string {
 	switch {
-	case p.alert() || p.Persistent:
+	case flashAlert(p) || p.Persistent:
 		return ""
-	case p.kind() == FlashInfo:
+	case flashKind(p) == FlashInfo:
 		return "5s"
 	}
 	return "3s"
 }
 
-// alert reports whether the message is role="alert" (warn and error).
-func (p FlashMessageProps) alert() bool { return p.kind() == FlashWarn || p.kind() == FlashError }
+// flashAlert reports whether the message is role="alert" (warn and error).
+func flashAlert(p FlashMessageProps) bool {
+	return flashKind(p) == FlashWarn || flashKind(p) == FlashError
+}
 
 // FlashMessage is one banner of flash-stack.md (the SPA's notification
 // banner): success and info remove themselves after 3s and 5s unless
@@ -601,7 +599,7 @@ func FlashMessage(p FlashMessageProps) templ.Component {
 			templ_7745c5c3_Var23 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var24 = []any{"fc-flash fc-flash-" + string(p.kind())}
+		var templ_7745c5c3_Var24 = []any{"fc-flash fc-flash-" + string(flashKind(p))}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var24...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -623,19 +621,19 @@ func FlashMessage(p FlashMessageProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if p.alert() {
+		if flashAlert(p) {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, " role=\"alert\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		if p.lifetime() == "3s" {
+		if flashLifetime(p) == "3s" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, " data-init__delay.3s=\"el.remove()\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		if p.lifetime() == "5s" {
+		if flashLifetime(p) == "5s" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " data-init__delay.5s=\"el.remove()\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -649,7 +647,7 @@ func FlashMessage(p FlashMessageProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconProps{Name: p.icon(), Class: "fc-flash-icon"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(IconProps{Name: flashIcon(p), Class: "fc-flash-icon"}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -660,7 +658,7 @@ func FlashMessage(p FlashMessageProps) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(p.Summary)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 235, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 231, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -678,7 +676,7 @@ func FlashMessage(p FlashMessageProps) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(p.Detail)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 237, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 233, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -696,7 +694,7 @@ func FlashMessage(p FlashMessageProps) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(i18n.T(ctx, "kit.flash.dismiss"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 240, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 236, Col: 94}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
@@ -786,7 +784,7 @@ func FlashStack(p FlashStackProps) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(ID(p.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 287, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 283, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 		if templ_7745c5c3_Err != nil {
@@ -799,7 +797,7 @@ func FlashStack(p FlashStackProps) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(flashFallbackExpr)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 287, Col: 106}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 283, Col: 106}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 		if templ_7745c5c3_Err != nil {
@@ -817,7 +815,7 @@ func FlashStack(p FlashStackProps) templ.Component {
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.key)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 289, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 285, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 			if templ_7745c5c3_Err != nil {
@@ -990,7 +988,7 @@ func Breadcrumb(p BreadcrumbProps) templ.Component {
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(i18n.T(ctx, "kit.breadcrumb.label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 341, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 337, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 		if templ_7745c5c3_Err != nil {
@@ -1027,7 +1025,7 @@ func Breadcrumb(p BreadcrumbProps) templ.Component {
 				var templ_7745c5c3_Var39 templ.SafeURL
 				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(it.Href))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 351, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 347, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 				if templ_7745c5c3_Err != nil {
@@ -1040,7 +1038,7 @@ func Breadcrumb(p BreadcrumbProps) templ.Component {
 				var templ_7745c5c3_Var40 string
 				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(it.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 351, Col: 93}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 347, Col: 93}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 				if templ_7745c5c3_Err != nil {
@@ -1058,7 +1056,7 @@ func Breadcrumb(p BreadcrumbProps) templ.Component {
 				var templ_7745c5c3_Var41 string
 				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(it.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 353, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 349, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 				if templ_7745c5c3_Err != nil {
@@ -1140,7 +1138,7 @@ func EmptyState(p EmptyStateProps) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(p.Message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 381, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 377, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -1158,7 +1156,7 @@ func EmptyState(p EmptyStateProps) templ.Component {
 			var templ_7745c5c3_Var44 templ.SafeURL
 			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinURLErrs(SafeURL(p.ClearHref))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 383, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 379, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
@@ -1171,7 +1169,7 @@ func EmptyState(p EmptyStateProps) templ.Component {
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(i18n.T(ctx, "kit.empty_state.clear_filters"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 383, Col: 117}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 379, Col: 117}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -1227,7 +1225,7 @@ func PageHeader(p PageHeaderProps) templ.Component {
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 400, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 396, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
@@ -1245,7 +1243,7 @@ func PageHeader(p PageHeaderProps) templ.Component {
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(p.Subtitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 402, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kit/display.templ`, Line: 398, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 			if templ_7745c5c3_Err != nil {

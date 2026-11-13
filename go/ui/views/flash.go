@@ -10,7 +10,7 @@ import (
 
 	"github.com/flowcatalyst/framework/go/ui/ds"
 	"github.com/flowcatalyst/framework/go/ui/i18n"
-	"github.com/flowcatalyst/framework/go/ui/kit"
+	"github.com/flowcatalyst/framework/go/ui/look"
 )
 
 // FlashCookie is the cookie that carries a flash message across a redirect (contract section 9).
@@ -79,7 +79,7 @@ func (v *Views) SeeOther(w http.ResponseWriter, r *http.Request, path, flashKey 
 
 // localizeFlash is the registered message with its summary from flash.<key> and its detail from
 // flash.<key>.detail when the catalogs have them (contract i18n.md section 4).
-func localizeFlash(ctx context.Context, key string, m kit.FlashMessageProps) kit.FlashMessageProps {
+func localizeFlash(ctx context.Context, key string, m look.Flash) look.Flash {
 	if i18n.Has(ctx, "flash."+key) {
 		m.Summary = i18n.T(ctx, "flash."+key)
 	}
@@ -91,7 +91,7 @@ func localizeFlash(ctx context.Context, key string, m kit.FlashMessageProps) kit
 
 // takeFlash returns the message the flash cookie's key names (none for an unknown or malformed
 // key) and whether the cookie was present, in which case the caller clears it.
-func (v *Views) takeFlash(r *http.Request, ctx context.Context) (msgs []kit.FlashMessageProps, present bool) {
+func (v *Views) takeFlash(r *http.Request, ctx context.Context) (msgs []look.Flash, present bool) {
 	c, err := r.Cookie(FlashCookie)
 	if err != nil {
 		return nil, false
@@ -100,18 +100,18 @@ func (v *Views) takeFlash(r *http.Request, ctx context.Context) (msgs []kit.Flas
 		return nil, true
 	}
 	if m, ok := v.flashes[c.Value]; ok {
-		return []kit.FlashMessageProps{localizeFlash(ctx, c.Value, m)}, true
+		return []look.Flash{localizeFlash(ctx, c.Value, m)}, true
 	}
 	return nil, true
 }
 
-func checkFlashes(m map[string]kit.FlashMessageProps) error {
+func checkFlashes(m map[string]look.Flash) error {
 	for key, msg := range m {
 		if !flashKeyPattern.MatchString(key) {
 			return fmt.Errorf("views: flash key %q: %w", key, ErrInvalidFlashKey)
 		}
 		switch msg.Kind {
-		case "", kit.FlashSuccess, kit.FlashInfo, kit.FlashWarn, kit.FlashError:
+		case "", look.FlashSuccess, look.FlashInfo, look.FlashWarn, look.FlashError:
 		default:
 			return fmt.Errorf("views: flash %q has the unknown kind %q", key, string(msg.Kind))
 		}

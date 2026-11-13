@@ -1,4 +1,4 @@
-<!-- types: Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, Brand, PermissionDeniedDialogProps, CardProps, AvatarProps, SeparatorProps, KbdProps, ProgressProps, JSONBlockProps, AccordionProps, TooltipProps, HoverCardProps, DropdownMenuProps, AlertDialogProps, RadioGroupProps, DirtyFormProps, Views, Patches, PageOption, Declared, Module, Failure -->
+<!-- types: Look, Flash, FlashKind, Assets, Option, SSE, SignalsError, Mode, Namespace, PatchOption, SignalsOption, EventOption, Component, ButtonProps, AlertProps, DialogProps, FormDialogProps, PickListProps, AppShellProps, Brand, PermissionDeniedDialogProps, CardProps, AvatarProps, SeparatorProps, KbdProps, ProgressProps, JSONBlockProps, AccordionProps, TooltipProps, HoverCardProps, DropdownMenuProps, AlertDialogProps, RadioGroupProps, DirtyFormProps, Views, Patches, PageOption, Declared, Module, Failure -->
 # Go: server-rendered pages with templ and Datastar (optional)
 
 > **Optional, and secondary to the Nuxt UI package.** The framework's primary UI is the shared
@@ -225,6 +225,16 @@ err = v.Stream(w, r, func(p *views.Patches) error {                    // severa
   `Cache-Control: private, no-cache`. The shell function gets the request; the module fills in the theme from the
   cookies when its props leave it empty. Icons use the assets' sprite URL (the module puts it in the render
   context), so an application mounted under `/ui/assets/` works.
+- **Look, shell and stylesheets.** The document, the flash stack and every flash message are rendered through a
+  `look.Look` (package `go/ui/look`, which imports only the standard library, templ and `assets`): the module's
+  own kit, `kit.Look{}`, unless `views.WithLook(l)` says otherwise (a nil look, or one whose `Stylesheet()` is not a
+  CSS asset, is an error at `New`). `views.WithShellComponent(fn)` wraps the page in the application's own shell (a
+  function of the request returning a component whose children are the flash stack and the page; giving it
+  together with `WithShell` is an error), and `views.WithStylesheets("a.css", "b.css")` links more stylesheets
+  after the look's, in order, once each. The flash types are `look.Flash` and `look.FlashKind`; `kit.FlashMessageProps`
+  and `kit.FlashKind` are aliases of them, so existing code compiles unchanged. With none of these options the
+  output is byte for byte what it was. How to keep your own copy of the kit is in [pages with your own
+  kit](ui-own-look.md).
 - **A Datastar answer** is always `200`, `text/event-stream` and has no CSP (it is not a document). `Page` sends
   one `datastar-patch-elements` event with the wrapped content; the document-only options (status, flashes
   from the cookie) do not apply. An invalid option (a script that is not a JavaScript asset, a status a document

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/flowcatalyst/framework/go/ui/i18n"
+	"github.com/flowcatalyst/framework/go/ui/look"
 )
 
 // BadgeVariant is badge.md's `variant` option.
@@ -139,15 +140,16 @@ templ Alert(p AlertProps) {
 }
 
 // FlashKind is the `kind` option of flash-banner.md (success, error) and of
-// flash-stack.md's flash message (all four).
-type FlashKind string
+// flash-stack.md's flash message (all four). It is declared in package look, which the views and a
+// copy of the kit share.
+type FlashKind = look.FlashKind
 
 // Flash kinds. FlashBanner supports success and error only.
 const (
-	FlashSuccess FlashKind = "success"
-	FlashInfo    FlashKind = "info"
-	FlashWarn    FlashKind = "warn"
-	FlashError   FlashKind = "error"
+	FlashSuccess = look.FlashSuccess
+	FlashInfo    = look.FlashInfo
+	FlashWarn    = look.FlashWarn
+	FlashError   = look.FlashError
 )
 
 // FlashBannerProps mirrors flash-banner.md's Props table.
@@ -171,22 +173,16 @@ templ FlashBanner(p FlashBannerProps) {
 	>{ p.Message }</div>
 }
 
-// FlashMessageProps mirrors flash-stack.md's flash-message Props table.
-type FlashMessageProps struct {
-	Kind    FlashKind `json:"kind"`
-	Summary string    `json:"summary"`
-	Detail  string    `json:"detail"`
-	// Persistent keeps a success or info message (warn and error always stay).
-	Persistent bool             `json:"persistent"`
-	Attrs      templ.Attributes `json:"attrs"`
-}
+// FlashMessageProps mirrors flash-stack.md's flash-message Props table. It is declared in package
+// look ([look.Flash]), which the views and a copy of the kit share.
+type FlashMessageProps = look.Flash
 
-func (p FlashMessageProps) kind() FlashKind {
+func flashKind(p FlashMessageProps) FlashKind {
 	return oneOf("flash kind", p.Kind, FlashSuccess, FlashSuccess, FlashInfo, FlashWarn, FlashError)
 }
 
-func (p FlashMessageProps) icon() string {
-	switch p.kind() {
+func flashIcon(p FlashMessageProps) string {
+	switch flashKind(p) {
 	case FlashInfo:
 		return "info"
 	case FlashWarn:
@@ -198,39 +194,39 @@ func (p FlashMessageProps) icon() string {
 	return "circle-check"
 }
 
-// lifetime is the auto-dismiss delay ("" = stays): the SPA's 3s for
+// flashLifetime is the auto-dismiss delay ("" = stays): the SPA's 3s for
 // success and 5s for info.
-func (p FlashMessageProps) lifetime() string {
+func flashLifetime(p FlashMessageProps) string {
 	switch {
-	case p.alert() || p.Persistent:
+	case flashAlert(p) || p.Persistent:
 		return ""
-	case p.kind() == FlashInfo:
+	case flashKind(p) == FlashInfo:
 		return "5s"
 	}
 	return "3s"
 }
 
-// alert reports whether the message is role="alert" (warn and error).
-func (p FlashMessageProps) alert() bool { return p.kind() == FlashWarn || p.kind() == FlashError }
+// flashAlert reports whether the message is role="alert" (warn and error).
+func flashAlert(p FlashMessageProps) bool { return flashKind(p) == FlashWarn || flashKind(p) == FlashError }
 
 // FlashMessage is one banner of flash-stack.md (the SPA's notification
 // banner): success and info remove themselves after 3s and 5s unless
 // persistent; warn and error stay until dismissed and are role="alert".
 templ FlashMessage(p FlashMessageProps) {
 	<div
-		class={ "fc-flash fc-flash-" + string(p.kind()) }
-		if p.alert() {
+		class={ "fc-flash fc-flash-" + string(flashKind(p)) }
+		if flashAlert(p) {
 			role="alert"
 		}
-		if p.lifetime() == "3s" {
+		if flashLifetime(p) == "3s" {
 			data-init__delay.3s="el.remove()"
 		}
-		if p.lifetime() == "5s" {
+		if flashLifetime(p) == "5s" {
 			data-init__delay.5s="el.remove()"
 		}
 		{ Attrs(p.Attrs)... }
 	>
-		@Icon(IconProps{Name: p.icon(), Class: "fc-flash-icon"})
+		@Icon(IconProps{Name: flashIcon(p), Class: "fc-flash-icon"})
 		<div class="fc-flash-body">
 			<span class="fc-flash-summary">{ p.Summary }</span>
 			if p.Detail != "" {
