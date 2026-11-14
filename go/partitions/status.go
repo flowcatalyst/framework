@@ -204,10 +204,17 @@ WHERE i.inhparent = $1::regclass`, tg.ident())
 	var stats []childStat
 	for rows.Next() {
 		var c childStat
-		if err := rows.Scan(&c.schema, &c.name, &c.bytes, &c.tuples); err != nil {
+		// The size is NULL when the partition was dropped or detached after the catalog row was
+		// read (a pass running at the same time): it is no longer a partition, so it is left out.
+		var size *int64
+		if err := rows.Scan(&c.schema, &c.name, &size, &c.tuples); err != nil {
 			rows.Close()
 			return TableStatus{}, err
 		}
+		if size == nil {
+			continue
+		}
+		c.bytes = *size
 		stats = append(stats, c)
 	}
 	rows.Close()

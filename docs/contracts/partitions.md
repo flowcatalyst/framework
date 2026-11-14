@@ -294,6 +294,8 @@ for `KEEP`), `Healthy`, `LastPass` (section 11; absent when none is recorded), `
   contains now; `FUTURE`: starts after now, against the module's clock), `Bytes` (`pg_total_relation_size`: the
   partition with its indexes and TOAST), `Rows` (the planner's estimate `pg_class.reltuples`; **absent** while it
   is negative, which is a partition never analysed or vacuumed), `RemovalDue`, `Archived`.
+  A partition dropped or detached while the status is read (its size reads as NULL) is left out; the read
+  does not fail.
 - `RemovalDue` is the first instant at which the retention pass removes the partition, the skew guard of
   section 5 included: its upper bound plus the longer of the retention and one interval. It is the same rule as
   the pass's (a partition is due at the instant and not one nanosecond before). Absent for `KeepForever`.
