@@ -31,6 +31,7 @@ go/
   httpclient/            the HTTP client library; module/ the framework adapter (named clients, metrics)
   secrets/               per-client secrets: Env and File stores, cache policy, resolver
   objectstore/           object stores: memory and folder drivers, Build; s3store/ the S3 driver, objectstoretest/ the contract suite
+  partitions/            partitioned tables: partitions created ahead, retention drop or archive, health and metrics
   fwtest/                PostgreSQL 18 and Redis for tests, a database per test, a fake clock
   internal/conformance/  the conformance runner: checks the shared vectors in ../conformance/
   cmd/fwvet/             the framework's analyzers, run by go vet

@@ -1,0 +1,655 @@
+{
+  "description": "Partition intervals, names and bounds, and the advisory lock key (partitions contract sections 2 to 4). bounds: a table 'readings', an interval (day|week|month, UTC; a week is ISO, Monday to Monday), a key (by 'id' with a prefix, or 'column' with a column) and an instant; the interval's partition name, lower bound (inclusive) and upper bound (exclusive, the next interval's start) as the SQL literals inside FOR VALUES FROM ('..') TO ('..'). An id bound is prefix + '_' + the 13-character TSID of (epoch milliseconds << 22); a column bound is the UTC instant as 'YYYY-MM-DD HH:MM:SS+00'. idBounds: the id bound of an arbitrary instant (milliseconds kept). lockKeys: the signed 64-bit key passed to pg_advisory_xact_lock for a table: FNV-1a 64 of the UTF-8 bytes of 'fw-partitions:<schema>.<table>', as a decimal string.",
+  "howToRun": "For every case compute the interval's start for the instant, the partition name and the bounds with the implementation's functions and compare the strings; for lockKeys compare the key as a decimal string.",
+  "bounds": [
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261114",
+      "lower": "rdg_6GXEPMM000000",
+      "upper": "rdg_6GXS07G000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261114",
+      "lower": "2026-11-14 00:00:00+00",
+      "upper": "2026-11-15 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261109",
+      "lower": "rdg_6GVV6P8000000",
+      "upper": "rdg_6GY39TC000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261109",
+      "lower": "2026-11-09 00:00:00+00",
+      "upper": "2026-11-16 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261101",
+      "lower": "rdg_6GS8SZ8000000",
+      "upper": "rdg_6H2XSNG000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261101",
+      "lower": "2026-11-01 00:00:00+00",
+      "upper": "2026-12-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261231",
+      "lower": "rdg_6HCJSBR000000",
+      "upper": "rdg_6HCX2YM000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261231",
+      "lower": "2026-12-31 00:00:00+00",
+      "upper": "2027-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261228",
+      "lower": "rdg_6HBKWK4000000",
+      "upper": "rdg_6HDVZQ8000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261228",
+      "lower": "2026-12-28 00:00:00+00",
+      "upper": "2027-01-04 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261201",
+      "lower": "rdg_6H2XSNG000000",
+      "upper": "rdg_6HCX2YM000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261201",
+      "lower": "2026-12-01 00:00:00+00",
+      "upper": "2027-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2027-01-03T12:00:00.000Z",
+      "partition": "readings_p20270103",
+      "lower": "rdg_6HDHP4C000000",
+      "upper": "rdg_6HDVZQ8000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2027-01-03T12:00:00.000Z",
+      "partition": "readings_p20270103",
+      "lower": "2027-01-03 00:00:00+00",
+      "upper": "2027-01-04 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2027-01-03T12:00:00.000Z",
+      "partition": "readings_p20261228",
+      "lower": "rdg_6HBKWK4000000",
+      "upper": "rdg_6HDVZQ8000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2027-01-03T12:00:00.000Z",
+      "partition": "readings_p20261228",
+      "lower": "2026-12-28 00:00:00+00",
+      "upper": "2027-01-04 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2027-01-03T12:00:00.000Z",
+      "partition": "readings_p20270101",
+      "lower": "rdg_6HCX2YM000000",
+      "upper": "rdg_6HPWC7R000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2027-01-03T12:00:00.000Z",
+      "partition": "readings_p20270101",
+      "lower": "2027-01-01 00:00:00+00",
+      "upper": "2027-02-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2027-01-04T00:00:00.000Z",
+      "partition": "readings_p20270104",
+      "lower": "rdg_6HDVZQ8000000",
+      "upper": "rdg_6HE69A4000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2027-01-04T00:00:00.000Z",
+      "partition": "readings_p20270104",
+      "lower": "2027-01-04 00:00:00+00",
+      "upper": "2027-01-05 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2027-01-04T00:00:00.000Z",
+      "partition": "readings_p20270104",
+      "lower": "rdg_6HDVZQ8000000",
+      "upper": "rdg_6HG42VC000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2027-01-04T00:00:00.000Z",
+      "partition": "readings_p20270104",
+      "lower": "2027-01-04 00:00:00+00",
+      "upper": "2027-01-11 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2027-01-04T00:00:00.000Z",
+      "partition": "readings_p20270101",
+      "lower": "rdg_6HCX2YM000000",
+      "upper": "rdg_6HPWC7R000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2027-01-04T00:00:00.000Z",
+      "partition": "readings_p20270101",
+      "lower": "2027-01-01 00:00:00+00",
+      "upper": "2027-02-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2028-02-29T12:00:00.000Z",
+      "partition": "readings_p20280229",
+      "lower": "rdg_6NNC51M000000",
+      "upper": "rdg_6NNPEMG000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2028-02-29T12:00:00.000Z",
+      "partition": "readings_p20280229",
+      "lower": "2028-02-29 00:00:00+00",
+      "upper": "2028-03-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2028-02-29T12:00:00.000Z",
+      "partition": "readings_p20280228",
+      "lower": "rdg_6NN1VER000000",
+      "upper": "rdg_6NQ9YJW000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2028-02-29T12:00:00.000Z",
+      "partition": "readings_p20280228",
+      "lower": "2028-02-28 00:00:00+00",
+      "upper": "2028-03-06 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2028-02-29T12:00:00.000Z",
+      "partition": "readings_p20280201",
+      "lower": "rdg_6NCBRH4000000",
+      "upper": "rdg_6NNPEMG000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2028-02-29T12:00:00.000Z",
+      "partition": "readings_p20280201",
+      "lower": "2028-02-01 00:00:00+00",
+      "upper": "2028-03-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2028-03-01T00:00:00.000Z",
+      "partition": "readings_p20280301",
+      "lower": "rdg_6NNPEMG000000",
+      "upper": "rdg_6NP0R7C000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2028-03-01T00:00:00.000Z",
+      "partition": "readings_p20280301",
+      "lower": "2028-03-01 00:00:00+00",
+      "upper": "2028-03-02 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2028-03-01T00:00:00.000Z",
+      "partition": "readings_p20280228",
+      "lower": "rdg_6NN1VER000000",
+      "upper": "rdg_6NQ9YJW000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2028-03-01T00:00:00.000Z",
+      "partition": "readings_p20280228",
+      "lower": "2028-02-28 00:00:00+00",
+      "upper": "2028-03-06 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2028-03-01T00:00:00.000Z",
+      "partition": "readings_p20280301",
+      "lower": "rdg_6NNPEMG000000",
+      "upper": "rdg_6NZNQXM000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2028-03-01T00:00:00.000Z",
+      "partition": "readings_p20280301",
+      "lower": "2028-03-01 00:00:00+00",
+      "upper": "2028-04-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-11-30T23:59:59.999Z",
+      "partition": "readings_p20261130",
+      "lower": "rdg_6H2KG2M000000",
+      "upper": "rdg_6H2XSNG000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-11-30T23:59:59.999Z",
+      "partition": "readings_p20261130",
+      "lower": "2026-11-30 00:00:00+00",
+      "upper": "2026-12-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-11-30T23:59:59.999Z",
+      "partition": "readings_p20261130",
+      "lower": "rdg_6H2KG2M000000",
+      "upper": "rdg_6H4VK6R000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-11-30T23:59:59.999Z",
+      "partition": "readings_p20261130",
+      "lower": "2026-11-30 00:00:00+00",
+      "upper": "2026-12-07 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-11-30T23:59:59.999Z",
+      "partition": "readings_p20261101",
+      "lower": "rdg_6GS8SZ8000000",
+      "upper": "rdg_6H2XSNG000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-11-30T23:59:59.999Z",
+      "partition": "readings_p20261101",
+      "lower": "2026-11-01 00:00:00+00",
+      "upper": "2026-12-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-12-01T00:00:00.000Z",
+      "partition": "readings_p20261201",
+      "lower": "rdg_6H2XSNG000000",
+      "upper": "rdg_6H3838C000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-12-01T00:00:00.000Z",
+      "partition": "readings_p20261201",
+      "lower": "2026-12-01 00:00:00+00",
+      "upper": "2026-12-02 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-12-01T00:00:00.000Z",
+      "partition": "readings_p20261130",
+      "lower": "rdg_6H2KG2M000000",
+      "upper": "rdg_6H4VK6R000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-12-01T00:00:00.000Z",
+      "partition": "readings_p20261130",
+      "lower": "2026-11-30 00:00:00+00",
+      "upper": "2026-12-07 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-12-01T00:00:00.000Z",
+      "partition": "readings_p20261201",
+      "lower": "rdg_6H2XSNG000000",
+      "upper": "rdg_6HCX2YM000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-12-01T00:00:00.000Z",
+      "partition": "readings_p20261201",
+      "lower": "2026-12-01 00:00:00+00",
+      "upper": "2027-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "1970-01-01T00:00:00.000Z",
+      "partition": "readings_p19700101",
+      "lower": "rdg_0000000000000",
+      "upper": "rdg_000A9JW000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "1970-01-01T00:00:00.000Z",
+      "partition": "readings_p19700101",
+      "lower": "1970-01-01 00:00:00+00",
+      "upper": "1970-01-02 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "1970-01-01T00:00:00.000Z",
+      "partition": "readings_p19700101",
+      "lower": "rdg_0000000000000",
+      "upper": "rdg_009Z994000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "1970-01-01T00:00:00.000Z",
+      "partition": "readings_p19700101",
+      "lower": "1970-01-01 00:00:00+00",
+      "upper": "1970-02-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "day",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-03-29T01:30:00.000Z",
+      "partition": "readings_p20260329",
+      "lower": "rdg_6EKDRZC000000",
+      "upper": "rdg_6EKR2J8000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "day",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-03-29T01:30:00.000Z",
+      "partition": "readings_p20260329",
+      "lower": "2026-03-29 00:00:00+00",
+      "upper": "2026-03-30 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "week",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-03-29T01:30:00.000Z",
+      "partition": "readings_p20260323",
+      "lower": "rdg_6EHFZE4000000",
+      "upper": "rdg_6EKR2J8000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "week",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-03-29T01:30:00.000Z",
+      "partition": "readings_p20260323",
+      "lower": "2026-03-23 00:00:00+00",
+      "upper": "2026-03-30 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "month",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-03-29T01:30:00.000Z",
+      "partition": "readings_p20260301",
+      "lower": "rdg_6EADCEW000000",
+      "upper": "rdg_6EMCNR0000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "month",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-03-29T01:30:00.000Z",
+      "partition": "readings_p20260301",
+      "lower": "2026-03-01 00:00:00+00",
+      "upper": "2026-04-01 00:00:00+00",
+      "column": "recorded_at"
+    }
+  ],
+  "idBounds": [
+    {
+      "prefix": "rdg",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "bound": "rdg_6GXK4NA5C0000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "bound": "rdg_6HCX2YKZW0000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2027-01-03T12:00:00.000Z",
+      "bound": "rdg_6HDPTXT000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2027-01-04T00:00:00.000Z",
+      "bound": "rdg_6HDVZQ8000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2028-02-29T12:00:00.000Z",
+      "bound": "rdg_6NNH9V2000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2028-03-01T00:00:00.000Z",
+      "bound": "rdg_6NNPEMG000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2026-11-30T23:59:59.999Z",
+      "bound": "rdg_6H2XSNFZW0000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2026-12-01T00:00:00.000Z",
+      "bound": "rdg_6H2XSNG000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "1970-01-01T00:00:00.000Z",
+      "bound": "rdg_0000000000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2026-03-29T01:30:00.000Z",
+      "bound": "rdg_6EKEDJHR00000"
+    }
+  ],
+  "lockKeys": [
+    {
+      "schema": "public",
+      "table": "readings",
+      "key": "-1202424767987737940"
+    },
+    {
+      "schema": "telemetry",
+      "table": "readings",
+      "key": "672608070254676258"
+    },
+    {
+      "schema": "public",
+      "table": "audit_log",
+      "key": "1443338786595047461"
+    }
+  ]
+}

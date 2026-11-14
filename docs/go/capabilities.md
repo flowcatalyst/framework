@@ -825,3 +825,26 @@ Go implements the same two contracts ([`../contracts/static-assets-and-spa.md`](
 
 fcsdk's `cache` (memory, `postgrescache`, `rediscache`, typed `Get`/`Set`/`GetOrSet`, a required TTL)
 is the starting point once the Java cache contract exists. Not before.
+
+## 15. Partitioned tables
+
+Contract: [`partitions.md`](../contracts/partitions.md). New in Go (Java follows); lifted from the platform's
+`stream.PartitionManager` and generalised: tables are code, retention is required, `ByID` partitions on the
+framework id (`COLLATE "C"`), and an archive step writes to an object store.
+
+```go
+package partitions
+type Table struct{ Name, Database string; By Key; Interval Interval; Ahead int; Retention Retention }
+func ByID(prefix string) Key; func ByIDColumn(column, prefix string) Key; func ByColumn(column string) Key
+func DropAfter(d time.Duration) Retention; func ArchiveThenDropAfter(d time.Duration, store string) Retention; func KeepForever() Retention
+func Declare(app *fw.App) *Declared                          // contributes the fw_partition_archives migration
+func Build(ctx context.Context, b *fw.Boot, d *Declared, dbs *database.Databases, opts ...Option) (*Partitions, error)
+func (p *Partitions) Pass(ctx context.Context) error         // ensure then retention, every table (the loop's work)
+func (p *Partitions) Ensure(ctx context.Context, table string, from, to time.Time) (int, error)
+func IDRange(prefix string, from, to time.Time) (lo, hi string)
+```
+
+Verbatim from the contract: the intervals (UTC, ISO weeks), names `<table>_p<YYYYMMDD>`, the TSID-based id
+bounds and the shared vectors, the advisory lock key, start-up validation, the skew guard, the archive format
+and its verification, the health check and metrics. Go-shaped: the object store takes whole values, so an
+archive is several objects.
