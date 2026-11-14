@@ -43,7 +43,7 @@ public final class Datastar {
   }
 
   private static boolean signalsInQuery(Method method) {
-    // Datastar 1.0.4 sends a body only for the other methods (!["GET","DELETE"].includes(method)).
+    // Datastar 1.0.5 sends a body only for the other methods (!["GET","DELETE"].includes(method)).
     return method == Method.GET || method == Method.HEAD || method == Method.DELETE;
   }
 

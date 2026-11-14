@@ -56,7 +56,8 @@ public final class OperationRequest<B> {
    *     empty list for an absent repeated parameter
    * @throws IllegalArgumentException when the operation does not declare it
    */
-  @SuppressWarnings("unchecked")
+  // NullAway: T is the parameter's own type, which is nullable for an optional parameter.
+  @SuppressWarnings({"unchecked", "NullAway"})
   public <T extends @Nullable Object> T query(QueryParam<T> param) {
     if (!values.containsKey(param)) {
       throw new IllegalArgumentException("the operation does not declare " + param);

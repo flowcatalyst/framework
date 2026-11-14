@@ -11,8 +11,8 @@ A language-neutral port of the FlowCatalyst server-rendered UI components (the T
 
 - **Your own copy (Go):** an application that wants its own look can keep a copy of the Go kit (`go/ui/kit`) and of `theme/` in its own repository and render pages with it; see `docs/guide/go/ui-own-look.md`. The module's conformance fixtures then no longer describe the copy.
 
-- **Datastar:** 1.0.4 (stable, released 2026-09-21). Pinned in `gallery/*.html` as `https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.4/bundles/datastar.js`. All attribute names/separators in the specs are that release's (`data-on:click`, `data-attr:aria-current`, `data-signals:my-signal`, SSE events `datastar-patch-elements` / `datastar-patch-signals`).
-- **Tailwind CSS:** 4.3.2 standalone CLI (the same version fc-web builds with); downloaded to `.bin/` by `build.sh`.
+- **Datastar:** 1.0.5 (stable, released 2026-11-09). Pinned in `gallery/*.html` as `https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.5/bundles/datastar.js`. All attribute names/separators in the specs are that release's (`data-on:click`, `data-attr:aria-current`, `data-signals:my-signal`, SSE events `datastar-patch-elements` / `datastar-patch-signals`).
+- **Tailwind CSS:** 4.3.5 standalone CLI; downloaded to `.bin/` by `build.sh`.
 - **Components:** 55 specs (31 Topcoat UI components + 24 hand-built/composite/new), see `components/README.md`.
 
 ## Layout
@@ -39,7 +39,7 @@ A language-neutral port of the FlowCatalyst server-rendered UI components (the T
 
 ```sh
 cd ui-kit
-./build.sh                      # downloads .bin/tailwindcss v4.3.2 on first run, writes dist/kit.css
+./build.sh                      # downloads .bin/tailwindcss v4.3.5 on first run, writes dist/kit.css
 python3 -m http.server 8099     # any static server rooted at ui-kit/
 open http://localhost:8099/gallery/index.html
 ```

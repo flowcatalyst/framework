@@ -5,7 +5,7 @@
 # The binary is downloaded into .bin/ on first use (macOS/Linux, x64/arm64).
 set -eu
 cd "$(dirname "$0")"
-TAILWIND_VERSION="${TAILWIND_VERSION:-v4.3.2}"   # same line fc-web builds with
+TAILWIND_VERSION="${TAILWIND_VERSION:-v4.3.5}"
 BIN=".bin/tailwindcss"
 if [ ! -x "$BIN" ]; then
   case "$(uname -s)-$(uname -m)" in

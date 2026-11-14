@@ -165,7 +165,7 @@ class ViewsTest {
     assertThat(css.body()).contains("--background");
     TestResponse again = c.get(url).header("If-None-Match", css.header("ETag")).send();
     assertThat(again.status()).isEqualTo(304);
-    assertThat(c.get("/fw-ui/datastar.js").send().body()).startsWith("// Datastar v1.0.4");
+    assertThat(c.get("/fw-ui/datastar.js").send().body()).startsWith("// Datastar v1.0.5");
     assertThat(c.get("/icons/lucide-sprite.svg").send().header("Content-Type")).startsWith("image/svg+xml");
     assertThat(c.get("/fw-ui/other.js").send().status()).isEqualTo(404);
   }
@@ -501,7 +501,7 @@ class ViewsTest {
   void theVendoredFilesAreExactlyThePinnedOnes() throws Exception {
     TestClient c = client(false);
     assertThat(sha256(c.get("/fw-ui/datastar.js").send().bytes())).isEqualTo(UiAssets.DATASTAR_SHA256);
-    assertThat(UiAssets.DATASTAR_SHA256).isEqualTo("727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91");
+    assertThat(UiAssets.DATASTAR_SHA256).isEqualTo("7380e0344b7f937d80ad70ededa1c28578173157ee4748be1850991491d911fd");
     assertThat(sha256(c.get(ASSETS.url("mermaid.min.js")).send().bytes())).isEqualTo(UiAssets.MERMAID_SHA256);
     assertThat(sha256(c.get(ASSETS.url("fc-code-editor.js")).send().bytes())).isEqualTo(UiAssets.CODE_EDITOR_SHA256);
     assertThat(sha256(c.get(ASSETS.url("fc-diagram.js")).send().bytes())).isEqualTo(UiAssets.DIAGRAM_SHA256);

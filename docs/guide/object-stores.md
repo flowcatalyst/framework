@@ -68,7 +68,7 @@ Optional<byte[]> back = archive.get("sets/2026-10-21/apply-1.json");
 |---|---|---|
 | `ObjectStoreFactories.memory()` (`framework-objectstore`) | `memory`: this JVM only, lost on exit | nothing; for tests |
 | `ObjectStoreFactories.folder(directory)` (`framework-objectstore`) | `folder`: a file per value under an absolute directory, created if missing | `APP_ENV` `local` or `test`; **any other value fails start-up** because a folder on one machine is not shared storage |
-| `S3ObjectStores.s3(bucket)` (`framework-objectstore-s3`) | `s3`: AWS SDK for Java 2.50.2 | an existing bucket; credentials and region from the SDK's default chains |
+| `S3ObjectStores.s3(bucket)` (`framework-objectstore-s3`) | `s3`: AWS SDK for Java 2.59.1 | an existing bucket; credentials and region from the SDK's default chains |
 
 Store names match `[a-z][a-z0-9-]*`. With one store it is the default; with several,
 `defaultStore(name)` is required.

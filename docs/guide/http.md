@@ -421,7 +421,7 @@ routes.get(
 ```
 
 - `Datastar.signals(request)` returns the client's signals as a `JsonNode`: the JSON in the
-  `datastar` query parameter for `GET`, `HEAD` and `DELETE` (Datastar 1.0.4 sends a body for no other method
+  `datastar` query parameter for `GET`, `HEAD` and `DELETE` (Datastar 1.0.5 sends a body for no other method
   than those), otherwise the JSON body. A body above 1 MiB (`Datastar.MAX_SIGNAL_BYTES`) is `413
   PAYLOAD_TOO_LARGE`. `Datastar.signals(request, SomeRecord.class)` decodes to a record. Absent or invalid is a
   `ValidationException`.

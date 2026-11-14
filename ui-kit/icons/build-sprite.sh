@@ -7,8 +7,8 @@
 # attributes and the icon's child elements joined by single spaces.
 set -eu
 cd "$(dirname "$0")/.."
-LUCIDE_VERSION="1.52.0"
-LUCIDE_SHA1="ed1a4f3e64f06e30a50d7898fa1f7a4c33545218"
+LUCIDE_VERSION="1.73.0"
+LUCIDE_SHA1="76a095f7cffc01db82e977591d850659a2cf1b48"
 TGZ=".bin/lucide-static-$LUCIDE_VERSION.tgz"
 SRC=".bin/lucide-static-$LUCIDE_VERSION"
 LIST="icons/sprite-icons.txt"

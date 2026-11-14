@@ -273,10 +273,10 @@ rewritten at hand-off and can lag the code in between.
   T4a auth, T4b workers, T4c worker-pool dispatcher). Contract amendments proposed: http routing
   syntax and wildcard, opt-in CORS, static assets; an M4c auth contract written once for all three.
 - **M-UI built 2026-10-16** (owner-approved, optional, secondary to the Nuxt UI package): `framework-ui`
-  (precompiled JTE 3.2.4 templates, no compiler or reflection at run time; `Kit`/`Props` for all 59
+  (precompiled JTE 3.2.5 templates, no compiler or reflection at run time; `Kit`/`Props` for all 59
   `ui-kit/fixtures` directories, 170 cases, strict props, compared with the goldens through a jsoup
   normaliser that follows `fixtures/README.md`), `Views` (full page or Datastar patch of `#fw-page`),
-  `Patches`, `UiAssets`/`UiModule` (vendored Datastar 1.0.4, committed `kit.css` built by
+  `Patches`, `UiAssets`/`UiModule` (vendored Datastar 1.0.5, committed `kit.css` built by
   `framework-ui/assets/build.sh`), `ViewCsp`; `examples/orders-demo-jte` (in memory, no sign-in) with
   `e2e/browser-check.mjs` (Chromium + axe via the `ui/` workspace's packages; run by hand against a demo on a
   free port, not part of `mvn verify`). Guide: `guide/ui-jte.md`. Found, for the owner: (1) Datastar

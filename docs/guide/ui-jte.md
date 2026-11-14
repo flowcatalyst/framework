@@ -27,7 +27,7 @@ render this module's markup; this module renders exactly the kit's golden HTML.
 
 ## Adding it
 
-One dependency (the BOM pins the versions: `jte-runtime` 3.2.4, the build plugin is the application's own):
+One dependency (the BOM pins the versions: `jte-runtime` 3.2.5, the build plugin is the application's own):
 
 ```xml
 <dependency>
@@ -69,7 +69,7 @@ return App.builder()
     .module(new JettyHttpModule());
 ```
 
-`UiModule` serves the module's files at `/fw-ui/` (`kit.css`, the vendored Datastar 1.0.4 `datastar.js`) and
+`UiModule` serves the module's files at `/fw-ui/` (`kit.css`, the vendored Datastar 1.0.5 `datastar.js`) and
 the icon sprite at `/icons/lucide-sprite.svg`, the path the specs and fixtures use. URLs carry a content
 hash (`UiAssets.url("kit.css")`) and answer `If-None-Match` with 304.
 
@@ -254,7 +254,7 @@ same answer, `Patches.closeDialog` is kept for answers that do not re-render the
 `ViewCsp.policy(...)` is the strict policy of `Csp.strict` with two differences:
 
 - `script-src` adds `'unsafe-eval'`: Datastar compiles each `data-*` expression with the `Function`
-  constructor (its 1.0.4 bundle has no CSP-safe build). The browser check proves it: with
+  constructor (its 1.0.5 bundle has no CSP-safe build). The browser check proves it: with
   `'unsafe-eval'` removed the drawer cannot open and the console reports the violation.
 - `style-src-attr 'unsafe-inline'`: the kit's markup has a few `style` attributes (a panel hidden until
   Datastar runs, the select's check-mark, the logo size). `<style>` and external styles stay `'self'`.
@@ -280,7 +280,7 @@ exactly as above, and no other directive can be widened (contract section 6 rule
 
 ## Theme, icons and the stylesheet
 
-`kit.css` is the Tailwind 4.3.2 build of `ui-kit/theme` plus the classes this module and the demo use. It is
+`kit.css` is the Tailwind 4.3.5 build of `ui-kit/theme` plus the classes this module and the demo use. It is
 committed (`src/main/resources/fw-ui/kit.css`); Maven never runs Node or Tailwind. When a template gains a
 class or the theme changes, run `framework-ui/assets/build.sh` (it uses the ui-kit's standalone CLI) and commit
 the result; an application with its own templates writes its own input file that imports `ui-kit/theme` and adds

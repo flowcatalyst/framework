@@ -128,7 +128,7 @@ func (r *relay) run(ctx context.Context, _ background.Tick) error {
 	defer func() {
 		stop()
 		if listened != nil {
-			<-listened
+			<-listened //nolint:errcheck // waits for the listener goroutine; after stop its error is the cancellation
 		}
 	}()
 	tick := time.NewTicker(r.interval)

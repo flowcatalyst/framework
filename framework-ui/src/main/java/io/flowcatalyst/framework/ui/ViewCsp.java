@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  *
  * <ul>
  *   <li>{@code script-src} adds {@code 'unsafe-eval'}: Datastar compiles every {@code data-*}
- *       expression with the {@code Function} constructor (its 1.0.4 bundle does; there is no
+ *       expression with the {@code Function} constructor (its 1.0.5 bundle does; there is no
  *       CSP-safe build). The scripts that run are still only the module's own {@code datastar.js}
  *       ({@code 'self'}) and the hashes an application lists; there is no inline script, so no
  *       nonce is needed, and an injected {@code <script>} is still refused.

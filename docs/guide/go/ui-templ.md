@@ -186,7 +186,7 @@ mux.Handle(assets.SpriteAliasPath, a.Handler()) // /icons/lucide-sprite.svg, the
 
 `ETag` is the quoted first 32 hex digits of the sha256; `If-None-Match` matching `*`, the tag or `W/` + the tag
 (in a list) gets 304. `Cache-Control` is `public, max-age=31536000, immutable` with `?v` and
-`public, max-age=3600, must-revalidate` without. Datastar 1.0.4 is pinned by sha256 (`assets.DatastarSHA256`);
+`public, max-age=3600, must-revalidate` without. Datastar 1.0.5 is pinned by sha256 (`assets.DatastarSHA256`);
 the islands (`fc-code-editor.js`, `fc-diagram.js`, `mermaid.min.js`) are pinned too, and every third-party file
 is served with its licence notice. `HasIcon(name)` and a test check that every icon the kit names is in the
 sprite. The islands' sources and how to rebuild them are in

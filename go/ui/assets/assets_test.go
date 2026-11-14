@@ -51,7 +51,7 @@ func TestPinnedFiles(t *testing.T) {
 		t.Errorf("datastar.js header is not v%s", DatastarVersion)
 	}
 	// The contract names the Datastar pin literally.
-	if DatastarSHA256 != "727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91" {
+	if DatastarSHA256 != "7380e0344b7f937d80ad70ededa1c28578173157ee4748be1850991491d911fd" {
 		t.Error("DatastarSHA256 differs from contract section 4 rule 2")
 	}
 }

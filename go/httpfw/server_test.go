@@ -400,7 +400,7 @@ func TestGracefulShutdownLetsAnInFlightRequestFinish(t *testing.T) {
 		t.Error("a new connection was accepted during the drain")
 	}
 	select {
-	case <-shutdownDone:
+	case <-shutdownDone: //nolint:errcheck // only that it returned matters
 		t.Fatal("shutdown returned while a request was still running")
 	case <-time.After(100 * time.Millisecond):
 	}

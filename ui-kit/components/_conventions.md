@@ -2,7 +2,7 @@
 
 Every component spec in this folder is language-neutral: it gives complete HTML, the parts and class lists, the options, accessibility requirements, behaviour and notes for whoever writes the server template (JTE, Rust, TypeScript, ...). The markup and class strings are authoritative; the specs and `gallery/` were generated from the same class constants, so they cannot disagree.
 
-Targets: **Datastar 1.0.4** (pinned; the attribute syntax below is that release's) and **Tailwind CSS 4.3.2**.
+Targets: **Datastar 1.0.5** (pinned; the attribute syntax below is that release's) and **Tailwind CSS 4.3.5**.
 
 ## Mechanisms
 
@@ -16,7 +16,7 @@ Each spec says which mechanism provides each behaviour.
 
 Prefer (a). Use (b) only for state the browser does not hold (selected tab, sidebar collapse, drawer record, client filter, dirty form). Use (c) for anything that needs data the page does not have.
 
-## Datastar 1.0.4 syntax used here
+## Datastar 1.0.5 syntax used here
 
 | Need | Attribute |
 |---|---|
@@ -39,7 +39,7 @@ Rules that bite:
 - HTML attribute names are case-insensitive, so write signal keys in kebab-case in attributes (`data-signals:tabs-team`) and camelCase in expressions (`$tabsTeam`).
 - Signals starting with `_` are not sent to the server.
 - Expressions are JavaScript. Inside a double-quoted attribute use single quotes (`'page'`); never emit a raw `"` in an expression.
-- `@post(..., {contentType: 'form'})` sends the closest `<form>` (so the element must be inside one, or pass `selector`), validates it, and sends **no signals**. Without `contentType: 'form'` all non-`_` signals are sent: as JSON for POST/PUT/PATCH, as the `datastar` query parameter (`?datastar={"q":"abc"}`) for GET **and DELETE** (Datastar 1.0.4 sends a body only for methods other than GET and DELETE; checked in the bundle and in the Go SDK's `ReadSignals`). With `contentType: 'form'` a GET appends the form's fields to the query string, so a filter form can drive `@get` with plain query parameters.
+- `@post(..., {contentType: 'form'})` sends the closest `<form>` (so the element must be inside one, or pass `selector`), validates it, and sends **no signals**. Without `contentType: 'form'` all non-`_` signals are sent: as JSON for POST/PUT/PATCH, as the `datastar` query parameter (`?datastar={"q":"abc"}`) for GET **and DELETE** (Datastar 1.0.5 sends a body only for methods other than GET and DELETE; checked in the bundle and in the Go SDK's `ReadSignals`). With `contentType: 'form'` a GET appends the form's fields to the query string, so a filter form can drive `@get` with plain query parameters.
 - A new request to the same URL+method cancels the one in flight (`requestCancellation: 'auto'`).
 - Attribute order matters (`data-indicator:x` before the `data-init` that starts a request).
 
@@ -73,7 +73,7 @@ data: signals {q: 'patched'}
 
 ## Answering a (c) request: success, expected failure, unexpected failure
 
-Datastar 1.0.4 applies the body of a response **only when its status is 200** (checked in the bundle: any other status ends the request after the `datastar-fetch` `error` event; the body is never read, whatever its content type). So the status tells the client only "your patches are here" or "something outside the handler went wrong":
+Datastar 1.0.5 applies the body of a response **only when its status is 200** (checked in the bundle: any other status ends the request after the `datastar-fetch` `error` event; the body is never read, whatever its content type). So the status tells the client only "your patches are here" or "something outside the handler went wrong":
 
 | Outcome | Status | Body | What the user sees |
 |---|---|---|---|
@@ -116,7 +116,7 @@ Every spec has a **Props** table: the component's parameters with language-neutr
 
 ## Icons
 
-Lucide, inline SVG, 24x24 viewBox, `stroke="currentColor"`. The kit ships `icons/lucide-sprite.svg` (90 symbols, listed in `icons/sprite-icons.txt`; add a name there and run `icons/build-sprite.sh`, which takes the paths from the pinned lucide-static 1.52.0 package). Reference with `<svg width="1em" height="1em" class="size-4" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-check"/></svg>` (the sprite must be same-origin and served over http(s)), or inline the `<path>`s. Decorative icons are `aria-hidden="true"`; a lone icon gets `role="img"` + `aria-label`.
+Lucide, inline SVG, 24x24 viewBox, `stroke="currentColor"`. The kit ships `icons/lucide-sprite.svg` (90 symbols, listed in `icons/sprite-icons.txt`; add a name there and run `icons/build-sprite.sh`, which takes the paths from the pinned lucide-static 1.73.0 package). Reference with `<svg width="1em" height="1em" class="size-4" aria-hidden="true"><use href="/icons/lucide-sprite.svg#i-check"/></svg>` (the sprite must be same-origin and served over http(s)), or inline the `<path>`s. Decorative icons are `aria-hidden="true"`; a lone icon gets `role="img"` + `aria-label`.
 
 ## Vocabulary
 

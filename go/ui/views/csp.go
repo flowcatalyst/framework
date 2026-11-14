@@ -24,7 +24,7 @@ var imageSourcePattern = regexp.MustCompile(`^https://(\*\.)?[a-z0-9-]+(\.[a-z0-
 //	base-uri 'none'; form-action 'self'; object-src 'none'
 //
 // 'unsafe-eval' is there because Datastar compiles every data-* expression with the Function
-// constructor (its 1.0.4 bundle has no CSP-safe build); style-src-attr because a few kit components
+// constructor (its 1.0.5 bundle has no CSP-safe build); style-src-attr because a few kit components
 // carry style attributes. Nothing else is relaxed: there is no inline script, so no nonce, and an
 // injected script element is still refused. scriptHashes are the hashes of an application's own
 // inline scripts (normally none), each sha256-, sha384- or sha512- followed by base64 and given

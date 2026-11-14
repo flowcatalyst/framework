@@ -2,7 +2,7 @@
 
 Status: built 2026-10-21 (Java). Drivers: `memory`, `folder`, `s3`. Requested by the ingest control
 plane, which had built its own `SetArchive` (put, get, delete by key; a folder and an S3 driver on
-AWS SDK 2.50.2) and will switch to this.
+AWS SDK 2.59.1) and will switch to this.
 
 An object store keeps named byte values. It follows the lock-store pattern (config-and-code
 contract, section 3.4): stores are named in code, each with a driver chosen by its factory; there is
@@ -69,7 +69,7 @@ and moves it into place (atomic move where the file system has one). Keys cannot
 a dot, so temporary files never collide with keys and a key cannot leave the directory; a path
 reached through a symbolic link that leads outside the directory is refused.
 
-**s3** (`framework-objectstore-s3`, AWS SDK for Java 2.50.2, the synchronous client without
+**s3** (`framework-objectstore-s3`, AWS SDK for Java 2.59.1, the synchronous client without
 the Netty client). Credentials from the SDK's default provider chain; region from `withRegion` or the
 chain. `withPrefix` places all keys under a prefix (itself a valid key). `withEndpoint` selects an
 S3-compatible service: path-style addressing, and request and response checksums only when required

@@ -22,7 +22,7 @@ SOFTWARE.
 
 ---
 
-mermaid.min.js is the single-file bundle published in the npm package mermaid@12.1.0
+mermaid.min.js is the single-file bundle published in the npm package mermaid@12.3.0
 (dist/mermaid.min.js, unmodified). The bundle contains Mermaid's own dependencies, among them
 d3, dagre-d3-es, cytoscape, elkjs, dayjs, katex, khroma, marked, roughjs, stylis, uuid,
 @braintree/sanitize-url and DOMPurify, under their own licences (MIT, ISC, BSD or Apache-2.0;

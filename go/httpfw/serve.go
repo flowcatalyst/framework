@@ -198,7 +198,7 @@ func (s *Server) Serve(ctx context.Context) error {
 		s.log.Warn("requests still running after the grace period; closing them", slog.Duration("grace", s.grace))
 		_ = s.srv.Close()
 	}
-	<-errc
+	<-errc //nolint:errcheck // waits for the serving goroutine; after Shutdown its result is http.ErrServerClosed
 	return nil
 }
 

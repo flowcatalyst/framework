@@ -11,7 +11,7 @@ notice there; the Go tests pin each file's sha256.
 | `fc-code-editor.js` | CodeMirror 6 (JSON, YAML) as the `<fc-code-editor>` element | `codemirror/` (esbuild bundle) | `74b59f1db8170b490d4a76140dd2c8318d62581bb95362c1563da295f99ca49f` |
 | `LICENSE-codemirror.md` | licences of every package bundled into `fc-code-editor.js` | written by the same build | `f0a81fc1e83230c619368ff2edf4e99c61452481c1e3729afa33e64588e75dea` |
 | `fc-diagram.js` | the `<fc-diagram>` element, which loads `mermaid.min.js` on the first diagram | the file itself (hand-written, no build) | `49aecf56c42fe89a9d28d1b9f4d727be09643611568d7f4978a5cc0b03be94d8` |
-| `mermaid.min.js` | Mermaid 12.1.0, `dist/mermaid.min.js` of the npm package, unmodified | none (vendored) | `6484afc32872a3aa16cac9a76ba1816a1ed4cc870a6593cc2e17757750f518b2` |
+| `mermaid.min.js` | Mermaid 12.3.0, `dist/mermaid.min.js` of the npm package, unmodified | none (vendored) | `336df803d87a38b70a01e736e666c8f7601d2ce42f5e47c8fafe5d721074b9a3` |
 
 `fc-webauthn.js` (the FlowCatalyst platform's passkey glue) is not here: it is platform code and the
 platform serves it as an extra file of its own `assets` instance.
@@ -44,6 +44,6 @@ then run `make -C go go-sync-shared`.
 
 ## Datastar
 
-`datastar.js` is Datastar 1.0.4 from
-`https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.4/bundles/datastar.js`, unmodified, sha256
-`727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91` (contract section 4 rule 2).
+`datastar.js` is Datastar 1.0.5 from
+`https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.5/bundles/datastar.js`, unmodified, sha256
+`7380e0344b7f937d80ad70ededa1c28578173157ee4748be1850991491d911fd` (contract section 4 rule 2).

@@ -96,7 +96,7 @@ data: mode append
 data: elements <div class="fc-flash fc-flash-success" data-init__delay.3s="el.remove()">…</div>
 ```
 
-**Fallback (b).** Datastar 1.0.4 dispatches `datastar-fetch` on `document` for every request; the stack listens (Datastar binds that event to `document` whatever element carries it). It reacts to:
+**Fallback (b).** Datastar 1.0.5 dispatches `datastar-fetch` on `document` for every request; the stack listens (Datastar binds that event to `document` whatever element carries it). It reacts to:
 
 | Event | When | Message |
 |---|---|---|
@@ -105,7 +105,7 @@ data: elements <div class="fc-flash fc-flash-success" data-init__delay.3s="el.re
 | `error`, any other status ≥ 400 | 404, 5xx, a proxy error, a crashed handler | failed |
 | `retrying`, `retries-failed` | the network failed (Datastar retries a failed connection up to `retryMaxCount` times, default 10) | offline |
 
-At most one message per fallback kind is shown at a time. Datastar does **not** process the body of a non-200 response (verified in the 1.0.4 bundle), so these messages are the only feedback a non-200 answer can give; handlers therefore answer expected failures with **200 and a patch** (`_conventions.md`, "Answering a (c) request").
+At most one message per fallback kind is shown at a time. Datastar does **not** process the body of a non-200 response (verified in the 1.0.5 bundle), so these messages are the only feedback a non-200 answer can give; handlers therefore answer expected failures with **200 and a patch** (`_conventions.md`, "Answering a (c) request").
 
 **Flash after a redirect (a).** A native form post (no Datastar) answers 303 to the next page; that page renders the message inside the stack (the default slot), so it is announced and auto-dismissed like a patched one. The message is carried by a **fixed key**, never by text from the request: the handler sets a short-lived cookie holding only the key (or a `?flash=<key>` parameter), the next page maps the key to its text through a table in the server, ignores unknown keys and clears the cookie. Nothing a request carries is ever rendered as a message.
 

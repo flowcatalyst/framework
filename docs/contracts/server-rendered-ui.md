@@ -68,10 +68,10 @@ The Go module's packages that are plain `net/http` (`kit`, `ds`, `assets`, `view
 
 1. Served under a prefix, default `/fw-ui/`; the Go `assets` handler takes the prefix as an option, so an
    application mounted elsewhere (the platform: `/ui/assets/`) keeps its paths.
-2. Files: `kit.css` (the Tailwind build of `ui-kit/theme`, committed), `datastar.js` (1.0.4, vendored, its sha256
-   pinned in a test: `727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91`), `lucide-sprite.svg`
+2. Files: `kit.css` (the Tailwind build of `ui-kit/theme`, committed), `datastar.js` (1.0.5, vendored, its sha256
+   pinned in a test: `7380e0344b7f937d80ad70ededa1c28578173157ee4748be1850991491d911fd`), `lucide-sprite.svg`
    (the `ui-kit/icons` sprite), and the islands: `fc-code-editor.js` (CodeMirror 6), `fc-diagram.js` and
-   `mermaid.min.js` (12.1.0). Each third-party file travels with its licence notice, and each has a pinned sha256.
+   `mermaid.min.js` (12.3.0). Each third-party file travels with its licence notice, and each has a pinned sha256.
 3. `url(name)` = `<prefix><name>?v=<first 12 hex of the sha256>`; an unknown name is refused.
    The sprite's URL for `<use href>` is `<prefix>lucide-sprite.svg` (no `?v`, the fragment follows).
 4. `ETag` = `"` + the first 32 hex of the sha256 + `"`. `If-None-Match` matches on `*`, the tag, or `W/` + the
@@ -258,7 +258,7 @@ check, the flash cookie and, for Go, compression.
 ## 15. Amendments to other contracts (2026-11-02)
 
 - http section 10: signals are read from the `datastar` query parameter for `GET`, `HEAD` **and `DELETE`**
-  (Datastar 1.0.4 sends a body only for other methods: `!["GET","DELETE"].includes(method)` in its bundle);
+  (Datastar 1.0.5 sends a body only for other methods: `!["GET","DELETE"].includes(method)` in its bundle);
   a body above 1 MiB is refused `413`.
 - sessions-and-login 7.2 rule 5: form routes, section 8 rule 2.
 - static-assets-and-spa 12 ruling 6: section 12.

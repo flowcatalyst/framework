@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The module's static files, served from the jar: the kit stylesheet ({@code kit.css}, the Tailwind
- * build of {@code ui-kit/theme}), Datastar ({@code datastar.js}, 1.0.4, vendored), the icon sprite,
+ * build of {@code ui-kit/theme}), Datastar ({@code datastar.js}, 1.0.5, vendored), the icon sprite,
  * the islands ({@code fc-code-editor.js}, {@code fc-diagram.js} and {@code mermaid.min.js}) and the
  * licence notices the third-party files travel with. They are read once; each URL carries a content
  * hash ({@code ?v=}) so it can be cached for a year, and the files answer {@code If-None-Match}
@@ -29,11 +29,11 @@ public final class UiAssets {
 
   private record File(byte[] bytes, String contentType, String etag, String version) {}
 
-  /** The sha256 of {@code datastar.js} 1.0.4 as published (contract server-rendered-ui.md section 4); a test pins it. */
-  public static final String DATASTAR_SHA256 = "727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91";
+  /** The sha256 of {@code datastar.js} 1.0.5 as published (contract server-rendered-ui.md section 4); a test pins it. */
+  public static final String DATASTAR_SHA256 = "7380e0344b7f937d80ad70ededa1c28578173157ee4748be1850991491d911fd";
 
-  /** The sha256 of {@code mermaid.min.js}, {@code dist/mermaid.min.js} of mermaid 12.1.0, unmodified. */
-  public static final String MERMAID_SHA256 = "6484afc32872a3aa16cac9a76ba1816a1ed4cc870a6593cc2e17757750f518b2";
+  /** The sha256 of {@code mermaid.min.js}, {@code dist/mermaid.min.js} of mermaid 12.3.0, unmodified. */
+  public static final String MERMAID_SHA256 = "336df803d87a38b70a01e736e666c8f7601d2ce42f5e47c8fafe5d721074b9a3";
 
   /** The sha256 of {@code fc-code-editor.js} as built by {@code ui-kit/islands/codemirror}. */
   public static final String CODE_EDITOR_SHA256 = "74b59f1db8170b490d4a76140dd2c8318d62581bb95362c1563da295f99ca49f";

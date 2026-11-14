@@ -115,7 +115,7 @@ Fixtures: `fixtures/pick-list/roles`, `fixtures/pick-list/embedded` (a group who
 
 ## Behaviour
 
-**Datastar array binding is positional.** With `data-bind:picked` on several checkboxes that have `value`s, `$picked` is an array with **one slot per checkbox in DOM order**: the checkbox's value when ticked, `''` when not (`['', '', 'ops', '']`). Therefore: declare the initial array with that shape (`data-signals="{picked: ['', '', 'ops', '']}"`), count with `$picked.filter(Boolean).length`, test membership with `$picked.includes('ops')`. (Observed with Datastar 1.0.4; the docs describe `["fizz", ""]` semantics.)
+**Datastar array binding is positional.** With `data-bind:picked` on several checkboxes that have `value`s, `$picked` is an array with **one slot per checkbox in DOM order**: the checkbox's value when ticked, `''` when not (`['', '', 'ops', '']`). Therefore: declare the initial array with that shape (`data-signals="{picked: ['', '', 'ops', '']}"`), count with `$picked.filter(Boolean).length`, test membership with `$picked.includes('ops')`. (Observed with Datastar 1.0.5; the docs describe `["fizz", ""]` semantics.)
 
 - **Filter:** each left row `data-show="!$pickQ.trim() || el.dataset.filterText.includes($pickQ.trim().toLowerCase())"`; the input `data-bind:pick-q`. Replaces `ui.js` `data-filter-list`.
 - **Mirror:** right-pane row `data-value="{value}" data-show="$picked.includes(el.dataset.value)"`. Replaces `ui.js` `data-mirror`.

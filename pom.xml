@@ -76,18 +76,18 @@
     <project.build.outputTimestamp>2026-10-08T00:00:00Z</project.build.outputTimestamp>
 
     <!-- build -->
-    <maven-api.version>3.9.13</maven-api.version>
-    <maven-plugin-tools.version>3.15.2</maven-plugin-tools.version>
-    <errorprone.version>2.50.0</errorprone.version>
-    <nullaway.version>0.14.2</nullaway.version>
+    <maven-api.version>3.9.16</maven-api.version>
+    <maven-plugin-tools.version>3.16.0</maven-plugin-tools.version>
+    <errorprone.version>2.52.0</errorprone.version>
+    <nullaway.version>0.14.3</nullaway.version>
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
-    <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
+    <maven-surefire-plugin.version>3.6.1</maven-surefire-plugin.version>
     <maven-jar-plugin.version>3.5.1</maven-jar-plugin.version>
     <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
-    <maven-install-plugin.version>3.1.4</maven-install-plugin.version>
-    <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
-    <maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
-    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+    <maven-install-plugin.version>3.2.0</maven-install-plugin.version>
+    <maven-enforcer-plugin.version>3.7.0</maven-enforcer-plugin.version>
+    <maven-deploy-plugin.version>3.2.0</maven-deploy-plugin.version>
+    <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
   </properties>
 
   <!-- Every version of a framework artifact and of a library lives in framework-bom (MA item 1);

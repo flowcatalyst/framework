@@ -500,7 +500,7 @@ func (e *SignalsError) Error() string {
 func (e *SignalsError) Unwrap() error { return e.Err }
 
 // ReadSignals decodes the request's Datastar signals into v: from the
-// `datastar` query parameter for GET, HEAD and DELETE (Datastar 1.0.4 sends a
+// `datastar` query parameter for GET, HEAD and DELETE (Datastar 1.0.5 sends a
 // body only for the other methods), from the JSON body otherwise. Absent,
 // empty, `null` or invalid signals are a *[SignalsError] with status 400; a
 // body above [MaxSignalBytes] is one with status 413. Unknown members are

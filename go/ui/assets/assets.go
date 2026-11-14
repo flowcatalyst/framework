@@ -52,20 +52,20 @@ const SpriteAliasPath = "/icons/lucide-sprite.svg"
 const SpriteName = "lucide-sprite.svg"
 
 // DatastarVersion is the vendored Datastar release.
-const DatastarVersion = "1.0.4"
+const DatastarVersion = "1.0.5"
 
 // DatastarSHA256 is the sha256 of datastar.js as published at
-// https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.4/bundles/datastar.js.
+// https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.5/bundles/datastar.js.
 // A test fails if the embedded file differs.
-const DatastarSHA256 = "727844adfc825ee651fb93c544a2a739986f9a21820a94524b35f0cac470cf91"
+const DatastarSHA256 = "7380e0344b7f937d80ad70ededa1c28578173157ee4748be1850991491d911fd"
 
 // MermaidVersion is the vendored Mermaid release: dist/mermaid.min.js of the
 // npm package mermaid@MermaidVersion, unmodified.
-const MermaidVersion = "12.1.0"
+const MermaidVersion = "12.3.0"
 
 // MermaidSHA256 is the sha256 of mermaid.min.js. A test fails if the embedded
 // file differs.
-const MermaidSHA256 = "6484afc32872a3aa16cac9a76ba1816a1ed4cc870a6593cc2e17757750f518b2"
+const MermaidSHA256 = "336df803d87a38b70a01e736e666c8f7601d2ce42f5e47c8fafe5d721074b9a3"
 
 // CodeEditorSHA256 is the sha256 of fc-code-editor.js as built by
 // ui-kit/islands/codemirror (reproducible for the pinned versions). A test

@@ -4,9 +4,9 @@ go 1.27
 
 require (
 	github.com/a-h/templ v0.3.1020
-	github.com/andybalholm/brotli v1.2.1
+	github.com/andybalholm/brotli v1.3.0
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/yuin/goldmark v1.7.17
+	github.com/yuin/goldmark v1.8.7
 	golang.org/x/net v0.62.0
 )
 

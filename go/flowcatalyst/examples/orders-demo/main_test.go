@@ -84,7 +84,7 @@ func TestTheLauncherServesTheWholeAdminAreaAgainstItsFakePlatform(t *testing.T) 
 	t.Cleanup(func() {
 		cancel()
 		select {
-		case <-done:
+		case <-done: //nolint:errcheck // only that it returned matters
 		case <-time.After(60 * time.Second):
 			t.Error("the launcher did not stop")
 		}

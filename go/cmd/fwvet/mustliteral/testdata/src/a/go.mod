@@ -4,6 +4,6 @@ go 1.27
 
 require github.com/flowcatalyst/framework/go v0.0.0
 
-require go.yaml.in/yaml/v3 v3.0.5 // indirect
+require go.yaml.in/yaml/v3 v3.0.6 // indirect
 
 replace github.com/flowcatalyst/framework/go => ../../../../../..
