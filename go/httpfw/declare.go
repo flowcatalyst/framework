@@ -243,7 +243,7 @@ func builtinSchemas() map[reflect.Type]openapi.Schema {
 func (d *opDesc) openapi() *openapi.Operation {
 	op := &openapi.Operation{
 		Method: d.method, Pattern: d.pattern, ID: d.id, Summary: d.summary, Description: d.description,
-		Tags: d.tags, Status: d.status, RequiresContext: d.requiresContext, Permission: d.permission.String(),
+		Tags: d.tags, Status: d.status, RequiresContext: d.requiresContext, Permission: d.permission.String(), OperatorsOnly: d.operatorsOnly,
 		Errors: d.errors, Problems: d.problems, Body: d.validator,
 	}
 	for _, p := range d.path {

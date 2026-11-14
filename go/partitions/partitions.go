@@ -39,14 +39,15 @@ import (
 	"github.com/flowcatalyst/framework/go/objectstore"
 )
 
-// ModuleID is the partitions module's id; it contributes the migration set of fw_partition_archives.
+// ModuleID is the partitions module's id; it contributes the migration set of fw_partition_archives
+// and fw_partition_passes.
 const ModuleID = "partitions"
 
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
 // Migrations returns the module's migration set as embedded (fw_partition_archives, the manifest of
-// archived partitions).
+// archived partitions; fw_partition_passes, the last pass of each table).
 func Migrations() fs.FS {
 	sub, err := fs.Sub(migrationFiles, "migrations")
 	if err != nil {
@@ -58,8 +59,8 @@ func Migrations() fs.FS {
 // Declared is the partitions module's declaration, from [Declare].
 type Declared struct{}
 
-// Declare declares the partitions module: it contributes the migration set of fw_partition_archives,
-// which the framework runs on the default database instance. It declares no setting: the tables
+// Declare declares the partitions module: it contributes the migration set of fw_partition_archives
+// and fw_partition_passes, which the framework runs on the default database instance. It declares no setting: the tables
 // are code, given to [Build].
 func Declare(app *fw.App) *Declared {
 	app.Module(ModuleID).Migrations(Migrations())
@@ -145,6 +146,12 @@ type Partitions struct {
 
 	strayMu sync.Mutex
 	stray   map[string]bool
+
+	// passMu serialises the passes of this process: the loop's and a manual one. lock, when the module
+	// has a lock store, is the service lock the loop is gated by; a manual pass tries it too.
+	passMu  sync.Mutex
+	lock    *locks.Lock
+	lockKey locks.Key
 }
 
 // Tables returns the declared table names, in declaration order.
@@ -275,7 +282,7 @@ func Build(ctx context.Context, b *fw.Boot, _ *Declared, dbs *database.Databases
 		tg.dropped = dropped.With(tg.qualified)
 		tg.archived = archived.With(tg.qualified)
 		tg.rows = rows.With(tg.qualified)
-		if err := p.ensureCurrent(ctx, tg, p.clock.Now()); err != nil {
+		if _, err := p.ensureCurrent(ctx, tg, p.clock.Now()); err != nil {
 			problem(tg.Name, "cannot create its partitions: "+err.Error())
 		}
 	}
@@ -286,6 +293,7 @@ func Build(ctx context.Context, b *fw.Boot, _ *Declared, dbs *database.Databases
 	for _, tg := range p.targets {
 		b.Health("partitions:"+tg.Name, fw.Critical, p.healthCheck(tg))
 	}
+	p.warnMissingPassTables(ctx)
 	if len(p.targets) > 0 {
 		lo := background.Options{Interval: o.every, InitialDelay: min(o.every, firstPassDelay)}
 		if o.locks != nil {
@@ -294,6 +302,8 @@ func Build(ctx context.Context, b *fw.Boot, _ *Declared, dbs *database.Databases
 				return nil, fmt.Errorf("partitions: %w", err)
 			}
 			lo.Gate = gate
+			p.lock, _ = o.locks.Default()
+			p.lockKey, _ = locks.ServiceKey(LockName)
 		}
 		b.Loop(LoopName, lo, func(ctx context.Context, _ background.Tick) error { return p.Pass(ctx) })
 	}
@@ -301,28 +311,50 @@ func Build(ctx context.Context, b *fw.Boot, _ *Declared, dbs *database.Databases
 }
 
 // Pass runs one ensure-then-retention pass over every table now. A table's failure does not stop
-// the others; the errors are joined. The background loop calls it.
+// the others; the errors are joined. The background loop calls it. It waits for a manual pass
+// ([Partitions.RunPass]) of this process to finish; replicas are told apart by the service lock, which
+// the loop's gate takes.
 func (p *Partitions) Pass(ctx context.Context) error {
+	p.passMu.Lock()
+	defer p.passMu.Unlock()
+	_, err := p.passAll(ctx, p.targets)
+	return err
+}
+
+// passAll runs the pass over the targets, in order, and returns the result of each and the joined
+// errors.
+func (p *Partitions) passAll(ctx context.Context, targets []*target) ([]PassResult, error) {
 	var errs []error
-	for _, tg := range p.targets {
-		if err := p.passTable(ctx, tg, p.clock.Now()); err != nil {
+	results := make([]PassResult, 0, len(targets))
+	for _, tg := range targets {
+		res, err := p.passTable(ctx, tg, p.clock.Now())
+		results = append(results, res)
+		if err != nil {
 			errs = append(errs, fmt.Errorf("table %s: %w", tg.Name, err))
 		}
 	}
-	return errors.Join(errs...)
+	return results, errors.Join(errs...)
 }
 
-func (p *Partitions) passTable(ctx context.Context, tg *target, now time.Time) error {
+func (p *Partitions) passTable(ctx context.Context, tg *target, now time.Time) (PassResult, error) {
+	res := PassResult{Table: tg.qualified, Failed: []Step{}}
 	var errs []error
-	if err := p.ensureCurrent(ctx, tg, now); err != nil {
+	created, err := p.ensureCurrent(ctx, tg, now)
+	res.Created = created
+	if err != nil {
 		p.failures.With(tg.qualified, "ensure").Inc()
 		p.log.Error("partition ensure failed", slog.String("table", tg.qualified), slog.String("error", err.Error()))
+		res.Failed = append(res.Failed, StepEnsure)
 		errs = append(errs, fmt.Errorf("ensure: %w", err))
 	}
-	if err := p.retain(ctx, tg, now); err != nil {
+	ret, err := p.retain(ctx, tg, now)
+	res.Dropped, res.Archived = ret.dropped, ret.archived
+	res.Failed = append(res.Failed, ret.failed...)
+	if err != nil {
 		errs = append(errs, err)
 	}
-	return errors.Join(errs...)
+	p.recordPass(ctx, tg, res)
+	return res, errors.Join(errs...)
 }
 
 // healthCheck is the check partitions:<table>: down when the partition for the next interval does
@@ -333,41 +365,95 @@ func (p *Partitions) healthCheck(tg *target) func(context.Context) error {
 		if err != nil {
 			return errors.New("cannot read the catalog")
 		}
-		next := tg.Interval.Next(tg.Interval.Start(p.clock.Now()))
-		want := PartitionName(tg.rel, next)
-		if !slices.ContainsFunc(kids, func(c child) bool { return c.name == want }) {
-			return fmt.Errorf("the partition for the next interval (from %s) does not exist; inserts will fail at the boundary",
-				next.Format("2006-01-02"))
-		}
-		return nil
+		return tg.nextPartitionProblem(kids, p.clock.Now())
 	}
 }
 
+// nextPartitionProblem is the decision of the health check partitions:<table>, which the status read
+// reports as Healthy: nil when the partition for the next interval is attached.
+func (tg *target) nextPartitionProblem(kids []child, now time.Time) error {
+	next := tg.Interval.Next(tg.Interval.Start(now))
+	want := PartitionName(tg.rel, next)
+	if !slices.ContainsFunc(kids, func(c child) bool { return c.name == want }) {
+		return fmt.Errorf("the partition for the next interval (from %s) does not exist; inserts will fail at the boundary",
+			next.Format("2006-01-02"))
+	}
+	return nil
+}
+
+// The refusals of the operator actions, for [errors.Is]. The text of the error says more.
+var (
+	// ErrTableNotDeclared means no declared table has that name.
+	ErrTableNotDeclared = errors.New("partitions: table is not declared")
+	// ErrRangeTooLarge means the range needs more than [MaxEnsureRange] partitions.
+	ErrRangeTooLarge = errors.New("partitions: range needs too many partitions")
+	// ErrRangeInvalid means the range ends before it starts, or starts before 1970.
+	ErrRangeInvalid = errors.New("partitions: range is invalid")
+	// ErrDetachedLeftover means a table of a partition's name exists but is not attached.
+	ErrDetachedLeftover = errors.New("partitions: a detached table has the name of a partition")
+	// ErrPassRunning means another pass (the loop's, here or on another replica, or a manual one)
+	// is running; a manual pass is refused, never queued.
+	ErrPassRunning = errors.New("partitions: a pass is already running")
+)
+
+// EnsureResult is what [Partitions.Ensure] did: the partitions it created, and how many partitions
+// of the range are past retention, which the next pass removes (so an import can be warned before
+// it relies on them).
+type EnsureResult struct {
+	Created    int
+	AlreadyDue int
+}
+
+// lookup finds a declared table by the name it was declared with or its schema-qualified name.
+func (p *Partitions) lookup(table string) (*target, bool) {
+	if tg, ok := p.byName[table]; ok {
+		return tg, true
+	}
+	for _, tg := range p.targets {
+		if tg.qualified == table {
+			return tg, true
+		}
+	}
+	return nil, false
+}
+
+func (p *Partitions) notDeclared(table string) error {
+	return fmt.Errorf("%w: %q; declared: %s", ErrTableNotDeclared, table, strings.Join(p.Tables(), ", "))
+}
+
 // Ensure creates the partitions that cover [from, to] (both inclusive instants, in any time zone)
-// for the declared table, for imports and backfills that write outside the window the loop keeps.
-// It refuses more than [MaxEnsureRange] partitions in one call, and a window before 1970. Note that
-// retention removes a partition the next pass if it is older than the retention.
-func (p *Partitions) Ensure(ctx context.Context, table string, from, to time.Time) (created int, err error) {
-	tg, ok := p.byName[table]
+// for the declared table (named as declared or schema-qualified), for imports and backfills that
+// write outside the window the loop keeps. It refuses more than [MaxEnsureRange] partitions in one
+// call ([ErrRangeTooLarge]), a window before 1970 or ending before it starts ([ErrRangeInvalid]), a
+// table that is not declared ([ErrTableNotDeclared]) and a detached table of a partition's name
+// ([ErrDetachedLeftover]). The result says how many partitions of the range retention removes at the
+// next pass.
+func (p *Partitions) Ensure(ctx context.Context, table string, from, to time.Time) (EnsureResult, error) {
+	tg, ok := p.lookup(table)
 	if !ok {
-		return 0, fmt.Errorf("table %q is not declared; declared: %s", table, strings.Join(p.Tables(), ", "))
+		return EnsureResult{}, p.notDeclared(table)
 	}
 	if to.Before(from) {
-		return 0, errors.New("to is before from")
+		return EnsureResult{}, fmt.Errorf("%w: to is before from", ErrRangeInvalid)
 	}
 	if from.Before(time.Unix(0, 0)) {
-		return 0, errors.New("from is before 1970-01-01")
+		return EnsureResult{}, fmt.Errorf("%w: from is before 1970-01-01", ErrRangeInvalid)
 	}
+	now := p.clock.Now()
 	var starts []time.Time
+	due := 0
 	for s := tg.Interval.Start(from); !s.After(to); s = tg.Interval.Next(s) {
 		if len(starts) >= MaxEnsureRange {
-			return 0, fmt.Errorf("that range needs more than %d partitions; ensure it in several calls", MaxEnsureRange)
+			return EnsureResult{}, fmt.Errorf("%w: that range needs more than %d partitions; ensure it in several calls", ErrRangeTooLarge, MaxEnsureRange)
 		}
 		starts = append(starts, s)
+		if tg.due(s, now) {
+			due++
+		}
 	}
-	created, err = p.ensureStarts(ctx, tg, starts)
+	created, err := p.ensureStarts(ctx, tg, starts)
 	if err == nil {
-		p.setAhead(ctx, tg, p.clock.Now())
+		p.setAhead(ctx, tg, now)
 	}
-	return created, err
+	return EnsureResult{Created: created, AlreadyDue: due}, err
 }

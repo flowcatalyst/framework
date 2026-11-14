@@ -1,7 +1,9 @@
 # Contract: partitioned tables
 
 Status: Go first, 2026-11-14 (guide: `guide/go/partitions.md`); Java to follow. PostgreSQL only: MySQL is
-not supported, because the framework's database layer is PostgreSQL only.
+not supported, because the framework's database layer is PostgreSQL only. Amended 2026-11-14: the `Year`
+interval and date keys (sections 1 to 3), the status read, the last-pass record, the two operator actions and
+the operators-only admin section (sections 10 to 13); all of these are **Java to follow**.
 
 A large append-mostly table (readings, telemetry, logs, history, audit) cannot be cleaned with `DELETE` at
 volume: the WAL and vacuum cost equal what is deleted. A range partition dropped whole is O(1). Without
@@ -23,13 +25,13 @@ section and no configuration key. Each table is one value:
 |---|---|
 | `Name` | the table, optionally schema-qualified (`readings`, `telemetry.readings`); each part `[a-z_][a-z0-9_]*` |
 | `Database` | a database instance name; empty = the default instance |
-| `By` | `ByID(prefix)` (key column `id`; `ByIDColumn(column, prefix)` for another column) or `ByColumn(column)` |
-| `Interval` | `Day`, `Week` or `Month` |
+| `By` | `ByID(prefix)` (key column `id`; `ByIDColumn(column, prefix)` for another column), `ByColumn(column)` (a `timestamptz` column) or `ByDateColumn(column)` (a `date` column) |
+| `Interval` | `Day`, `Week`, `Month` or `Year` |
 | `Ahead` | future partitions kept beyond the current one: 1 to 24 |
 | `Retention` | **required**: `DropAfter(d)`, `ArchiveThenDropAfter(d, storeName)` or `KeepForever()` |
 
 Retention has no default and a missing one is a start-up error: nothing is deleted that nobody wrote down.
-`d` must be at least one interval (the nominal widths: day 24 h, week 7 days, month 31 days). Start-up errors,
+`d` must be at least one interval (the nominal widths: day 24 h, week 7 days, month 31 days, year 366 days). Start-up errors,
 all reported together as the framework's `StartupError` naming `table <name>`: a table declared twice (also
 under two spellings of one table, `readings` and `public.readings`), a name whose partition names would pass
 63 bytes (`len(table) + 10 > 63`), an unknown object store (or none given while one is named), a prefix that
@@ -38,17 +40,26 @@ fails `ValidIDPrefix`, `Ahead` out of range, a missing key, interval or retentio
 ## 2. Intervals, names and bounds
 
 All intervals are in **UTC**. `Day` is the calendar day; `Week` is the ISO week starting Monday 00:00 UTC;
-`Month` is the calendar month. The start of the interval that contains an instant, and the start of the next
-interval, are the only two operations (a month's next start is the first of the following month).
+`Month` is the calendar month; `Year` is the calendar year, 1 January 00:00 UTC to the next 1 January (for
+long-retention, low-volume tables: a retention of several years is then a handful of partitions). The start of
+the interval that contains an instant, and the start of the next interval, are the only two operations (a
+month's next start is the first of the following month, a year's the next 1 January).
 
 **Partition name:** `<table>_p<YYYYMMDD>` of the interval's start, the same shape for every interval so names
-sort in time order. The partition is created in the parent's schema. `<table>` is the unqualified name.
+sort in time order (a yearly table's are `<table>_p20260101`). The partition is created in the parent's schema.
+`<table>` is the unqualified name. A name parses as the table's only when its date is a real start of the
+declared interval: for a yearly table only a 1 January.
 
 **Bounds** are `FOR VALUES FROM (lower) TO (upper)`: lower inclusive, upper exclusive (PostgreSQL's RANGE),
 where `upper` is the bound of the next interval's start.
 
 - `ByColumn(col)`: the bound of an instant `t` is `t` in UTC as the `timestamptz` literal
   `YYYY-MM-DD HH:MM:SS+00` (for example `2026-11-01 00:00:00+00`).
+- `ByDateColumn(col)`: the bound of an instant `t` is the UTC date of `t` as the literal `YYYY-MM-DD` (for example
+  `2026-11-01`). Every interval starts at UTC midnight, so the date of an interval's start and of its end is exact.
+  The declaration says it is a date column (rather than start-up reading the column's type and the bound
+  following it) so that a bound stays a pure function of the key and the instant, which the vectors need; start-up
+  refuses the other pairing (section 3).
 - `ByID(prefix)`: the bound of an instant `t` is `prefix + "_" + EncodeTSID(uint64(t.UnixMilli()) << 22)`: the
   TSID layout is 42 bits of milliseconds, a 12-bit sequence and 10 random bits, so `ms << 22` is the smallest
   TSID that carries that millisecond. An instant before 1970 is bound as 1970-01-01 (milliseconds clamped to
@@ -69,10 +80,10 @@ declared prefix: a row with another prefix has no partition (and the insert fail
 `1099511628211`) of the UTF-8 bytes of `fw-partitions:<schema>.<table>` (the resolved schema and table
 names), as a signed 64-bit integer. It is distinct from the migration runner's `AdvisoryLockKey`.
 
-The shared vectors are `conformance/partitions/bounds.json` (58 cases: every interval, both keys, a month and
+The shared vectors are `conformance/partitions/bounds.json` (80 cases: every interval, the three keys, a month and
 a year rollover, an ISO week that crosses the year (2026-12-31 and 2027-01-03 are both in the week starting
-2026-12-28), a leap day, the millisecond before and at a bound, the epoch; id bounds of arbitrary instants;
-three lock keys).
+2026-12-28), a leap day and a leap year, the millisecond before and at a bound, the epoch; 15 id bounds of arbitrary
+instants, among them the starts of years; three lock keys).
 
 ## 3. Collation and start-up validation
 
@@ -89,7 +100,9 @@ the table, says what is wrong and the DDL it expects:
 3. `ByID`: the key column is `text` or `varchar`, and both the partition key's collation and **the column's own
    collation** are `C` (or `POSIX`);
    `ByColumn`: the column is `timestamptz` (PostgreSQL itself already requires every unique constraint and
-   the primary key to include the partition key);
+   the primary key to include the partition key); `ByDateColumn`: the column is `date`. A `timestamp` without
+   time zone is refused for both, and so is the other pairing (`ByColumn` on a `date`, `ByDateColumn` on a
+   `timestamptz`), the message naming the declaration to use;
 4. the table has **no DEFAULT partition** (a default partition holding rows blocks creating the later
    partitions that would overlap them; the module fails loudly instead of collecting strays);
 5. when the retention archives: `fw_partition_archives` exists on that database instance (the framework's own
@@ -123,8 +136,12 @@ name that exists but is **not attached** (a detached leftover in a current or fu
 loudly, naming the table, counted as `ensure` failure; at start-up it is a start-up error.
 
 `Ensure(table, from, to)` creates the partitions that cover an arbitrary window (imports, backfills). It is
-bounded: more than 400 partitions in one call, or `from` before 1970, or `to` before `from`, is refused.
-Retention removes a backfilled partition at the next pass if it is older than the retention.
+bounded: more than 400 partitions in one call, or `from` before 1970, or `to` before `from`, is refused. Retention
+removes a backfilled partition at the next pass if it is older than the retention; the result therefore says how
+many partitions of the window are **already due** (`AlreadyDue`: past retention, removed by the next pass), so a
+caller can warn before an import relies on them. The table is named as declared or schema-qualified. The
+refusals are typed errors usable with `errors.Is` (Go: `ErrTableNotDeclared`, `ErrRangeInvalid` (`to` before
+`from`, or before 1970), `ErrRangeTooLarge`, `ErrDetachedLeftover`).
 
 ## 5. Retention pass
 
@@ -197,7 +214,7 @@ from memory. Its reason names no more than the interval's date.
 | Name | Type | Labels | |
 |---|---|---|---|
 | `fw_partitions_ahead` | gauge | `table` | partitions that exist after the current interval, set at each pass |
-| `fw_partition_failures_total` | counter | `table`, `step` | `step` is `ensure`, `retention` (a failed drop or listing) or `archive` |
+| `fw_partition_failures_total` | counter | `table`, `step` | `step` is `ensure`, `retention` (a failed drop or listing), `archive`, or `record` (the last-pass record could not be written, section 11) |
 | `fw_partitions_dropped_total` | counter | `table` | |
 | `fw_partitions_archived_total` | counter | `table` | partitions archived and verified (a retried archive counts again) |
 | `fw_partition_rows_archived_total` | counter | `table` | |
@@ -230,13 +247,15 @@ archives needs the table created there by hand, and start-up says so.
 
 ## 8. Not in this contract
 
-Converting an existing large table to a partitioned one is **planned, not built**: a new partitioned parent,
-the old table attached as one partition with a pre-validated `CHECK` constraint (the approach in
+Deliberately **not provided**, in the module and in the admin section (section 13): dropping or detaching a
+partition by hand, changing a table's retention (it is a fact of the code, written down), and restoring an
+archive. Also not here: converting an existing large table to a partitioned one is **planned, not built**: a new
+partitioned parent, the old table attached as one partition with a pre-validated `CHECK` constraint (the approach in
 `docs/large-table-schema-changes.md` of the platform repository), so no rows are rewritten. Also not here:
 `HASH` and `LIST` partitioning, sub-partitioning, a different retention per partition, reading an archive back
 into a table, and MySQL.
 
-## 9. Tests
+## 9. Tests (sections 1 to 8)
 
 Unit: the conformance vectors; every generated TSID sorts into `[lower, upper)` of the interval its own
 millisecond belongs to, and into no other, including the borrowed-millisecond edge; `IDRange`; name parsing;
@@ -249,3 +268,149 @@ recovery of a detached table; ensure refusing a detached table of a partition's 
 collation (no pruning, start-up refusal); two replicas sharing a lock store, the one that does not hold the
 lock skipping and doing no DDL; concurrent ensure on one table from two replicas; every start-up validation
 failure; the health check going down when the next partition is dropped by hand.
+
+## 10. The status read
+
+Go API, no HTTP; one value per declared table, read from the catalog and the module's own tables with a **fixed
+number of queries per table** (at most five: the module's two tables' existence, the attached children with
+their sizes and estimates in one query, the manifest summary, the detached tables, the last pass), whatever the
+number of partitions. It never counts rows.
+
+```go
+func (p *Partitions) Status(ctx context.Context) ([]TableStatus, error)                       // declaration order
+func (p *Partitions) TableStatus(ctx context.Context, table string) (TableStatus, bool, error)  // as declared or schema-qualified
+func (p *Partitions) Archives(ctx context.Context, table, after string, limit int) ([]ArchiveRecord, error)
+```
+
+`TableStatus`: `Name` (schema-qualified), `Database` ("" is the default instance), `Key` (the key's text,
+`ByID("rdg") on id`, `ByColumn("recorded_at")`, `ByDateColumn("service_day")`), `Interval` (`DAY`, `WEEK`, `MONTH`,
+`YEAR`), `Ahead`, `Retention` (`Kind` `DROP`, `ARCHIVE_THEN_DROP` or `KEEP`; `After` and `Store` as declared, none
+for `KEEP`), `Healthy`, `LastPass` (section 11; absent when none is recorded), `Partitions` (oldest first),
+`Detached`, `Strays`, `Bytes` and `Rows` (sums; `Rows` sums the known estimates only).
+
+- `Healthy` is the decision of the health check `partitions:<table>` (section 6): the partition of the next
+  interval is attached. One function decides both.
+- `PartitionStatus`: `Name`, `From` (inclusive) and `To` (exclusive) in UTC, `Position` (`PAST`: ended; `CURRENT`:
+  contains now; `FUTURE`: starts after now, against the module's clock), `Bytes` (`pg_total_relation_size`: the
+  partition with its indexes and TOAST), `Rows` (the planner's estimate `pg_class.reltuples`; **absent** while it
+  is negative, which is a partition never analysed or vacuumed), `RemovalDue`, `Archived`.
+- `RemovalDue` is the first instant at which the retention pass removes the partition, the skew guard of
+  section 5 included: its upper bound plus the longer of the retention and one interval. It is the same rule as
+  the pass's (a partition is due at the instant and not one nanosecond before). Absent for `KeepForever`.
+- `Archived` (from the manifest, section 7): objects, rows, bytes and the time of the latest archive; absent when
+  the manifest has none. A partition is normally gone once it is archived, so it is set on a partition that was
+  created again (a backfill) after being removed.
+- `Detached` lists (schema-qualified) the plain tables of the parent's schema that carry the module's **detach mark**
+  (section 5) and are not attached: a pass that died between the detach and the drop, finished by the next pass.
+  `Strays` lists the attached partitions that are not this framework's names for the table, which the module
+  leaves alone.
+- `ArchiveRecord` (`Archives`, newest first, one per archived partition): `Table`, `Partition`, `From` and `To`
+  (parsed from the name), `Objects`, `Rows`, `Bytes`, `ArchivedAt`, and `Key`, the key of the first object in the
+  store (`partitions/<schema>.<table>/<partition>.ndjson.gz`; the others sit beside it). **The object key is on the
+  wire** (owner ruling): it is not a credential, and an operator who restores an archive by hand needs it.
+  Paging is by key: `after` is the `Partition` of the last record of the previous page, `limit` is 1 to 200.
+
+## 11. The last pass, shared across replicas
+
+The loop runs on one replica (section 6), so what it did must be readable on every replica. At the end of each
+table's pass, by the loop and by a manual pass alike, the module upserts one row into the table's own database
+(next to the manifest):
+
+```sql
+CREATE TABLE fw_partition_passes (
+    table_name       text        NOT NULL PRIMARY KEY,   -- schema.table
+    ended_at         timestamptz NOT NULL,
+    ensure_status    text        NOT NULL,               -- OK | FAILED | SKIPPED
+    retention_status text        NOT NULL,
+    archive_status   text        NOT NULL,
+    created          int         NOT NULL,               -- partitions of that pass
+    dropped          int         NOT NULL,
+    archived         int         NOT NULL
+);
+```
+
+`SKIPPED` is a step that does not apply: retention for `KeepForever`, archive unless the retention archives. No
+failure message is stored: the log has it (the table is read by every operator). The migration is the module's
+`V0002__create_partition_passes_table.sql`, run on the default instance only: a table on another instance needs the
+table by hand, and start-up says so at WARN, once per instance that has a declared table. Without the table nothing
+is recorded and the status shows no last pass. If the upsert fails, it is logged at ERROR and counted
+(`fw_partition_failures_total{step="record"}`); it never fails the pass.
+
+## 12. The two operator actions
+
+Both are for an operator who acts on a declared table; both take the acting principal's `fw.Context`, which the
+record names.
+
+- **`RunPass(ctx, by, table)`** runs the ensure-then-retention pass now for one table (as declared or
+  schema-qualified), or for every table when `table` is `""`, and returns one `PassResult` per table: `Table`,
+  `Created`, `Dropped`, `Archived` and `Failed`, the steps (`ensure`, `retention`, `archive`) that failed. The
+  loop's pass produces the same results. When the pass ran the error is nil and a failed step is in `Failed`; the
+  error is for refusals.
+- **`EnsureAs(ctx, by, table, from, to)`** is `Ensure` (section 4) for an operator.
+
+**Concurrency with the loop.** A manual pass must not overlap a pass of the loop, here or on another replica. With
+a lock store (`WithLocks`) it tries the loop's own service lock `fw-partitions` once, without waiting; in every case
+it first tries a mutex it shares with the loop in this process. When either is held it is refused with
+`ErrPassRunning` (HTTP 409): **a manual pass is refused while another pass runs, never queued**, so a page that
+retries does not stack passes. The loop's pass waits for a manual pass of its own process to end (it is the shorter
+wait) and is skipped by the lock, as always, when another replica holds it.
+
+**The record.** The framework has no audit store for an operator's action that is not an aggregate change, so the
+record is a log line at INFO: `partitions: manual pass` or `partitions: manual ensure`, with `principal` (the id),
+`principal_kind`, `tier`, `correlation_id`, `table` (`all` for a pass of every table), for an ensure the `from` and
+`to`, and the `outcome` (`ok`, `steps failed: <tables>`, `refused: <why>` or `failed: <why>`) with the counts.
+(admin contract section 12.3, item 5: admin actions are not audited by the framework.)
+
+The typed refusals, usable with `errors.Is`: `ErrTableNotDeclared`, `ErrRangeTooLarge` (more than 400
+partitions), `ErrRangeInvalid` (`to` before `from`, or before 1970), `ErrDetachedLeftover`, `ErrPassRunning`.
+
+## 13. The admin section (operators only)
+
+Package `partitions/partitionsadmin` (Go; **Java to follow**) adds the section `partitions` to the application
+admin ([admin contract](admin.md), section 3a): id `partitions`, title "Partitions", path `/admin/partitions`,
+permission `{app}:admin:partitions:view`. It is **headless**: typed operations, permissions and a navigation
+entry; the application draws its own page (a server-rendered one gates on the same permission,
+`partitionsadmin.View(app)` and `Manage(app)`). It lives in a subpackage so that `admin` does not import
+`partitions`. Declare it at declaration time (`partitionsadmin.Declare(adm)`) and bind it in build after
+`partitions.Build` (`pa.Build(ps)`), like the platform sections.
+
+| Operation | Id | Permission | Answers |
+|---|---|---|---|
+| `GET /api/admin/partitions` | `listAdminPartitions` | view | `tables`: each table's declaration, `healthy`, `lastPass`, `partitionCount`, `bytes`, `rows`, `oldestFrom`, `nextRemovalDue` (the earliest `removalDue`), without its partitions |
+| `GET /api/admin/partitions/{table}` | `getAdminPartitionTable` | view | the table with every partition, `detached` and `strays`; `404 PARTITION_TABLE_NOT_FOUND` |
+| `GET /api/admin/partitions/{table}/archives` | `listAdminPartitionArchives` | view | `Page<AdminPartitionArchive>` (`items`, `nextCursor`; `limit` 50, 1 to 200; `after`, the `partition` of the last item), newest first; `404 PARTITION_TABLE_NOT_FOUND` |
+| `POST /api/admin/partitions/passes` | `runAdminPartitionPass` | manage | body `{"table": "..."}` or `{}`; `{"results": [PassResult]}`; `404 PARTITION_TABLE_NOT_FOUND`, `409 PARTITION_PASS_RUNNING` |
+| `POST /api/admin/partitions/{table}/ensure` | `ensureAdminPartitions` | manage | body `{"from", "to"}` (RFC 3339); `{"created", "alreadyDue"}`; `404 PARTITION_TABLE_NOT_FOUND`, `400 PARTITION_RANGE_INVALID`, `400 PARTITION_RANGE_TOO_LARGE`, `409 PARTITION_DETACHED_LEFTOVER` |
+
+`{table}` is the table as declared or schema-qualified (`readings`, `public.readings`; a dot in a path segment needs
+no encoding). The answers use the framework's wire formats: instants RFC 3339 UTC, durations ISO-8601
+(`PT2160H`, the `after` of a retention), an absent optional field omitted. The pass answer is an object with
+`results` because a response is a struct, never a bare array (openapi contract). A missing or malformed
+body field is `400 VALIDATION`.
+
+**Operators only.** A partition holds the rows of every client, so besides its permission every operation requires a
+platform operator: the principal's tier is `ANCHOR` (admin contract section 3a). A `PARTNER`, a `CLIENT` and a
+principal with no tier are refused with `403 FORBIDDEN` ("this is for platform operators only"), and the navigation
+does not list the section for them. The application must never give `{app}:admin:partitions:*` to a role that
+client administrators may assign (a client-managed role): the FlowCatalyst module refuses that at start-up
+(admin contract section 3a, rule 4).
+
+The vector is `conformance/admin/partitions.json` (the gate for every tier and permission, the durations, the
+projection of a status to the wire, the refusals).
+
+**Java to follow:** the contract above is the specification; nothing of sections 10 to 13 exists in Java yet.
+
+## 14. Tests of sections 10 to 13
+
+Status on PostgreSQL for `ByID`, `ByColumn` and `ByDateColumn` tables: sizes present, estimates absent before
+`ANALYZE` and present after, a detached (marked) table listed and an unmarked one not, a stray listed, an archived
+partition with `Archived` filled (a partition created again after its archive), `RemovalDue` for each retention
+kind (and `due` true at it, false one nanosecond before), `Position` against a fake clock, a table on a second
+database instance (its own last-pass row, and the start-up warning when that instance lacks the table); the
+archives paged newest first; the last pass written by the loop and read by a second `Partitions` instance; a manual
+pass refused while the loop's pass holds the lock (in process, and another replica's lock), and accepted after;
+`Ensure`'s `AlreadyDue` and each typed refusal; the number of queries of `Status` (counted on the wire by a proxy)
+independent of the number of partitions; a failed record never failing the pass. The section: the five operations
+under every tier (`ANCHOR` with the permission 200; `CLIENT`, `PARTNER`, no tier and a lower-case `anchor` 403 with
+every permission and with the wildcard; `ANCHOR` without the permission 403; not signed in 401), the section absent
+from the navigation of everyone but an operator, the OpenAPI document (`x-fw-operators-only`), and the vector.

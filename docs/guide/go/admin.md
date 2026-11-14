@@ -52,6 +52,27 @@ The rules are the contract's: every operation has a permission, permissions have
 start with the application code, operations are under `/api/admin/`, paths are `/admin` or under it,
 ids and paths are unique. `admin.Permissions(sections)` lists every permission the registry needs.
 
+## Operators-only sections
+
+`Section.OperatorsOnly()` marks a section for platform operators only (admin contract section 3a): besides its
+permission, every operation of it requires the principal's tier to be `ANCHOR` (`fw.Context.IsPlatformOperator()`;
+the auth module sets the tier from the token's `tier` claim). A PARTNER, a CLIENT and a principal with no tier get
+`403 FORBIDDEN`, and `GET /api/admin/navigation` does not list the section for them. The gate is the builder's
+`OperatorsOnly()` on each operation, checked by `httpfw.Handle` after the permission; a section marked
+operators-only that serves an operation without it is a start-up problem, so none can be forgotten:
+
+```go
+var vaultOp = httpfw.Get[Vault]("/api/admin/vault").ID("getAdminVault").Tag("admin").
+	Permission(fw.MustPermission("orders:admin:vault:view")).OperatorsOnly().Build()
+
+var vaultSection = admin.NewSection("vault", "Vault", "/admin/vault", "orders:admin:vault:view").
+	OperatorsOnly().Serving(vaultOp)
+```
+
+The framework's own operators-only section is [partitions](partitions.md). Never give such a section's permissions
+to a client-managed role: with the FlowCatalyst module and `WithPermissionMapping`, start-up refuses it
+([FlowCatalyst](flowcatalyst.md)).
+
 ## The three layers
 
 1. The operation gate is `httpfw.Handle`'s permission check: a caller without the permission gets

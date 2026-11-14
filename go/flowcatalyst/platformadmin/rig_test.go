@@ -52,6 +52,8 @@ type rigOptions struct {
 	declare func(adm *admin.Declared) []platformadmin.Part
 	// definitions adds to the FlowCatalyst declarations, after the sections are declared
 	definitions func(fc *flowcatalyst.Declared, adm *admin.Declared)
+	// build gives flowcatalyst.Build its options
+	build []flowcatalyst.BuildOption
 }
 
 func startRig(t *testing.T, o rigOptions) *rig {
@@ -97,7 +99,7 @@ func tryRig(t *testing.T, o rigOptions) (*rig, error) {
 	}
 	out := &rig{t: t, platform: p}
 	run, err := app.Start(t.Context(), func(ctx context.Context, b *fw.Boot) (fw.Serve, error) {
-		fc, err := flowcatalyst.Build(ctx, b, fcd)
+		fc, err := flowcatalyst.Build(ctx, b, fcd, o.build...)
 		if err != nil {
 			return nil, err
 		}

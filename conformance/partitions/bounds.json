@@ -1,5 +1,5 @@
 {
-  "description": "Partition intervals, names and bounds, and the advisory lock key (partitions contract sections 2 to 4). bounds: a table 'readings', an interval (day|week|month, UTC; a week is ISO, Monday to Monday), a key (by 'id' with a prefix, or 'column' with a column) and an instant; the interval's partition name, lower bound (inclusive) and upper bound (exclusive, the next interval's start) as the SQL literals inside FOR VALUES FROM ('..') TO ('..'). An id bound is prefix + '_' + the 13-character TSID of (epoch milliseconds << 22); a column bound is the UTC instant as 'YYYY-MM-DD HH:MM:SS+00'. idBounds: the id bound of an arbitrary instant (milliseconds kept). lockKeys: the signed 64-bit key passed to pg_advisory_xact_lock for a table: FNV-1a 64 of the UTF-8 bytes of 'fw-partitions:<schema>.<table>', as a decimal string.",
+  "description": "Partition intervals, names and bounds, and the advisory lock key (partitions contract sections 2 to 4). bounds: a table 'readings', an interval (day|week|month|year, UTC; a week is ISO, Monday to Monday; a year is the calendar year, partitions from 1 January), a key (by 'id' with a prefix, 'column' with a timestamptz column, or 'date' with a date column) and an instant; the interval's partition name, lower bound (inclusive) and upper bound (exclusive, the next interval's start) as the SQL literals inside FOR VALUES FROM ('..') TO ('..'). An id bound is prefix + '_' + the 13-character TSID of (epoch milliseconds << 22); a column bound is the UTC instant as 'YYYY-MM-DD HH:MM:SS+00'; a date bound is the UTC date as 'YYYY-MM-DD'. idBounds: the id bound of an arbitrary instant (milliseconds kept). lockKeys: the signed 64-bit key passed to pg_advisory_xact_lock for a table: FNV-1a 64 of the UTF-8 bytes of 'fw-partitions:<schema>.<table>', as a decimal string.",
   "howToRun": "For every case compute the interval's start for the instant, the partition name and the bounds with the implementation's functions and compare the strings; for lockKeys compare the key as a decimal string.",
   "bounds": [
     {
@@ -581,6 +581,226 @@
       "lower": "2026-03-01 00:00:00+00",
       "upper": "2026-04-01 00:00:00+00",
       "column": "recorded_at"
+    },
+    {
+      "interval": "year",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20260101",
+      "lower": "rdg_6DQDPN8000000",
+      "upper": "rdg_6HCX2YM000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "year",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20260101",
+      "lower": "2026-01-01 00:00:00+00",
+      "upper": "2027-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "year",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20260101",
+      "lower": "2026-01-01",
+      "upper": "2027-01-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "year",
+      "by": "id",
+      "table": "readings",
+      "instant": "2024-02-29T12:00:00.000Z",
+      "partition": "readings_p20240101",
+      "lower": "rdg_66C4MFM000000",
+      "upper": "rdg_6A1YABW000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "year",
+      "by": "column",
+      "table": "readings",
+      "instant": "2024-02-29T12:00:00.000Z",
+      "partition": "readings_p20240101",
+      "lower": "2024-01-01 00:00:00+00",
+      "upper": "2025-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "year",
+      "by": "date",
+      "table": "readings",
+      "instant": "2024-02-29T12:00:00.000Z",
+      "partition": "readings_p20240101",
+      "lower": "2024-01-01",
+      "upper": "2025-01-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "year",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20260101",
+      "lower": "rdg_6DQDPN8000000",
+      "upper": "rdg_6HCX2YM000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "year",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20260101",
+      "lower": "2026-01-01 00:00:00+00",
+      "upper": "2027-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "year",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20260101",
+      "lower": "2026-01-01",
+      "upper": "2027-01-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "year",
+      "by": "id",
+      "table": "readings",
+      "instant": "2027-01-01T00:00:00.000Z",
+      "partition": "readings_p20270101",
+      "lower": "rdg_6HCX2YM000000",
+      "upper": "rdg_6N2CF80000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "year",
+      "by": "column",
+      "table": "readings",
+      "instant": "2027-01-01T00:00:00.000Z",
+      "partition": "readings_p20270101",
+      "lower": "2027-01-01 00:00:00+00",
+      "upper": "2028-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "year",
+      "by": "date",
+      "table": "readings",
+      "instant": "2027-01-01T00:00:00.000Z",
+      "partition": "readings_p20270101",
+      "lower": "2027-01-01",
+      "upper": "2028-01-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "year",
+      "by": "id",
+      "table": "readings",
+      "instant": "2026-01-01T00:00:00.000Z",
+      "partition": "readings_p20260101",
+      "lower": "rdg_6DQDPN8000000",
+      "upper": "rdg_6HCX2YM000000",
+      "prefix": "rdg"
+    },
+    {
+      "interval": "year",
+      "by": "column",
+      "table": "readings",
+      "instant": "2026-01-01T00:00:00.000Z",
+      "partition": "readings_p20260101",
+      "lower": "2026-01-01 00:00:00+00",
+      "upper": "2027-01-01 00:00:00+00",
+      "column": "recorded_at"
+    },
+    {
+      "interval": "year",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-01-01T00:00:00.000Z",
+      "partition": "readings_p20260101",
+      "lower": "2026-01-01",
+      "upper": "2027-01-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "day",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261114",
+      "lower": "2026-11-14",
+      "upper": "2026-11-15",
+      "column": "service_day"
+    },
+    {
+      "interval": "week",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261109",
+      "lower": "2026-11-09",
+      "upper": "2026-11-16",
+      "column": "service_day"
+    },
+    {
+      "interval": "week",
+      "by": "date",
+      "table": "readings",
+      "instant": "2027-01-03T23:59:59.000Z",
+      "partition": "readings_p20261228",
+      "lower": "2026-12-28",
+      "upper": "2027-01-04",
+      "column": "service_day"
+    },
+    {
+      "interval": "month",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-11-14T10:20:30.123Z",
+      "partition": "readings_p20261101",
+      "lower": "2026-11-01",
+      "upper": "2026-12-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "month",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261201",
+      "lower": "2026-12-01",
+      "upper": "2027-01-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "month",
+      "by": "date",
+      "table": "readings",
+      "instant": "2024-02-29T12:00:00.000Z",
+      "partition": "readings_p20240201",
+      "lower": "2024-02-01",
+      "upper": "2024-03-01",
+      "column": "service_day"
+    },
+    {
+      "interval": "day",
+      "by": "date",
+      "table": "readings",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "partition": "readings_p20261231",
+      "lower": "2026-12-31",
+      "upper": "2027-01-01",
+      "column": "service_day"
     }
   ],
   "idBounds": [
@@ -633,6 +853,31 @@
       "prefix": "rdg",
       "instant": "2026-03-29T01:30:00.000Z",
       "bound": "rdg_6EKEDJHR00000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2024-01-01T00:00:00.000Z",
+      "bound": "rdg_66C4MFM000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2026-01-01T00:00:00.000Z",
+      "bound": "rdg_6DQDPN8000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2027-01-01T00:00:00.000Z",
+      "bound": "rdg_6HCX2YM000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2028-01-01T00:00:00.000Z",
+      "bound": "rdg_6N2CF80000000"
+    },
+    {
+      "prefix": "rdg",
+      "instant": "2026-12-31T23:59:59.999Z",
+      "bound": "rdg_6HCX2YKZW0000"
     }
   ],
   "lockKeys": [

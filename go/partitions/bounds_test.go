@@ -21,6 +21,8 @@ func parseInterval(t *testing.T, s string) Interval {
 		return Week
 	case "month":
 		return Month
+	case "year":
+		return Year
 	}
 	t.Fatalf("unknown interval %q", s)
 	return 0
@@ -62,8 +64,11 @@ func TestBoundsVector(t *testing.T) {
 		}
 		iv := parseInterval(t, c.Interval)
 		key := ByColumn(c.Column)
-		if c.By == "id" {
+		switch c.By {
+		case "id":
 			key = ByID(c.Prefix)
+		case "date":
+			key = ByDateColumn(c.Column)
 		}
 		start := iv.Start(at)
 		where := conformance.Where(boundsVector, c.Interval+" "+c.By+" "+c.Instant, "partition")
@@ -144,7 +149,7 @@ func idInterval(t *testing.T, iv Interval, prefix, id string) time.Time {
 // milliseconds belong to, and in no other interval's range (contract section 3.2).
 func TestGeneratedIDsSortIntoTheirIntervalsBounds(t *testing.T) {
 	t.Parallel()
-	for _, iv := range []Interval{Day, Week, Month} {
+	for _, iv := range []Interval{Day, Week, Month, Year} {
 		start := iv.Start(time.Date(2026, 12, 15, 12, 0, 0, 0, time.UTC))
 		end := iv.Next(start)
 		key := ByID("rdg")
@@ -205,6 +210,10 @@ func TestParsePartitionName(t *testing.T) {
 	}{
 		{"readings", "readings_p20261101", Month, true},
 		{"readings", "readings_p20261102", Month, false}, // not a month start
+		{"readings", "readings_p20260101", Year, true},
+		{"readings", "readings_p20260102", Year, false}, // not 1 January
+		{"readings", "readings_p20261101", Year, false}, // a month start is not a year start
+		{"readings", "readings_p20240101", Month, true}, // a year start is a month start
 		{"readings", "readings_p20261228", Week, true},
 		{"readings", "readings_p20261229", Week, false}, // a Tuesday
 		{"readings", "readings_2026_11", Month, false},
@@ -217,5 +226,82 @@ func TestParsePartitionName(t *testing.T) {
 		if _, ok := parsePartitionName(c.table, c.iv, c.name); ok != c.ok {
 			t.Errorf("%s as %s of %s: ok %v, want %v", c.name, c.iv, c.table, ok, c.ok)
 		}
+	}
+}
+
+func TestYearIntervalIsTheCalendarYearInUTC(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ at, start, next string }{
+		{"2026-11-14T10:00:00Z", "2026-01-01", "2027-01-01"},
+		{"2026-12-31T23:59:59.999Z", "2026-01-01", "2027-01-01"},
+		{"2027-01-01T00:00:00Z", "2027-01-01", "2028-01-01"},
+		{"2024-02-29T12:00:00Z", "2024-01-01", "2025-01-01"}, // a leap year
+	} {
+		at, _ := time.Parse(time.RFC3339Nano, c.at)
+		start := Year.Start(at)
+		if got := start.Format("2006-01-02"); got != c.start {
+			t.Errorf("%s: year starts %s, want %s", c.at, got, c.start)
+		}
+		if got := Year.Next(start).Format("2006-01-02"); got != c.next {
+			t.Errorf("%s: next year starts %s, want %s", c.at, got, c.next)
+		}
+	}
+	// 2026-12-31 23:00 in UTC-5 is 2027-01-01 04:00 UTC: the UTC year decides
+	at := time.Date(2026, 12, 31, 23, 0, 0, 0, time.FixedZone("x", -5*3600))
+	if got := Year.Start(at); !got.Equal(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("year start %v", got)
+	}
+	if got := Year.span(); got != 366*24*time.Hour {
+		t.Errorf("year span %v", got)
+	}
+	if Year.Code() != "YEAR" || Year.String() != "year" || !Year.valid() {
+		t.Errorf("year names: %s %s %v", Year.Code(), Year, Year.valid())
+	}
+}
+
+func TestIDRangeAcrossAYearBoundary(t *testing.T) {
+	t.Parallel()
+	from := time.Date(2026, 12, 20, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2027, 1, 10, 0, 0, 0, 0, time.UTC)
+	lo, hi := IDRange("rdg", from, to)
+	yearStart := IDBound("rdg", time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC))
+	if lo >= yearStart || yearStart >= hi {
+		t.Fatalf("the window [%s, %s) does not straddle the year start %s", lo, hi, yearStart)
+	}
+	for _, c := range []struct {
+		at time.Time
+		in bool
+	}{
+		{time.Date(2026, 12, 19, 23, 59, 59, 999_000_000, time.UTC), false},
+		{from, true},
+		{time.Date(2026, 12, 31, 23, 59, 59, 999_000_000, time.UTC), true},
+		{time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), true},
+		{to.Add(-time.Millisecond), true},
+		{to, false},
+	} {
+		id := fw.NewIds(&fixedClock{t: c.at}).Prefixed(fw.MustIDPrefix("rdg"))
+		if got := id >= lo && id < hi; got != c.in {
+			t.Errorf("an id of %v: inside [%s, %s) is %v, want %v", c.at, lo, hi, got, c.in)
+		}
+	}
+}
+
+func TestDateBoundsAreDateLiterals(t *testing.T) {
+	t.Parallel()
+	key := ByDateColumn("service_day")
+	at := time.Date(2026, 12, 31, 23, 59, 59, 0, time.UTC)
+	for _, iv := range []Interval{Day, Week, Month, Year} {
+		s := iv.Start(at)
+		if got := key.Bound(s); got != s.Format("2006-01-02") || len(got) != 10 {
+			t.Errorf("%s: lower %q", iv, got)
+		}
+	}
+	// the date is the UTC date, not the local one
+	zone := time.FixedZone("x", -5*3600)
+	if got := key.Bound(time.Date(2026, 11, 1, 22, 0, 0, 0, zone)); got != "2026-11-02" {
+		t.Errorf("bound of 22:00 UTC-5 is %q, want the UTC date 2026-11-02", got)
+	}
+	if key.String() != `ByDateColumn("service_day")` || key.IsID() {
+		t.Errorf("key text %q", key)
 	}
 }

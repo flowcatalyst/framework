@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/flowcatalyst/framework/go/auth"
 	"github.com/flowcatalyst/framework/go/background"
 	"github.com/flowcatalyst/framework/go/config"
 	"github.com/flowcatalyst/framework/go/database"
@@ -25,6 +26,8 @@ type buildConfig struct {
 	dbs    *database.Databases
 	locks  *locks.Locks
 	pushes *push.Pushes
+	// mapping is the application's permission mapping (see WithPermissionMapping).
+	mapping auth.PermissionMapper
 }
 
 // WithPushes gives the module the push module: with push.driver=platform, sync (and sync on boot)
@@ -55,6 +58,7 @@ type Platform struct {
 	log     *slog.Logger
 	cfg     buildConfig
 	pushes  *push.Pushes
+	guard   operatorsOnlyGuard
 
 	targetBase string
 	ready      atomic.Bool
@@ -87,8 +91,13 @@ func Build(ctx context.Context, b *fw.Boot, d *Declared, opts ...BuildOption) (*
 		o(&cfg)
 	}
 	p := &Platform{s: d.s, b: b, ctx: context.WithoutCancel(ctx), log: b.Logger(ModuleID), cfg: cfg, pushes: cfg.pushes, recv: newReceivers(), catalog: &Catalog{}}
+	p.guard = operatorsOnlyGuard{adm: d.adm, mapping: cfg.mapping}
+	guarded := p.guard.problems(rolesOf(d.reg.all()))
 	b.Command("sync", p.syncCommand)
 	if !d.s.enabled.Get(b) {
+		if len(guarded) > 0 {
+			return nil, &fw.StartupError{Problems: guarded}
+		}
 		p.client = disabledClient()
 		p.log.Info("flowcatalyst is disabled (flowcatalyst.enabled=false)")
 		if cfg.pushes != nil && cfg.pushes.UsesPlatform() {
@@ -111,6 +120,7 @@ func Build(ctx context.Context, b *fw.Boot, d *Declared, opts ...BuildOption) (*
 		problems = append(problems, ps...)
 		p.catalog = cat
 	}
+	problems = append(problems, guarded...)
 	if len(problems) > 0 {
 		return nil, &fw.StartupError{Problems: problems}
 	}

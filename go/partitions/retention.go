@@ -12,18 +12,59 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// Step names a step of a pass, as the failure counter and a [PassResult] name it.
+type Step string
+
+// The steps of a pass.
+const (
+	// StepEnsure is creating the partitions ahead.
+	StepEnsure Step = "ensure"
+	// StepRetention is listing, detaching and dropping the due partitions.
+	StepRetention Step = "retention"
+	// StepArchive is writing a due partition to its object store (ArchiveThenDropAfter only).
+	StepArchive Step = "archive"
+)
+
+// stepError says which step an error belongs to; Error and Unwrap are the cause's.
+type stepError struct {
+	step Step
+	err  error
+}
+
+func (e *stepError) Error() string { return e.err.Error() }
+func (e *stepError) Unwrap() error { return e.err }
+
+// retained is what a retention pass did: partitions dropped, partitions archived, and the steps that
+// failed.
+type retained struct {
+	dropped, archived int
+	failed            []Step
+}
+
+func (r *retained) fail(err error) {
+	step := StepRetention
+	if se, ok := errors.AsType[*stepError](err); ok {
+		step = se.step
+	}
+	if !slices.Contains(r.failed, step) {
+		r.failed = append(r.failed, step)
+	}
+}
+
 // retain removes the partitions of the table that are due at now (contract section 5). One
 // partition's failure does not stop the others; nothing is dropped unless every step before the
 // drop succeeded. For ArchiveThenDrop it also finishes partitions an earlier pass detached and
 // did not get to drop (recovery).
-func (p *Partitions) retain(ctx context.Context, tg *target, now time.Time) error {
+func (p *Partitions) retain(ctx context.Context, tg *target, now time.Time) (retained, error) {
+	var out retained
 	if tg.Retention.kind != retDrop && tg.Retention.kind != retArchive {
-		return nil
+		return out, nil
 	}
 	kids, err := tg.children(ctx, tg.db.Pool())
 	if err != nil {
 		p.failures.With(tg.qualified, "retention").Inc()
-		return fmt.Errorf("retention: list partitions: %w", err)
+		out.failed = append(out.failed, StepRetention)
+		return out, fmt.Errorf("retention: list partitions: %w", err)
 	}
 	starts, strays := tg.ours(kids)
 	p.logStrays(tg, strays)
@@ -42,7 +83,8 @@ func (p *Partitions) retain(ctx context.Context, tg *target, now time.Time) erro
 		names, err := tg.detachedTables(ctx)
 		if err != nil {
 			p.failures.With(tg.qualified, "retention").Inc()
-			return fmt.Errorf("retention: list detached tables: %w", err)
+			out.failed = append(out.failed, StepRetention)
+			return out, fmt.Errorf("retention: list detached tables: %w", err)
 		}
 		for _, name := range names {
 			if start, ok := parsePartitionName(tg.rel, tg.Interval, name); ok && tg.due(start, now) {
@@ -56,13 +98,21 @@ func (p *Partitions) retain(ctx context.Context, tg *target, now time.Time) erro
 	for _, d := range due {
 		if ctx.Err() != nil {
 			errs = append(errs, ctx.Err())
+			out.fail(ctx.Err())
 			break
 		}
-		if err := p.remove(ctx, tg, d.name, d.detached); err != nil {
-			errs = append(errs, fmt.Errorf("partition %s: %w", d.name, err))
+		archived, err := p.remove(ctx, tg, d.name, d.detached)
+		if archived {
+			out.archived++
 		}
+		if err != nil {
+			out.fail(err)
+			errs = append(errs, fmt.Errorf("partition %s: %w", d.name, err))
+			continue
+		}
+		out.dropped++
 	}
-	return errors.Join(errs...)
+	return out, errors.Join(errs...)
 }
 
 // detachMark is the table comment the archiving detach sets, in the detach's transaction, on the
@@ -114,15 +164,16 @@ func (p *Partitions) logStrays(tg *target, strays []child) {
 // detach first (a short transaction; from then on no write reaches the table through the parent, so
 // the archive cannot differ from what is dropped), archive the detached table, verify, drop. A failure
 // after the detach leaves the table detached, and the next pass finds it again (recovery); it is never
-// re-attached.
-func (p *Partitions) remove(ctx context.Context, tg *target, name string, detached bool) error {
+// re-attached. It reports whether the partition was archived (and verified), even when the drop then
+// failed; an error carries the failed [Step].
+func (p *Partitions) remove(ctx context.Context, tg *target, name string, detached bool) (archived bool, err error) {
 	if tg.Retention.kind == retArchive {
 		if !detached {
 			if err := p.detach(ctx, tg, name, false); err != nil {
 				p.failures.With(tg.qualified, "retention").Inc()
 				p.log.Error("partition detach failed", slog.String("table", tg.qualified),
 					slog.String("partition", name), slog.String("error", err.Error()))
-				return fmt.Errorf("detach: %w", err)
+				return false, &stepError{StepRetention, fmt.Errorf("detach: %w", err)}
 			}
 			p.log.Info("partition detached for archiving", slog.String("table", tg.qualified), slog.String("partition", name))
 		}
@@ -130,23 +181,24 @@ func (p *Partitions) remove(ctx context.Context, tg *target, name string, detach
 			p.failures.With(tg.qualified, "archive").Inc()
 			p.log.Error("partition archive failed; left detached, not dropped", slog.String("table", tg.qualified),
 				slog.String("partition", name), slog.String("error", err.Error()))
-			return fmt.Errorf("archive: %w", err)
+			return false, &stepError{StepArchive, fmt.Errorf("archive: %w", err)}
 		}
+		archived = true
 		if err := p.dropDetached(ctx, tg, name); err != nil {
 			p.failures.With(tg.qualified, "retention").Inc()
 			p.log.Error("partition drop failed", slog.String("table", tg.qualified),
 				slog.String("partition", name), slog.String("error", err.Error()))
-			return fmt.Errorf("drop: %w", err)
+			return archived, &stepError{StepRetention, fmt.Errorf("drop: %w", err)}
 		}
 	} else if err := p.detach(ctx, tg, name, true); err != nil {
 		p.failures.With(tg.qualified, "retention").Inc()
 		p.log.Error("partition drop failed", slog.String("table", tg.qualified),
 			slog.String("partition", name), slog.String("error", err.Error()))
-		return fmt.Errorf("drop: %w", err)
+		return false, &stepError{StepRetention, fmt.Errorf("drop: %w", err)}
 	}
 	tg.dropped.Inc()
 	p.log.Info("partition dropped", slog.String("table", tg.qualified), slog.String("partition", name))
-	return nil
+	return archived, nil
 }
 
 // detach detaches the partition in one transaction, and drops it in the same transaction when drop

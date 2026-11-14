@@ -234,6 +234,11 @@ func (p *Platform) steps() []step {
 // action). Permissions travel only inside roles; a declared permission no role grants is a
 // warning.
 func (p *Platform) Sync(ctx context.Context, mode SyncMode) (SyncReport, error) {
+	// the same refusal as start-up (Build refuses first; this holds the sync itself to it): a
+	// client-managed role must not carry the permission of an operators-only admin section
+	if problems := p.guard.problems(p.catalogRoles()); len(problems) > 0 {
+		return SyncReport{}, refuse(problems)
+	}
 	if !p.client.Enabled() {
 		return SyncReport{}, ErrDisabled
 	}
@@ -282,6 +287,15 @@ func fromSDK(st step, r *fcsync.CategoryResult) CategoryResult {
 	}
 	res.Outcome = OutcomeSynced
 	return res
+}
+
+// catalogRoles are the validated roles, for the operators-only check.
+func (p *Platform) catalogRoles() []contributedRole {
+	out := make([]contributedRole, 0, len(p.catalog.roles))
+	for _, r := range p.catalog.roles {
+		out = append(out, contributedRole{module: ModuleID, role: r})
+	}
+	return out
 }
 
 func (p *Platform) warnAboutUnusedPermissions() {

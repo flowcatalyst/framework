@@ -301,3 +301,53 @@ func TestAStatusOfAnErrorBuilderIsNotConfusedWithAGoError(t *testing.T) {
 	}
 	_ = http.StatusOK
 }
+
+// OperatorsOnly: after the permission, the Context's tier must be ANCHOR (admin contract section 3a).
+func TestAnOperatorsOnlyOperationNeedsATierOfAnchorAfterItsPermission(t *testing.T) {
+	t.Parallel()
+	opsOnly := httpfw.Get[httpfw.NoBody]("/api/vault").ID("getVault").Tag("items").Permission(read).OperatorsOnly().Build()
+	// operators-only without a permission still needs a context, and the document says both
+	noPerm := httpfw.Get[httpfw.NoBody]("/api/vault-open").ID("getVaultOpen").Tag("items").OperatorsOnly().Build()
+	if !opsOnly.Info().OperatorsOnly || !noPerm.Info().OperatorsOnly || deleteOp.Info().OperatorsOnly {
+		t.Fatal("Info does not say which operations are operators-only")
+	}
+	for _, c := range []struct {
+		name  string
+		tier  string
+		perms []string
+		path  string
+		want  int
+		text  string
+	}{
+		{"an operator with the permission", "ANCHOR", []string{"items:item:read"}, "/api/vault", 204, ""},
+		{"a client with the permission", "CLIENT", []string{"items:item:read"}, "/api/vault", 403, "platform operators"},
+		{"a partner with the permission", "PARTNER", []string{"items:item:read"}, "/api/vault", 403, "platform operators"},
+		{"no tier with the permission", "", []string{"items:item:read"}, "/api/vault", 403, "platform operators"},
+		{"an operator without the permission", "ANCHOR", nil, "/api/vault", 403, "items:item:read"},
+		{"a client without the permission", "CLIENT", nil, "/api/vault", 403, "items:item:read"},
+		{"an operator on an operation with no permission", "ANCHOR", nil, "/api/vault-open", 204, ""},
+		{"a client on an operation with no permission", "CLIENT", nil, "/api/vault-open", 403, "platform operators"},
+	} {
+		rt := httpfw.NewRoutes("vault")
+		rt.Bind(httpfw.Handle(opsOnly, func(context.Context, fw.Context, httpfw.In[httpfw.NoBody]) (httpfw.NoBody, error) {
+			return httpfw.NoBody{}, nil
+		}))
+		rt.Bind(httpfw.Handle(noPerm, func(context.Context, fw.Context, httpfw.In[httpfw.NoBody]) (httpfw.NoBody, error) {
+			return httpfw.NoBody{}, nil
+		}))
+		d := compile(t, []httpfw.Option{
+			httpfw.WithResolver(resolverFunc(func(*http.Request) (fw.Context, error) {
+				cx, _ := fixedContext(c.perms...)(nil)
+				if c.tier != "" {
+					cx = cx.WithTier(c.tier)
+				}
+				return cx, nil
+			})),
+			httpfw.WithDeclared(opsOnly, noPerm),
+		}, rt)
+		r := do(d, "GET", c.path, "")
+		if r.status != c.want || (c.text != "" && !strings.Contains(r.body, c.text)) {
+			t.Errorf("%s: %d %s, want %d containing %q", c.name, r.status, r.body, c.want, c.text)
+		}
+	}
+}

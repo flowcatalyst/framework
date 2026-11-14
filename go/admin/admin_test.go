@@ -507,3 +507,91 @@ func TestConfigWithoutValuesShowsStateAndSourceOnly(t *testing.T) {
 		t.Fatalf("unexpected: %s", a.body)
 	}
 }
+
+// ---- operators-only sections (admin contract section 3a) ----
+
+func opsOp(id, pattern, perm string, marked bool) httpfw.Described {
+	b := httpfw.Get[admin.Navigation](pattern).ID(id).Tag("admin").Permission(fw.MustPermission(perm))
+	if marked {
+		b = b.OperatorsOnly()
+	}
+	return b.Build()
+}
+
+func opsSections() []admin.Section {
+	return []admin.Section{
+		admin.NewSection("things", "Things", "/admin/things", "acme:admin:things:view"),
+		admin.NewSection("vault", "Vault", "/admin/vault", "acme:admin:vault:view").OperatorsOnly().
+			Serving(opsOp("getVault", "/api/admin/vault", "acme:admin:vault:view", true), opsOp("putVault", "/api/admin/vault/x", "acme:admin:vault:manage", true)),
+	}
+}
+
+func TestVisibleToHidesAnOperatorsOnlySectionFromEveryoneButAnOperator(t *testing.T) {
+	t.Parallel()
+	all := fw.MustPermission("acme:admin:*:*")
+	for _, c := range []struct {
+		tier string
+		want []string
+	}{
+		{"ANCHOR", []string{"things", "vault"}}, {"PARTNER", []string{"things"}}, {"CLIENT", []string{"things"}}, {"", []string{"things"}}, {"anchor", []string{"things"}},
+	} {
+		cx := fw.ContextFor(fw.MustClientID("demo")).WithPermissions(all)
+		if c.tier != "" {
+			cx = cx.WithTier(c.tier)
+		}
+		var got []string
+		for _, s := range admin.VisibleTo(opsSections(), cx) {
+			got = append(got, s.ID)
+		}
+		if !slices.Equal(got, c.want) {
+			t.Errorf("tier %q sees %v, want %v", c.tier, got, c.want)
+		}
+	}
+	// without the permission an operator does not see it either
+	cx := fw.ContextFor(fw.MustClientID("demo")).WithPermissions(fw.MustPermission("acme:admin:things:view")).WithTier("ANCHOR")
+	if got := admin.VisibleTo(opsSections(), cx); len(got) != 1 || got[0].ID != "things" {
+		t.Errorf("an operator without the permission sees %v", got)
+	}
+}
+
+func TestOperatorsOnlyConflictsFollowTheWildcardRule(t *testing.T) {
+	t.Parallel()
+	sections := opsSections()
+	var perms []string
+	for _, p := range admin.OperatorsOnlyPermissions(sections) {
+		perms = append(perms, p.String())
+	}
+	if !slices.Equal(perms, []string{"acme:admin:vault:manage", "acme:admin:vault:view"}) {
+		t.Fatalf("operators-only permissions %v: the section's and its operations', without the other section's", perms)
+	}
+	conflicts := func(held ...string) []string {
+		var out []string
+		for _, p := range admin.OperatorsOnlyConflicts(sections, held) {
+			out = append(out, p.String())
+		}
+		return out
+	}
+	for _, c := range []struct {
+		name string
+		held []string
+		want []string
+	}{
+		{"nothing", nil, nil},
+		{"another section's permission", []string{"acme:admin:things:view"}, nil},
+		{"the exact view permission", []string{"acme:admin:vault:view"}, []string{"acme:admin:vault:view"}},
+		{"the exact manage permission", []string{"acme:admin:vault:manage"}, []string{"acme:admin:vault:manage"}},
+		{"the whole admin wildcard", []string{"acme:admin:*:*"}, []string{"acme:admin:vault:manage", "acme:admin:vault:view"}},
+		{"a section wildcard", []string{"acme:admin:vault:*"}, []string{"acme:admin:vault:manage", "acme:admin:vault:view"}},
+		{"an action wildcard of another section", []string{"acme:admin:things:*"}, nil},
+		{"a wildcard of the wrong length", []string{"acme:admin:*"}, nil},
+		{"another application", []string{"billing:admin:*:*"}, nil},
+		{"not a permission", []string{"", "acme::vault:view"}, nil},
+	} {
+		if got := conflicts(c.held...); !slices.Equal(got, c.want) {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
+		}
+	}
+	if got := admin.OperatorsOnlyConflicts([]admin.Section{admin.NewSection("things", "Things", "/admin/things", "acme:admin:things:view")}, []string{"acme:admin:*:*"}); len(got) != 0 {
+		t.Errorf("no operators-only section, no conflict: %v", got)
+	}
+}

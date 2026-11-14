@@ -28,6 +28,7 @@ slice**, inside that application, behind that application's sign-in, in its own 
 | application config | the application's config and secret *status* (never a secret value; built, section 10) | the application itself |
 | scoped events and dispatch jobs | the application's own events and delivery attempts (built, section 12) | the platform (the scoped reads of platform change F20) |
 | health | readiness and the checks | the application itself (`/api/admin/about`, part of this skeleton) |
+| partitions | the partitioned tables, their partitions, retention and archives; run a pass, create partitions for a range (**operators only**, section 3a, section 15; Go, Java to follow) | the application itself |
 
 M4d builds **none** of the data sections. It builds what every one of them needs: the registry in
 which sections declare themselves, the permission gate, the two data-free operations, and the
@@ -51,6 +52,7 @@ A **section** is a value:
 | `permission` | the permission that shows the section and is required by **every** operation of the section (section 3); four `:`-separated segments |
 | `icon` | optional Lucide icon name for the navigation |
 | `description` | optional one sentence |
+| `operatorsOnly` | optional, default false: the section is for platform operators only (section 3a; server side only, never on the wire) |
 | `operations` | the typed operations the section serves (server side only, never on the wire) |
 
 Registration is in `register` (like `OpenApi.declare`, so the `openapi` command sees it without
@@ -90,6 +92,7 @@ is the shape the platform's definition sync accepts (flowcatalyst.md section 2).
 | `{app}:admin:{section}:view` | reading a section (M4e: `event-types`, `roles`, `config`, `users`, `activity`) |
 | `{app}:admin:users:invite`, `:resend`, `:revoke` | inviting a user, sending an invitation again, revoking one (section 12) |
 | `{app}:admin:{section}:manage` | changing a section |
+| `{app}:admin:partitions:view`, `:manage` | the partitions section (section 15): reading it; running a pass and creating partitions. **Operators only** (section 3a) |
 | `{app}:admin:platform-config:view`, `:manage`, `:reveal`, `:all-clients` | the platform-config section: listing, writing, reading a secret's plaintext, and naming any client rather than only the user's own (section 14) |
 
 One suggested role, `{app}:admin`, grants `{app}:admin:*:*`. The application maps its platform role
@@ -116,6 +119,38 @@ platform only through roles that grant them.
 3. **The UI.** The shell shows and hides from the session's `permissions` and the route guard
    refuses a route whose `meta.permission` the session lacks (sessions contract 4.5, rule 5). This
    is courtesy: layers 1 and 2 decide.
+
+## 3a. Operators-only sections (2026-11-14, owner ruling)
+
+Some data is not one client's: a database partition holds every client's rows. A section marked **operators
+only** (Go `Section.OperatorsOnly()`, `Section.ForOperators`) may be used only by a **platform operator**, in
+addition to its permission. The permission alone is not enough, and neither is any wildcard.
+
+1. **The mark.** A general facility of the registry: any section may carry it. The framework sets it on the
+   `partitions` section (section 15). A section's operations stay under the section's permission rules (section 2).
+2. **The tier gate.** Every operation of an operators-only section requires, after its permission, that the
+   principal's **tier is exactly `ANCHOR`** (the `tier` claim of the principal's token: `Context.tier`, Go
+   `fw.Context.Tier()` and `IsPlatformOperator()`; the auth module puts it there). A `PARTNER`, a `CLIENT` and a
+   principal with no tier are refused: `403 FORBIDDEN`, with the message "this is for platform operators only".
+   The check sits in the operation gate itself (Go: `httpfw` `Builder.OperatorsOnly()`, documented as
+   `x-fw-operators-only: true`, checked by `Handle` right after the permission), so the order is: 401, permission
+   (403), operator (403), then the request is read. To keep any operation from missing it, **a section marked
+   operators-only whose operation is not declared operators-only is a start-up problem** (one of the section rules
+   of section 2).
+3. **The navigation** (layer 2 of section 3) does not list an operators-only section for a caller who is not a
+   platform operator, whatever permissions it holds. (Vector `conformance/admin/partitions.json`.)
+4. **The start-up refusal.** A role marked **client-managed** (flowcatalyst contract, section 2: a client's own
+   administrators may assign it) must not carry the permission of an operators-only section, which would put every
+   client's data in reach of one client's administrator. Start-up fails, naming the role and the permission, when
+   such a role holds **any permission of such a section** (the section's own or any of its operations'), by
+   the role's **definitions**, or by the application's **permission mapping** (the mapping may use wildcards:
+   `{app}:admin:*:*` is checked by the platform's wildcard rule of section 3, and so is `{app}:admin:partitions:*`).
+   The definition sync refuses the same, before it sends anything. A role that is not client-managed may hold them
+   (the suggested `admin` role does). In Go the check is made by the FlowCatalyst module: `AdminDefinitions(adm)`
+   gives it the admin registry and `flowcatalyst.WithPermissionMapping(mapper)` the same permission mapping the auth
+   module has; the mapping is run for a principal that holds only the role (so a mapping that depends on anything
+   else about the principal cannot be checked). Verified 2026-11-14 before the rule existed: a client-managed role
+   granting an admin permission **was accepted** at start-up and by the sync.
 
 ## 4. The skeleton's operations
 
@@ -223,6 +258,10 @@ desktop and 390 px, and an orders end-to-end run against the real Java demo for 
 sections (id, title, path, permission, icon) and, per case, the caller's permission set and the
 expected response (`200` with the section ids, or `403` with the error code). Matching rules are
 the wildcard rule of core section 3. Go compares.
+
+`conformance/admin/partitions.json` (2026-11-14, Go) is the vector of the partitions section: the gate for every
+tier and permission set (including whether the navigation lists the section), the durations on the wire, the
+projection of a status to the documents, the refusals.
 
 ## 8a. As built (2026-10-16)
 
@@ -489,3 +528,11 @@ and `revealAdminPlatformConfig`; permissions `view`, `manage`, `reveal` (reveal 
 `all-clients` (added 2026-10-25: without it a user acts for the global values and their own client only, else `403
 CLIENT_FORBIDDEN`). The wire, the rules and what was built are in [platform-config.md](platform-config.md) (sections 4
 and 8). The shared page (a seventh standard page) is section 5 of that contract.
+
+## 15. The partitions section (2026-11-14, Go; Java to follow)
+
+Section `partitions`, path `/admin/partitions`, permission `{app}:admin:partitions:view`, **operators only**
+(section 3a); five operations under `{app}:admin:partitions:view` (the three reads) and `{app}:admin:partitions:manage`
+(run a pass, create the partitions of a range). It is headless (no page in `@flowcatalyst/ui`). The operations, the wire
+and the rules are in the [partitions contract](partitions.md), sections 10 to 13; the Go package is
+`partitions/partitionsadmin`. `AdminDefinitions` lists its two permissions like any section's.

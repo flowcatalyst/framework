@@ -78,7 +78,10 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
   flag of an SDK-sourced role it updates to what was sent, so a role marked client-managed on the
   platform and not in code loses the flag at the next sync (platform
   `internal/platform/sdksync/api.go`, `internal/platform/role/operations/sync.go`). Roles are not client-managed unless
-  marked (the admin module's suggested role `admin` is not).
+  marked (the admin module's suggested role `admin` is not). A client-managed role must not carry the
+  permission of an **operators-only** admin section (admin contract section 3a, rule 4): start-up and the
+  sync refuse it, naming the role and the permission, by the role's definition or the application's
+  permission mapping (Go `WithPermissionMapping`; wildcards match by the platform's rule).
 - **Docs sync:** the platform has `POST /api/applications/{appCode}/docs/sync` but the Java SDK
   has no docs category. Platform/SDK work: add it to the SDK; until then `docs(...)` definitions
   are accepted and skipped with a warning.

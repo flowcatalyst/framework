@@ -1,4 +1,4 @@
-<!-- types: Table, Key, Interval, Retention, Partitions, Declared, Option -->
+<!-- types: Table, Key, Interval, Retention, Partitions, Declared, Option, TableStatus, PartitionStatus, PassResult, EnsureResult, ArchiveRecord, Step, Admin -->
 # Go: partitioned tables
 
 Package `partitions` implements the [partitions contract](../../contracts/partitions.md): range-partitioned
@@ -27,6 +27,19 @@ Do not partition:
 - **`ByColumn("recorded_at")`** partitions on a `timestamptz` column. PostgreSQL then requires every unique
   constraint, the primary key included, to contain that column: the primary key becomes `(id, recorded_at)`
   and `id` alone is no longer unique in the database.
+- **`ByDateColumn("service_day")`** is the same on a `date` column: a service day, a business date. The bounds are
+  date literals (every interval starts at UTC midnight, so they are exact), and you store the date itself rather
+  than midnight UTC in a timestamp. A `date` column needs `ByDateColumn` and a `timestamptz` one `ByColumn`;
+  start-up refuses the other pairing and a `timestamp` without time zone.
+
+## Choosing the interval
+
+`Day`, `Week` (ISO, Monday to Monday), `Month` and `Year` (the calendar year, all in UTC). Pick the interval so
+that a table has tens, not thousands, of partitions: daily for a high-volume table kept weeks, monthly for most.
+**`Year` is for long-retention, low-volume tables**, such as one row per vehicle trip kept for seven years:
+`Retention: partitions.DropAfter(7 * 366 * 24 * time.Hour)` is then eight partitions. The retention is at least
+one interval, so for `Year` at least 366 days; a partition goes only when its whole year is past the cutoff, so
+the oldest data on disk can be nearly a year older than the retention.
 
 ## The migration
 
@@ -64,7 +77,7 @@ in the migration: the module creates them, including the first, before the appli
 ## Declaring and building
 
 ```go
-pd := partitions.Declare(app) // in main: contributes the migration of fw_partition_archives
+pd := partitions.Declare(app) // in main: contributes the migrations of fw_partition_archives and fw_partition_passes
 ```
 
 ```go
@@ -91,7 +104,8 @@ ps, err := partitions.Build(ctx, b, pd, dbs,
 
 Tables are code, not configuration: there is no `partitions` section. A table in a database instance other
 than the default one says so with `Database: "analytics"`; migrations run on the default instance only, so
-for that instance create `fw_partition_archives` yourself if it archives.
+for that instance create `fw_partition_archives` yourself if it archives, and `fw_partition_passes` (the last pass
+of its tables is not recorded without it; start-up warns once).
 
 `Build` checks the declarations and the tables, runs the first ensure pass and registers the loop
 `partitions` (every hour by default, `partitions.Every(d)` changes it) and a critical health check
@@ -151,11 +165,58 @@ create tables. `fw_partitions_ahead{table}` is how many partitions beyond the cu
 Rows older than the window the loop keeps need their partitions first:
 
 ```go
-n, err := ps.Ensure(ctx, "readings", from, to) // creates the partitions covering [from, to]; at most 400
+res, err := ps.Ensure(ctx, "readings", from, to) // creates the partitions covering [from, to]; at most 400
+// res.Created: how many it created; res.AlreadyDue: how many of the range retention removes at the next pass
 ```
 
 Retention removes a backfilled partition at the next pass if it is older than the retention, so import within
-it, or declare a longer one.
+it, or declare a longer one; `res.AlreadyDue` says how many partitions of the range are already past it, so warn
+before relying on them. The refusals are typed (`partitions.ErrRangeInvalid`, `ErrRangeTooLarge`,
+`ErrTableNotDeclared`, `ErrDetachedLeftover`; `errors.Is`).
+
+## Status, and the operator actions
+
+`ps.Status(ctx)` and `ps.TableStatus(ctx, "readings")` read the state of the tables from the catalog (a fixed
+number of queries per table, never a row count): the declaration, `Healthy` (the health check's own decision), the
+`LastPass` (recorded in the database, so any replica sees what the loop's replica did), every partition with its
+`Position`, size, estimated rows, `RemovalDue` (when retention removes it) and `Archived`, the detached tables a
+dead pass left and the strays. `ps.Archives(ctx, "telemetry", after, limit)` lists the archived partitions, newest
+first, each with the key of its first object in the store.
+
+Two actions are for an operator, with the acting principal's `fw.Context` for the record:
+`ps.RunPass(ctx, by, "")` runs the loop's pass now (for one table, or every table with `""`) and returns a
+`PassResult` per table with the steps that failed; `ps.EnsureAs(ctx, by, "readings", from, to)` is `Ensure` for an
+operator. A manual pass never overlaps the loop's: while one runs, here or on another replica, it is refused with
+`partitions.ErrPassRunning`, never queued. Each action logs `partitions: manual pass` or `partitions: manual
+ensure` at INFO with the principal's id, the table, the range and the outcome; the framework has no audit store for
+an operator's action, so that line is the record. Not provided, on purpose: dropping or detaching a partition by
+hand, changing a retention (it is code), restoring an archive.
+
+## The admin section (operators only)
+
+Package `partitions/partitionsadmin` puts all of this behind the application admin, headless: five typed
+operations (the tables, one table, its archives, run a pass, ensure a range), the permissions
+`{app}:admin:partitions:view` and `:manage` (`partitionsadmin.View(app)`, `Manage(app)`, so a server-rendered
+page gates on the same permission), and a navigation entry. A partition holds every client's rows, so the section is
+**operators-only**: besides the permission the caller must be a platform operator (tier `ANCHOR`); a PARTNER, a
+CLIENT and a caller with no tier get `403 FORBIDDEN` and the navigation does not show the section
+([admin](admin.md), operators-only sections).
+
+```go
+pa := partitionsadmin.Declare(adm) // at declaration time, after admin.Declare
+```
+
+```go
+// in build, after partitions.Build
+routes, err := pa.Build(ps)
+srv, err := httpfw.NewServer(b, web, []*httpfw.Routes{skeleton, routes}, ...)
+```
+
+Declare the **operators' role**, which holds these permissions, as a role that is **not** client-managed (never
+`WithClientManaged()`): client-managed roles are the ones a client's own administrators may assign. With
+`fc.AdminDefinitions(adm)` and `flowcatalyst.WithPermissionMapping(mapper)` start-up refuses a client-managed role
+that holds the permissions, directly or through `orders:admin:*:*` in the mapping, naming the role and the
+permission. The suggested role `admin` that `AdminDefinitions` adds (not client-managed) holds them.
 
 ## Unique keys
 

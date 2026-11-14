@@ -1,0 +1,560 @@
+{
+  "description": "The partitions section of the application admin (partitions contract section 11, admin contract section 3a), written by hand for the Go build; the Java framework follows from it. Setup: application 'acme' with the admin skeleton and the partitions section (id 'partitions', path /admin/partitions, permission acme:admin:partitions:view, operators only). 'gate': every operation of the section needs its permission (the GET operations acme:admin:partitions:view, the two POST operations acme:admin:partitions:manage; the wildcard rule of core section 3 applies) AND a caller whose tier is exactly ANCHOR; a PARTNER, a CLIENT and a caller with no tier get 403 FORBIDDEN with a message that says the operation is for platform operators, whatever permissions they hold; a caller without the permission gets 403 FORBIDDEN; 'navigation' says whether GET /api/admin/navigation lists the section for that caller (it also needs acme:admin:console:view, which every case holds). A case's 'view' and 'manage' give whether a caller may use the operations of that permission (true: not refused by the gate; false: 403 FORBIDDEN). 'durations': a declared duration on the wire is ISO-8601 as java.time.Duration.toString writes it. 'projection': a table's status (neutral input: instants RFC 3339, durations in seconds, a null is absent) and the two documents the section writes from it, 'summary' (an item of GET /api/admin/partitions, 'tables') and 'table' (GET /api/admin/partitions/{table}); an absent optional field is omitted, not null; 'summary.partitionCount', 'bytes' and 'rows' are the table's totals, 'oldestFrom' is the first partition's from (partitions are listed oldest first), 'nextRemovalDue' the earliest removalDue of its partitions. 'refusals': requests of an operator holding both permissions against an application whose declared tables are 'readings' (monthly, ahead 2, id-keyed) and 'samples' (weekly), answered with the status and error code given; 'table' in a path is a table as declared or schema-qualified. Documents are compared as parsed JSON.",
+  "howToRun": "gate: for every case and every operation, send the request with the case's tier and permissions and compare allowed or refused. durations: format each. projection: map the input to the documents and compare. refusals: send each request as the operator and compare the status and the error code.",
+  "application": "acme",
+  "operations": [
+    {
+      "id": "listAdminPartitions",
+      "method": "GET",
+      "path": "/api/admin/partitions",
+      "permission": "view"
+    },
+    {
+      "id": "getAdminPartitionTable",
+      "method": "GET",
+      "path": "/api/admin/partitions/{table}",
+      "permission": "view"
+    },
+    {
+      "id": "listAdminPartitionArchives",
+      "method": "GET",
+      "path": "/api/admin/partitions/{table}/archives",
+      "permission": "view"
+    },
+    {
+      "id": "runAdminPartitionPass",
+      "method": "POST",
+      "path": "/api/admin/partitions/passes",
+      "permission": "manage"
+    },
+    {
+      "id": "ensureAdminPartitions",
+      "method": "POST",
+      "path": "/api/admin/partitions/{table}/ensure",
+      "permission": "manage"
+    }
+  ],
+  "gate": [
+    {
+      "name": "an operator with both permissions",
+      "tier": "ANCHOR",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:view",
+        "acme:admin:partitions:manage"
+      ],
+      "view": true,
+      "manage": true,
+      "navigation": true
+    },
+    {
+      "name": "an operator with view only",
+      "tier": "ANCHOR",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:view"
+      ],
+      "view": true,
+      "manage": false,
+      "navigation": true
+    },
+    {
+      "name": "an operator with manage only",
+      "tier": "ANCHOR",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:manage"
+      ],
+      "view": false,
+      "manage": true,
+      "navigation": false
+    },
+    {
+      "name": "an operator with the admin wildcard",
+      "tier": "ANCHOR",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:*:*"
+      ],
+      "view": true,
+      "manage": true,
+      "navigation": true
+    },
+    {
+      "name": "an operator with a section wildcard",
+      "tier": "ANCHOR",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:*"
+      ],
+      "view": true,
+      "manage": true,
+      "navigation": true
+    },
+    {
+      "name": "an operator without the section's permissions",
+      "tier": "ANCHOR",
+      "permissions": [
+        "acme:admin:console:view"
+      ],
+      "view": false,
+      "manage": false,
+      "navigation": false
+    },
+    {
+      "name": "an operator with another section's permission",
+      "tier": "ANCHOR",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:config:view"
+      ],
+      "view": false,
+      "manage": false,
+      "navigation": false
+    },
+    {
+      "name": "a client user with every permission",
+      "tier": "CLIENT",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:view",
+        "acme:admin:partitions:manage"
+      ],
+      "view": false,
+      "manage": false,
+      "navigation": false
+    },
+    {
+      "name": "a client user with the admin wildcard",
+      "tier": "CLIENT",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:*:*"
+      ],
+      "view": false,
+      "manage": false,
+      "navigation": false
+    },
+    {
+      "name": "a partner with every permission",
+      "tier": "PARTNER",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:view",
+        "acme:admin:partitions:manage"
+      ],
+      "view": false,
+      "manage": false,
+      "navigation": false
+    },
+    {
+      "name": "a caller with no tier and every permission",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:view",
+        "acme:admin:partitions:manage"
+      ],
+      "view": false,
+      "manage": false,
+      "navigation": false
+    },
+    {
+      "name": "a tier that is not spelt ANCHOR",
+      "tier": "anchor",
+      "permissions": [
+        "acme:admin:console:view",
+        "acme:admin:partitions:view",
+        "acme:admin:partitions:manage"
+      ],
+      "view": false,
+      "manage": false,
+      "navigation": false
+    }
+  ],
+  "durations": [
+    {
+      "seconds": 0,
+      "iso": "PT0S"
+    },
+    {
+      "seconds": 30,
+      "iso": "PT30S"
+    },
+    {
+      "seconds": 3600,
+      "iso": "PT1H"
+    },
+    {
+      "seconds": 5400,
+      "iso": "PT1H30M"
+    },
+    {
+      "seconds": 86400,
+      "iso": "PT24H"
+    },
+    {
+      "seconds": 7776000,
+      "iso": "PT2160H"
+    },
+    {
+      "seconds": 31622400,
+      "iso": "PT8784H"
+    },
+    {
+      "seconds": 1.5,
+      "iso": "PT1.5S"
+    }
+  ],
+  "projection": [
+    {
+      "name": "an archiving table on the default instance, with a last pass, an archived partition and an unanalysed one",
+      "input": {
+        "name": "public.readings",
+        "database": null,
+        "key": "ByID(\"rdg\") on id",
+        "interval": "MONTH",
+        "ahead": 2,
+        "retention": {
+          "kind": "ARCHIVE_THEN_DROP",
+          "afterSeconds": 7776000,
+          "store": "archive"
+        },
+        "healthy": true,
+        "lastPass": {
+          "endedAt": "2026-11-14T09:00:00Z",
+          "ensure": "OK",
+          "retention": "OK",
+          "archive": "OK",
+          "created": 1,
+          "dropped": 1,
+          "archived": 1
+        },
+        "partitions": [
+          {
+            "name": "readings_p20260901",
+            "from": "2026-09-01T00:00:00Z",
+            "to": "2026-10-01T00:00:00Z",
+            "position": "PAST",
+            "bytes": 8192,
+            "rows": 0,
+            "removalDue": "2027-01-01T00:00:00Z",
+            "archived": {
+              "objects": 1,
+              "rows": 7,
+              "bytes": 300,
+              "archivedAt": "2026-11-14T09:00:00Z"
+            }
+          },
+          {
+            "name": "readings_p20261101",
+            "from": "2026-11-01T00:00:00Z",
+            "to": "2026-12-01T00:00:00Z",
+            "position": "CURRENT",
+            "bytes": 16384,
+            "rows": 12,
+            "removalDue": "2027-03-01T00:00:00Z",
+            "archived": null
+          },
+          {
+            "name": "readings_p20261201",
+            "from": "2026-12-01T00:00:00Z",
+            "to": "2027-01-01T00:00:00Z",
+            "position": "FUTURE",
+            "bytes": 8192,
+            "rows": null,
+            "removalDue": "2027-04-01T00:00:00Z",
+            "archived": null
+          }
+        ],
+        "detached": [
+          "public.readings_p20260801"
+        ],
+        "strays": [],
+        "bytes": 32768,
+        "rows": 12
+      },
+      "expect": {
+        "summary": {
+          "name": "public.readings",
+          "key": "ByID(\"rdg\") on id",
+          "interval": "MONTH",
+          "ahead": 2,
+          "retention": {
+            "kind": "ARCHIVE_THEN_DROP",
+            "after": "PT2160H",
+            "store": "archive"
+          },
+          "healthy": true,
+          "lastPass": {
+            "endedAt": "2026-11-14T09:00:00Z",
+            "ensure": "OK",
+            "retention": "OK",
+            "archive": "OK",
+            "created": 1,
+            "dropped": 1,
+            "archived": 1
+          },
+          "partitionCount": 3,
+          "bytes": 32768,
+          "rows": 12,
+          "oldestFrom": "2026-09-01T00:00:00Z",
+          "nextRemovalDue": "2027-01-01T00:00:00Z"
+        },
+        "table": {
+          "name": "public.readings",
+          "key": "ByID(\"rdg\") on id",
+          "interval": "MONTH",
+          "ahead": 2,
+          "retention": {
+            "kind": "ARCHIVE_THEN_DROP",
+            "after": "PT2160H",
+            "store": "archive"
+          },
+          "healthy": true,
+          "lastPass": {
+            "endedAt": "2026-11-14T09:00:00Z",
+            "ensure": "OK",
+            "retention": "OK",
+            "archive": "OK",
+            "created": 1,
+            "dropped": 1,
+            "archived": 1
+          },
+          "partitions": [
+            {
+              "name": "readings_p20260901",
+              "from": "2026-09-01T00:00:00Z",
+              "to": "2026-10-01T00:00:00Z",
+              "position": "PAST",
+              "bytes": 8192,
+              "rows": 0,
+              "removalDue": "2027-01-01T00:00:00Z",
+              "archived": {
+                "objects": 1,
+                "rows": 7,
+                "bytes": 300,
+                "archivedAt": "2026-11-14T09:00:00Z"
+              }
+            },
+            {
+              "name": "readings_p20261101",
+              "from": "2026-11-01T00:00:00Z",
+              "to": "2026-12-01T00:00:00Z",
+              "position": "CURRENT",
+              "bytes": 16384,
+              "rows": 12,
+              "removalDue": "2027-03-01T00:00:00Z"
+            },
+            {
+              "name": "readings_p20261201",
+              "from": "2026-12-01T00:00:00Z",
+              "to": "2027-01-01T00:00:00Z",
+              "position": "FUTURE",
+              "bytes": 8192,
+              "removalDue": "2027-04-01T00:00:00Z"
+            }
+          ],
+          "detached": [
+            "public.readings_p20260801"
+          ],
+          "strays": [],
+          "bytes": 32768,
+          "rows": 12
+        }
+      }
+    },
+    {
+      "name": "a table that keeps everything, on another instance, with a stray and no last pass",
+      "input": {
+        "name": "telemetry.trail",
+        "database": "other",
+        "key": "ByDateColumn(\"service_day\")",
+        "interval": "YEAR",
+        "ahead": 1,
+        "retention": {
+          "kind": "KEEP"
+        },
+        "healthy": false,
+        "lastPass": null,
+        "partitions": [
+          {
+            "name": "trail_p20260101",
+            "from": "2026-01-01T00:00:00Z",
+            "to": "2027-01-01T00:00:00Z",
+            "position": "CURRENT",
+            "bytes": 8192,
+            "rows": null,
+            "removalDue": null,
+            "archived": null
+          }
+        ],
+        "detached": [],
+        "strays": [
+          "telemetry.trail_legacy"
+        ],
+        "bytes": 8192,
+        "rows": 0
+      },
+      "expect": {
+        "summary": {
+          "name": "telemetry.trail",
+          "database": "other",
+          "key": "ByDateColumn(\"service_day\")",
+          "interval": "YEAR",
+          "ahead": 1,
+          "retention": {
+            "kind": "KEEP"
+          },
+          "healthy": false,
+          "partitionCount": 1,
+          "bytes": 8192,
+          "rows": 0,
+          "oldestFrom": "2026-01-01T00:00:00Z"
+        },
+        "table": {
+          "name": "telemetry.trail",
+          "database": "other",
+          "key": "ByDateColumn(\"service_day\")",
+          "interval": "YEAR",
+          "ahead": 1,
+          "retention": {
+            "kind": "KEEP"
+          },
+          "healthy": false,
+          "partitions": [
+            {
+              "name": "trail_p20260101",
+              "from": "2026-01-01T00:00:00Z",
+              "to": "2027-01-01T00:00:00Z",
+              "position": "CURRENT",
+              "bytes": 8192
+            }
+          ],
+          "detached": [],
+          "strays": [
+            "telemetry.trail_legacy"
+          ],
+          "bytes": 8192,
+          "rows": 0
+        }
+      }
+    }
+  ],
+  "refusals": [
+    {
+      "name": "an unknown table",
+      "method": "GET",
+      "path": "/api/admin/partitions/nope",
+      "expect": {
+        "status": 404,
+        "error": "PARTITION_TABLE_NOT_FOUND"
+      }
+    },
+    {
+      "name": "an unknown table's archives",
+      "method": "GET",
+      "path": "/api/admin/partitions/nope/archives",
+      "expect": {
+        "status": 404,
+        "error": "PARTITION_TABLE_NOT_FOUND"
+      }
+    },
+    {
+      "name": "a pass for an unknown table",
+      "method": "POST",
+      "path": "/api/admin/partitions/passes",
+      "body": {
+        "table": "nope"
+      },
+      "expect": {
+        "status": 404,
+        "error": "PARTITION_TABLE_NOT_FOUND"
+      }
+    },
+    {
+      "name": "an ensure for an unknown table",
+      "method": "POST",
+      "path": "/api/admin/partitions/nope/ensure",
+      "body": {
+        "from": "2026-05-10T00:00:00Z",
+        "to": "2026-06-01T00:00:00Z"
+      },
+      "expect": {
+        "status": 404,
+        "error": "PARTITION_TABLE_NOT_FOUND"
+      }
+    },
+    {
+      "name": "a range that ends before it starts",
+      "method": "POST",
+      "path": "/api/admin/partitions/readings/ensure",
+      "body": {
+        "from": "2026-06-10T00:00:00Z",
+        "to": "2026-06-01T00:00:00Z"
+      },
+      "expect": {
+        "status": 400,
+        "error": "PARTITION_RANGE_INVALID"
+      }
+    },
+    {
+      "name": "a range before 1970",
+      "method": "POST",
+      "path": "/api/admin/partitions/readings/ensure",
+      "body": {
+        "from": "1969-06-10T00:00:00Z",
+        "to": "2026-06-01T00:00:00Z"
+      },
+      "expect": {
+        "status": 400,
+        "error": "PARTITION_RANGE_INVALID"
+      }
+    },
+    {
+      "name": "a range of more than 400 partitions",
+      "method": "POST",
+      "path": "/api/admin/partitions/readings/ensure",
+      "body": {
+        "from": "1990-01-01T00:00:00Z",
+        "to": "2026-01-01T00:00:00Z"
+      },
+      "expect": {
+        "status": 400,
+        "error": "PARTITION_RANGE_TOO_LARGE"
+      }
+    },
+    {
+      "name": "a range without its end",
+      "method": "POST",
+      "path": "/api/admin/partitions/readings/ensure",
+      "body": {
+        "from": "2026-06-10T00:00:00Z"
+      },
+      "expect": {
+        "status": 400,
+        "error": "VALIDATION"
+      }
+    },
+    {
+      "name": "a range that is the same table schema-qualified",
+      "method": "POST",
+      "path": "/api/admin/partitions/public.readings/ensure",
+      "body": {
+        "from": "2026-12-01T00:00:00Z",
+        "to": "2026-12-20T00:00:00Z"
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "name": "a pass for every table",
+      "method": "POST",
+      "path": "/api/admin/partitions/passes",
+      "body": {},
+      "expect": {
+        "status": 200
+      }
+    }
+  ]
+}

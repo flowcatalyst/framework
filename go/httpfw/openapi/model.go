@@ -65,6 +65,7 @@ type Operation struct {
 	Status          int
 	RequiresContext bool
 	Permission      string
+	OperatorsOnly   bool // the operation is for platform operators (ANCHOR tier) only
 	Errors          []DeclaredError
 	Problems        []string // descriptor mistakes found when it was built
 }

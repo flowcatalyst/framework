@@ -23,6 +23,7 @@ type Context struct {
 	permissions []Permission
 	actor       Actor
 	subjectName string
+	tier        string
 }
 
 // Actor is the operator behind a Context whose principal is someone else: a supervisor, or a
@@ -104,6 +105,29 @@ func (cx Context) Actor() (Actor, bool) { return cx.actor, cx.actor.ID != "" }
 // nothing. [Context.Actor] stays the operator acting as the principal.
 func (cx Context) SubjectName() (string, bool) { return cx.subjectName, cx.subjectName != "" }
 
+// TierAnchor is the tier of a platform operator: the principal's token said ANCHOR. The platform's
+// other tiers are PARTNER and CLIENT; a Context without a tier is not an operator either.
+const TierAnchor = "ANCHOR"
+
+// Tier returns the principal's tier (ANCHOR, PARTNER or CLIENT) as its token said, when the auth
+// layer knew it. It is for gates that are about who the principal is, not what it may do (the admin
+// area's operators-only sections); it grants nothing.
+func (cx Context) Tier() (string, bool) { return cx.tier, cx.tier != "" }
+
+// IsPlatformOperator reports whether the principal is a platform operator: its tier is ANCHOR. A
+// PARTNER, a CLIENT and a Context with no tier are not.
+func (cx Context) IsPlatformOperator() bool { return cx.tier == TierAnchor }
+
+// WithTier returns a copy recording the principal's tier (set it after the principal: a new
+// principal drops it). It panics on a blank tier.
+func (cx Context) WithTier(tier string) Context {
+	if strings.TrimSpace(tier) == "" {
+		panic("fw: Context.WithTier with a blank tier")
+	}
+	cx.tier = tier
+	return cx
+}
+
 // Permissions returns a copy of the permissions the principal holds.
 func (cx Context) Permissions() []Permission { return slices.Clone(cx.permissions) }
 
@@ -164,6 +188,7 @@ func (cx Context) WithPrincipal(p PrincipalID) Context {
 	cx.kind = 0
 	cx.actor = Actor{}  // an actor acts as one principal: a new principal drops it
 	cx.subjectName = "" // and so does the name, which described the old one
+	cx.tier = ""        // and the tier
 	return cx
 }
 

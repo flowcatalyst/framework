@@ -9,19 +9,21 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ensureCurrent creates the partitions of the interval that contains now and the next Ahead ones.
-func (p *Partitions) ensureCurrent(ctx context.Context, tg *target, now time.Time) error {
+// ensureCurrent creates the partitions of the interval that contains now and the next Ahead ones
+// and returns how many it created.
+func (p *Partitions) ensureCurrent(ctx context.Context, tg *target, now time.Time) (int, error) {
 	starts := make([]time.Time, 0, tg.Ahead+1)
 	s := tg.Interval.Start(now)
 	for range tg.Ahead + 1 {
 		starts = append(starts, s)
 		s = tg.Interval.Next(s)
 	}
-	if _, err := p.ensureStarts(ctx, tg, starts); err != nil {
-		return err
+	created, err := p.ensureStarts(ctx, tg, starts)
+	if err != nil {
+		return created, err
 	}
 	p.setAhead(ctx, tg, now)
-	return nil
+	return created, nil
 }
 
 // ensureStarts creates the missing partitions for the interval starts, in one transaction that
@@ -58,8 +60,8 @@ func (p *Partitions) ensureStarts(ctx context.Context, tg *target, starts []time
 				return err
 			}
 			if exists {
-				return fmt.Errorf("table %s exists but is not attached as a partition of %s (a detached leftover?); "+
-					"attach it, or archive and drop it, so inserts for its range have a partition", tg.childIdent(name), tg.ident())
+				return fmt.Errorf("%w: table %s exists but is not attached as a partition of %s (a detached leftover?); "+
+					"attach it, or archive and drop it, so inserts for its range have a partition", ErrDetachedLeftover, tg.childIdent(name), tg.ident())
 			}
 			sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES FROM ('%s') TO ('%s')",
 				tg.childIdent(name), tg.ident(), tg.By.Bound(start), tg.By.Bound(tg.Interval.Next(start)))
@@ -71,6 +73,9 @@ func (p *Partitions) ensureStarts(ctx context.Context, tg *target, starts []time
 		}
 		return nil
 	})
+	if err != nil {
+		created = 0 // the transaction rolled back: nothing was created
+	}
 	return created, err
 }
 

@@ -287,6 +287,9 @@ func (w *walker) operation(op *Operation, schemes []string, problems *[]string) 
 	if op.Permission != "" {
 		o.set("x-fw-permission", op.Permission)
 	}
+	if op.OperatorsOnly {
+		o.set("x-fw-operators-only", true)
+	}
 	return o
 }
 

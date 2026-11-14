@@ -15,10 +15,16 @@ const adminModule = "admin"
 // accepts no wildcard in a role. Permissions reach the platform only through roles, so the role is
 // what makes them exist.
 //
+// The registry is also what start-up checks client-managed roles against: a client-managed role that
+// the role's definition or the permission mapping ([WithPermissionMapping]) gives the permission of
+// an operators-only section (admin contract section 3a) fails start-up, naming the role and the
+// permission, and so does the sync.
+//
 // Call it at declaration time, after every admin section is registered. An application that
 // declares a role named admin itself keeps it as declared and gets nothing added: it owns the
 // decision. With no admin sections registered nothing is added.
 func (d *Declared) AdminDefinitions(adm *admin.Declared) {
+	d.adm = adm // also when nothing is added: the operators-only check needs the registry
 	sections := adm.Sections()
 	if len(sections) == 0 {
 		return

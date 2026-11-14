@@ -168,6 +168,7 @@ type opDesc struct {
 	status                                    int
 	requiresContext                           bool
 	permission                                fw.Permission
+	operatorsOnly                             bool
 	errors                                    []openapi.DeclaredError
 	problems                                  []string
 	documented                                map[int]bool
@@ -191,6 +192,9 @@ type OperationInfo struct {
 	ID string
 	// Permission is the required permission; the zero Permission when the operation requires none.
 	Permission fw.Permission
+	// OperatorsOnly is true when the operation is for platform operators only (ANCHOR tier) in
+	// addition to its permission.
+	OperatorsOnly bool
 }
 
 // label names the operation in problems.
@@ -215,7 +219,7 @@ func (o Operation[B, R]) descriptor() *opDesc { return o.d }
 
 // Info implements [Described].
 func (o Operation[B, R]) Info() OperationInfo {
-	return OperationInfo{Method: o.d.method, Pattern: o.d.pattern, ID: o.d.id, Permission: o.d.permission}
+	return OperationInfo{Method: o.d.method, Pattern: o.d.pattern, ID: o.d.id, Permission: o.d.permission, OperatorsOnly: o.d.operatorsOnly}
 }
 
 // ID returns the operation id.
@@ -317,6 +321,12 @@ func (b *Builder[B, R]) RequiresContext() *Builder[B, R] { b.d.requiresContext =
 // x-fw-permission.
 func (b *Builder[B, R]) Permission(p fw.Permission) *Builder[B, R] { b.d.permission = p; return b }
 
+// OperatorsOnly restricts the operation to platform operators, in addition to its permission: a
+// Context whose tier is not ANCHOR (a PARTNER, a CLIENT, or none) is refused with 403 FORBIDDEN after
+// the permission check. It implies RequiresContext and is documented as x-fw-operators-only. The
+// admin area's operators-only sections mark every operation with it.
+func (b *Builder[B, R]) OperatorsOnly() *Builder[B, R] { b.d.operatorsOnly = true; return b }
+
 // Error documents an expected failure: its status and code, and what it means.
 func (b *Builder[B, R]) Error(status int, code, message string) *Builder[B, R] {
 	b.d.errors = append(b.d.errors, openapi.DeclaredError{Status: status, Code: code, Message: message})
@@ -328,7 +338,7 @@ func (b *Builder[B, R]) Build() Operation[B, R] {
 	d := b.d // a copy: later calls on the builder do not change the operation
 	d.path, d.query = slices.Clone(d.path), slices.Clone(d.query)
 	d.tags, d.errors = slices.Clone(d.tags), slices.Clone(d.errors)
-	if d.permission != (fw.Permission{}) {
+	if d.permission != (fw.Permission{}) || d.operatorsOnly {
 		d.requiresContext = true
 	}
 	if d.status == 0 {
@@ -479,6 +489,9 @@ func Handle[B, R any](op Operation[B, R], h OperationHandler[B, R], opts ...Rout
 		}
 		if d.permission != (fw.Permission{}) && !cx.HasPermission(d.permission) {
 			return Forbidden("FORBIDDEN", "this needs the permission "+d.permission.String())
+		}
+		if d.operatorsOnly && !cx.IsPlatformOperator() {
+			return Forbidden("FORBIDDEN", "this is for platform operators only")
 		}
 		params, errs := parseParams(d, r)
 		if len(errs) > 0 {

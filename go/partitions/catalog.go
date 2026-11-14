@@ -85,12 +85,13 @@ WHERE c.oid = to_regclass($1)`, quoteIdent(append(optional(schemaIn), rel)...)).
 	var (
 		kind, attname, collation, colCollation, keydef string
 		natts, attnum                                  int
-		isTimestamptz, isText                          bool
+		isTimestamptz, isText, isDate                  bool
 	)
 	err = pool.QueryRow(ctx, `SELECT pt.partstrat::text, pt.partnatts::int, pt.partattrs[0]::int,
        coalesce(a.attname::text, ''),
        coalesce(a.atttypid = 'timestamptz'::regtype, false),
        coalesce(a.atttypid IN ('text'::regtype, 'varchar'::regtype), false),
+       coalesce(a.atttypid = 'date'::regtype, false),
        coalesce(co.collname::text, ''),
        coalesce(cc.collname::text, ''),
        pg_get_partkeydef(pt.partrelid)
@@ -98,7 +99,7 @@ FROM pg_partitioned_table pt
 LEFT JOIN pg_attribute a ON a.attrelid = pt.partrelid AND a.attnum = pt.partattrs[0]
 LEFT JOIN pg_collation co ON co.oid = pt.partcollation[0]
 LEFT JOIN pg_collation cc ON cc.oid = a.attcollation
-WHERE pt.partrelid = $1::regclass`, tg.ident()).Scan(&kind, &natts, &attnum, &attname, &isTimestamptz, &isText, &collation, &colCollation, &keydef)
+WHERE pt.partrelid = $1::regclass`, tg.ident()).Scan(&kind, &natts, &attnum, &attname, &isTimestamptz, &isText, &isDate, &collation, &colCollation, &keydef)
 	if err != nil {
 		return []string{"cannot read its partition key: " + err.Error()}
 	}
@@ -123,8 +124,20 @@ WHERE pt.partrelid = $1::regclass`, tg.ident()).Scan(&kind, &natts, &attnum, &at
 			}
 		}
 	case kindColumn:
-		if !isTimestamptz {
+		switch {
+		case isDate:
+			out = append(out, fmt.Sprintf("key column %q is a date column: declare the table with partitions.ByDateColumn (ByColumn is for timestamptz); expected: %s",
+				tg.By.column, tg.expectedDDL()))
+		case !isTimestamptz:
 			out = append(out, fmt.Sprintf("key column %q must be timestamptz, expected: %s", tg.By.column, tg.expectedDDL()))
+		}
+	case kindDate:
+		switch {
+		case isTimestamptz:
+			out = append(out, fmt.Sprintf("key column %q is a timestamptz column: declare the table with partitions.ByColumn (ByDateColumn is for date); expected: %s",
+				tg.By.column, tg.expectedDDL()))
+		case !isDate:
+			out = append(out, fmt.Sprintf("key column %q must be date (a timestamp without time zone is refused too), expected: %s", tg.By.column, tg.expectedDDL()))
 		}
 	}
 	var defaults int
@@ -162,6 +175,9 @@ func (tg *target) expectedDDL() string {
 		return fmt.Sprintf(`CREATE TABLE %s (%s text COLLATE "C" PRIMARY KEY, ...) PARTITION BY RANGE (%s)`, tg.Name, tg.By.column, tg.By.column)
 	case kindColumn:
 		return fmt.Sprintf(`CREATE TABLE %s (id ..., %s timestamptz NOT NULL, ..., PRIMARY KEY (id, %s)) PARTITION BY RANGE (%s)`,
+			tg.Name, tg.By.column, tg.By.column, tg.By.column)
+	case kindDate:
+		return fmt.Sprintf(`CREATE TABLE %s (id ..., %s date NOT NULL, ..., PRIMARY KEY (id, %s)) PARTITION BY RANGE (%s)`,
 			tg.Name, tg.By.column, tg.By.column, tg.By.column)
 	}
 	return ""

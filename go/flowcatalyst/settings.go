@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/flowcatalyst/framework/go/admin"
 	"github.com/flowcatalyst/framework/go/config"
 	"github.com/flowcatalyst/framework/go/fw"
 )
@@ -137,6 +138,9 @@ func declareSettings(d *fw.Declarer) settings {
 type Declared struct {
 	s   settings
 	reg *registry
+	// adm is the admin registry given to AdminDefinitions: its operators-only sections are what
+	// client-managed roles are checked against.
+	adm *admin.Declared
 }
 
 // Declare declares the module: it claims the component flowcatalyst, declares every

@@ -42,6 +42,10 @@ type Section struct {
 	// Operations are the typed operations the section serves; each requires a permission and lives
 	// under /api/admin/.
 	Operations []httpfw.Described
+	// ForOperators marks the section operators-only (admin contract section 3a): besides its
+	// permission, every operation requires a platform operator (tier ANCHOR), and the navigation
+	// shows the section to no one else. Set it with [Section.OperatorsOnly].
+	ForOperators bool
 }
 
 // NewSection returns a section without an icon, a description or operations.
@@ -54,6 +58,16 @@ func (s Section) WithIcon(icon string) Section { s.Icon = icon; return s }
 
 // WithDescription returns a copy with a description.
 func (s Section) WithDescription(text string) Section { s.Description = text; return s }
+
+// OperatorsOnly returns a copy marked operators-only: every operation of the section requires, in
+// addition to its permission, that the principal is a platform operator (tier ANCHOR); a PARTNER, a
+// CLIENT and a principal with no tier get 403 FORBIDDEN, and the navigation does not list the
+// section for them. Every operation of the section must be declared with the builder's
+// OperatorsOnly() (that is where the gate is); a section with an operation that is not so marked is
+// a start-up problem, so no operation of such a section can miss the gate. No role that a client's
+// own administrators may assign (client-managed) may carry the section's permissions: see
+// [OperatorsOnlyConflicts].
+func (s Section) OperatorsOnly() Section { s.ForOperators = true; return s }
 
 // Serving returns a copy serving these operations (replacing any given before).
 func (s Section) Serving(ops ...httpfw.Described) Section {
@@ -92,6 +106,9 @@ func (s Section) Problems() []string {
 		}
 		if !strings.HasPrefix(info.Pattern, APIPrefix) {
 			out = append(out, "operation "+label+" must be under "+APIPrefix)
+		}
+		if s.ForOperators && !info.OperatorsOnly {
+			out = append(out, "operation "+label+" is in an operators-only section but is not declared with OperatorsOnly(), so it would not require a platform operator")
 		}
 	}
 	return out

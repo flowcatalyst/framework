@@ -26,7 +26,7 @@ type Retention struct {
 }
 
 // DropAfter drops a partition when its whole range ended at least d ago. d must be at least one
-// interval (day 24h, week 7 days, month 31 days).
+// interval (day 24h, week 7 days, month 31 days, year 366 days).
 func DropAfter(d time.Duration) Retention { return Retention{kind: retDrop, after: d} }
 
 // ArchiveThenDropAfter writes a partition to the named object store as gzip'd NDJSON and drops
@@ -71,7 +71,7 @@ type Table struct {
 	Database string
 	// By is the partition key: [ByID] or [ByColumn].
 	By Key
-	// Interval is the width of a partition: [Day], [Week] or [Month].
+	// Interval is the width of a partition: [Day], [Week], [Month] or [Year].
 	Interval Interval
 	// Ahead is how many partitions beyond the current one are kept created: 1 to 24.
 	Ahead int
@@ -110,15 +110,15 @@ func (t Table) check() []string {
 		if !identifier.MatchString(t.By.column) {
 			out = append(out, fmt.Sprintf("key column %q must match [a-z_][a-z0-9_]*", t.By.column))
 		}
-	case kindColumn:
+	case kindColumn, kindDate:
 		if !identifier.MatchString(t.By.column) {
 			out = append(out, fmt.Sprintf("key column %q must match [a-z_][a-z0-9_]*", t.By.column))
 		}
 	default:
-		out = append(out, "no partition key: use partitions.ByID or partitions.ByColumn")
+		out = append(out, "no partition key: use partitions.ByID, partitions.ByColumn or partitions.ByDateColumn")
 	}
 	if !t.Interval.valid() {
-		out = append(out, "no interval: use partitions.Day, partitions.Week or partitions.Month")
+		out = append(out, "no interval: use partitions.Day, partitions.Week, partitions.Month or partitions.Year")
 	}
 	if t.Ahead < AheadMin || t.Ahead > AheadMax {
 		out = append(out, fmt.Sprintf("Ahead must be %d to %d, was %d", AheadMin, AheadMax, t.Ahead))
@@ -136,6 +136,16 @@ func (t Table) check() []string {
 		out = append(out, "no retention: say what becomes of old partitions with partitions.DropAfter, ArchiveThenDropAfter or KeepForever")
 	}
 	return out
+}
+
+// removalDue is the first instant at which [Table.due] is true for the partition that starts at
+// start: its upper bound plus the longer of the retention and one interval (the skew guard), the
+// two conditions of due. False for KeepForever, which is never due.
+func (t Table) removalDue(start time.Time) (time.Time, bool) {
+	if t.Retention.kind != retDrop && t.Retention.kind != retArchive {
+		return time.Time{}, false
+	}
+	return t.Interval.Next(start).Add(max(t.Retention.after, t.Interval.span())), true
 }
 
 // due reports whether the partition that starts at start may be removed at now: its whole range

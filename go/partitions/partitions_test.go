@@ -68,6 +68,8 @@ type rig struct {
 	db    *database.DB
 	clock *fwtest.Clock
 	logs  *logBuf
+	// otherURL, when set, is a second database instance named "other" (its own database).
+	otherURL string
 }
 
 func newRig(t *testing.T) *rig {
@@ -81,9 +83,21 @@ func newRig(t *testing.T) *rig {
 	return &rig{t: t, url: d.URL, db: db, clock: fwtest.NewClock(t0), logs: &logBuf{}}
 }
 
+func (r *rig) environment() map[string]string {
+	env := map[string]string{"APP_ENV": "test", "DATABASE_INSTANCES_MAIN_URL": r.url}
+	if r.otherURL != "" {
+		env["DATABASE_INSTANCES_OTHER_URL"] = r.otherURL
+	}
+	return env
+}
+
 func (r *rig) configDir() string {
 	dir := r.t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "application.yaml"), []byte("database:\n  instances:\n    main:\n      url: set-by-the-test\n"), 0o600); err != nil {
+	yaml := "database:\n  instances:\n    main:\n      url: set-by-the-test\n"
+	if r.otherURL != "" {
+		yaml = "database:\n  default: main\n  instances:\n    main:\n      url: set-by-the-test\n    other:\n      url: set-by-the-test\n"
+	}
+	if err := os.WriteFile(filepath.Join(dir, "application.yaml"), []byte(yaml), 0o600); err != nil {
 		r.t.Fatal(err)
 	}
 	return dir
@@ -156,7 +170,7 @@ type started struct {
 func (r *rig) start(c config) (*started, error) {
 	r.t.Helper()
 	app := fw.New("partitions-test",
-		fw.WithEnvironment(map[string]string{"APP_ENV": "test", "DATABASE_INSTANCES_MAIN_URL": r.url}),
+		fw.WithEnvironment(r.environment()),
 		fw.WithConfigDir(r.configDir()), fw.WithClock(r.clock),
 		fw.WithLogger(slog.New(slog.NewTextHandler(r.logs, &slog.HandlerOptions{Level: slog.LevelInfo}))),
 		fw.WithOutput(&bytes.Buffer{}, &bytes.Buffer{}))
@@ -449,12 +463,12 @@ func TestEnsureBackfillAndRetentionDrop(t *testing.T) {
 	s := r.mustStart(config{tables: []partitions.Table{monthly("readings", partitions.ByID("rdg"), partitions.DropAfter(days(90)))}})
 	ctx := t.Context()
 
-	created, err := s.ps.Ensure(ctx, "readings", time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC), time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC))
-	if err != nil || created != 3 {
-		t.Fatalf("Ensure: created %d, err %v; want May, June and July", created, err)
+	res, err := s.ps.Ensure(ctx, "readings", time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC), time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC))
+	if err != nil || res.Created != 3 {
+		t.Fatalf("Ensure: created %d, err %v; want May, June and July", res.Created, err)
 	}
-	if created, err = s.ps.Ensure(ctx, "readings", time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC), time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)); err != nil || created != 0 {
-		t.Errorf("a second Ensure: created %d, err %v", created, err)
+	if res, err = s.ps.Ensure(ctx, "readings", time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC), time.Date(2026, 7, 31, 0, 0, 0, 0, time.UTC)); err != nil || res.Created != 0 {
+		t.Errorf("a second Ensure: created %d, err %v", res.Created, err)
 	}
 	for _, bad := range []struct {
 		table    string

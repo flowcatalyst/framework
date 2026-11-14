@@ -145,7 +145,9 @@ func testRoutes() *httpfw.Routes {
 			actor = a.ID + "|" + a.Type + "|" + a.Name
 		}
 		subjectName, _ := cx.SubjectName()
+		tier, _ := cx.Tier()
 		return httpfw.JSON(w, 200, map[string]any{
+			"tier": tier, "operator": cx.IsPlatformOperator(),
 			"principal": principal.String(), "principalKind": kind.String(), "client": cx.Client().String(),
 			"application": appText, "permissions": perms, "source": source, "actor": actor, "subjectName": subjectName,
 		})

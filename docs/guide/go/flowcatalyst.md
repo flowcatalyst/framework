@@ -95,6 +95,21 @@ platform but not in code loses the flag at the next sync (contract section 2):
 
 (from `flowcatalyst/sync_test.go`).
 
+A client-managed role must not carry the permission of an **operators-only** admin section (the
+[partitions section](partitions.md) is one: a partition holds every client's rows). Give the module the
+application's permission mapping, the same value the auth module has, and start-up (and the sync) refuses such a
+role, naming it and the permission, whether the role's definition lists the permission or the mapping grants it
+(`orders:admin:*:*` included):
+
+```go
+fc.AdminDefinitions(adm) // at declaration time: the registry the check reads
+...
+flowcatalyst.Build(ctx, b, fc, flowcatalyst.WithPermissionMapping(mapper))
+```
+
+The operators' role is never client-managed. The mapping is run for a principal that holds only the role, so it
+can be checked only if it depends on the principal's roles.
+
 `Platform.Sync(ctx, mode)` sends one SDK call per category in the order roles, event types,
 connections, dispatch pools, subscriptions, processes, scheduled jobs, docs, never stopping at a
 failed category, and returns a `SyncReport` (a `*SyncError` carrying it when any failed). A

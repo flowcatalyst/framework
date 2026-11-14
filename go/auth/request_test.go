@@ -165,6 +165,34 @@ func TestContextPermissionsAndApplication(t *testing.T) {
 	_ = a
 }
 
+// The token's tier is on the Context (a session and a bearer token alike), so an operators-only gate
+// can read it: ANCHOR is a platform operator, PARTNER, CLIENT and a token without a tier are not.
+func TestTheTierIsOnTheContext(t *testing.T) {
+	a := mustStart(t, config{})
+	anon := a.browser()
+	for _, c := range []struct {
+		claims   map[string]any
+		tier     string
+		operator bool
+	}{
+		{map[string]any{"tier": "ANCHOR"}, "ANCHOR", true},
+		{map[string]any{"tier": "PARTNER", "clients": []any{"clt_1:acme"}}, "PARTNER", false},
+		{map[string]any{"tier": "CLIENT", "clients": []any{"clt_1:acme"}}, "CLIENT", false},
+		{map[string]any{"tier": nil}, "", false},
+	} {
+		me := anon.get("/api/me", "Authorization", "Bearer "+a.provider.AccessToken(c.claims))
+		if me.status != 200 || me.str("tier") != c.tier || me.tree()["operator"] != c.operator {
+			t.Errorf("bearer %v: %d %s", c.claims, me.status, me.body)
+		}
+		a.provider.SignInAs(c.claims)
+		b := a.browser()
+		b.signIn("/")
+		if me := b.get("/api/me"); me.status != 200 || me.str("tier") != c.tier || me.tree()["operator"] != c.operator {
+			t.Errorf("session %v: %d %s", c.claims, me.status, me.body)
+		}
+	}
+}
+
 func TestSelectedClientMustBeOneThePrincipalMayActFor(t *testing.T) {
 	sel := func(_ auth.Principal, r *http.Request) (fw.ClientID, error) {
 		if v := r.Header.Get("X-Client"); v != "" {

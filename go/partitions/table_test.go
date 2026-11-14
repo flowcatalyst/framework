@@ -104,3 +104,69 @@ func TestDueSkewGuard(t *testing.T) {
 		}
 	}
 }
+
+// RemovalDue is the first instant at which due is true: due is true at it and false one nanosecond
+// before, for every retention shape (the retention longer than the interval, and the skew guard
+// deciding when the retention is shorter than the interval).
+func TestRemovalDueIsTheFirstInstantTheTableIsDue(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	for _, c := range []struct {
+		name  string
+		table Table
+		want  time.Time
+	}{
+		{"retention longer than the span", goodTable(), time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC).Add(90 * 24 * time.Hour)},
+		{
+			"archive",
+			Table{Name: "t", By: ByColumn("c"), Interval: Month, Ahead: 1, Retention: ArchiveThenDropAfter(40*24*time.Hour, "s")},
+			time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC).Add(40 * 24 * time.Hour),
+		},
+		{
+			"the guard decides",
+			Table{Name: "t", By: ByColumn("c"), Interval: Month, Ahead: 1, Retention: DropAfter(time.Hour)},
+			time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC).Add(31 * 24 * time.Hour),
+		},
+		{
+			"a year",
+			Table{Name: "t", By: ByDateColumn("d"), Interval: Year, Ahead: 1, Retention: DropAfter(3 * 366 * 24 * time.Hour)},
+			time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC).Add(3 * 366 * 24 * time.Hour),
+		},
+	} {
+		st := start
+		if c.table.Interval == Year {
+			st = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		}
+		got, ok := c.table.removalDue(st)
+		if !ok || !got.Equal(c.want) {
+			t.Errorf("%s: removalDue %v (ok %v), want %v", c.name, got, ok, c.want)
+		}
+		if !c.table.due(st, got) {
+			t.Errorf("%s: not due at removalDue", c.name)
+		}
+		if c.table.due(st, got.Add(-time.Nanosecond)) {
+			t.Errorf("%s: already due one nanosecond before removalDue", c.name)
+		}
+	}
+	keep := goodTable()
+	keep.Retention = KeepForever()
+	if _, ok := keep.removalDue(start); ok {
+		t.Error("KeepForever has a removal instant")
+	}
+}
+
+func TestYearAndDateDeclarations(t *testing.T) {
+	t.Parallel()
+	yearly := Table{Name: "history", By: ByDateColumn("service_day"), Interval: Year, Ahead: 2, Retention: DropAfter(5 * 366 * 24 * time.Hour)}
+	if got := yearly.check(); len(got) != 0 {
+		t.Fatalf("a yearly date-keyed table has problems: %v", got)
+	}
+	yearly.Retention = DropAfter(300 * 24 * time.Hour) // shorter than the 366-day nominal year
+	if got := strings.Join(yearly.check(), "; "); !strings.Contains(got, "shorter than one year interval") {
+		t.Errorf("retention under a year: %q", got)
+	}
+	yearly.By = ByDateColumn("Service Day")
+	if got := strings.Join(yearly.check(), "; "); !strings.Contains(got, "column") {
+		t.Errorf("bad date column: %q", got)
+	}
+}

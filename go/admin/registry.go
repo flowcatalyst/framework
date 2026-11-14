@@ -78,10 +78,14 @@ func (d *Declared) Sections() []Section {
 }
 
 // VisibleTo returns the sections a caller may use: those whose permission the context holds (the
-// platform's wildcard rule). This is layer 2 of the permission model (admin contract section 3).
+// platform's wildcard rule), and, for an operators-only section, only to a platform operator (tier
+// ANCHOR). This is layer 2 of the permission model (admin contract section 3).
 func VisibleTo(sections []Section, cx fw.Context) []Section {
 	var out []Section
 	for _, s := range sections {
+		if s.ForOperators && !cx.IsPlatformOperator() {
+			continue
+		}
 		if cx.HasPermission(s.permission()) {
 			out = append(out, s)
 		}
@@ -134,6 +138,43 @@ func Problems(sections []Section, application fw.ApplicationCode) []string {
 	for _, p := range Permissions(sections) {
 		if !strings.HasPrefix(p.String(), application.String()+":") {
 			out = append(out, "admin permission '"+p.String()+"' does not belong to application '"+application.String()+"'")
+		}
+	}
+	return out
+}
+
+// OperatorsOnlyPermissions returns every permission of the operators-only sections (the section's
+// and each operation's), sorted and without duplicates.
+func OperatorsOnlyPermissions(sections []Section) []fw.Permission {
+	var only []Section
+	for _, s := range sections {
+		if s.ForOperators {
+			only = append(only, s)
+		}
+	}
+	return Permissions(only)
+}
+
+// OperatorsOnlyConflicts returns the permissions of the operators-only sections that the held
+// permission patterns grant, under the platform's wildcard rule (the one [fw.Context.HasPermission]
+// applies: same number of segments, '*' in a held segment matches). A role that client
+// administrators may assign must not grant any of them: a partition holds every client's rows. Held
+// entries that are not permissions are ignored.
+func OperatorsOnlyConflicts(sections []Section, held []string) []fw.Permission {
+	var perms []fw.Permission
+	for _, h := range held {
+		if p, err := fw.ParsePermission(h); err == nil {
+			perms = append(perms, p)
+		}
+	}
+	if len(perms) == 0 {
+		return nil
+	}
+	cx := fw.ContextFor(fw.PlatformClient).WithPermissions(perms...)
+	var out []fw.Permission
+	for _, p := range OperatorsOnlyPermissions(sections) {
+		if cx.HasPermission(p) {
+			out = append(out, p)
 		}
 	}
 	return out
