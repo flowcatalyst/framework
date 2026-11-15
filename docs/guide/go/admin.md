@@ -151,6 +151,24 @@ characters).
 suggested role `admin` (on the platform `{app}:admin`) that grants them one by one, because the sync
 accepts no wildcard in a role. An application that declares a role `admin` itself keeps it.
 
+An admin area that is for platform operators only declares it, and names (or declines) the suggested role:
+
+```go
+adm := admin.Declare(web, app, admin.OperatorsOnly())
+...
+fc.AdminDefinitions(adm, flowcatalyst.AdminRoleName("platform-operator"))
+```
+
+With `admin.OperatorsOnly()` the navigation and the about operation need a platform operator (tier `ANCHOR`)
+as well as `{app}:admin:console:view`: any other caller gets `403`. Every section you register must be
+operators-only too (`Section.OperatorsOnly()`; a section package can ask `adm.OperatorsOnly()`), or start-up fails
+naming the section. The `config` section and the platform sections (`platformadmin`) are not operators-only, so
+they cannot be part of such an area. `console:view` is now an operators-only permission, so a client-managed role
+that holds it fails start-up. `flowcatalyst.AdminRoleDisplayName("...")` sets the display name,
+`flowcatalyst.WithoutAdminRole()` adds the permissions and no role (give them to a role of your own; a warning
+at build says when no declared role grants `console:view`). Renaming the suggested role creates a new role on
+the platform: people who held the old one must be given the new one.
+
 `flowcatalyst/fakeplatform` is the in-process stand-in for the platform used by the tests and the
 browser launcher (token endpoint, canned and routed answers, every request recorded).
 

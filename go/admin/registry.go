@@ -17,6 +17,8 @@ type Declared struct {
 	application fw.ApplicationCode
 	ops         operations
 
+	operatorsOnly bool
+
 	mu       sync.Mutex
 	sections []Section
 	config   *configOptions
@@ -26,19 +28,49 @@ type Declared struct {
 // about, first (so the registry's rules cover the framework's operations too): the navigation and
 // the about operation, both behind {app}:admin:console:view. The operations are declared in the
 // OpenAPI document of web.
-func Declare(web *httpfw.Declared, application fw.ApplicationCode) *Declared {
-	d := &Declared{web: web, application: application, ops: newOperations(application)}
+//
+// With the option [OperatorsOnly] the whole area is for platform operators only (admin contract
+// section 3a, rule 6): see there.
+func Declare(web *httpfw.Declared, application fw.ApplicationCode, opts ...Option) *Declared {
+	var cfg options
+	for _, o := range opts {
+		o(&cfg)
+	}
+	d := &Declared{web: web, application: application, operatorsOnly: cfg.operatorsOnly, ops: newOperations(application, cfg.operatorsOnly)}
 	// the wire names of the document, which every implementation of the contract shares
 	httpfw.NameType[SectionView](web, "AdminSectionView")
 	httpfw.NameType[Navigation](web, "AdminNavigation")
 	httpfw.NameType[Check](web, "AdminCheck")
 	httpfw.NameType[About](web, "AdminAbout")
-	d.Section(NewSection("about", "About", "/admin/about", ConsoleView(application)).
+	about := NewSection("about", "About", "/admin/about", ConsoleView(application)).
 		WithIcon("i-lucide-info").
 		WithDescription("What this application is and whether it is healthy.").
-		Serving(d.ops.navigation, d.ops.about))
+		Serving(d.ops.navigation, d.ops.about)
+	if d.operatorsOnly {
+		about = about.OperatorsOnly()
+	}
+	d.Section(about)
 	return d
 }
+
+type options struct{ operatorsOnly bool }
+
+// Option changes how [Declare] declares the admin area.
+type Option func(*options)
+
+// OperatorsOnly declares the whole admin area for platform operators only (admin contract section
+// 3a, rule 6; Go, Java to follow): the framework's own about section, with the navigation and the
+// about operation, is operators-only (a caller whose tier is not ANCHOR gets 403 FORBIDDEN after the
+// permission check), so {app}:admin:console:view becomes an operators-only permission that no
+// client-managed role may carry; and every section registered with [Declared.Section] that is not
+// itself operators-only is a start-up problem. The framework's config section and the platform
+// sections of the flowcatalyst module are not operators-only, so an application that wants them
+// cannot declare an operators-only area.
+func OperatorsOnly() Option { return func(o *options) { o.operatorsOnly = true } }
+
+// OperatorsOnly reports whether the area was declared with the option [OperatorsOnly], so a section
+// package can mark its own section accordingly.
+func (d *Declared) OperatorsOnly() bool { return d.operatorsOnly }
 
 // ConsoleView is the permission that opens the admin area at all: {app}:admin:console:view.
 func ConsoleView(application fw.ApplicationCode) string {
@@ -63,6 +95,9 @@ func (d *Declared) Section(sections ...Section) {
 	for _, s := range sections {
 		for _, p := range s.Problems() {
 			d.web.Problem("admin section '" + s.ID + "': " + p)
+		}
+		if d.operatorsOnly && !s.ForOperators {
+			d.web.Problem("admin section '" + s.ID + "' is not operators-only, but the admin area is declared operators-only (admin.OperatorsOnly()): every section of it must be")
 		}
 		if len(s.Operations) > 0 {
 			d.web.Operations(s.Operations...)

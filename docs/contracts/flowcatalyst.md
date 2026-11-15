@@ -69,7 +69,10 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
   commands fall through to normal start).
 - The framework's own modules contribute their permissions and roles the same way: the admin
   sections' permissions and a suggested role `admin` join the catalog automatically (M4e, admin
-  contract section 11; skipped when the application declares its own role `admin`).
+  contract section 11; skipped when the application declares its own role `admin`). Go; Java to follow:
+  `AdminDefinitions(adm, AdminRoleName(..), AdminRoleDisplayName(..))` names the role, `WithoutAdminRole()`
+  adds the permissions and no role (a warning at build when no declared role grants `console:view`); the
+  skip then applies to the chosen name.
 - **Client-managed roles (2026-11-13, owner request).** A role can be marked client-managed (Java
   `Definition.Role.withClientManaged()`, Go `Role.WithClientManaged()`): the platform's
   `clientManaged` flag, which lets a client's own administrators assign the role to their users.

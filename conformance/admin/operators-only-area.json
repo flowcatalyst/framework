@@ -1,0 +1,21 @@
+{
+  "description": "An admin area declared for platform operators only (admin contract section 3a, rule 6), written by hand for the Go build; the Java framework follows from it. Setup: application 'acme' with the admin skeleton declared operators-only (Go: admin.Declare(web, app, admin.OperatorsOnly())); its only section is the framework's own 'about'. 'gate': both operations (GET /api/admin/navigation and GET /api/admin/about) need acme:admin:console:view (the wildcard rule of core section 3 applies) AND a caller whose tier is exactly ANCHOR; any other tier (CLIENT, PARTNER, none, lower-case 'anchor') gets 403 FORBIDDEN with a message that says the operation is for platform operators, whatever permissions it holds; an ANCHOR without the permission gets 403 FORBIDDEN naming the permission; a caller who is not signed in gets 401 (the tier and permissions of such a case are ignored). The checks run in this order: 401, permission 403, operators 403. A case's 'allowed' says whether both operations answer 200 (true) or 403 FORBIDDEN (false); 'message' names which 403 it is ('permission' or 'operators'). 'navigation' is the list of section ids GET /api/admin/navigation returns for a case that is allowed.",
+  "howToRun": "gate: for every case and both operations, send the request with the case's tier and permissions and compare the status, the error code and the message kind; for an allowed case compare the navigation's section ids.",
+  "application": "acme",
+  "operations": [
+    { "id": "getAdminNavigation", "method": "GET", "path": "/api/admin/navigation", "permission": "acme:admin:console:view" },
+    { "id": "getAdminAbout", "method": "GET", "path": "/api/admin/about", "permission": "acme:admin:console:view" }
+  ],
+  "gate": [
+    { "name": "an operator with the permission", "tier": "ANCHOR", "permissions": ["acme:admin:console:view"], "allowed": true, "navigation": ["about"] },
+    { "name": "an operator with the wildcard", "tier": "ANCHOR", "permissions": ["acme:admin:*:*"], "allowed": true, "navigation": ["about"] },
+    { "name": "an operator without the permission", "tier": "ANCHOR", "permissions": ["acme:admin:other:view"], "allowed": false, "message": "permission" },
+    { "name": "a client user with the permission", "tier": "CLIENT", "permissions": ["acme:admin:console:view"], "allowed": false, "message": "operators" },
+    { "name": "a client user with the wildcard", "tier": "CLIENT", "permissions": ["acme:admin:*:*"], "allowed": false, "message": "operators" },
+    { "name": "a partner with the permission", "tier": "PARTNER", "permissions": ["acme:admin:console:view"], "allowed": false, "message": "operators" },
+    { "name": "a partner with the wildcard", "tier": "PARTNER", "permissions": ["acme:admin:*:*"], "allowed": false, "message": "operators" },
+    { "name": "no tier with the permission", "tier": "", "permissions": ["acme:admin:console:view"], "allowed": false, "message": "operators" },
+    { "name": "no tier with the wildcard", "tier": "", "permissions": ["acme:admin:*:*"], "allowed": false, "message": "operators" },
+    { "name": "a lower-case tier is not ANCHOR", "tier": "anchor", "permissions": ["acme:admin:console:view"], "allowed": false, "message": "operators" }
+  ]
+}

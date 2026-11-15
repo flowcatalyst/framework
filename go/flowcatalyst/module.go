@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -92,7 +93,12 @@ func Build(ctx context.Context, b *fw.Boot, d *Declared, opts ...BuildOption) (*
 	}
 	p := &Platform{s: d.s, b: b, ctx: context.WithoutCancel(ctx), log: b.Logger(ModuleID), cfg: cfg, pushes: cfg.pushes, recv: newReceivers(), catalog: &Catalog{}}
 	p.guard = operatorsOnlyGuard{adm: d.adm, mapping: cfg.mapping}
-	guarded := p.guard.problems(rolesOf(d.reg.all()))
+	guarded := append(slices.Clone(d.adminProblems), p.guard.problems(rolesOf(d.reg.all()))...)
+	if d.adminWithoutRole {
+		if warning := p.guard.consoleViewWarning(rolesOf(d.reg.all())); warning != "" {
+			p.log.Warn(warning)
+		}
+	}
 	b.Command("sync", p.syncCommand)
 	if !d.s.enabled.Get(b) {
 		if len(guarded) > 0 {

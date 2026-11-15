@@ -107,7 +107,21 @@ fc.AdminDefinitions(adm) // at declaration time: the registry the check reads
 flowcatalyst.Build(ctx, b, fc, flowcatalyst.WithPermissionMapping(mapper))
 ```
 
-The operators' role is never client-managed. The mapping is run for a principal that holds only the role, so it
+The operators' role is never client-managed.
+
+The suggested role `admin` can be renamed or declined, for an area that is for platform operators only:
+
+```go
+adm := admin.Declare(web, app, admin.OperatorsOnly())
+...
+fc.AdminDefinitions(adm, flowcatalyst.AdminRoleName("platform-operator"))
+```
+
+`AdminRoleDisplayName` sets its display name; `WithoutAdminRole()` adds the permissions and no role (using it with
+a name option fails start-up; when no declared role grants `{app}:admin:console:view` build logs a warning).
+Renaming the role creates a new role on the platform: people who held the old one must be given the new one. In an
+operators-only area `console:view` is itself an operators-only permission, so a client-managed role that holds it
+fails start-up. The mapping is run for a principal that holds only the role, so it
 can be checked only if it depends on the principal's roles.
 
 `Platform.Sync(ctx, mode)` sends one SDK call per category in the order roles, event types,

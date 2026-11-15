@@ -76,6 +76,14 @@ listens; Java: `IllegalArgumentException` from the section's constructor in `reg
 The framework's own two operations are registered through the same registry (section 4), so the
 rules cover them.
 
+5. **An operators-only area** (Go; Java to follow). The area is declared with an option, Go
+   `admin.Declare(web, app, admin.OperatorsOnly())` (and `Declared.OperatorsOnly()` tells a section
+   package whether it was). Then the framework's own `about` section is operators-only and every section
+   registered through the registry that is **not** operators-only is a start-up problem, reported like the
+   other section problems: `admin section 'users' is not operators-only, but the admin area is declared
+   operators-only (admin.OperatorsOnly()): every section of it must be`. Section 3a, rule 6, has the
+   consequences. Without the option nothing changes.
+
 ## 3. The permission model
 
 Application permissions come from **M4c's permission mapping** (sessions contract 7.3): code that
@@ -88,7 +96,7 @@ is the shape the platform's definition sync accepts (flowcatalyst.md section 2).
 
 | Permission | Grants |
 |---|---|
-| `{app}:admin:console:view` | the admin area at all: the navigation and the about operation. Held by every admin role |
+| `{app}:admin:console:view` | the admin area at all: the navigation and the about operation. Held by every admin role. In an operators-only area (section 3a, rule 6) it is an operators-only permission |
 | `{app}:admin:{section}:view` | reading a section (M4e: `event-types`, `roles`, `config`, `users`, `activity`) |
 | `{app}:admin:users:invite`, `:resend`, `:revoke` | inviting a user, sending an invitation again, revoking one (section 12) |
 | `{app}:admin:{section}:manage` | changing a section |
@@ -100,6 +108,19 @@ to it in its permission mapping (Java: `PermissionMapper.byRole(Map.of("orders-d
 Set.of("orders-demo:admin:*:*")))`) and declares the role and permissions to the platform with
 `Definitions` (the registry exposes `Admin.permissions(..)` for that). Permissions reach the
 platform only through roles that grant them.
+
+**Naming or declining the suggested role** (Go; Java to follow). The suggested role is a default, not a
+requirement. Go `AdminDefinitions(adm, flowcatalyst.AdminRoleName("platform-operator"))` declares it under
+another name (display name `Administrator` for `admin`, otherwise the name with hyphens as spaces and the first
+letter upper-case: `Platform operator`; `AdminRoleDisplayName(text)` sets it); the name goes through the
+ordinary role-name check, so an empty or malformed name is a start-up problem and never falls back to `admin`.
+`WithoutAdminRole()` adds no role, only the permission definitions, so the application's own role can grant
+them; with a name option it is a start-up problem (the name would have no effect). When no declared role grants
+`{app}:admin:console:view` (by its definition, or by the permission mapping run for a principal that holds only
+that role, under the wildcard rule), build logs a warning, not a failure: the mapping may give the permission
+to a role this application does not declare. An application that declares a role of the chosen name itself
+keeps it and gets nothing added. The suggested role is never client-managed. Renaming the role creates a new
+role on the platform: people who held the old one must be given the new one.
 
 **Three layers, in this order** (the server is the only authority):
 
@@ -151,6 +172,22 @@ addition to its permission. The permission alone is not enough, and neither is a
    module has; the mapping is run for a principal that holds only the role (so a mapping that depends on anything
    else about the principal cannot be checked). Verified 2026-11-14 before the rule existed: a client-managed role
    granting an admin permission **was accepted** at start-up and by the sync.
+5. **The suggested role** may hold operators-only permissions, under any name (section 3): it is not
+   client-managed, and the check of rule 4 does not refuse it.
+6. **An operators-only area** (Go; Java to follow; vector `conformance/admin/operators-only-area.json`, written
+   for the Go build). An application whose whole admin area is for platform operators declares it so (section 2,
+   rule 5). Then the navigation operation and the about operation, which show the application, its environment and
+   its health checks, are operators-only like any section's operations: the order is 401, the permission `403`,
+   the operator `403` "this is for platform operators only", and the OpenAPI document carries
+   `x-fw-operators-only: true` on both. A caller whose tier is not exactly `ANCHOR` (`CLIENT`, `PARTNER`, no tier,
+   lower-case `anchor`) is refused whatever permissions it holds, wildcard included; the navigation of an operator
+   lists the sections. The framework's `about` section is operators-only, so `{app}:admin:console:view` becomes an
+   operators-only permission and **rule 4 covers it**: a client-managed role that holds it by its definition, by
+   the permission mapping, or through `{app}:admin:*:*` fails start-up, naming the role and the permission (the
+   same role is accepted when the area is not operators-only). **The limit:** the framework's `config` section
+   (section 10) and the platform sections of the FlowCatalyst module (sections 11 and 12) are not operators-only
+   and are not changed; in an operators-only area each of them is therefore a start-up problem (section 2, rule
+   5). An application that wants them cannot declare an operators-only area.
 
 ## 4. The skeleton's operations
 
@@ -160,7 +197,8 @@ Go side builds them; `@Nullable`/optional means "may be absent" (OpenAPI contrac
 
 ### 4.1 `GET /api/admin/navigation` (`getAdminNavigation`)
 
-Permission: `{app}:admin:console:view`. `200`:
+Permission: `{app}:admin:console:view`; in an operators-only area (section 3a, rule 6; Go; Java to follow) also a
+caller whose tier is `ANCHOR`. `200`:
 
 ```json
 {"sections": [
@@ -176,7 +214,8 @@ default for typed operations' authenticated answers; the contract does not add a
 
 ### 4.2 `GET /api/admin/about` (`getAdminAbout`)
 
-Permission: `{app}:admin:console:view`. `200`:
+Permission: `{app}:admin:console:view`; in an operators-only area (section 3a, rule 6; Go; Java to follow) also a
+caller whose tier is `ANCHOR`. `200`:
 
 ```json
 {"application": "orders-demo", "framework": "0.1.0-SNAPSHOT", "environment": "test",
@@ -372,7 +411,8 @@ but the platform should (flowcatalyst.md section 5, item 7).
 (on the platform `{app}:admin`, display name "Administrator") reach the platform through the definition
 sync without the application declaring them. The role lists the permissions one by one (the sync accepts no
 wildcard in a role; the application's *permission mapping* may still use `{app}:admin:*:*`). An application
-that declares its own role `admin` gets nothing added. Role and permission names obey the platform rules
+that declares its own role `admin` gets nothing added. (Go; Java to follow: the role can be named or declined,
+section 3.) Role and permission names obey the platform rules
 (letters, digits and `_.-` per colon-separated segment, no whitespace; the sync adds the `{app}:` prefix).
 
 ## 12. Users, invitations and activity (M4e slices 1 and 4, built 2026-10-16)

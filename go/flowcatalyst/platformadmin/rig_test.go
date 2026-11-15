@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"io"
+	"log/slog"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -54,6 +55,10 @@ type rigOptions struct {
 	definitions func(fc *flowcatalyst.Declared, adm *admin.Declared)
 	// build gives flowcatalyst.Build its options
 	build []flowcatalyst.BuildOption
+	// adminOpts are given to admin.Declare
+	adminOpts []admin.Option
+	// logger receives the application's logs (default: discarded)
+	logger *slog.Logger
 }
 
 func startRig(t *testing.T, o rigOptions) *rig {
@@ -83,9 +88,13 @@ func tryRig(t *testing.T, o rigOptions) (*rig, error) {
 			delete(env, k)
 		}
 	}
-	app := fw.New("orders-admin-test", fw.WithEnvironment(env), fw.WithConfigDir(t.TempDir()), fw.WithOutput(io.Discard, io.Discard))
+	appOpts := []fw.Option{fw.WithEnvironment(env), fw.WithConfigDir(t.TempDir()), fw.WithOutput(io.Discard, io.Discard)}
+	if o.logger != nil {
+		appOpts = append(appOpts, fw.WithLogger(o.logger))
+	}
+	app := fw.New("orders-admin-test", appOpts...)
 	web := httpfw.Declare(app)
-	adm := admin.Declare(web, fw.MustApplicationCode("orders"))
+	adm := admin.Declare(web, fw.MustApplicationCode("orders"), o.adminOpts...)
 	fcd := flowcatalyst.Declare(app)
 	declare := o.declare
 	if declare == nil {

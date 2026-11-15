@@ -114,14 +114,16 @@ type operations struct {
 	about      httpfw.Operation[httpfw.NoBody, About]
 }
 
-func newOperations(application fw.ApplicationCode) operations {
+func newOperations(application fw.ApplicationCode, operatorsOnly bool) operations {
 	view := permissionOf(ConsoleView(application))
-	return operations{
-		navigation: httpfw.Get[Navigation]("/api/admin/navigation").
-			ID("getAdminNavigation").Summary("The admin sections the caller may use").Tag("admin").
-			Permission(view).Build(),
-		about: httpfw.Get[About]("/api/admin/about").
-			ID("getAdminAbout").Summary("What the application is and whether it is healthy").Tag("admin").
-			Permission(view).Build(),
+	nav := httpfw.Get[Navigation]("/api/admin/navigation").
+		ID("getAdminNavigation").Summary("The admin sections the caller may use").Tag("admin").
+		Permission(view)
+	about := httpfw.Get[About]("/api/admin/about").
+		ID("getAdminAbout").Summary("What the application is and whether it is healthy").Tag("admin").
+		Permission(view)
+	if operatorsOnly {
+		nav, about = nav.OperatorsOnly(), about.OperatorsOnly()
 	}
+	return operations{navigation: nav.Build(), about: about.Build()}
 }

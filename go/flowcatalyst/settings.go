@@ -141,6 +141,10 @@ type Declared struct {
 	// adm is the admin registry given to AdminDefinitions: its operators-only sections are what
 	// client-managed roles are checked against.
 	adm *admin.Declared
+	// adminProblems are the declaration problems of AdminDefinitions, reported by Build.
+	adminProblems []fw.Problem
+	// adminWithoutRole is true after AdminDefinitions(adm, WithoutAdminRole()) added permissions only.
+	adminWithoutRole bool
 }
 
 // Declare declares the module: it claims the component flowcatalyst, declares every
