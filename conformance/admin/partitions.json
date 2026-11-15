@@ -1,5 +1,5 @@
 {
-  "description": "The partitions section of the application admin (partitions contract section 11, admin contract section 3a), written by hand for the Go build; the Java framework follows from it. Setup: application 'acme' with the admin skeleton and the partitions section (id 'partitions', path /admin/partitions, permission acme:admin:partitions:view, operators only). 'gate': every operation of the section needs its permission (the GET operations acme:admin:partitions:view, the two POST operations acme:admin:partitions:manage; the wildcard rule of core section 3 applies) AND a caller whose tier is exactly ANCHOR; a PARTNER, a CLIENT and a caller with no tier get 403 FORBIDDEN with a message that says the operation is for platform operators, whatever permissions they hold; a caller without the permission gets 403 FORBIDDEN; 'navigation' says whether GET /api/admin/navigation lists the section for that caller (it also needs acme:admin:console:view, which every case holds). A case's 'view' and 'manage' give whether a caller may use the operations of that permission (true: not refused by the gate; false: 403 FORBIDDEN). 'durations': a declared duration on the wire is ISO-8601 as java.time.Duration.toString writes it. 'projection': a table's status (neutral input: instants RFC 3339, durations in seconds, a null is absent) and the two documents the section writes from it, 'summary' (an item of GET /api/admin/partitions, 'tables') and 'table' (GET /api/admin/partitions/{table}); an absent optional field is omitted, not null; 'summary.partitionCount', 'bytes' and 'rows' are the table's totals, 'oldestFrom' is the first partition's from (partitions are listed oldest first), 'nextRemovalDue' the earliest removalDue of its partitions. 'refusals': requests of an operator holding both permissions against an application whose declared tables are 'readings' (monthly, ahead 2, id-keyed) and 'samples' (weekly), answered with the status and error code given; 'table' in a path is a table as declared or schema-qualified. Documents are compared as parsed JSON.",
+  "description": "The partitions section of the application admin (partitions contract section 11, admin contract section 3a), written by hand for the Go build; the Java framework follows from it. Setup: application 'acme' with the admin skeleton and the partitions section (id 'partitions', path /admin/partitions, permission acme:admin:partitions:view, operators only). 'gate': every operation of the section needs its permission (the GET operations acme:admin:partitions:view, the two POST operations acme:admin:partitions:manage; the wildcard rule of core section 3 applies) AND a caller whose tier is exactly ANCHOR; a PARTNER, a CLIENT and a caller with no tier get 403 FORBIDDEN with a message that says the operation is for platform operators, whatever permissions they hold; a caller without the permission gets 403 FORBIDDEN; 'navigation' says whether GET /api/admin/navigation lists the section for that caller (it also needs acme:admin:console:view, which every case holds). A case's 'view' and 'manage' give whether a caller may use the operations of that permission (true: not refused by the gate; false: 403 FORBIDDEN). 'durations': a declared duration on the wire is ISO-8601 as java.time.Duration.toString writes it. 'projection': a table's status (neutral input: instants RFC 3339, durations in seconds, a null is absent) and the two documents the section writes from it, 'summary' (an item of GET /api/admin/partitions, 'tables') and 'table' (GET /api/admin/partitions/{table}); an absent optional field is omitted, not null; 'key' is an object: 'kind' ID (with 'column' and 'prefix') or COLUMN (with 'column' and 'type' TIMESTAMPTZ or DATE); 'lastPass.trigger' (LOOP or MANUAL) and 'lastPass.actor' are omitted when not recorded; 'rows' is the sum of the known partition estimates and is omitted when the table has partitions and none has an estimate (a table with no partitions has rows 0), and 'partitionsWithoutEstimate' (always present) counts the partitions without one; 'summary.partitionCount', 'bytes' and 'rows' (when present) are the table's totals, 'oldestFrom' is the first partition's from (partitions are listed oldest first), 'nextRemovalDue' the earliest removalDue of its partitions. 'refusals': requests of an operator holding both permissions against an application whose declared tables are 'readings' (monthly, ahead 2, id-keyed) and 'samples' (weekly), answered with the status and error code given; 'table' in a path is a table as declared or schema-qualified. Documents are compared as parsed JSON.",
   "howToRun": "gate: for every case and every operation, send the request with the case's tier and permissions and compare allowed or refused. durations: format each. projection: map the input to the documents and compare. refusals: send each request as the operator and compare the status and the error code.",
   "application": "acme",
   "operations": [
@@ -207,11 +207,15 @@
   ],
   "projection": [
     {
-      "name": "an archiving table on the default instance, with a last pass, an archived partition and an unanalysed one",
+      "name": "an archiving table with a manual last pass (trigger and actor), an archived partition, a partial estimate and an unanalysed partition",
       "input": {
         "name": "public.readings",
         "database": null,
-        "key": "ByID(\"rdg\") on id",
+        "key": {
+          "kind": "ID",
+          "column": "id",
+          "prefix": "rdg"
+        },
         "interval": "MONTH",
         "ahead": 2,
         "retention": {
@@ -227,7 +231,9 @@
           "archive": "OK",
           "created": 1,
           "dropped": 1,
-          "archived": 1
+          "archived": 1,
+          "trigger": "MANUAL",
+          "actor": "prn_OP1"
         },
         "partitions": [
           {
@@ -271,12 +277,17 @@
         ],
         "strays": [],
         "bytes": 32768,
-        "rows": 12
+        "rows": 12,
+        "partitionsWithoutEstimate": 1
       },
       "expect": {
         "summary": {
           "name": "public.readings",
-          "key": "ByID(\"rdg\") on id",
+          "key": {
+            "kind": "ID",
+            "column": "id",
+            "prefix": "rdg"
+          },
           "interval": "MONTH",
           "ahead": 2,
           "retention": {
@@ -292,17 +303,24 @@
             "archive": "OK",
             "created": 1,
             "dropped": 1,
-            "archived": 1
+            "archived": 1,
+            "trigger": "MANUAL",
+            "actor": "prn_OP1"
           },
           "partitionCount": 3,
           "bytes": 32768,
           "rows": 12,
           "oldestFrom": "2026-09-01T00:00:00Z",
-          "nextRemovalDue": "2027-01-01T00:00:00Z"
+          "nextRemovalDue": "2027-01-01T00:00:00Z",
+          "partitionsWithoutEstimate": 1
         },
         "table": {
           "name": "public.readings",
-          "key": "ByID(\"rdg\") on id",
+          "key": {
+            "kind": "ID",
+            "column": "id",
+            "prefix": "rdg"
+          },
           "interval": "MONTH",
           "ahead": 2,
           "retention": {
@@ -318,7 +336,9 @@
             "archive": "OK",
             "created": 1,
             "dropped": 1,
-            "archived": 1
+            "archived": 1,
+            "trigger": "MANUAL",
+            "actor": "prn_OP1"
           },
           "partitions": [
             {
@@ -359,16 +379,21 @@
           ],
           "strays": [],
           "bytes": 32768,
-          "rows": 12
+          "rows": 12,
+          "partitionsWithoutEstimate": 1
         }
       }
     },
     {
-      "name": "a table that keeps everything, on another instance, with a stray and no last pass",
+      "name": "a table that keeps everything, on another instance, with a stray, no last pass and no estimate on its only partition (rows not known)",
       "input": {
         "name": "telemetry.trail",
         "database": "other",
-        "key": "ByDateColumn(\"service_day\")",
+        "key": {
+          "kind": "COLUMN",
+          "column": "service_day",
+          "type": "DATE"
+        },
         "interval": "YEAR",
         "ahead": 1,
         "retention": {
@@ -393,13 +418,18 @@
           "telemetry.trail_legacy"
         ],
         "bytes": 8192,
-        "rows": 0
+        "rows": null,
+        "partitionsWithoutEstimate": 1
       },
       "expect": {
         "summary": {
           "name": "telemetry.trail",
           "database": "other",
-          "key": "ByDateColumn(\"service_day\")",
+          "key": {
+            "kind": "COLUMN",
+            "column": "service_day",
+            "type": "DATE"
+          },
           "interval": "YEAR",
           "ahead": 1,
           "retention": {
@@ -408,13 +438,17 @@
           "healthy": false,
           "partitionCount": 1,
           "bytes": 8192,
-          "rows": 0,
-          "oldestFrom": "2026-01-01T00:00:00Z"
+          "oldestFrom": "2026-01-01T00:00:00Z",
+          "partitionsWithoutEstimate": 1
         },
         "table": {
           "name": "telemetry.trail",
           "database": "other",
-          "key": "ByDateColumn(\"service_day\")",
+          "key": {
+            "kind": "COLUMN",
+            "column": "service_day",
+            "type": "DATE"
+          },
           "interval": "YEAR",
           "ahead": 1,
           "retention": {
@@ -435,7 +469,230 @@
             "telemetry.trail_legacy"
           ],
           "bytes": 8192,
-          "rows": 0
+          "partitionsWithoutEstimate": 1
+        }
+      }
+    },
+    {
+      "name": "a table with a timestamptz column key, a pass by the loop (no actor) and no partitions (rows 0, not unknown)",
+      "input": {
+        "name": "public.samples",
+        "database": null,
+        "key": {
+          "kind": "COLUMN",
+          "column": "recorded_at",
+          "type": "TIMESTAMPTZ"
+        },
+        "interval": "MONTH",
+        "ahead": 2,
+        "retention": {
+          "kind": "ARCHIVE_THEN_DROP",
+          "afterSeconds": 7776000,
+          "store": "archive"
+        },
+        "healthy": true,
+        "lastPass": {
+          "endedAt": "2026-11-14T09:00:00Z",
+          "ensure": "OK",
+          "retention": "OK",
+          "archive": "OK",
+          "created": 1,
+          "dropped": 1,
+          "archived": 1,
+          "trigger": "LOOP",
+          "actor": null
+        },
+        "partitions": [],
+        "detached": [],
+        "strays": [],
+        "bytes": 0,
+        "rows": 0,
+        "partitionsWithoutEstimate": 0
+      },
+      "expect": {
+        "summary": {
+          "name": "public.samples",
+          "key": {
+            "kind": "COLUMN",
+            "column": "recorded_at",
+            "type": "TIMESTAMPTZ"
+          },
+          "interval": "MONTH",
+          "ahead": 2,
+          "retention": {
+            "kind": "ARCHIVE_THEN_DROP",
+            "after": "PT2160H",
+            "store": "archive"
+          },
+          "healthy": true,
+          "lastPass": {
+            "endedAt": "2026-11-14T09:00:00Z",
+            "ensure": "OK",
+            "retention": "OK",
+            "archive": "OK",
+            "created": 1,
+            "dropped": 1,
+            "archived": 1,
+            "trigger": "LOOP"
+          },
+          "partitionCount": 0,
+          "bytes": 0,
+          "rows": 0,
+          "partitionsWithoutEstimate": 0
+        },
+        "table": {
+          "name": "public.samples",
+          "key": {
+            "kind": "COLUMN",
+            "column": "recorded_at",
+            "type": "TIMESTAMPTZ"
+          },
+          "interval": "MONTH",
+          "ahead": 2,
+          "retention": {
+            "kind": "ARCHIVE_THEN_DROP",
+            "after": "PT2160H",
+            "store": "archive"
+          },
+          "healthy": true,
+          "lastPass": {
+            "endedAt": "2026-11-14T09:00:00Z",
+            "ensure": "OK",
+            "retention": "OK",
+            "archive": "OK",
+            "created": 1,
+            "dropped": 1,
+            "archived": 1,
+            "trigger": "LOOP"
+          },
+          "partitions": [],
+          "detached": [],
+          "strays": [],
+          "bytes": 0,
+          "rows": 0,
+          "partitionsWithoutEstimate": 0
+        }
+      }
+    },
+    {
+      "name": "a table keyed on an id column other than id, a last pass recorded before the trigger and actor columns existed, every partition analysed",
+      "input": {
+        "name": "public.events",
+        "database": null,
+        "key": {
+          "kind": "ID",
+          "column": "event_id",
+          "prefix": "evt"
+        },
+        "interval": "MONTH",
+        "ahead": 2,
+        "retention": {
+          "kind": "ARCHIVE_THEN_DROP",
+          "afterSeconds": 7776000,
+          "store": "archive"
+        },
+        "healthy": true,
+        "lastPass": {
+          "endedAt": "2026-11-14T09:00:00Z",
+          "ensure": "OK",
+          "retention": "OK",
+          "archive": "OK",
+          "created": 1,
+          "dropped": 1,
+          "archived": 1,
+          "trigger": null,
+          "actor": null
+        },
+        "partitions": [
+          {
+            "name": "readings_p20261101",
+            "from": "2026-11-01T00:00:00Z",
+            "to": "2026-12-01T00:00:00Z",
+            "position": "CURRENT",
+            "bytes": 16384,
+            "rows": 12,
+            "removalDue": "2027-03-01T00:00:00Z",
+            "archived": null
+          }
+        ],
+        "detached": [],
+        "strays": [],
+        "bytes": 16384,
+        "rows": 12,
+        "partitionsWithoutEstimate": 0
+      },
+      "expect": {
+        "summary": {
+          "name": "public.events",
+          "key": {
+            "kind": "ID",
+            "column": "event_id",
+            "prefix": "evt"
+          },
+          "interval": "MONTH",
+          "ahead": 2,
+          "retention": {
+            "kind": "ARCHIVE_THEN_DROP",
+            "after": "PT2160H",
+            "store": "archive"
+          },
+          "healthy": true,
+          "lastPass": {
+            "endedAt": "2026-11-14T09:00:00Z",
+            "ensure": "OK",
+            "retention": "OK",
+            "archive": "OK",
+            "created": 1,
+            "dropped": 1,
+            "archived": 1
+          },
+          "partitionCount": 1,
+          "bytes": 16384,
+          "rows": 12,
+          "oldestFrom": "2026-11-01T00:00:00Z",
+          "nextRemovalDue": "2027-03-01T00:00:00Z",
+          "partitionsWithoutEstimate": 0
+        },
+        "table": {
+          "name": "public.events",
+          "key": {
+            "kind": "ID",
+            "column": "event_id",
+            "prefix": "evt"
+          },
+          "interval": "MONTH",
+          "ahead": 2,
+          "retention": {
+            "kind": "ARCHIVE_THEN_DROP",
+            "after": "PT2160H",
+            "store": "archive"
+          },
+          "healthy": true,
+          "lastPass": {
+            "endedAt": "2026-11-14T09:00:00Z",
+            "ensure": "OK",
+            "retention": "OK",
+            "archive": "OK",
+            "created": 1,
+            "dropped": 1,
+            "archived": 1
+          },
+          "partitions": [
+            {
+              "name": "readings_p20261101",
+              "from": "2026-11-01T00:00:00Z",
+              "to": "2026-12-01T00:00:00Z",
+              "position": "CURRENT",
+              "bytes": 16384,
+              "rows": 12,
+              "removalDue": "2027-03-01T00:00:00Z"
+            }
+          ],
+          "detached": [],
+          "strays": [],
+          "bytes": 16384,
+          "rows": 12,
+          "partitionsWithoutEstimate": 0
         }
       }
     }

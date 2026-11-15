@@ -1,6 +1,7 @@
 package partitionsadmin_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -41,13 +42,19 @@ func TestTheListAnswersEveryTableWithoutItsPartitions(t *testing.T) {
 	}
 	// the earliest removal: November ends 2026-12-01, plus the 90 days of the retention
 	want := map[string]any{
-		"key": `ByID("rdg") on id`, "interval": "MONTH", "ahead": float64(2), "healthy": true, "partitionCount": float64(3),
+		"interval": "MONTH", "ahead": float64(2), "healthy": true, "partitionCount": float64(3),
 		"oldestFrom": "2026-11-01T00:00:00Z", "nextRemovalDue": "2027-03-01T00:00:00Z",
 	}
 	for k, v := range want {
 		if readings[k] != v {
 			t.Errorf("readings.%s = %v, want %v", k, readings[k], v)
 		}
+	}
+	if !reflect.DeepEqual(readings["key"], map[string]any{"kind": "ID", "column": "id", "prefix": "rdg"}) {
+		t.Errorf("readings.key = %v, want an ID key on id with prefix rdg", readings["key"])
+	}
+	if _, has := readings["rows"]; has || readings["partitionsWithoutEstimate"] != float64(3) {
+		t.Errorf("before ANALYZE rows is absent and the 3 partitions have no estimate: rows %v, without %v", readings["rows"], readings["partitionsWithoutEstimate"])
 	}
 	ret, _ := readings["retention"].(map[string]any)
 	if ret["kind"] != "ARCHIVE_THEN_DROP" || ret["after"] != "PT2160H" || ret["store"] != "archive" {
@@ -63,7 +70,7 @@ func TestTheListAnswersEveryTableWithoutItsPartitions(t *testing.T) {
 	if samplesRet["kind"] != "DROP" || samplesRet["after"] != "PT720H" || samplesRet["store"] != nil {
 		t.Errorf("samples retention %v", samplesRet)
 	}
-	if tables[1]["interval"] != "WEEK" || tables[1]["key"] != `ByColumn("recorded_at")` {
+	if tables[1]["interval"] != "WEEK" || !reflect.DeepEqual(tables[1]["key"], map[string]any{"kind": "COLUMN", "column": "recorded_at", "type": "TIMESTAMPTZ"}) {
 		t.Errorf("samples %v", tables[1])
 	}
 }
@@ -136,6 +143,12 @@ func TestAPassArchivesAndTheArchivesPageNewestFirst(t *testing.T) {
 	a = r.send("POST", "/api/admin/partitions/passes", `{}`, operatorWithBoth)
 	if got := a.list("results"); len(got) != 2 || got[0]["table"] != "public.readings" || got[1]["table"] != "public.samples" {
 		t.Fatalf("all tables: %s", a.body)
+	}
+
+	// the record says the pass was manual and by whom
+	a = r.send("GET", "/api/admin/partitions/readings", "", operatorViewOnly)
+	if lp, _ := a.tree()["lastPass"].(map[string]any); lp["trigger"] != "MANUAL" || lp["actor"] != "prn_TESTOP" {
+		t.Errorf("lastPass %v, want trigger MANUAL and actor prn_TESTOP", a.tree()["lastPass"])
 	}
 
 	a = r.send("GET", "/api/admin/partitions/readings/archives", "", operatorViewOnly)

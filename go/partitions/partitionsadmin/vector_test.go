@@ -13,11 +13,16 @@ import (
 const vectorFile = "admin/partitions.json"
 
 type vectorInput struct {
-	Name      string  `json:"name"`
-	Database  *string `json:"database"`
-	Key       string  `json:"key"`
-	Interval  string  `json:"interval"`
-	Ahead     int     `json:"ahead"`
+	Name     string  `json:"name"`
+	Database *string `json:"database"`
+	Key      struct {
+		Kind   string `json:"kind"`
+		Column string `json:"column"`
+		Prefix string `json:"prefix"`
+		Type   string `json:"type"`
+	} `json:"key"`
+	Interval  string `json:"interval"`
+	Ahead     int    `json:"ahead"`
 	Retention struct {
 		Kind         string `json:"kind"`
 		AfterSeconds int64  `json:"afterSeconds"`
@@ -32,6 +37,8 @@ type vectorInput struct {
 		Created   int       `json:"created"`
 		Dropped   int       `json:"dropped"`
 		Archived  int       `json:"archived"`
+		Trigger   *string   `json:"trigger"`
+		Actor     *string   `json:"actor"`
 	} `json:"lastPass"`
 	Partitions []struct {
 		Name       string     `json:"name"`
@@ -51,16 +58,32 @@ type vectorInput struct {
 	Detached []string `json:"detached"`
 	Strays   []string `json:"strays"`
 	Bytes    int64    `json:"bytes"`
-	Rows     int64    `json:"rows"`
+	// Rows is null when the total is not known.
+	Rows                      *int64 `json:"rows"`
+	PartitionsWithoutEstimate int    `json:"partitionsWithoutEstimate"`
+}
+
+func (in vectorInput) key(t *testing.T) partitions.Key {
+	t.Helper()
+	switch k := in.Key; {
+	case k.Kind == "ID":
+		return partitions.ByIDColumn(k.Column, k.Prefix)
+	case k.Kind == "COLUMN" && k.Type == "TIMESTAMPTZ":
+		return partitions.ByColumn(k.Column)
+	case k.Kind == "COLUMN" && k.Type == "DATE":
+		return partitions.ByDateColumn(k.Column)
+	}
+	t.Fatalf("%s: key %+v", in.Name, in.Key)
+	return partitions.Key{}
 }
 
 func (in vectorInput) status(t *testing.T) partitions.TableStatus {
 	t.Helper()
 	interval := map[string]partitions.Interval{"DAY": partitions.Day, "WEEK": partitions.Week, "MONTH": partitions.Month, "YEAR": partitions.Year}[in.Interval]
 	st := partitions.TableStatus{
-		Name: in.Name, Key: in.Key, Interval: interval, Ahead: in.Ahead, Healthy: in.Healthy,
+		Name: in.Name, Key: in.key(t), Interval: interval, Ahead: in.Ahead, Healthy: in.Healthy,
 		Retention: partitions.RetentionStatus{Kind: partitions.RetentionKind(in.Retention.Kind), After: time.Duration(in.Retention.AfterSeconds) * time.Second, Store: in.Retention.Store},
-		Detached:  in.Detached, Strays: in.Strays, Bytes: in.Bytes, Rows: in.Rows,
+		Detached:  in.Detached, Strays: in.Strays, Bytes: in.Bytes, Rows: in.Rows, PartitionsWithoutEstimate: in.PartitionsWithoutEstimate,
 	}
 	if in.Database != nil {
 		st.Database = *in.Database
@@ -69,6 +92,12 @@ func (in vectorInput) status(t *testing.T) partitions.TableStatus {
 		st.LastPass = &partitions.LastPass{
 			EndedAt: l.EndedAt, Ensure: partitions.StepStatus(l.Ensure), Retention: partitions.StepStatus(l.Retention), Archive: partitions.StepStatus(l.Archive),
 			Created: l.Created, Dropped: l.Dropped, Archived: l.Archived,
+		}
+		if l.Trigger != nil {
+			st.LastPass.Trigger = partitions.PassTrigger(*l.Trigger)
+		}
+		if l.Actor != nil {
+			st.LastPass.Actor = *l.Actor
 		}
 	}
 	for _, p := range in.Partitions {
@@ -94,7 +123,7 @@ func TestProjectionVector(t *testing.T) {
 		} `json:"projection"`
 	}
 	conformance.ReadJSON(t, vectorFile, &doc)
-	if len(doc.Projection) < 2 {
+	if len(doc.Projection) < 4 {
 		t.Fatalf("%s: %d projection cases", vectorFile, len(doc.Projection))
 	}
 	for _, c := range doc.Projection {

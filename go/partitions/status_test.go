@@ -82,7 +82,7 @@ func TestStatusReadsDeclarationSizesEstimatesPositionsAndRemovalDue(t *testing.T
 	}
 
 	readings := all[0]
-	if readings.Database != "" || readings.Key != `ByID("rdg") on id` || readings.Interval != partitions.Month || readings.Interval.Code() != "MONTH" || readings.Ahead != 3 {
+	if readings.Database != "" || readings.Key.String() != `ByID("rdg") on id` || readings.Interval != partitions.Month || readings.Interval.Code() != "MONTH" || readings.Ahead != 3 {
 		t.Errorf("declaration: %+v", readings)
 	}
 	if readings.Retention.Kind != partitions.RetentionDrop || readings.Retention.After != days(90) || readings.Retention.Store != "" {
@@ -104,8 +104,8 @@ func TestStatusReadsDeclarationSizesEstimatesPositionsAndRemovalDue(t *testing.T
 		}
 		sum += p.Bytes
 	}
-	if readings.Bytes != sum || readings.Rows != 0 {
-		t.Errorf("sums: bytes %d (want %d), rows %d", readings.Bytes, sum, readings.Rows)
+	if readings.Bytes != sum || readings.Rows != nil || readings.PartitionsWithoutEstimate != len(readings.Partitions) {
+		t.Errorf("sums: bytes %d (want %d), rows %v, without estimate %d", readings.Bytes, sum, readings.Rows, readings.PartitionsWithoutEstimate)
 	}
 
 	// positions against the module's clock, and the removal instants
@@ -160,8 +160,8 @@ func TestStatusReadsDeclarationSizesEstimatesPositionsAndRemovalDue(t *testing.T
 			t.Errorf("%s: no estimate after ANALYZE", p.Name)
 		}
 	}
-	if nov := partitionNamed(t, readings, "readings_p20261101"); nov.Rows == nil || *nov.Rows != 3 || readings.Rows != 3 {
-		t.Errorf("november estimate %v, total %d", nov.Rows, readings.Rows)
+	if nov := partitionNamed(t, readings, "readings_p20261101"); nov.Rows == nil || *nov.Rows != 3 || readings.Rows == nil || *readings.Rows != 3 || readings.PartitionsWithoutEstimate != 0 {
+		t.Errorf("november estimate %v, total %v, without estimate %d", nov.Rows, readings.Rows, readings.PartitionsWithoutEstimate)
 	}
 
 	// the clock moves: November is past, December current
@@ -563,7 +563,7 @@ func TestADateKeyedYearlyTableInsertsDropsAndReads(t *testing.T) {
 		t.Errorf("rows landed in %v", got)
 	}
 	st := tableStatus(t, s, "runs")
-	if st.Key != `ByDateColumn("service_day")` || st.Interval != partitions.Year || st.Interval.Code() != "YEAR" || !st.Healthy {
+	if st.Key.String() != `ByDateColumn("service_day")` || st.Interval != partitions.Year || st.Interval.Code() != "YEAR" || !st.Healthy {
 		t.Errorf("status %+v", st)
 	}
 	p := partitionNamed(t, st, "runs_p20260101")

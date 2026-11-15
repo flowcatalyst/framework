@@ -130,6 +130,53 @@ func ByColumn(column string) Key { return Key{kind: kindColumn, column: column} 
 // declared with this key and a timestamptz column with [ByColumn]; start-up refuses the other pairing.
 func ByDateColumn(column string) Key { return Key{kind: kindDate, column: column} }
 
+// KeyKind is the kind of a table's partition key, as the status reports it.
+type KeyKind string
+
+// The key kinds.
+const (
+	// KeyKindID is a key on an id column ([ByID], [ByIDColumn]).
+	KeyKindID KeyKind = "ID"
+	// KeyKindColumn is a key on a time column ([ByColumn], [ByDateColumn]).
+	KeyKindColumn KeyKind = "COLUMN"
+)
+
+// KeyColumnType is the type of the column of a [KeyKindColumn] key.
+type KeyColumnType string
+
+// The key column types.
+const (
+	// KeyTimestamptz is the column of [ByColumn].
+	KeyTimestamptz KeyColumnType = "TIMESTAMPTZ"
+	// KeyDate is the column of [ByDateColumn].
+	KeyDate KeyColumnType = "DATE"
+)
+
+// Kind returns the kind of the key: ID for [ByID] and [ByIDColumn], COLUMN for [ByColumn] and
+// [ByDateColumn], and "" for the zero Key.
+func (k Key) Kind() KeyKind {
+	switch k.kind {
+	case kindID:
+		return KeyKindID
+	case kindColumn, kindDate:
+		return KeyKindColumn
+	}
+	return ""
+}
+
+// ColumnType returns the type of the column of a COLUMN key: TIMESTAMPTZ for [ByColumn], DATE for
+// [ByDateColumn]; "" for an ID key and the zero Key.
+func (k Key) ColumnType() KeyColumnType {
+	switch k.kind {
+	case kindColumn:
+		return KeyTimestamptz
+	case kindDate:
+		return KeyDate
+	case kindID:
+	}
+	return ""
+}
+
 // Column returns the partition key column.
 func (k Key) Column() string { return k.column }
 

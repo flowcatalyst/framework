@@ -88,6 +88,33 @@ type StepStatus string
 // EnumValues implements openapi.EnumValuer.
 func (StepStatus) EnumValues() []string { return []string{"OK", "FAILED", "SKIPPED"} }
 
+// PassTrigger says what ran a pass.
+type PassTrigger string
+
+// EnumValues implements openapi.EnumValuer.
+func (PassTrigger) EnumValues() []string { return []string{"LOOP", "MANUAL"} }
+
+// KeyKind is the kind of a table's partition key.
+type KeyKind string
+
+// EnumValues implements openapi.EnumValuer.
+func (KeyKind) EnumValues() []string { return []string{"ID", "COLUMN"} }
+
+// KeyColumnType is the type of the column of a COLUMN key.
+type KeyColumnType string
+
+// EnumValues implements openapi.EnumValuer.
+func (KeyColumnType) EnumValues() []string { return []string{"TIMESTAMPTZ", "DATE"} }
+
+// Key is what a table is partitioned on: an id column whose values carry the prefix (kind ID), or a
+// time column of the given type (kind COLUMN).
+type Key struct {
+	Kind   KeyKind       `json:"kind"`
+	Column string        `json:"column"`
+	Prefix *string       `json:"prefix,omitzero"`
+	Type   KeyColumnType `json:"type,omitzero"`
+}
+
 // Step names a step of a pass.
 type Step string
 
@@ -101,15 +128,19 @@ type Retention struct {
 	Store *string       `json:"store,omitzero"`
 }
 
-// LastPass is the last pass of a table, by whichever replica ran it.
+// LastPass is the last pass of a table, by whichever replica ran it. Trigger and Actor say what ran it
+// and, for a manual pass, who; each is absent when it was not recorded. The row is overwritten by the
+// next pass: it is not a history.
 type LastPass struct {
-	EndedAt   time.Time  `json:"endedAt"`
-	Ensure    StepStatus `json:"ensure"`
-	Retention StepStatus `json:"retention"`
-	Archive   StepStatus `json:"archive"`
-	Created   int32      `json:"created"`
-	Dropped   int32      `json:"dropped"`
-	Archived  int32      `json:"archived"`
+	EndedAt   time.Time   `json:"endedAt"`
+	Ensure    StepStatus  `json:"ensure"`
+	Retention StepStatus  `json:"retention"`
+	Archive   StepStatus  `json:"archive"`
+	Created   int32       `json:"created"`
+	Dropped   int32       `json:"dropped"`
+	Archived  int32       `json:"archived"`
+	Trigger   PassTrigger `json:"trigger,omitzero"`
+	Actor     *string     `json:"actor,omitzero"`
 }
 
 // Archived is what the manifest holds for an attached partition that was archived.
@@ -135,19 +166,22 @@ type Partition struct {
 
 // TableSummary is a table in the list: its declaration and totals, without its partitions.
 type TableSummary struct {
-	Name           string     `json:"name"`
-	Database       *string    `json:"database,omitzero"`
-	Key            string     `json:"key"`
-	Interval       Interval   `json:"interval"`
-	Ahead          int32      `json:"ahead"`
-	Retention      Retention  `json:"retention"`
-	Healthy        bool       `json:"healthy"`
-	LastPass       *LastPass  `json:"lastPass,omitzero"`
-	PartitionCount int32      `json:"partitionCount"`
-	Bytes          int64      `json:"bytes"`
-	Rows           int64      `json:"rows"`
-	OldestFrom     *time.Time `json:"oldestFrom,omitzero"`
-	NextRemovalDue *time.Time `json:"nextRemovalDue,omitzero"`
+	Name           string    `json:"name"`
+	Database       *string   `json:"database,omitzero"`
+	Key            Key       `json:"key"`
+	Interval       Interval  `json:"interval"`
+	Ahead          int32     `json:"ahead"`
+	Retention      Retention `json:"retention"`
+	Healthy        bool      `json:"healthy"`
+	LastPass       *LastPass `json:"lastPass,omitzero"`
+	PartitionCount int32     `json:"partitionCount"`
+	Bytes          int64     `json:"bytes"`
+	Rows           *int64    `json:"rows,omitzero"`
+	// PartitionsWithoutEstimate counts the partitions that have no row estimate; rows is absent when
+	// none of the table's partitions has one.
+	PartitionsWithoutEstimate int32      `json:"partitionsWithoutEstimate"`
+	OldestFrom                *time.Time `json:"oldestFrom,omitzero"`
+	NextRemovalDue            *time.Time `json:"nextRemovalDue,omitzero"`
 }
 
 // TableList is every declared table, in declaration order (there is a handful: not paged).
@@ -160,7 +194,7 @@ type TableList struct {
 type Table struct {
 	Name       string      `json:"name"`
 	Database   *string     `json:"database,omitzero"`
-	Key        string      `json:"key"`
+	Key        Key         `json:"key"`
 	Interval   Interval    `json:"interval"`
 	Ahead      int32       `json:"ahead"`
 	Retention  Retention   `json:"retention"`
@@ -170,7 +204,10 @@ type Table struct {
 	Detached   []string    `json:"detached"`
 	Strays     []string    `json:"strays"`
 	Bytes      int64       `json:"bytes"`
-	Rows       int64       `json:"rows"`
+	Rows       *int64      `json:"rows,omitzero"`
+	// PartitionsWithoutEstimate counts the partitions that have no row estimate; rows is absent when
+	// none of the table's partitions has one.
+	PartitionsWithoutEstimate int32 `json:"partitionsWithoutEstimate"`
 }
 
 // Archive is one archived partition. Key is the first object's key in the object store (the others
@@ -255,6 +292,7 @@ func Declare(adm *admin.Declared) *Admin {
 	app := adm.Application()
 	web := adm.Web()
 	httpfw.NameType[Retention](web, "AdminPartitionRetention")
+	httpfw.NameType[Key](web, "AdminPartitionKey")
 	httpfw.NameType[LastPass](web, "AdminPartitionLastPass")
 	httpfw.NameType[Archived](web, "AdminPartitionArchived")
 	httpfw.NameType[Partition](web, "AdminPartition")
@@ -318,11 +356,25 @@ func retentionOf(r partitions.RetentionStatus) Retention {
 	return out
 }
 
+func keyOf(k partitions.Key) Key {
+	out := Key{Kind: KeyKind(k.Kind()), Column: k.Column(), Type: KeyColumnType(k.ColumnType())}
+	if k.IsID() {
+		prefix := k.Prefix()
+		out.Prefix = &prefix
+	}
+	return out
+}
+
 func lastPassOf(l *partitions.LastPass) *LastPass {
 	if l == nil {
 		return nil
 	}
+	var actor *string
+	if l.Actor != "" {
+		actor = &l.Actor
+	}
 	return &LastPass{
+		Trigger: PassTrigger(l.Trigger), Actor: actor,
 		EndedAt: l.EndedAt, Ensure: StepStatus(l.Ensure), Retention: StepStatus(l.Retention), Archive: StepStatus(l.Archive),
 		Created: int32(l.Created), Dropped: int32(l.Dropped), Archived: int32(l.Archived), //nolint:gosec // counts of a pass: a handful
 	}
@@ -337,10 +389,10 @@ func databaseOf(name string) *string {
 
 func tableOf(st partitions.TableStatus) Table {
 	out := Table{
-		Name: st.Name, Database: databaseOf(st.Database), Key: st.Key, Interval: Interval(st.Interval.Code()), Ahead: int32(st.Ahead), //nolint:gosec // 1 to 24
+		Name: st.Name, Database: databaseOf(st.Database), Key: keyOf(st.Key), Interval: Interval(st.Interval.Code()), Ahead: int32(st.Ahead), //nolint:gosec // 1 to 24
 		Retention: retentionOf(st.Retention), Healthy: st.Healthy, LastPass: lastPassOf(st.LastPass),
 		Partitions: make([]Partition, 0, len(st.Partitions)), Detached: nonNil(st.Detached), Strays: nonNil(st.Strays),
-		Bytes: st.Bytes, Rows: st.Rows,
+		Bytes: st.Bytes, Rows: st.Rows, PartitionsWithoutEstimate: int32(st.PartitionsWithoutEstimate), //nolint:gosec // partitions of one table: hundreds at most
 	}
 	for _, p := range st.Partitions {
 		wp := Partition{Name: p.Name, From: p.From, To: p.To, Position: Position(p.Position), Bytes: p.Bytes, Rows: p.Rows, RemovalDue: p.RemovalDue}
@@ -361,9 +413,10 @@ func nonNil(s []string) []string {
 
 func summaryOf(st partitions.TableStatus) TableSummary {
 	out := TableSummary{
-		Name: st.Name, Database: databaseOf(st.Database), Key: st.Key, Interval: Interval(st.Interval.Code()), Ahead: int32(st.Ahead), //nolint:gosec // 1 to 24
+		Name: st.Name, Database: databaseOf(st.Database), Key: keyOf(st.Key), Interval: Interval(st.Interval.Code()), Ahead: int32(st.Ahead), //nolint:gosec // 1 to 24
 		Retention: retentionOf(st.Retention), Healthy: st.Healthy, LastPass: lastPassOf(st.LastPass),
 		PartitionCount: int32(len(st.Partitions)), Bytes: st.Bytes, Rows: st.Rows, //nolint:gosec // partitions of one table: hundreds at most
+		PartitionsWithoutEstimate: int32(st.PartitionsWithoutEstimate), //nolint:gosec // partitions of one table: hundreds at most
 	}
 	for i, p := range st.Partitions {
 		if i == 0 { // oldest first

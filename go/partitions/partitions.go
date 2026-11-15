@@ -47,7 +47,7 @@ const ModuleID = "partitions"
 var migrationFiles embed.FS
 
 // Migrations returns the module's migration set as embedded (fw_partition_archives, the manifest of
-// archived partitions; fw_partition_passes, the last pass of each table).
+// archived partitions; fw_partition_passes, the last pass of each table, with what triggered it and who).
 func Migrations() fs.FS {
 	sub, err := fs.Sub(migrationFiles, "migrations")
 	if err != nil {
@@ -317,17 +317,17 @@ func Build(ctx context.Context, b *fw.Boot, _ *Declared, dbs *database.Databases
 func (p *Partitions) Pass(ctx context.Context) error {
 	p.passMu.Lock()
 	defer p.passMu.Unlock()
-	_, err := p.passAll(ctx, p.targets)
+	_, err := p.passAll(ctx, p.targets, loopOrigin)
 	return err
 }
 
 // passAll runs the pass over the targets, in order, and returns the result of each and the joined
 // errors.
-func (p *Partitions) passAll(ctx context.Context, targets []*target) ([]PassResult, error) {
+func (p *Partitions) passAll(ctx context.Context, targets []*target, origin passOrigin) ([]PassResult, error) {
 	var errs []error
 	results := make([]PassResult, 0, len(targets))
 	for _, tg := range targets {
-		res, err := p.passTable(ctx, tg, p.clock.Now())
+		res, err := p.passTable(ctx, tg, p.clock.Now(), origin)
 		results = append(results, res)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("table %s: %w", tg.Name, err))
@@ -336,7 +336,7 @@ func (p *Partitions) passAll(ctx context.Context, targets []*target) ([]PassResu
 	return results, errors.Join(errs...)
 }
 
-func (p *Partitions) passTable(ctx context.Context, tg *target, now time.Time) (PassResult, error) {
+func (p *Partitions) passTable(ctx context.Context, tg *target, now time.Time, origin passOrigin) (PassResult, error) {
 	res := PassResult{Table: tg.qualified, Failed: []Step{}}
 	var errs []error
 	created, err := p.ensureCurrent(ctx, tg, now)
@@ -353,7 +353,7 @@ func (p *Partitions) passTable(ctx context.Context, tg *target, now time.Time) (
 	if err != nil {
 		errs = append(errs, err)
 	}
-	p.recordPass(ctx, tg, res)
+	p.recordPass(ctx, tg, res, origin)
 	return res, errors.Join(errs...)
 }
 

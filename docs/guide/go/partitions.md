@@ -105,7 +105,9 @@ ps, err := partitions.Build(ctx, b, pd, dbs,
 Tables are code, not configuration: there is no `partitions` section. A table in a database instance other
 than the default one says so with `Database: "analytics"`; migrations run on the default instance only, so
 for that instance create `fw_partition_archives` yourself if it archives, and `fw_partition_passes` (the last pass
-of its tables is not recorded without it; start-up warns once).
+of its tables is not recorded without it; start-up warns once). Make `fw_partition_passes` as in the module's
+`V0002` and `V0003` migrations: a table made in the shape of V0002 alone still records and reads, but without
+what ran the last pass and who, and start-up warns once that the columns `pass_trigger` and `actor` are missing.
 
 `Build` checks the declarations and the tables, runs the first ensure pass and registers the loop
 `partitions` (every hour by default, `partitions.Every(d)` changes it) and a critical health check
@@ -178,9 +180,14 @@ before relying on them. The refusals are typed (`partitions.ErrRangeInvalid`, `E
 
 `ps.Status(ctx)` and `ps.TableStatus(ctx, "readings")` read the state of the tables from the catalog (a fixed
 number of queries per table, never a row count): the declaration, `Healthy` (the health check's own decision), the
-`LastPass` (recorded in the database, so any replica sees what the loop's replica did), every partition with its
-`Position`, size, estimated rows, `RemovalDue` (when retention removes it) and `Archived`, the detached tables a
-dead pass left and the strays. `ps.Archives(ctx, "telemetry", after, limit)` lists the archived partitions, newest
+`LastPass` (recorded in the database, so any replica sees what the loop's replica did; its `Trigger` is `LOOP` or
+`MANUAL` and its `Actor` is the principal id of a manual pass, both empty when not recorded; the row is overwritten
+by the next pass, so it shows who ran the latest pass and is not a history or an audit trail), every partition with
+its `Position`, size, estimated rows, `RemovalDue` (when retention removes it) and `Archived`, the detached tables a
+dead pass left and the strays. `Key` is the declared `partitions.Key`: read its `Kind()` (`ID` or `COLUMN`),
+`Column()`, `Prefix()` and `ColumnType()` (`TIMESTAMPTZ` or `DATE`) instead of parsing text. `Rows` is the sum of the
+partitions' estimates and is `nil` when the table has partitions and none was analysed yet, which is not the same as
+an empty table; `PartitionsWithoutEstimate` says how many partitions have no estimate. `ps.Archives(ctx, "telemetry", after, limit)` lists the archived partitions, newest
 first, each with the key of its first object in the store.
 
 Two actions are for an operator, with the acting principal's `fw.Context` for the record:
@@ -201,6 +208,10 @@ page gates on the same permission), and a navigation entry. A partition holds ev
 **operators-only**: besides the permission the caller must be a platform operator (tier `ANCHOR`); a PARTNER, a
 CLIENT and a caller with no tier get `403 FORBIDDEN` and the navigation does not show the section
 ([admin](admin.md), operators-only sections).
+
+On the wire the table's `key` is an object (`kind` `ID` or `COLUMN`, `column`, `prefix` for an ID key, `type`
+`TIMESTAMPTZ` or `DATE` for a COLUMN key), `lastPass` has `trigger` and `actor` (omitted when not recorded), and
+`rows` is omitted when no partition has an estimate yet; `partitionsWithoutEstimate` is always there.
 
 ```go
 pa := partitionsadmin.Declare(adm) // at declaration time, after admin.Declare

@@ -50,34 +50,88 @@ func (tg *target) stepStatuses(res PassResult) (ensure, retention, archive strin
 	return pick(StepEnsure, true), pick(StepRetention, tg.Retention.kind != retKeep), pick(StepArchive, tg.Retention.kind == retArchive)
 }
 
-// auxTables reports whether the module's two tables exist on the table's database instance. The
-// migration creates them on the default instance only.
-func (tg *target) auxTables(ctx context.Context) (manifest, passes bool, err error) {
-	err = tg.db.Pool().QueryRow(ctx,
-		"SELECT to_regclass('fw_partition_archives') IS NOT NULL, to_regclass('fw_partition_passes') IS NOT NULL").Scan(&manifest, &passes)
-	return manifest, passes, err
+// PassTrigger says what ran a pass.
+type PassTrigger string
+
+// The pass triggers.
+const (
+	// TriggerLoop is the background loop's pass.
+	TriggerLoop PassTrigger = "LOOP"
+	// TriggerManual is a pass an operator ran ([Partitions.RunPass]).
+	TriggerManual PassTrigger = "MANUAL"
+)
+
+// passOrigin is who started a pass: the trigger, and for a manual pass the acting principal's id.
+type passOrigin struct {
+	trigger PassTrigger
+	actor   string
+}
+
+var loopOrigin = passOrigin{trigger: TriggerLoop}
+
+// manualOrigin is the origin of a pass run by the principal of by; no actor when by has none.
+func manualOrigin(by fw.Context) passOrigin {
+	o := passOrigin{trigger: TriggerManual}
+	if id, ok := by.Principal(); ok {
+		o.actor = id.String()
+	}
+	return o
+}
+
+// auxState is what exists on a table's database instance of the module's own tables.
+type auxState struct {
+	manifest, passes bool
+	// trigger is set when fw_partition_passes has the pass_trigger and actor columns (V0003).
+	trigger bool
+}
+
+// auxTables reports whether the module's two tables exist on the table's database instance, and
+// whether the passes table has the two origin columns, in one query. The migrations create them on
+// the default instance only.
+func (tg *target) auxTables(ctx context.Context) (auxState, error) {
+	var a auxState
+	err := tg.db.Pool().QueryRow(ctx,
+		`SELECT to_regclass('fw_partition_archives') IS NOT NULL, to_regclass('fw_partition_passes') IS NOT NULL,
+EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('fw_partition_passes') AND attname = 'pass_trigger' AND NOT attisdropped)`).
+		Scan(&a.manifest, &a.passes, &a.trigger)
+	return a, err
 }
 
 // recordPass upserts the table's last pass into its own database, so every replica (and the admin
 // section) sees the pass whichever replica ran it. A failure is logged and counted, never a failure
 // of the pass; an instance without fw_partition_passes records nothing (start-up said so).
-func (p *Partitions) recordPass(ctx context.Context, tg *target, res PassResult) {
+func (p *Partitions) recordPass(ctx context.Context, tg *target, res PassResult, origin passOrigin) {
 	// the pass's own context may be cancelled (shutdown): the record is still worth a short try
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
-	_, passes, err := tg.auxTables(ctx)
-	if err == nil && !passes {
+	aux, err := tg.auxTables(ctx)
+	if err == nil && !aux.passes {
 		return
 	}
 	if err == nil {
 		ensure, retention, archive := tg.stepStatuses(res)
-		_, err = tg.db.Pool().Exec(ctx, `INSERT INTO fw_partition_passes
+		var actor *string
+		if origin.actor != "" {
+			actor = &origin.actor
+		}
+		if aux.trigger {
+			_, err = tg.db.Pool().Exec(ctx, `INSERT INTO fw_partition_passes
+(table_name, ended_at, ensure_status, retention_status, archive_status, created, dropped, archived, pass_trigger, actor)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+ON CONFLICT (table_name) DO UPDATE SET ended_at = EXCLUDED.ended_at, ensure_status = EXCLUDED.ensure_status,
+  retention_status = EXCLUDED.retention_status, archive_status = EXCLUDED.archive_status,
+  created = EXCLUDED.created, dropped = EXCLUDED.dropped, archived = EXCLUDED.archived,
+  pass_trigger = EXCLUDED.pass_trigger, actor = EXCLUDED.actor`,
+				tg.qualified, p.clock.Now(), ensure, retention, archive, res.Created, res.Dropped, res.Archived, string(origin.trigger), actor)
+		} else {
+			_, err = tg.db.Pool().Exec(ctx, `INSERT INTO fw_partition_passes
 (table_name, ended_at, ensure_status, retention_status, archive_status, created, dropped, archived)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (table_name) DO UPDATE SET ended_at = EXCLUDED.ended_at, ensure_status = EXCLUDED.ensure_status,
   retention_status = EXCLUDED.retention_status, archive_status = EXCLUDED.archive_status,
   created = EXCLUDED.created, dropped = EXCLUDED.dropped, archived = EXCLUDED.archived`,
-			tg.qualified, p.clock.Now(), ensure, retention, archive, res.Created, res.Dropped, res.Archived)
+				tg.qualified, p.clock.Now(), ensure, retention, archive, res.Created, res.Dropped, res.Archived)
+		}
 	}
 	if err != nil {
 		p.failures.With(tg.qualified, "record").Inc()
@@ -87,7 +141,9 @@ ON CONFLICT (table_name) DO UPDATE SET ended_at = EXCLUDED.ended_at, ensure_stat
 
 // warnMissingPassTables says, once at start-up and only for an instance that has a declared table,
 // that fw_partition_passes is missing there: the migration runs on the default instance only, so a
-// table on another instance needs it by hand, and without it its last pass is not recorded.
+// table on another instance needs it by hand, and without it its last pass is not recorded. For an
+// instance whose table exists without the pass_trigger and actor columns (made by hand in the shape of
+// V0002) it says once that they are missing: the pass is recorded without them.
 func (p *Partitions) warnMissingPassTables(ctx context.Context) {
 	said := map[string]bool{}
 	for _, tg := range p.targets {
@@ -95,10 +151,18 @@ func (p *Partitions) warnMissingPassTables(ctx context.Context) {
 		if said[name] {
 			continue
 		}
-		if _, passes, err := tg.auxTables(ctx); err == nil && !passes {
+		aux, err := tg.auxTables(ctx)
+		switch {
+		case err != nil:
+		case !aux.passes:
 			said[name] = true
 			p.log.Warn("table fw_partition_passes does not exist in database instance '" + name + "': the last pass of its partitioned tables " +
 				"is not recorded (migrations run on the default instance only; create the table by hand, as in migrations/V0002__create_partition_passes_table.sql)")
+		case !aux.trigger:
+			said[name] = true
+			p.log.Warn("table fw_partition_passes in database instance '" + name + "' has no pass_trigger and actor columns: the last pass of its " +
+				"partitioned tables is recorded without what triggered it and who (migrations run on the default instance only; add the columns by hand, " +
+				"as in migrations/V0003__add_partition_pass_trigger.sql)")
 		}
 	}
 }
@@ -139,7 +203,7 @@ func (p *Partitions) RunPass(ctx context.Context, by fw.Context, table string) (
 	lostLock := false
 	run := func(ctx context.Context) error {
 		var err error
-		results, err = p.passAll(ctx, targets)
+		results, err = p.passAll(ctx, targets, manualOrigin(by))
 		return err
 	}
 	if p.lock != nil {

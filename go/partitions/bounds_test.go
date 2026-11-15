@@ -305,3 +305,25 @@ func TestDateBoundsAreDateLiterals(t *testing.T) {
 		t.Errorf("key text %q", key)
 	}
 }
+
+func TestKeyKindAndColumnType(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name   string
+		key    Key
+		kind   KeyKind
+		typ    KeyColumnType
+		column string
+		prefix string
+	}{
+		{"ByID", ByID("rdg"), KeyKindID, "", "id", "rdg"},
+		{"ByIDColumn", ByIDColumn("event_id", "evt"), KeyKindID, "", "event_id", "evt"},
+		{"ByColumn", ByColumn("recorded_at"), KeyKindColumn, KeyTimestamptz, "recorded_at", ""},
+		{"ByDateColumn", ByDateColumn("service_day"), KeyKindColumn, KeyDate, "service_day", ""},
+		{"zero", Key{}, "", "", "", ""},
+	} {
+		if c.key.Kind() != c.kind || c.key.ColumnType() != c.typ || c.key.Column() != c.column || c.key.Prefix() != c.prefix {
+			t.Errorf("%s: kind %q type %q column %q prefix %q", c.name, c.key.Kind(), c.key.ColumnType(), c.key.Column(), c.key.Prefix())
+		}
+	}
+}

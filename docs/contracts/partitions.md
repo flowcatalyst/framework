@@ -282,11 +282,20 @@ func (p *Partitions) TableStatus(ctx context.Context, table string) (TableStatus
 func (p *Partitions) Archives(ctx context.Context, table, after string, limit int) ([]ArchiveRecord, error)
 ```
 
-`TableStatus`: `Name` (schema-qualified), `Database` ("" is the default instance), `Key` (the key's text,
-`ByID("rdg") on id`, `ByColumn("recorded_at")`, `ByDateColumn("service_day")`), `Interval` (`DAY`, `WEEK`, `MONTH`,
+`TableStatus`: `Name` (schema-qualified), `Database` ("" is the default instance), `Key` (the declared `Key`
+value, not text: `Kind()` is `ID` for `ByID` and `ByIDColumn` and `COLUMN` for `ByColumn` and `ByDateColumn`, `""`
+for the zero `Key`; `Column()`; `Prefix()` for an ID key; `ColumnType()` is `TIMESTAMPTZ` for `ByColumn` and `DATE`
+for `ByDateColumn`, `""` for an ID key; `String()` is still the text `ByID("rdg") on id`, which problems and logs
+use), `Interval` (`DAY`, `WEEK`, `MONTH`,
 `YEAR`), `Ahead`, `Retention` (`Kind` `DROP`, `ARCHIVE_THEN_DROP` or `KEEP`; `After` and `Store` as declared, none
 for `KEEP`), `Healthy`, `LastPass` (section 11; absent when none is recorded), `Partitions` (oldest first),
-`Detached`, `Strays`, `Bytes` and `Rows` (sums; `Rows` sums the known estimates only).
+`Detached`, `Strays`, `Bytes` (the sum of the partitions), `Rows` and `PartitionsWithoutEstimate`.
+
+- `Rows` is a `*int64`: the sum of the known estimates of the listed partitions (the module's own, the ones in
+  `Partitions`). It is **nil** when the table has partitions and none has an estimate (the total is not known: a
+  table nobody analysed is not an empty table), and a non-nil 0 for a table with no partitions.
+  `PartitionsWithoutEstimate` counts the listed partitions that have no estimate, so a reader can tell a partial
+  sum (some partitions not analysed) from a complete one.
 
 - `Healthy` is the decision of the health check `partitions:<table>` (section 6): the partition of the next
   interval is attached. One function decides both.
@@ -327,15 +336,28 @@ CREATE TABLE fw_partition_passes (
     archive_status   text        NOT NULL,
     created          int         NOT NULL,               -- partitions of that pass
     dropped          int         NOT NULL,
-    archived         int         NOT NULL
+    archived         int         NOT NULL,
+    pass_trigger     text,                               -- LOOP | MANUAL; NULL: recorded before the column existed
+    actor            text                                -- the principal id of a manual pass; NULL for the loop's
 );
 ```
 
+`LastPass` carries the same: `EndedAt`, the three step statuses, the three counts, `Trigger` (`LOOP` for the
+loop's pass, `MANUAL` for `RunPass`; `""` when it was not recorded) and `Actor` (the principal id of the `fw.Context`
+that `RunPass` was given, as text; `""` for the loop's pass, for a manual pass whose context has no principal, and
+when it was not recorded). A manual pass the module refuses (section 12) records nothing. The row is overwritten by
+the next pass of the table, so it shows what ran the latest pass and who; it is not a history and not an audit
+trail (the log line of section 12 is the record of an operator's action).
+
 `SKIPPED` is a step that does not apply: retention for `KeepForever`, archive unless the retention archives. No
 failure message is stored: the log has it (the table is read by every operator). The migration is the module's
-`V0002__create_partition_passes_table.sql`, run on the default instance only: a table on another instance needs the
-table by hand, and start-up says so at WARN, once per instance that has a declared table. Without the table nothing
-is recorded and the status shows no last pass. If the upsert fails, it is logged at ERROR and counted
+`V0002__create_partition_passes_table.sql`, and `V0003__add_partition_pass_trigger.sql` adds the two columns `pass_trigger`
+and `actor`. Both run on the default instance only: a table on another instance needs the table by hand, and
+start-up says so at WARN, once per instance that has a declared table. Without the table nothing is recorded and
+the status shows no last pass. A table made by hand in the shape of V0002 (without the two columns) keeps working:
+the pass is recorded without them, the status reads it with `Trigger` and `Actor` empty, and start-up says at WARN,
+once per such instance, that the columns are missing and that V0003 adds them. The module finds out in the same
+query that checks that the tables exist, so the status read makes the same number of queries. If the upsert fails, it is logged at ERROR and counted
 (`fw_partition_failures_total{step="record"}`); it never fails the pass.
 
 ## 12. The two operator actions
@@ -346,7 +368,8 @@ record names.
 - **`RunPass(ctx, by, table)`** runs the ensure-then-retention pass now for one table (as declared or
   schema-qualified), or for every table when `table` is `""`, and returns one `PassResult` per table: `Table`,
   `Created`, `Dropped`, `Archived` and `Failed`, the steps (`ensure`, `retention`, `archive`) that failed. The
-  loop's pass produces the same results. When the pass ran the error is nil and a failed step is in `Failed`; the
+  loop's pass produces the same results. The pass is recorded (section 11) as `MANUAL`, with the principal's id
+  as the actor when `by` has a principal. When the pass ran the error is nil and a failed step is in `Failed`; the
   error is for refusals.
 - **`EnsureAs(ctx, by, table, from, to)`** is `Ensure` (section 4) for an operator.
 
@@ -378,11 +401,17 @@ entry; the application draws its own page (a server-rendered one gates on the sa
 
 | Operation | Id | Permission | Answers |
 |---|---|---|---|
-| `GET /api/admin/partitions` | `listAdminPartitions` | view | `tables`: each table's declaration, `healthy`, `lastPass`, `partitionCount`, `bytes`, `rows`, `oldestFrom`, `nextRemovalDue` (the earliest `removalDue`), without its partitions |
+| `GET /api/admin/partitions` | `listAdminPartitions` | view | `tables`: each table's declaration, `healthy`, `lastPass`, `partitionCount`, `bytes`, `rows`, `partitionsWithoutEstimate`, `oldestFrom`, `nextRemovalDue` (the earliest `removalDue`), without its partitions |
 | `GET /api/admin/partitions/{table}` | `getAdminPartitionTable` | view | the table with every partition, `detached` and `strays`; `404 PARTITION_TABLE_NOT_FOUND` |
 | `GET /api/admin/partitions/{table}/archives` | `listAdminPartitionArchives` | view | `Page<AdminPartitionArchive>` (`items`, `nextCursor`; `limit` 50, 1 to 200; `after`, the `partition` of the last item), newest first; `404 PARTITION_TABLE_NOT_FOUND` |
 | `POST /api/admin/partitions/passes` | `runAdminPartitionPass` | manage | body `{"table": "..."}` or `{}`; `{"results": [PassResult]}`; `404 PARTITION_TABLE_NOT_FOUND`, `409 PARTITION_PASS_RUNNING` |
 | `POST /api/admin/partitions/{table}/ensure` | `ensureAdminPartitions` | manage | body `{"from", "to"}` (RFC 3339); `{"created", "alreadyDue"}`; `404 PARTITION_TABLE_NOT_FOUND`, `400 PARTITION_RANGE_INVALID`, `400 PARTITION_RANGE_TOO_LARGE`, `409 PARTITION_DETACHED_LEFTOVER` |
+
+Wire notes. `key` is an object, `AdminPartitionKey`: `kind` (`ID` or `COLUMN`), `column`, `prefix` (only for an
+ID key) and `type` (`TIMESTAMPTZ` or `DATE`; only for a COLUMN key); the text form of the key is not on the wire.
+`lastPass` has `trigger` (`LOOP` or `MANUAL`) and `actor` (the principal id of a manual pass), each omitted when it
+was not recorded. `rows` (in the list and in the table) is the sum of the known partition estimates and is omitted
+when the table has partitions and none has an estimate; `partitionsWithoutEstimate` (an integer) is always present.
 
 `{table}` is the table as declared or schema-qualified (`readings`, `public.readings`; a dot in a path segment needs
 no encoding). The answers use the framework's wire formats: instants RFC 3339 UTC, durations ISO-8601
@@ -398,7 +427,9 @@ client administrators may assign (a client-managed role): the FlowCatalyst modul
 (admin contract section 3a, rule 4).
 
 The vector is `conformance/admin/partitions.json` (the gate for every tier and permission, the durations, the
-projection of a status to the wire, the refusals).
+projection of a status to the wire, the refusals). The projection cases cover each key kind, a last pass
+by the loop, by a manual pass with its actor and with neither recorded, `rows` absent with a non-zero
+`partitionsWithoutEstimate`, `rows` present with a partial estimate, and a table with no partitions.
 
 **Java to follow:** the contract above is the specification; nothing of sections 10 to 13 exists in Java yet.
 
@@ -412,7 +443,14 @@ database instance (its own last-pass row, and the start-up warning when that ins
 archives paged newest first; the last pass written by the loop and read by a second `Partitions` instance; a manual
 pass refused while the loop's pass holds the lock (in process, and another replica's lock), and accepted after;
 `Ensure`'s `AlreadyDue` and each typed refusal; the number of queries of `Status` (counted on the wire by a proxy)
-independent of the number of partitions; a failed record never failing the pass. The section: the five operations
+independent of the number of partitions; a failed record never failing the pass. The pass record: a loop pass
+recorded `LOOP` with no actor and a manual pass `MANUAL` with the principal's id (a manual pass with a context
+that has no principal: `MANUAL`, no actor), each read through a second `Partitions` instance; a row with NULL in
+the two columns (recorded before V0003) read with `Trigger` and `Actor` empty; a table made in the shape of V0002
+that still records and reads, with the start-up warning once. The rows total: nil with the count of partitions
+without an estimate before any `ANALYZE`, the sum of the analysed partitions and the count of the rest after
+analysing some, a non-nil 0 for a table with no partitions. The key: `Kind`, `ColumnType`, `Column` and `Prefix`
+of each key constructor, and the status of a table of each kind. The section: the five operations
 under every tier (`ANCHOR` with the permission 200; `CLIENT`, `PARTNER`, no tier and a lower-case `anchor` 403 with
 every permission and with the wildcard; `ANCHOR` without the permission 403; not signed in 401), the section absent
 from the navigation of everyone but an operator, the OpenAPI document (`x-fw-operators-only`), and the vector.

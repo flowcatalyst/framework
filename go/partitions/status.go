@@ -67,6 +67,11 @@ type LastPass struct {
 	// Retention and Archive are SKIPPED when the step does not apply to the table.
 	Retention, Archive         StepStatus
 	Created, Dropped, Archived int
+	// Trigger says what ran the pass: the loop or an operator. "" when the row was recorded before
+	// the column existed, or on an instance whose table lacks it.
+	Trigger PassTrigger
+	// Actor is the principal id of a manual pass; "" for the loop's pass and when none was recorded.
+	Actor string
 }
 
 // ArchivedPartition is what the manifest holds for a partition that is archived.
@@ -102,8 +107,8 @@ type TableStatus struct {
 	Name string
 	// Database is the database instance; "" is the default instance.
 	Database string
-	// Key is the declared partition key, "ByID(\"rdg\") on id".
-	Key string
+	// Key is the declared partition key.
+	Key Key
 	// Interval is the declared interval.
 	Interval  Interval
 	Ahead     int
@@ -122,8 +127,14 @@ type TableStatus struct {
 	// Strays names (schema-qualified) the attached partitions that are not the module's names; the
 	// module leaves them alone.
 	Strays []string
-	// Bytes sums the partitions; Rows sums the known estimates only.
-	Bytes, Rows int64
+	// Bytes sums the partitions.
+	Bytes int64
+	// Rows sums the known estimates of the partitions. It is nil when the table has partitions and
+	// none has an estimate (the total is not known, which is not the same as empty), and 0 for a
+	// table with no partitions.
+	Rows *int64
+	// PartitionsWithoutEstimate counts the listed partitions that have no estimate.
+	PartitionsWithoutEstimate int
 }
 
 // ArchiveRecord is one archived partition, from the manifest.
@@ -188,7 +199,7 @@ type childStat struct {
 func (p *Partitions) tableStatus(ctx context.Context, tg *target) (TableStatus, error) {
 	pool := tg.db.Pool()
 	now := p.clock.Now()
-	manifest, passes, err := tg.auxTables(ctx)
+	aux, err := tg.auxTables(ctx)
 	if err != nil {
 		return TableStatus{}, err
 	}
@@ -228,7 +239,7 @@ WHERE i.inhparent = $1::regclass`, tg.ident())
 	starts, strays := tg.ours(kids)
 
 	archived := map[string]ArchivedPartition{}
-	if manifest {
+	if aux.manifest {
 		archived, err = manifestSummary(ctx, tg)
 		if err != nil {
 			return TableStatus{}, err
@@ -239,17 +250,18 @@ WHERE i.inhparent = $1::regclass`, tg.ident())
 		return TableStatus{}, err
 	}
 	var last *LastPass
-	if passes {
-		if last, err = readLastPass(ctx, tg); err != nil {
+	if aux.passes {
+		if last, err = readLastPass(ctx, tg, aux.trigger); err != nil {
 			return TableStatus{}, err
 		}
 	}
 
 	st := TableStatus{
-		Name: tg.qualified, Database: tg.Database, Key: tg.By.String(), Interval: tg.Interval, Ahead: tg.Ahead,
+		Name: tg.qualified, Database: tg.Database, Key: tg.By, Interval: tg.Interval, Ahead: tg.Ahead,
 		Retention: tg.retentionStatus(), Healthy: tg.nextPartitionProblem(kids, now) == nil, LastPass: last,
 		Partitions: []PartitionStatus{}, Detached: []string{}, Strays: []string{},
 	}
+	var rowsKnown int64
 	for _, c := range stats {
 		start, ours := starts[c.name]
 		if !ours || c.schema != tg.schema {
@@ -267,7 +279,9 @@ WHERE i.inhparent = $1::regclass`, tg.ident())
 		if c.tuples >= 0 {
 			n := int64(c.tuples)
 			ps.Rows = &n
-			st.Rows += n
+			rowsKnown += n
+		} else {
+			st.PartitionsWithoutEstimate++
 		}
 		if due, ok := tg.removalDue(start); ok {
 			ps.RemovalDue = &due
@@ -277,6 +291,9 @@ WHERE i.inhparent = $1::regclass`, tg.ident())
 		}
 		st.Bytes += c.bytes
 		st.Partitions = append(st.Partitions, ps)
+	}
+	if len(st.Partitions) == 0 || st.PartitionsWithoutEstimate < len(st.Partitions) {
+		st.Rows = &rowsKnown
 	}
 	slices.SortFunc(st.Partitions, func(a, b PartitionStatus) int { return a.From.Compare(b.From) })
 	for _, name := range detached {
@@ -323,11 +340,18 @@ FROM fw_partition_archives WHERE table_name = $1 GROUP BY partition_name`, tg.qu
 	return out, rows.Err()
 }
 
-func readLastPass(ctx context.Context, tg *target) (*LastPass, error) {
+// readLastPass reads the table's record; withOrigin says the table has the pass_trigger and actor
+// columns (a table made by hand in the shape of V0002 has not).
+func readLastPass(ctx context.Context, tg *target, withOrigin bool) (*LastPass, error) {
 	var lp LastPass
 	var ensure, retention, archive string
-	err := tg.db.Pool().QueryRow(ctx, `SELECT ended_at, ensure_status, retention_status, archive_status, created, dropped, archived
-FROM fw_partition_passes WHERE table_name = $1`, tg.qualified).Scan(&lp.EndedAt, &ensure, &retention, &archive, &lp.Created, &lp.Dropped, &lp.Archived)
+	var trigger, actor *string
+	cols := "NULL::text, NULL::text"
+	if withOrigin {
+		cols = "pass_trigger, actor"
+	}
+	err := tg.db.Pool().QueryRow(ctx, `SELECT ended_at, ensure_status, retention_status, archive_status, created, dropped, archived, `+cols+`
+FROM fw_partition_passes WHERE table_name = $1`, tg.qualified).Scan(&lp.EndedAt, &ensure, &retention, &archive, &lp.Created, &lp.Dropped, &lp.Archived, &trigger, &actor)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil //nolint:nilnil // no pass recorded is "none", not an error
@@ -336,6 +360,12 @@ FROM fw_partition_passes WHERE table_name = $1`, tg.qualified).Scan(&lp.EndedAt,
 	}
 	lp.EndedAt = lp.EndedAt.UTC()
 	lp.Ensure, lp.Retention, lp.Archive = StepStatus(ensure), StepStatus(retention), StepStatus(archive)
+	if trigger != nil {
+		lp.Trigger = PassTrigger(*trigger)
+	}
+	if actor != nil {
+		lp.Actor = *actor
+	}
 	return &lp, nil
 }
 
@@ -350,11 +380,11 @@ func (p *Partitions) Archives(ctx context.Context, table, after string, limit in
 		return nil, p.notDeclared(table)
 	}
 	limit = max(1, min(MaxArchivePage, limit))
-	manifest, _, err := tg.auxTables(ctx)
+	aux, err := tg.auxTables(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if !manifest {
+	if !aux.manifest {
 		return []ArchiveRecord{}, nil
 	}
 	rows, err := tg.db.Pool().Query(ctx, `SELECT partition_name, count(*)::int, sum(row_count)::bigint, sum(byte_count)::bigint, max(archived_at),
