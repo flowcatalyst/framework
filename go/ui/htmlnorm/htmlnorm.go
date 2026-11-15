@@ -13,6 +13,8 @@
 //   - Attributes are sorted by name. Every attribute value has its whitespace
 //     collapsed (runs become one space) and trimmed. Class token ORDER is kept:
 //     the specs define the order (BASE + variant + size), so it is compared.
+//     A style value is compared without a trailing ';' (templ ends every style
+//     value with one; "height: 32px" and "height: 32px;" declare the same).
 //   - Text has its whitespace collapsed and trimmed; whitespace-only text
 //     disappears. (So "<svg/> Older" equals "<svg/>Older": leading and
 //     trailing spaces inside a text node are not significant here.)
@@ -121,7 +123,12 @@ func write(b *strings.Builder, n *html.Node, depth int) {
 		b.WriteString(indent(depth))
 		b.WriteString("<" + n.Data)
 		for _, a := range attrs {
-			fmt.Fprintf(b, " %s=%q", qualified(a), collapse(a.Val))
+			val := collapse(a.Val)
+			if a.Namespace == "" && a.Key == "style" {
+				// "height: 32px" and "height: 32px;" are the same declarations
+				val = strings.TrimSpace(strings.TrimSuffix(val, ";"))
+			}
+			fmt.Fprintf(b, " %s=%q", qualified(a), val)
 		}
 		b.WriteString(">\n")
 		for c := n.FirstChild; c != nil; c = c.NextSibling {

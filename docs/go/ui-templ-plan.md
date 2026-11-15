@@ -29,7 +29,7 @@ OK, and one commit per step (made in the main session after verification).
 
 1. **Module** `go/ui`, path `github.com/flowcatalyst/framework/go/ui`, go 1.27, requiring the core module by
    `replace => ../` as `go/flowcatalyst` does. `tool github.com/a-h/templ/cmd/templ` at the platform's version
-   (v0.3.1020). Generated `*_templ.go` committed. Makefile: `ui-generate`, `ui-verify` (generate, then fail on a
+   (v0.3.1118). Generated `*_templ.go` committed. Makefile: `ui-generate`, `ui-verify` (generate, then fail on a
    diff); `go-check` covers the new module (gofumpt, golangci-lint, `fwvet`, NilAway, `test -race`);
    `.github/workflows/go.yml` too.
 2. **Copied from the platform** (the platform keeps its copy until GU6): `kit` (all templ components, `navgroup`),

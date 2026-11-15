@@ -1,9 +1,6 @@
 package views
 
 import (
-	"context"
-	"io"
-
 	"github.com/flowcatalyst/framework/go/ui/i18n"
 	"github.com/flowcatalyst/framework/go/ui/kit"
 	"github.com/flowcatalyst/framework/go/ui/look"
@@ -58,23 +55,12 @@ templ document(p documentProps, page templ.Component) {
 				}
 			} else {
 				@p.look.Main() {
-					@stackAndPage(p.look, p.flashes, page)
+					@flashStack(p.look, p.flashes)
+					@page
 				}
 			}
 		</body>
 	</html>
-}
-
-// stackAndPage renders the flash stack and then the page with nothing between them. A templ block
-// that holds two component calls writes a space between them; the document has never had one in the
-// bare <main> (the kit's shell block does have it, and keeps it: output is unchanged byte for byte).
-func stackAndPage(l look.Look, flashes []look.Flash, page templ.Component) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := flashStack(l, flashes).Render(ctx, w); err != nil {
-			return err
-		}
-		return page.Render(ctx, w)
-	})
 }
 
 // flashStack is the document's flash stack with the messages that came with the page.

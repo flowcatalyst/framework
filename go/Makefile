@@ -12,7 +12,7 @@
 #   test             go test -race on all four modules (PostgreSQL and Redis come from fwtest)
 #   ui-generate      templ generate in the ui and ui/fwui modules (the generated *_templ.go files are committed)
 #   ui-verify        ui-generate, then fail when a generated file changed or appeared: the committed
-#                    *_templ.go files are the templates' output (templ v0.3.1020, pinned by ui/go.mod and ui/fwui/go.mod)
+#                    *_templ.go files are the templates' output (templ v0.3.1118, pinned by ui/go.mod and ui/fwui/go.mod)
 #   ui-copy-check    prove that an application can render pages with its own copy of go/ui/kit under another import
 #                    path (views.WithLook): scripts/check-ui-kit-copy.sh builds a temporary module from a copy of the kit
 #                    and vets and tests it (offline when the module cache is warm)

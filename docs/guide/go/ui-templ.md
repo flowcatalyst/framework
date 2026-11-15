@@ -427,10 +427,27 @@ the option for the assets and the middleware for the pages and streams.
 
 ## Building and checking
 
-The templ files are compiled by `templ` (v0.3.1020, a `tool` of `go/ui/go.mod` and `go/ui/fwui/go.mod`) and the generated `*_templ.go`
+The templ files are compiled by `templ` (v0.3.1118, a `tool` of `go/ui/go.mod` and `go/ui/fwui/go.mod`) and the generated `*_templ.go`
 files are committed. `make -C go ui-generate` regenerates them; `make -C go ui-verify` regenerates and fails if
 any generated file changed or appeared, and is part of `make -C go go-check` and the CI workflow. `go-check`
 also runs gofumpt, golangci-lint (`go/.golangci.yml`), `fwvet`, NilAway and `go test -race` on both modules (`go/ui` and `go/ui/fwui`).
+
+### What templ does to attribute values (from v0.3.1118)
+
+An application that takes this module takes its templ version too (Go picks the highest one required), and must
+regenerate its own `*_templ.go` files with it. Two rules of that version change what a page sends:
+
+- **A URL attribute given a plain string lets only `http`, `https`, `mailto`, `tel` and relative URLs through.**
+  That covers `src`, `href`, `action`, `formaction`, `poster` and any attribute whose name contains `src`, `url` or
+  `uri` (also after `data-`), whether written in a template or passed as spread attributes. Anything else, an image
+  `data:` URL included, is replaced by `about:invalid#TemplFailedSanitizationURL`: the page still renders and the
+  image is simply missing. Wrap a value the application built or checked itself in `templ.SafeURL(...)`. The kit
+  does this for its own (the brand logo given as SVG).
+- **A style value ends with `;`**, whatever it is given. A test that compares a rendered `style="..."` attribute as
+  text must expect it.
+
+After upgrading, search the rendered pages for `TemplFailedSanitization`: it is the only trace a refused value
+leaves.
 
 ## Releasing, and developing against an unreleased kit
 

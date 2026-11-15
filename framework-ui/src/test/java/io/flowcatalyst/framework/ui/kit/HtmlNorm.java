@@ -78,7 +78,12 @@ final class HtmlNorm {
         attrs.sort(Comparator.comparing(Attribute::getKey));
         b.append(indent).append('<').append(e.tagName());
         for (Attribute a : attrs) {
-          b.append(' ').append(a.getKey()).append("=\"").append(collapse(a.getValue())).append('"');
+          String value = collapse(a.getValue());
+          if (a.getKey().equals("style") && value.endsWith(";")) {
+            // "height: 32px" and "height: 32px;" are the same declarations (fixtures/README.md, rule 3)
+            value = value.substring(0, value.length() - 1).strip();
+          }
+          b.append(' ').append(a.getKey()).append("=\"").append(value).append('"');
         }
         b.append(">\n");
         for (Node c : e.childNodes()) {

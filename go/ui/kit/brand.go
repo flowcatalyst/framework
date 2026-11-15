@@ -65,9 +65,8 @@ func (b Brand) sidebarImageStyle() string {
 	return ""
 }
 
-// style is a style attribute written as given (templ's style={...} would
-// append a ';'), none when css is empty. Its values are the kit's own: CSS
-// lengths built from an int.
+// style is a style attribute, none when css is empty. Its values are the
+// kit's own: CSS lengths built from an int. templ ends the value with ';'.
 func (Brand) style(css string) templ.Attributes {
 	if css == "" {
 		return nil

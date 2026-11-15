@@ -175,7 +175,7 @@ func TestAShellComponentWrapsTheFlashStackAndThePage(t *testing.T) {
 	l := &testLook{sheet: "own.css"}
 	body := document(t, newLookViews(t, l, views.WithShellComponent(ownShell)), "")
 	want := `<div class="own-shell"><section id="flash-stack" class="test-stack">` +
-		`<p class="test-flash test-flash-warn">From the page.</p></section> <div id="fw-page"><i>page</i></div></div>`
+		`<p class="test-flash test-flash-warn">From the page.</p></section><div id="fw-page"><i>page</i></div></div>`
 	if !strings.Contains(body, want) {
 		t.Errorf("the page is not inside the shell:\n%s", body)
 	}

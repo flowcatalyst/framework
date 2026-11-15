@@ -43,7 +43,7 @@ Both sides are normalised, then compared as text:
 
 1. Parse with the HTML5 fragment algorithm, in the context of the element that would contain the fragment's first element: `tbody` for `<tr>`, `tr` for `<td>`/`<th>`, `table` for `<thead>`/`<tbody>`/`<tfoot>`/`<caption>`/`<colgroup>`, `select` for `<option>`/`<optgroup>`, otherwise `body`. (So entities are decoded, and quoting, attribute case and `<use/>` vs `<use></use>` stop mattering.)
 2. Drop comments.
-3. Sort each element's attributes by name. Collapse whitespace in every attribute value (runs become one space) and trim it. **Class token order is kept**: the specs define it (BASE + variant + size).
+3. Sort each element's attributes by name. Collapse whitespace in every attribute value (runs become one space) and trim it. **Class token order is kept**: the specs define it (BASE + variant + size). **A `style` value is compared without a trailing `;`** (`height: 32px` equals `height: 32px;`: a template engine may end every style value with one).
 4. Collapse whitespace in text and trim it; drop whitespace-only text. Consequence: leading and trailing spaces inside a text node are not compared (`<svg/> Older` equals `<svg/>Older`).
 5. Serialise one node per line, indented by depth (the Go implementation is `internal/ui/htmlnorm`; it prints a line diff on failure).
 

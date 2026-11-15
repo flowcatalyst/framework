@@ -15,7 +15,7 @@ import (
 // Without a brand the logo link is exactly the one the shell always rendered.
 func TestBrandAbsentKeepsTheBoltMarkup(t *testing.T) {
 	out := render(t, AppSidebar(AppShellProps{LogoHref: "/"}), nil)
-	want := `<a href="/" class="fc-sidebar-logo" style="height: 32px"><span style="width: 32px; height: 32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="100%" height="100%" aria-label="FlowCatalyst">`
+	want := `<a href="/" class="fc-sidebar-logo" style="height: 32px;"><span style="width: 32px; height: 32px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="100%" height="100%" aria-label="FlowCatalyst">`
 	if !strings.Contains(out, want) {
 		t.Errorf("sidebar logo changed without a brand:\n%s", out)
 	}
@@ -71,7 +71,7 @@ func TestBrandImageFromURL(t *testing.T) {
 			t.Errorf("img src=%q alt=%q", attr(img, "src"), attr(img, "alt"))
 		}
 	}
-	if got := attr(imgs[0], "style"); got != "height: auto; max-height: 40px" {
+	if got := attr(imgs[0], "style"); got != "height: auto; max-height: 40px;" {
 		t.Errorf("sidebar image style = %q", got)
 	}
 }
@@ -84,11 +84,11 @@ func TestBrandLogoHeight(t *testing.T) {
 	}{{0, "32px"}, {-5, "32px"}, {56, "56px"}} {
 		doc := parse(t, render(t, AppSidebar(AppShellProps{Brand: Brand{LogoHeight: c.height}}), nil))
 		link := find(doc, "a")[0]
-		if got := attr(link, "style"); got != "height: "+c.want {
+		if got := attr(link, "style"); got != "height: "+c.want+";" {
 			t.Errorf("height %d: link style = %q", c.height, got)
 		}
 		span := firstChildElement(t, link)
-		if got := attr(span, "style"); got != "width: "+c.want+"; height: "+c.want {
+		if got := attr(span, "style"); got != "width: "+c.want+"; height: "+c.want+";" {
 			t.Errorf("height %d: bolt style = %q", c.height, got)
 		}
 	}
@@ -98,7 +98,7 @@ func TestBrandLogoHeight(t *testing.T) {
 		t.Errorf("SVG image has a style: %q", attr(svgImg, "style"))
 	}
 	urlImg := find(parse(t, render(t, AppSidebar(AppShellProps{Brand: Brand{LogoURL: "/logo.png", LogoHeight: 50}}), nil)), "img")[0]
-	if got := attr(urlImg, "style"); got != "height: auto; max-height: 50px" {
+	if got := attr(urlImg, "style"); got != "height: auto; max-height: 50px;" {
 		t.Errorf("URL image style = %q", got)
 	}
 }

@@ -16,6 +16,8 @@ func TestEquivalentFormsNormalizeEqual(t *testing.T) {
 		{"table row context", `<tr class="r"><td>1</td></tr>`, "<tr class=\"r\">\n<td>1</td>\n</tr>"},
 		{"cell context", `<td class="c">x</td>`, `<td class="c">x</td>`},
 		{"option context", `<option value="a" selected>A</option>`, `<option selected value="a">A</option>`},
+		{"trailing semicolon of a style value", `<a style="height: 32px">x</a>`, `<a style="height: 32px;">x</a>`},
+		{"trailing semicolon after several declarations", `<span style="width: 32px; height: 32px">x</span>`, `<span style="width: 32px; height: 32px; ">x</span>`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -41,6 +43,9 @@ func TestMeaningfulDifferencesSurvive(t *testing.T) {
 		{"element name", `<span>t</span>`, `<div>t</div>`},
 		{"nesting", `<div><span>a</span><span>b</span></div>`, `<div><span>a<span>b</span></span></div>`},
 		{"datastar expression", `<button data-on:click="$a = 1">t</button>`, `<button data-on:click="$a = 2">t</button>`},
+		{"style value", `<a style="height: 32px">x</a>`, `<a style="height: 40px;">x</a>`},
+		{"missing style declaration", `<a style="width: 32px; height: 32px">x</a>`, `<a style="height: 32px;">x</a>`},
+		{"trailing semicolon outside a style value", `<a title="a;">x</a>`, `<a title="a">x</a>`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
