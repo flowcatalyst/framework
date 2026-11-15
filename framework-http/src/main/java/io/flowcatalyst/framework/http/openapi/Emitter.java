@@ -310,6 +310,9 @@ final class Emitter {
     if (op.permission() != null) {
       o.put("x-fw-permission", op.permission());
     }
+    if (op.operatorsOnly()) {
+      o.put("x-fw-operators-only", true);
+    }
     return o;
   }
 

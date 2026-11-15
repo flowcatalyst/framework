@@ -29,29 +29,60 @@ public final class AdminModule implements Module {
   /** The module id. */
   public static final String ID = "admin";
 
+  /** How the admin area is declared. */
+  public enum Option {
+    /**
+     * The whole admin area is for platform operators only (admin contract section 3a, rule 6): the
+     * framework's own {@code about} section, with the navigation and the about operation, is
+     * operators-only (a caller whose tier is not {@code ANCHOR} gets {@code 403 FORBIDDEN} after the
+     * permission check), so {@code {app}:admin:console:view} becomes an operators-only permission
+     * that no client-managed role may carry; and every registered section that is not itself
+     * operators-only is a start-up problem. The framework's config section and the platform
+     * sections of the FlowCatalyst module are not operators-only, so an application that wants
+     * them cannot declare an operators-only area.
+     */
+    OPERATORS_ONLY
+  }
+
   private final ApplicationCode application;
+  private final boolean operatorsOnly;
   private final AdminApi.Operations operations;
   private final AdminSection about;
 
-  private AdminModule(ApplicationCode application) {
+  private AdminModule(ApplicationCode application, boolean operatorsOnly) {
     this.application = application;
+    this.operatorsOnly = operatorsOnly;
     String view = consoleView(application);
-    this.operations = new AdminApi.Operations(view);
-    this.about =
+    this.operations = new AdminApi.Operations(view, operatorsOnly);
+    AdminSection section =
         AdminSection.of("about", "About", "/admin/about", view)
             .icon("i-lucide-info")
-            .description("What this application is and whether it is healthy.")
-            .serving(operations.navigation, operations.about);
+            .description("What this application is and whether it is healthy.");
+    if (operatorsOnly) {
+      section = section.operatorsOnly();
+    }
+    this.about = section.serving(operations.navigation, operations.about);
   }
 
   /**
    * The admin module of an application.
    *
    * @param application the application code; every admin permission starts with it
+   * @param options how the area is declared, for example {@link Option#OPERATORS_ONLY}
    * @return the module
    */
-  public static AdminModule of(ApplicationCode application) {
-    return new AdminModule(application);
+  public static AdminModule of(ApplicationCode application, Option... options) {
+    return new AdminModule(application, java.util.Arrays.asList(options).contains(Option.OPERATORS_ONLY));
+  }
+
+  /**
+   * Whether the area was declared with {@link Option#OPERATORS_ONLY}, so a module that registers a
+   * section can mark it accordingly.
+   *
+   * @return true for an operators-only area
+   */
+  public boolean operatorsOnly() {
+    return operatorsOnly;
   }
 
   /**
@@ -78,11 +109,11 @@ public final class AdminModule implements Module {
         AdminRegistry.class,
         lookup -> {
           List<AdminSection> sections = Admin.sections(lookup);
-          List<Problem> problems = Admin.problems(sections, application.value());
+          List<Problem> problems = Admin.problems(sections, application.value(), operatorsOnly);
           if (!problems.isEmpty()) {
             throw new StartupException(problems);
           }
-          return new AdminRegistry(sections);
+          return new AdminRegistry(sections, operatorsOnly);
         });
   }
 

@@ -233,6 +233,18 @@ the other copies keep it. It is added to the log attributes. Go `fw.Context.Acto
   and `ClientSelector.PLATFORM` are now this constant). The outbox does not write it as a dispatch
   job's `clientCode` (write-path contract section 7a).
 
+*Amended 2026-11-15 (the principal's tier, admin contract section 3a):* `Context` gains an optional
+**tier**: the principal's `tier` claim as its token said it (`ANCHOR`, `PARTNER` or `CLIENT`). The request
+resolver sets it from the token (or the session) when the claim is present and not blank, for a bearer token and
+for a session alike; a field worker has none. It is for gates about who the principal is, not what it may do,
+and grants nothing. `isPlatformOperator()` is true exactly when the tier is `ANCHOR`: a `PARTNER`, a `CLIENT`,
+any other spelling (lower-case `anchor`) and no tier are not. Like the kind and the subject name it needs a
+principal (refused without one) and `withPrincipal` clears it; `forClient` and the other copies keep it. It is
+not written to the outbox and not added to the log attributes. Go `cx.Tier()` / `IsPlatformOperator()` /
+`WithTier(tier)`, Java `tier()` / `findTier()` / `isPlatformOperator()` / `withTier(String)` and
+`Context.TIER_ANCHOR`; the canonical constructor gains a trailing `tier` component, the constructor without it
+is kept.
+
 ### 3a. Work for one client after another (amendment 2026-10-18, friction F3 and F15)
 
 A scheduled-job firing and a background loop have no client of their own (the receiver's context is

@@ -74,6 +74,47 @@ The server decides, in three layers:
 3. **The UI.** The shell hides what the session cannot open and the router refuses the route. This is
    courtesy; layers 1 and 2 decide.
 
+## Operators-only sections and areas
+
+Some data is not one client's: a database partition holds every client's rows. `AdminSection.operatorsOnly()`
+marks a section for platform operators only (admin contract section 3a): besides its permission, every operation of
+it requires the principal's tier to be exactly `ANCHOR` (`Context.isPlatformOperator()`; the auth module sets the
+tier from the token's `tier` claim, for a session and for a bearer token alike). A `PARTNER`, a `CLIENT`, a
+principal with no tier and any other spelling (`anchor`) get `403 FORBIDDEN` "this is for platform operators only",
+and `GET /api/admin/navigation` does not list the section for them. The order is: 401, the permission (403, naming
+it), the operator (403), then the request is read. The gate is the builder's `operatorsOnly()` on each operation
+(the document carries `x-fw-operators-only: true`); a section marked operators-only that serves an operation
+without it is a start-up problem (`IllegalArgumentException` from the section, so it fails in `register` and in
+the `openapi` command), so none can be forgotten:
+
+```java
+static final Operation<NoBody, Vault> VAULT =
+    Operation.get("/api/admin/vault", Vault.class).id("getAdminVault").tag("admin")
+        .permission("orders:admin:vault:view").operatorsOnly().build();
+
+static final AdminSection VAULT_SECTION =
+    AdminSection.of("vault", "Vault", "/admin/vault", "orders:admin:vault:view")
+        .operatorsOnly().serving(VAULT);
+```
+
+Never give such a section's permissions to a client-managed role: with the FlowCatalyst module and
+`withPermissionMapping`, start-up refuses it ([FlowCatalyst module](flowcatalyst-module.md)).
+
+An application whose whole admin area is for operators declares it, and names (or declines) the suggested role
+([FlowCatalyst module](flowcatalyst-module.md)):
+
+```java
+.module(AdminModule.of(APPLICATION, AdminModule.Option.OPERATORS_ONLY))
+```
+
+Then the navigation and the about operation need a platform operator as well as `{app}:admin:console:view`, and
+every section you register must be operators-only too (`AdminSection.operatorsOnly()`; a section module can ask
+`AdminModule.operatorsOnly()`), or start-up fails naming the section. `AdminConfigModule` and the platform
+sections (`PlatformAdminModule` and the others) are not operators-only, so they cannot be part of such an area.
+`console:view` is then an operators-only permission, so a client-managed role that holds it fails start-up. The
+tests: `AdminOperatorsOnlyTest` and `AdminOperatorsOnlyAreaConformanceTest` (framework-admin; the vector is
+`conformance/admin/operators-only-area.json`).
+
 ## Adding a section
 
 A section is a value; its operations are ordinary typed operations ([openapi](openapi.md)) that
@@ -108,7 +149,8 @@ app.jar sync`, or `--dry-run`) sends every admin permission and **one role, `adm
 `orders-demo:admin`), that grants them one by one: the sync accepts no wildcard inside a role, though
 your permission mapping above may use one. Role and permission names follow the platform's rules
 (letters, digits and `_.-` in each colon-separated segment, no whitespace). Declare your own role
-named `admin` with `Definitions` and nothing is added: it is yours then. The demo's
+named `admin` with `Definitions` and nothing is added: it is yours then (the role can also be renamed or
+declined: [FlowCatalyst module](flowcatalyst-module.md)). The demo's
 `OrdersAdminTest.theAdminRoleAndItsPermissionsAreInTheDefinitionSync` shows the dry run.
 
 ## Event types and roles (from the platform)

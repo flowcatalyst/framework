@@ -190,17 +190,38 @@ grants is logged as a warning.
 
 When the application registers admin sections ([admin](admin.md)), their permissions and a role
 `admin` that grants them one by one join the catalog by themselves (nothing to declare); declaring
-your own role named `admin` turns that off. In Go (Java to follow) the role can be renamed or declined, for an
-admin area that is for platform operators only:
+your own role named `admin` turns that off. The role can be renamed or declined with methods of the module
+(each returns a new module, so chain them):
 
-```go
-adm := admin.Declare(web, app, admin.OperatorsOnly())
-...
-fc.AdminDefinitions(adm, flowcatalyst.AdminRoleName("platform-operator"))
+```java
+.module(AdminModule.of(APPLICATION, AdminModule.Option.OPERATORS_ONLY))   // an area for platform operators only
+.module(new FlowCatalystModule()
+    .adminRoleName("platform-operator")        // display name "Platform operator"; adminRoleDisplayName(..) sets it
+    .withPermissionMapping(MAPPER))            // the mapping the auth module has: see below
 ```
 
-Renaming the suggested role creates a new role on the platform: people who held the old one must be given the new
-one. `WithoutAdminRole()` adds the permissions and no role. `PlatformClient` also has read methods for the admin
+The display name is `Administrator` for `admin` and otherwise the name with hyphens as spaces and the first letter
+upper-case. An empty or malformed name fails start-up (the ordinary role-name check) and never falls back to `admin`;
+a role you declare under the chosen name is kept and nothing is added. Renaming the suggested role creates a new role
+on the platform: people who held the old one must be given the new one. `withoutAdminRole()` adds the permissions
+and no role (give them to a role of your own; with a name it fails start-up, because the name would have no effect;
+when no declared role grants `{app}:admin:console:view`, by its definition or through the permission mapping, start-up
+logs a warning, not a failure).
+
+A role marked client-managed (`Definition.Role.withClientManaged()`) must not carry the permission of an
+**operators-only** admin section ([admin](admin.md): a partition holds every client's rows). Start-up refuses it,
+naming the role and the permission, whether the role's definition lists the permission or the permission mapping
+grants it (`orders:admin:*:*` included, by the platform's wildcard rule); `DefinitionSync.run` refuses the same
+before it sends anything. The module reads the admin sections itself; give it the mapping the auth module has:
+
+```java
+.module(new FlowCatalystModule().withPermissionMapping(MAPPER))
+```
+
+The mapping is run for a principal that holds only the role, so it can be checked only if it depends on the
+principal's roles. The suggested role is never client-managed, so it may hold operators-only permissions under any
+name. In an operators-only area `console:view` is itself an operators-only permission. The tests are
+`OperatorsOnlyGuardTest` and `AdminRoleOptionsTest`. `PlatformClient` also has read methods for the admin
 pages (`eventTypes`, `eventType`, `roles`, `role`); a failed call is a `PlatformException` whose `kind()`
 says whether the platform refused it (`FORBIDDEN`) or did not know the record (`NOT_FOUND`).
 

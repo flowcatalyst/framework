@@ -73,11 +73,17 @@ public final class DefinitionSync {
   private final PlatformClient client;
   private final DefinitionCatalog catalog;
   private final Supplier<JobTargets> jobTargets;
+  private final OperatorsOnlyGuard guard;
 
   DefinitionSync(PlatformClient client, DefinitionCatalog catalog, Supplier<JobTargets> jobTargets) {
+    this(client, catalog, jobTargets, OperatorsOnlyGuard.NONE);
+  }
+
+  DefinitionSync(PlatformClient client, DefinitionCatalog catalog, Supplier<JobTargets> jobTargets, OperatorsOnlyGuard guard) {
     this.client = client;
     this.catalog = catalog;
     this.jobTargets = jobTargets;
+    this.guard = guard;
   }
 
   /**
@@ -86,9 +92,17 @@ public final class DefinitionSync {
    * @param mode {@link Mode#APPLY} to write, {@link Mode#DRY_RUN} to only report
    * @return one result per category
    * @throws SyncException when any category failed, after every category was attempted
-   * @throws IllegalStateException when the flowcatalyst module is disabled
+   * @throws IllegalStateException when the flowcatalyst module is disabled, or when a client-managed
+   *     role holds the permission of an operators-only admin section (nothing is sent)
    */
   public SyncReport run(Mode mode) {
+    // the same refusal as start-up, which makes it first; this holds the sync itself to it
+    List<io.flowcatalyst.framework.core.Problem> refused = guard.problems(catalog);
+    if (!refused.isEmpty()) {
+      throw new IllegalStateException(
+          "flowcatalyst: the definitions are not sent: "
+              + refused.stream().map(io.flowcatalyst.framework.core.Problem::message).collect(java.util.stream.Collectors.joining("; ")));
+    }
     if (!client.isEnabled()) {
       throw new IllegalStateException("the flowcatalyst module is disabled (flowcatalyst.enabled)");
     }

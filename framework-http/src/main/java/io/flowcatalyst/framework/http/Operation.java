@@ -69,6 +69,7 @@ public final class Operation<B, R> {
   private final int status;
   private final boolean requiresContext;
   private final @Nullable String permission;
+  private final boolean operatorsOnly;
   private final List<DeclaredError> errors;
   private final List<String> problems;
 
@@ -85,7 +86,8 @@ public final class Operation<B, R> {
     this.queryParams = List.copyOf(b.queryParams);
     this.status = b.status != 0 ? b.status : (b.response == NoBody.class ? 204 : 200);
     this.permission = b.permission;
-    this.requiresContext = b.requiresContext || b.permission != null;
+    this.operatorsOnly = b.operatorsOnly;
+    this.requiresContext = b.requiresContext || b.permission != null || b.operatorsOnly;
     this.errors = List.copyOf(b.errors);
     this.problems = List.copyOf(check(b));
   }
@@ -374,6 +376,17 @@ public final class Operation<B, R> {
   }
 
   /**
+   * Whether the operation is for platform operators only, in addition to its permission: the
+   * context's tier must be exactly {@code ANCHOR} ({@code Context.isPlatformOperator()}), otherwise
+   * {@code 403 FORBIDDEN} after the permission check.
+   *
+   * @return true after {@code operatorsOnly()}
+   */
+  public boolean operatorsOnly() {
+    return operatorsOnly;
+  }
+
+  /**
    * The documented expected failures.
    *
    * @return in the order declared
@@ -509,6 +522,7 @@ public final class Operation<B, R> {
     private int status;
     private boolean requiresContext;
     private @Nullable String permission;
+    private boolean operatorsOnly;
     private final List<DeclaredError> errors = new ArrayList<>();
 
     private Builder(Method method, String pattern, @Nullable Validator<B> body, Type response) {
@@ -618,6 +632,21 @@ public final class Operation<B, R> {
      */
     public Builder<B, R> permission(String value) {
       this.permission = value;
+      return this;
+    }
+
+    /**
+     * Restricts the operation to platform operators, in addition to its permission: a context whose
+     * tier is not exactly {@code ANCHOR} (a {@code PARTNER}, a {@code CLIENT}, none, or any other
+     * spelling) is refused with {@code 403 FORBIDDEN} ("this is for platform operators only") after
+     * the permission check and before the request is read. Implies {@link #requiresContext()}.
+     * Documented as {@code x-fw-operators-only: true}. The admin area's operators-only sections mark
+     * every operation with it.
+     *
+     * @return this builder
+     */
+    public Builder<B, R> operatorsOnly() {
+      this.operatorsOnly = true;
       return this;
     }
 

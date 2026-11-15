@@ -286,4 +286,50 @@ class ContextTest {
   void thePlatformClientIsUnderscorePlatform() {
     assertThat(ClientId.PLATFORM).isEqualTo(new ClientId("_platform"));
   }
+
+  @Test
+  void aContextHasATierOnlyWhenTheAuthLayerSetOne() {
+    Context c = Context.of(new ClientId("c")).withPrincipal(new PrincipalId("prn_1"), PrincipalKind.USER);
+    assertThat(c.tier()).isNull();
+    assertThat(c.findTier()).isEmpty();
+    assertThat(c.isPlatformOperator()).isFalse();
+
+    Context anchor = c.withTier("ANCHOR");
+    assertThat(anchor.tier()).isEqualTo("ANCHOR");
+    assertThat(anchor.findTier()).contains("ANCHOR");
+    assertThat(anchor.isPlatformOperator()).isTrue();
+  }
+
+  @Test
+  void onlyExactlyAnchorIsAPlatformOperator() {
+    Context c = Context.of(new ClientId("c")).withPrincipal(new PrincipalId("prn_1"));
+    for (String tier : new String[] {"PARTNER", "CLIENT", "anchor", "Anchor", "ANCHOR ", "ADMIN"}) {
+      assertThat(c.withTier(tier).isPlatformOperator()).as(tier).isFalse();
+    }
+    assertThat(Context.TIER_ANCHOR).isEqualTo("ANCHOR");
+  }
+
+  @Test
+  void theTierSurvivesTheCopiesAndANewPrincipalDropsIt() {
+    Context c =
+        Context.of(new ClientId("c"))
+            .withPrincipal(new PrincipalId("prn_1"), PrincipalKind.USER)
+            .withTier("ANCHOR");
+    assertThat(c.forClient(new ClientId("d")).tier()).isEqualTo("ANCHOR");
+    assertThat(c.withPermissions(Set.of("a:b:c:d")).tier()).isEqualTo("ANCHOR");
+    assertThat(c.withApplication(new ApplicationCode("shop")).tier()).isEqualTo("ANCHOR");
+    assertThat(c.withSubjectName("Thandi").tier()).isEqualTo("ANCHOR");
+    assertThat(c.withPrincipal(new PrincipalId("prn_2")).tier()).isNull();
+    assertThat(c.withPrincipal(new PrincipalId("prn_2"), PrincipalKind.USER).tier()).isNull();
+  }
+
+  @Test
+  void aBlankTierOrATierWithoutAPrincipalIsRefused() {
+    Context c = Context.of(new ClientId("c")).withPrincipal(new PrincipalId("prn_1"));
+    assertThatIllegalArgumentException().isThrownBy(() -> c.withTier(" "));
+    assertThatIllegalArgumentException().isThrownBy(() -> c.withTier(""));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> Context.of(new ClientId("c")).withTier("ANCHOR"))
+        .withMessageContaining("tier needs a principal");
+  }
 }

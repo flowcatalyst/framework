@@ -133,21 +133,25 @@ public final class AdminApi {
     final Operation<NoBody, AdminNavigation> navigation;
     final Operation<NoBody, AdminAbout> about;
 
-    Operations(String permission) {
-      navigation =
+    Operations(String permission, boolean operatorsOnly) {
+      Operation.Builder<NoBody, AdminNavigation> nav =
           Operation.get("/api/admin/navigation", AdminNavigation.class)
               .id("getAdminNavigation")
               .summary("The admin sections the caller may use")
               .tag("admin")
-              .permission(permission)
-              .build();
-      about =
+              .permission(permission);
+      Operation.Builder<NoBody, AdminAbout> aboutBuilder =
           Operation.get("/api/admin/about", AdminAbout.class)
               .id("getAdminAbout")
               .summary("What the application is and whether it is healthy")
               .tag("admin")
-              .permission(permission)
-              .build();
+              .permission(permission);
+      if (operatorsOnly) {
+        nav.operatorsOnly();
+        aboutBuilder.operatorsOnly();
+      }
+      navigation = nav.build();
+      about = aboutBuilder.build();
     }
   }
 }

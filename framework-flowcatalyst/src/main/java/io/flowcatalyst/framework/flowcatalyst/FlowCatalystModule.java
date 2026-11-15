@@ -1,6 +1,8 @@
 package io.flowcatalyst.framework.flowcatalyst;
 
 import io.flowcatalyst.framework.admin.Admin;
+import io.flowcatalyst.framework.admin.AdminSection;
+import io.flowcatalyst.framework.auth.PermissionMapper;
 import io.flowcatalyst.framework.config.Config;
 import io.flowcatalyst.framework.config.Secret;
 import io.flowcatalyst.framework.config.Setting;
@@ -210,8 +212,76 @@ public final class FlowCatalystModule implements Module {
           .withDefault(false)
           .describedAs("Sync definitions to the platform at start-up. Normally the deploy runs 'sync' instead.");
 
+  private final AdminDefinitions.Options adminRole;
+  private final @Nullable PermissionMapper permissionMapping;
+
   private volatile @Nullable ScheduledJobRunner runner;
   private volatile @Nullable OncePurge purge;
+
+  /** The module with its defaults: the suggested admin role {@code admin}, no permission mapping. */
+  public FlowCatalystModule() {
+    this(AdminDefinitions.Options.DEFAULTS, null);
+  }
+
+  private FlowCatalystModule(AdminDefinitions.Options adminRole, @Nullable PermissionMapper permissionMapping) {
+    this.adminRole = adminRole;
+    this.permissionMapping = permissionMapping;
+  }
+
+  /**
+   * Gives the module the application's permission mapping, the same value the auth module is given
+   * ({@code PermissionMapper.byRole(..)} and the like). With it, start-up and the sync refuse a
+   * client-managed role that the mapping gives the permission of an operators-only admin section: a
+   * role whose permissions client administrators may assign must not open a section that shows
+   * every client's data (admin contract section 3a, rule 4). The mapping is run for a principal that
+   * holds only the role, so a mapping that looks at anything else about the principal cannot be
+   * checked; wildcards are matched by the platform's rule.
+   *
+   * @param mapping the application's permission mapping
+   * @return a module with the mapping
+   */
+  public FlowCatalystModule withPermissionMapping(PermissionMapper mapping) {
+    return new FlowCatalystModule(adminRole, mapping);
+  }
+
+  /**
+   * Declares the suggested admin role under this name instead of {@code admin} (admin contract
+   * section 3). The name goes through the same check as any role name, so an empty or malformed one
+   * is a start-up problem and never falls back to {@code admin}. Renaming the role creates a new
+   * role on the platform: people who held the old one must be given the new one. An application that
+   * declares a role of this name itself keeps it and gets nothing added.
+   *
+   * @param name the role name without the application prefix, for example {@code platform-operator}
+   * @return a module with the name
+   */
+  public FlowCatalystModule adminRoleName(String name) {
+    return new FlowCatalystModule(new AdminDefinitions.Options(name, adminRole.displayName(), adminRole.withoutRole()), permissionMapping);
+  }
+
+  /**
+   * Sets the suggested role's display name. Without it the display name is {@code Administrator}
+   * for the role {@code admin} and otherwise derived from the name: hyphens become spaces and the
+   * first letter is upper-case ({@code platform-operator} gives {@code Platform operator}).
+   *
+   * @param text the display name
+   * @return a module with the display name
+   */
+  public FlowCatalystModule adminRoleDisplayName(String text) {
+    return new FlowCatalystModule(new AdminDefinitions.Options(adminRole.roleName(), text, adminRole.withoutRole()), permissionMapping);
+  }
+
+  /**
+   * Declines the suggested admin role: the permissions the sections need are still defined, so the
+   * application's own role can grant them, but no role is added. With {@link #adminRoleName} or
+   * {@link #adminRoleDisplayName} it is a start-up problem (the name would have no effect). When no
+   * declared role grants {@code {app}:admin:console:view}, start-up logs a warning that nobody can
+   * open the admin area unless the permission mapping gives it to a role declared elsewhere.
+   *
+   * @return a module that adds no admin role
+   */
+  public FlowCatalystModule withoutAdminRole() {
+    return new FlowCatalystModule(new AdminDefinitions.Options(adminRole.roleName(), adminRole.displayName(), true), permissionMapping);
+  }
 
   @Override
   public String id() {
@@ -253,23 +323,53 @@ public final class FlowCatalystModule implements Module {
     MigrationSet.contribute(app, FlowCatalystModule.class, "db/migration/flowcatalyst");
     app.provide(PlatformClient.class, lookup -> buildClient(lookup.get(Config.class)));
     app.provide(
+        OperatorsOnlyGuard.class,
+        lookup -> OperatorsOnlyGuard.of(Admin.sections(lookup), permissionMapping));
+    app.provide(
         DefinitionCatalog.class,
         lookup -> {
           PlatformClient client = lookup.get(PlatformClient.class);
+          OperatorsOnlyGuard guard = lookup.get(OperatorsOnlyGuard.class);
+          List<AdminSection> sections = Admin.sections(lookup);
+          // The admin sections' permissions and the suggested admin role (M4e), unless the
+          // application declared its own role of the chosen name.
+          List<Definitions.Contribution> contributions =
+              new ArrayList<>(lookup.contributions(Definitions.Contribution.class));
+          contributions.addAll(AdminDefinitions.contributions(sections, List.copyOf(contributions), adminRole));
+          // Declaration problems of the admin definitions and the refusal of client-managed roles
+          // that open an operators-only section (admin contract section 3a). Both are made whether or
+          // not the module is enabled, so a disabled development setup cannot hide them.
+          List<Problem> guarded = new ArrayList<>(AdminDefinitions.problems(adminRole));
+          guarded.addAll(guard.problems(contributions));
+          if (adminRole.withoutRole() && !sections.isEmpty()) {
+            String warning = guard.consoleViewWarning(contributions);
+            if (warning != null) {
+              LOG.warn(warning);
+            }
+          }
           if (!client.isEnabled()) {
+            if (!guarded.isEmpty()) {
+              throw new StartupException(guarded);
+            }
             return DefinitionCatalog.empty();
           }
           Config config = lookup.get(Config.class);
-          // The admin sections' permissions and the suggested admin role (M4e), unless the
-          // application declared its own admin role.
-          List<Definitions.Contribution> contributions =
-              new ArrayList<>(lookup.contributions(Definitions.Contribution.class));
-          contributions.addAll(
-              AdminDefinitions.contributions(Admin.sections(lookup), List.copyOf(contributions)));
-          return DefinitionCatalog.build(
-              contributions,
-              client.application(),
-              config.find(SUBSCRIPTION_TARGET_BASE_URL).isPresent());
+          List<Problem> problems = new ArrayList<>();
+          DefinitionCatalog catalog = null;
+          try {
+            catalog =
+                DefinitionCatalog.build(
+                    contributions,
+                    client.application(),
+                    config.find(SUBSCRIPTION_TARGET_BASE_URL).isPresent());
+          } catch (StartupException e) {
+            problems.addAll(e.problems());
+          }
+          problems.addAll(guarded);
+          if (!problems.isEmpty() || catalog == null) {
+            throw new StartupException(problems);
+          }
+          return catalog;
         });
     app.provide(
         DefinitionSync.class,
@@ -284,7 +384,8 @@ public final class FlowCatalystModule implements Module {
                       config.get(RECEIVERS_ENABLED),
                       lookup.get(Receivers.class).hasJobHandlers(),
                       config.get(RECEIVERS_PATH));
-                }));
+                },
+                lookup.get(OperatorsOnlyGuard.class)));
     app.command(new SyncCommand());
   }
 

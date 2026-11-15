@@ -102,6 +102,11 @@ final class Authorities {
     if (name != null && !name.isBlank()) {
       context = context.withSubjectName(name);
     }
+    // the tier as the token said it (ANCHOR, PARTNER or CLIENT): operators-only gates read it
+    String tier = a.principal().tier();
+    if (tier != null && !tier.isBlank()) {
+      context = context.withTier(tier.strip());
+    }
     // the worker is the subject (the principal), the actor the operator
     return worker != null && worker.actor() != null ? context.withActor(worker.actor()) : context;
   }

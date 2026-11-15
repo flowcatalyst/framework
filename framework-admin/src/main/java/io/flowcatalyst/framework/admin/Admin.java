@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.admin;
 
+import io.flowcatalyst.framework.context.ClientId;
 import io.flowcatalyst.framework.context.Context;
 import io.flowcatalyst.framework.core.AppBuilder;
 import io.flowcatalyst.framework.core.Declarations;
@@ -66,7 +67,8 @@ public final class Admin {
 
   /**
    * The sections a caller may use: those whose permission the context holds (the platform's
-   * wildcard rule). This is layer 2 of the permission model (admin contract section 3).
+   * wildcard rule) and, for an operators-only section, only to a platform operator (tier {@code
+   * ANCHOR}). This is layer 2 of the permission model (admin contract section 3).
    *
    * @param sections the registered sections
    * @param context the caller's context
@@ -75,6 +77,9 @@ public final class Admin {
   public static List<AdminSection> visibleTo(List<AdminSection> sections, Context context) {
     List<AdminSection> out = new ArrayList<>();
     for (AdminSection section : sections) {
+      if (section.forOperators() && !context.isPlatformOperator()) {
+        continue;
+      }
       if (context.hasPermission(section.permission())) {
         out.add(section);
       }
@@ -104,17 +109,82 @@ public final class Admin {
   }
 
   /**
-   * The problems that need the whole registry (admin contract section 2, rules 2 and 3).
+   * Every permission of the operators-only sections (the section's and each operation's), sorted.
+   *
+   * @param sections the registered sections
+   * @return the permissions, empty when no section is operators-only
+   */
+  public static Set<String> operatorsOnlyPermissions(List<AdminSection> sections) {
+    List<AdminSection> only = new ArrayList<>();
+    for (AdminSection section : sections) {
+      if (section.forOperators()) {
+        only.add(section);
+      }
+    }
+    return permissions(only);
+  }
+
+  /**
+   * The permissions of the operators-only sections that the held permission patterns grant, under
+   * the platform's wildcard rule (the one {@link Context#hasPermission} applies: the same number of
+   * segments, {@code *} in a held segment matches). A role that client administrators may assign
+   * must not grant any of them: a partition holds every client's rows. Held entries that are not
+   * permissions match nothing.
+   *
+   * @param sections the registered sections
+   * @param held the permission patterns a role holds, by its definition or through a mapping
+   * @return the operators-only permissions granted, sorted
+   */
+  public static Set<String> operatorsOnlyConflicts(List<AdminSection> sections, java.util.Collection<String> held) {
+    Set<String> out = new TreeSet<>();
+    if (held.isEmpty()) {
+      return out;
+    }
+    Context holder = Context.of(ClientId.PLATFORM).withPermissions(Set.copyOf(held));
+    for (String permission : operatorsOnlyPermissions(sections)) {
+      if (holder.hasPermission(permission)) {
+        out.add(permission);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The problems that need the whole registry (admin contract section 2, rules 2 and 3), for an
+   * admin area that is not operators-only.
    *
    * @param sections the registered sections
    * @param applicationCode the application the admin module serves; every permission starts with it
    * @return the problems, empty when the registry is sound
    */
   public static List<Problem> problems(List<AdminSection> sections, String applicationCode) {
+    return problems(sections, applicationCode, false);
+  }
+
+  /**
+   * The problems that need the whole registry (admin contract section 2, rules 2, 3 and 5).
+   *
+   * @param sections the registered sections
+   * @param applicationCode the application the admin module serves; every permission starts with it
+   * @param operatorsOnlyArea whether the area was declared operators-only; then every section that
+   *     is not operators-only is a problem
+   * @return the problems, empty when the registry is sound
+   */
+  public static List<Problem> problems(List<AdminSection> sections, String applicationCode, boolean operatorsOnlyArea) {
     List<Problem> out = new ArrayList<>();
     Set<String> ids = new HashSet<>();
     Set<String> paths = new HashSet<>();
     for (AdminSection section : sections) {
+      if (operatorsOnlyArea && !section.forOperators()) {
+        out.add(
+            Problem.of(
+                "admin",
+                "section " + section.id(),
+                "admin section '"
+                    + section.id()
+                    + "' is not operators-only, but the admin area is declared operators-only (AdminModule.Option.OPERATORS_ONLY):"
+                    + " every section of it must be"));
+      }
       if (!ids.add(section.id())) {
         out.add(Problem.of("admin", "section " + section.id(), "admin section id '" + section.id() + "' is registered twice"));
       }

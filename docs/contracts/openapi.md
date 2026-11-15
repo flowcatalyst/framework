@@ -67,6 +67,7 @@ static final Operation<IngestionBody, IngestionView> CREATE =
 | `error(status, code, message)` | an expected failure; documents the status (and the code in its description). Repeatable |
 | `requiresContext()` | as `RouteOptions.requiresContext()`; documents the security schemes (section 7) and the statuses section 6 implies |
 | `permission(p)` | the permission the `Context` must hold (core contract section 3 matching); enforced by `framework-http` with `Context.hasPermission` (`403 FORBIDDEN`, the same answer as `Auth.require`); implies `requiresContext()`; emitted as `x-fw-permission` |
+| `operatorsOnly()` | the operation is for platform operators only, in addition to its permission (admin contract section 3a): after the 401 and the permission check a `Context` whose tier is not exactly `ANCHOR` gets `403 FORBIDDEN` "this is for platform operators only", before the request is read; implies `requiresContext()`; emitted as `x-fw-operators-only: true` (absent otherwise). Go `Builder.OperatorsOnly()` |
 
 *Amended by the build (MO):*
 
@@ -152,7 +153,7 @@ OpenAPI **3.1.0**, JSON. Top level, in this order: `openapi` (`"3.1.0"`), `info`
 name). No `servers` (the SPA calls its own origin), no `jsonSchemaDialect`, no `webhooks`.
 
 An operation object, in this order: `operationId`, `summary`, `description`, `tags`, `parameters`,
-`requestBody`, `responses`, `security`, `x-fw-permission`; absent parts are left out.
+`requestBody`, `responses`, `security`, `x-fw-permission`, `x-fw-operators-only`; absent parts are left out.
 
 - `parameters`: path parameters in pattern order, then query parameters in declaration order; each
   `{"name", "in", "required", "schema"}` (path parameters always `required: true`); a list query

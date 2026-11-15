@@ -12,9 +12,9 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
 
 /**
- * Serves a bound {@link Operation} (OpenAPI contract section 3): the permission, then the
- * parameters, then the body, then the handler; the outcome is written with the typed-operation
- * mapper.
+ * Serves a bound {@link Operation} (OpenAPI contract section 3): the permission, then the operator
+ * check when the operation is operators-only, then the parameters, then the body, then the handler;
+ * the outcome is written with the typed-operation mapper.
  */
 final class OperationRoute {
 
@@ -31,6 +31,9 @@ final class OperationRoute {
       String permission = op.permission();
       if (permission != null && !request.context().hasPermission(permission)) {
         return HttpErrors.forbidden("FORBIDDEN", "this needs the permission " + permission);
+      }
+      if (op.operatorsOnly() && !request.context().isPlatformOperator()) {
+        return HttpErrors.forbidden("FORBIDDEN", "this is for platform operators only");
       }
       List<FieldError> errors = new ArrayList<>();
       Map<Object, @Nullable Object> values = new HashMap<>();

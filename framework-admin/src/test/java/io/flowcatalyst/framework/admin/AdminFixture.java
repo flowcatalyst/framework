@@ -45,7 +45,7 @@ final class AdminFixture {
 
   private AdminFixture() {}
 
-  /** Routes that know the declared operations, and a context from the X-Perms header (401 without it). */
+  /** Routes that know the declared operations, and a context from the X-Perms header (401 without it) and the X-Tier header (none without it). */
   static Module http() {
     return new Module() {
       @Override
@@ -72,9 +72,12 @@ final class AdminFixture {
                   if (perms == null) {
                     throw new HttpException(401, "UNAUTHENTICATED", "sign in");
                   }
-                  return Context.of(new ClientId("acme"))
-                      .withPrincipal(new PrincipalId("usr_1"))
-                      .withPermissions(perms.isEmpty() ? Set.of() : Set.of(perms.split(",")));
+                  Context context =
+                      Context.of(new ClientId("acme"))
+                          .withPrincipal(new PrincipalId("usr_1"))
+                          .withPermissions(perms.isEmpty() ? Set.of() : Set.of(perms.split(",")));
+                  String tier = request.header("X-Tier");
+                  return tier == null || tier.isEmpty() ? context : context.withTier(tier);
                 });
       }
     };
@@ -124,6 +127,21 @@ final class AdminFixture {
 
   static App start(Module... extra) {
     return builder(extra).start();
+  }
+
+  /** The same application with the admin area declared for platform operators only. */
+  static AppBuilder areaBuilder(Module... extra) {
+    AppBuilder b =
+        App.builder()
+            .configDirectory(Path.of("no-such-config"))
+            .environment(Map.of("APP_ENV", "test"))
+            .instantSource(() -> Instant.parse("2026-10-16T08:00:00Z"))
+            .module(http())
+            .module(AdminModule.of(APP, AdminModule.Option.OPERATORS_ONLY));
+    for (Module m : extra) {
+      b.module(m);
+    }
+    return b;
   }
 
   static TestClient client(App app) {

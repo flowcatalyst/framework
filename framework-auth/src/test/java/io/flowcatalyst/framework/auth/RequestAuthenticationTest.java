@@ -125,6 +125,44 @@ class RequestAuthenticationTest {
   }
 
   @Test
+  void aBearerTokensTierIsOnTheContextExactlyAsItsTokenSaidIt() {
+    String[] tiers = {"ANCHOR", "PARTNER", "CLIENT", "anchor"};
+    for (String tier : tiers) {
+      String token = t.provider.accessToken(Map.of("sub", "prn_T", "tier", tier));
+      var me = t.browser().get("/api/me", "Authorization", "Bearer " + token).tree();
+      assertThat(me.path("tier").asString()).as(tier).isEqualTo(tier);
+      assertThat(me.path("operator").asBoolean()).as(tier).isEqualTo(tier.equals("ANCHOR"));
+    }
+    Map<String, Object> none = new java.util.HashMap<>();
+    none.put("tier", null);
+    var me = t.browser().get("/api/me", "Authorization", "Bearer " + t.provider.accessToken(none)).tree();
+    assertThat(me.path("tier").asString()).isEmpty();
+    assertThat(me.path("operator").asBoolean()).isFalse();
+  }
+
+  @Test
+  void aSessionsTierIsOnTheContext() {
+    // the session was signed in with the provider's default user, an ANCHOR
+    var me = b.get("/api/me").tree();
+    assertThat(me.path("tier").asString()).isEqualTo("ANCHOR");
+    assertThat(me.path("operator").asBoolean()).isTrue();
+
+    for (String tier : new String[] {"PARTNER", "CLIENT"}) {
+      AuthApp other = AuthApp.start(dir.resolve(tier));
+      try {
+        other.provider.signInAs(Map.of("tier", tier));
+        Browser ob = other.browser();
+        assertThat(ob.signIn("/").status()).isEqualTo(302);
+        var tree = ob.get("/api/me").tree();
+        assertThat(tree.path("tier").asString()).isEqualTo(tier);
+        assertThat(tree.path("operator").asBoolean()).isFalse();
+      } finally {
+        other.close();
+      }
+    }
+  }
+
+  @Test
   void aBadBearerTokenNeverFallsBackToTheCookie() {
     TestResponse r = b.get("/api/me", "Authorization", "Bearer not-a-token");
     assertThat(r.status()).isEqualTo(401);

@@ -69,10 +69,14 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
   commands fall through to normal start).
 - The framework's own modules contribute their permissions and roles the same way: the admin
   sections' permissions and a suggested role `admin` join the catalog automatically (M4e, admin
-  contract section 11; skipped when the application declares its own role `admin`). Go; Java to follow:
-  `AdminDefinitions(adm, AdminRoleName(..), AdminRoleDisplayName(..))` names the role, `WithoutAdminRole()`
-  adds the permissions and no role (a warning at build when no declared role grants `console:view`); the
-  skip then applies to the chosen name.
+  contract section 11; skipped when the application declares its own role `admin`). The role can be named
+  or declined (Go and Java): Go `AdminDefinitions(adm, AdminRoleName(..), AdminRoleDisplayName(..))`, Java
+  `new FlowCatalystModule().adminRoleName(..).adminRoleDisplayName(..)`, name it (display name
+  `Administrator` for `admin`, otherwise derived: `platform-operator` gives `Platform operator`); Go
+  `WithoutAdminRole()`, Java `withoutAdminRole()`, adds the permissions and no role (a warning when no declared
+  role grants `console:view`, by definition or through the permission mapping; with a name it is a start-up
+  problem); the skip then applies to the chosen name. An empty or malformed name fails the ordinary role-name
+  check at start-up and never falls back to `admin`.
 - **Client-managed roles (2026-11-13, owner request).** A role can be marked client-managed (Java
   `Definition.Role.withClientManaged()`, Go `Role.WithClientManaged()`): the platform's
   `clientManaged` flag, which lets a client's own administrators assign the role to their users.
@@ -84,7 +88,10 @@ segment must equal `flowcatalyst.application`); a bad one fails start-up.
   marked (the admin module's suggested role `admin` is not). A client-managed role must not carry the
   permission of an **operators-only** admin section (admin contract section 3a, rule 4): start-up and the
   sync refuse it, naming the role and the permission, by the role's definition or the application's
-  permission mapping (Go `WithPermissionMapping`; wildcards match by the platform's rule).
+  permission mapping (Go `WithPermissionMapping`, Java `FlowCatalystModule.withPermissionMapping(mapper)`;
+  wildcards match by the platform's rule). In Java the module takes the admin sections from the registry itself;
+  the refusal is made even when `flowcatalyst.enabled` is false, and `DefinitionSync.run` makes it again before it
+  sends anything (`IllegalStateException`, "the definitions are not sent").
 - **Docs sync:** the platform has `POST /api/applications/{appCode}/docs/sync` but the Java SDK
   has no docs category. Platform/SDK work: add it to the SDK; until then `docs(...)` definitions
   are accepted and skipped with a warning.

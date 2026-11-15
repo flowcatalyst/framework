@@ -19,6 +19,9 @@ import org.jspecify.annotations.Nullable;
  * @param icon a Lucide icon name for the navigation, or null
  * @param description one sentence, or null
  * @param operations the operations the section serves; each requires a permission
+ * @param forOperators whether the section is for platform operators only (admin contract section
+ *     3a): besides its permission every operation requires a caller whose tier is {@code ANCHOR}
+ *     and the navigation shows the section to no one else; set it with {@link #operatorsOnly()}
  */
 public record AdminSection(
     String id,
@@ -27,7 +30,8 @@ public record AdminSection(
     String permission,
     @Nullable String icon,
     @Nullable String description,
-    List<Operation<?, ?>> operations) {
+    List<Operation<?, ?>> operations,
+    boolean forOperators) {
 
   private static final Pattern ID = Pattern.compile("[a-z][a-z0-9-]*");
   private static final Pattern PERMISSION = Pattern.compile("[^:\\s]+:[^:\\s]+:[^:\\s]+:[^:\\s]+");
@@ -68,6 +72,12 @@ public record AdminSection(
       if (!op.pattern().startsWith(API_PREFIX)) {
         problems.add("operation " + op.label() + " must be under " + API_PREFIX);
       }
+      if (forOperators && !op.operatorsOnly()) {
+        problems.add(
+            "operation "
+                + op.label()
+                + " is in an operators-only section but is not declared with operatorsOnly(), so it would not require a platform operator");
+      }
     }
     if (!problems.isEmpty()) {
       throw new IllegalArgumentException("admin section '" + id + "': " + String.join("; ", problems));
@@ -84,7 +94,7 @@ public record AdminSection(
    * @return the section
    */
   public static AdminSection of(String id, String title, String path, String permission) {
-    return new AdminSection(id, title, path, permission, null, null, List.of());
+    return new AdminSection(id, title, path, permission, null, null, List.of(), false);
   }
 
   /**
@@ -94,7 +104,7 @@ public record AdminSection(
    * @return the copy
    */
   public AdminSection icon(String value) {
-    return new AdminSection(id, title, path, permission, value, description, operations);
+    return new AdminSection(id, title, path, permission, value, description, operations, forOperators);
   }
 
   /**
@@ -104,7 +114,7 @@ public record AdminSection(
    * @return the copy
    */
   public AdminSection description(String value) {
-    return new AdminSection(id, title, path, permission, icon, value, operations);
+    return new AdminSection(id, title, path, permission, icon, value, operations, forOperators);
   }
 
   /**
@@ -115,6 +125,23 @@ public record AdminSection(
    * @throws IllegalArgumentException when one has no permission
    */
   public AdminSection serving(Operation<?, ?>... value) {
-    return new AdminSection(id, title, path, permission, icon, description, List.of(value));
+    return new AdminSection(id, title, path, permission, icon, description, List.of(value), forOperators);
+  }
+
+  /**
+   * Copies marked operators-only (admin contract section 3a): besides its permission, every
+   * operation of the section requires a platform operator (tier {@code ANCHOR}); a {@code PARTNER},
+   * a {@code CLIENT} and a principal with no tier get {@code 403 FORBIDDEN}, and the navigation
+   * does not list the section for them. Every operation of the section must be declared with the
+   * builder's {@code operatorsOnly()} (that is where the gate is); a section with an operation that
+   * is not so marked is a start-up problem, so no operation of such a section can miss the gate. No
+   * role that a client's own administrators may assign (client-managed) may carry the section's
+   * permissions: see {@link Admin#operatorsOnlyConflicts}.
+   *
+   * @return the copy
+   * @throws IllegalArgumentException when an operation is not declared operators-only
+   */
+  public AdminSection operatorsOnly() {
+    return new AdminSection(id, title, path, permission, icon, description, operations, true);
   }
 }
