@@ -26,6 +26,7 @@ describes what is built and says plainly where something is not.
 | [Context](context.md) | `Context`, client, principal, correlation id |
 | [Locks](locks.md) | Leases and fencing tokens, `withLock`, the three drivers |
 | [Object stores](object-stores.md) | Put, get and delete bytes by key: memory, folder (local and test only) and S3 |
+| [Partitioned tables](partitions.md) | Range partitions created ahead and dropped (or archived) by retention, the next-partition health check, the status read and the operator actions |
 | [The write path](write-path.md) | Aggregates, repositories, use cases, plans, optimistic locking, the outbox |
 | [Checked SQL](checked-sql.md) | Queries in `.sql` files, checked at build time |
 | [Per-client secrets](secrets.md) | Resolving a client's credential from a reference: `file` and `env` stores, caching, the threat model |

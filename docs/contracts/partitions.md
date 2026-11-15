@@ -1,9 +1,11 @@
 # Contract: partitioned tables
 
-Status: Go first, 2026-11-14 (guide: `guide/go/partitions.md`); Java to follow. PostgreSQL only: MySQL is
-not supported, because the framework's database layer is PostgreSQL only. Amended 2026-11-14: the `Year`
-interval and date keys (sections 1 to 3), the status read, the last-pass record, the two operator actions and
-the operators-only admin section (sections 10 to 13); all of these are **Java to follow**.
+Status: Go first, 2026-11-14 (guide: `guide/go/partitions.md`); Java 2026-11-15 for sections 1 to 12 (module
+`framework-partitions`, package `io.flowcatalyst.framework.partitions`, guide: `guide/partitions.md`; see "Java" after
+section 12). PostgreSQL only: MySQL is not supported, because the framework's database layer is PostgreSQL only.
+Amended 2026-11-14: the `Year` interval and date keys (sections 1 to 3), the status read, the last-pass record, the
+two operator actions and the operators-only admin section (sections 10 to 13); sections 10 to 12 are built in Java,
+the admin section (13) is **Java to follow**.
 
 A large append-mostly table (readings, telemetry, logs, history, audit) cannot be cleaned with `DELETE` at
 volume: the WAL and vacuum cost equal what is deleted. A range partition dropped whole is O(1). Without
@@ -389,6 +391,27 @@ record is a log line at INFO: `partitions: manual pass` or `partitions: manual e
 The typed refusals, usable with `errors.Is`: `ErrTableNotDeclared`, `ErrRangeTooLarge` (more than 400
 partitions), `ErrRangeInvalid` (`to` before `from`, or before 1970), `ErrDetachedLeftover`, `ErrPassRunning`.
 
+### Java
+
+The Java module is `framework-partitions` (package `io.flowcatalyst.framework.partitions`), optional like the other
+modules. Its names for the concepts above:
+
+| Contract | Java |
+|---|---|
+| `Declare`, `Build`, `WithTable`, `WithObjectStores`, `WithLocks`, `Every`, `ArchiveSegmentBytes` | `PartitionsModule.builder()` with `table(Table)`, `locks()` (the default lock store), `every(Duration)`, `archiveSegmentBytes(int)`; the object stores come from `ObjectStoresModule`, the databases from `DatabaseModule`. Start-up runs when the `Partitions` service is built (after every module's migrations), so a `StartupException` lists every problem as `module 'partitions': key 'table <name>': ...` |
+| `Table`, `ByID`, `ByIDColumn`, `ByColumn`, `ByDateColumn`, `Day`..`Year` | `Table.named(..).by(..).interval(..).ahead(..).retention(..)`, `Key.byId`, `byIdColumn`, `byColumn`, `byDateColumn`, `Interval.DAY`..`YEAR`; the missing parts of a `Table` are start-up problems, not constructor failures |
+| `DropAfter`, `ArchiveThenDropAfter`, `KeepForever` | `Retention.dropAfter`, `archiveThenDropAfter`, `keepForever` |
+| `PartitionName`, `LockKey`, `Key.Bound`, `IDRange` | `PartitionNames.name`, `PartitionNames.lockKey`, `Key.bound`, `Key.idRange` |
+| `Partitions` | `Partitions` (the service): `ensure`, `ensureAs`, `pass`, `runPass`, `status`, `tableStatus`, `archives` |
+| the typed refusals (`ErrTableNotDeclared`, ...) | `PartitionRefusedException` with `reason()` `TABLE_NOT_DECLARED`, `RANGE_TOO_LARGE`, `RANGE_INVALID`, `DETACHED_LEFTOVER`, `PASS_RUNNING` (HTTP 404, 400, 400, 409, 409 in section 13) |
+| `TableStatus.Rows` (`*int64`), `LastPass.Trigger`, `Actor` | `OptionalLong rows()`, `Optional<PassTrigger> trigger()`, `Optional<String> actor()` |
+
+The health check is named `partitions:<table>` with the table **as declared**, as in Go. Where Java differs from the
+text of the contract: the record of an operator action (section 12) carries `principal`, `principal_kind` and
+`correlation_id` but no `tier`, because the Java `Context` has none yet; the log line is `message key=value ...` text.
+The pass failing (`Partitions.pass()`, the loop's work) throws a `PartitionsException` listing the failed tables,
+which is how the loop counts a failed run.
+
 ## 13. The admin section (operators only)
 
 Package `partitions/partitionsadmin` (Go; **Java to follow**) adds the section `partitions` to the application
@@ -431,9 +454,13 @@ projection of a status to the wire, the refusals). The projection cases cover ea
 by the loop, by a manual pass with its actor and with neither recorded, `rows` absent with a non-zero
 `partitionsWithoutEstimate`, `rows` present with a partial estimate, and a table with no partitions.
 
-**Java to follow:** the contract above is the specification; nothing of sections 10 to 13 exists in Java yet.
+**Java to follow:** the contract above is the specification; sections 10 to 12 exist in Java (see "Java" after section
+12), the admin section (13) and its tests do not yet. It calls `Partitions.status()`, `tableStatus`, `archives`,
+`runPass` and `ensureAs` and maps `PartitionRefusedException.reason()`.
 
 ## 14. Tests of sections 10 to 13
+
+Java runs every item below that belongs to sections 10 to 12 (`PartitionsStatusTest`, `PassRecordTest`); the section 13 items wait for the admin section.
 
 Status on PostgreSQL for `ByID`, `ByColumn` and `ByDateColumn` tables: sizes present, estimates absent before
 `ANALYZE` and present after, a detached (marked) table listed and an unmarked one not, a stray listed, an archived

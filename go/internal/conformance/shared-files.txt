@@ -28,3 +28,6 @@ ui-kit/messages/en.json ui/i18n/messages/en.json
 ui-kit/messages/af.json ui/i18n/messages/af.json
 conformance/measure/iso4217.json money/iso4217.json
 conformance/measure/units.json units/units.json
+framework-partitions/src/main/resources/db/migration/partitions/V0001__create_partition_archives_table.sql partitions/migrations/V0001__create_partition_archives_table.sql
+framework-partitions/src/main/resources/db/migration/partitions/V0002__create_partition_passes_table.sql partitions/migrations/V0002__create_partition_passes_table.sql
+framework-partitions/src/main/resources/db/migration/partitions/V0003__add_partition_pass_trigger.sql partitions/migrations/V0003__add_partition_pass_trigger.sql

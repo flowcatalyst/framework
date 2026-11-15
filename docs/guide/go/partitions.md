@@ -3,8 +3,8 @@
 
 Package `partitions` implements the [partitions contract](../../contracts/partitions.md): range-partitioned
 tables whose partitions are created ahead of time and dropped whole (or archived to an object store first),
-with a critical health check that goes down when the next partition is missing. Go only for now (the Java
-framework follows). PostgreSQL only.
+with a critical health check that goes down when the next partition is missing. The Java framework has the
+same module for sections 1 to 12 of the contract ([Java: partitioned tables](../partitions.md)). PostgreSQL only.
 
 ## When to partition, and when not
 
