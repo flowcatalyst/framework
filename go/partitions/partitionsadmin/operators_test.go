@@ -157,6 +157,29 @@ func TestTheNavigationListsTheSectionToOperatorsOnly(t *testing.T) {
 	}
 }
 
+// An application whose admin area holds only the partitions section declares the whole area
+// operators-only (admin contract section 3a, rule 6): the section is accepted there, an operator
+// uses it as before, and nobody else reaches even the navigation.
+func TestThePartitionsSectionInAnOperatorsOnlyArea(t *testing.T) {
+	t.Parallel()
+	r := startRig(t, admin.OperatorsOnly())
+	a := r.send("GET", "/api/admin/navigation", "", withTier(operatorViewOnly, "ANCHOR"))
+	if a.status != 200 || !slices.Equal(sectionIDs(a), []string{"about", "partitions"}) {
+		t.Errorf("an operator's navigation: %d %s", a.status, a.body)
+	}
+	if a := r.send("GET", "/api/admin/partitions", "", withTier(operatorViewOnly, "ANCHOR")); a.status != 200 {
+		t.Errorf("an operator's list: %d %s", a.status, a.body)
+	}
+	for _, tier := range []string{"CLIENT", "PARTNER", ""} {
+		for _, target := range []string{"/api/admin/navigation", "/api/admin/about", "/api/admin/partitions"} {
+			a := r.send("GET", target, "", withTier(operatorWild, tier))
+			if a.status != 403 || !strings.Contains(a.body, "platform operators only") {
+				t.Errorf("tier %q with every permission, %s: %d %s", tier, target, a.status, a.body)
+			}
+		}
+	}
+}
+
 func TestTheOpenapiDocumentMarksTheOperationsOperatorsOnly(t *testing.T) {
 	t.Parallel()
 	r := startRig(t)

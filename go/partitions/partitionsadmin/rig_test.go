@@ -99,7 +99,8 @@ type rig struct {
 	lockStore locks.Store
 }
 
-func startRig(t *testing.T) *rig {
+// startRig starts the application; adminOpts are the options of the admin area (none: an ordinary area).
+func startRig(t *testing.T, adminOpts ...admin.Option) *rig {
 	t.Helper()
 	d := fwtest.NewDatabase(t)
 	db, err := database.Open(t.Context(), "main", d.URL)
@@ -122,7 +123,7 @@ func startRig(t *testing.T) *rig {
 	}), fw.WithConfigDir(dir), fw.WithClock(r.clock), fw.WithOutput(io.Discard, io.Discard),
 		fw.WithLogger(slog.New(slog.NewTextHandler(r.logs, &slog.HandlerOptions{Level: slog.LevelInfo}))))
 	r.web = httpfw.Declare(app)
-	r.adm = admin.Declare(r.web, fw.MustApplicationCode("acme"))
+	r.adm = admin.Declare(r.web, fw.MustApplicationCode("acme"), adminOpts...)
 	pa := partitionsadmin.Declare(r.adm)
 	dbDecl := database.Declare(app)
 	pd := partitions.Declare(app)
