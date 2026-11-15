@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -86,18 +87,11 @@ func Start(ctx context.Context) (string, func(), error) {
 		return "", nil, err
 	}
 	var log bytes.Buffer // the server's own output, shown only when it fails to start
-	// DefaultConfig reads os.Stdout, which jetgen may be replacing.
-	stdoutlock.Lock()
-	cfg := embeddedpostgres.DefaultConfig()
-	stdoutlock.Unlock()
-	pg := embeddedpostgres.NewDatabase(cfg.
-		Version(embeddedpostgres.V18).
-		Logger(&log).
-		Port(uint32(port)). //nolint:gosec // a TCP port fits in uint32
-		DataPath(filepath.Join(tmp, "data")).
-		RuntimePath(filepath.Join(tmp, "runtime")).
-		Username("postgres").Password("postgres").Database("postgres").
-		StartTimeout(90 * time.Second))
+	cfg := config(&log, port, tmp)
+	if bin, ok := sharedBinaries(); ok {
+		cfg = cfg.BinariesPath(bin)
+	}
+	pg := embeddedpostgres.NewDatabase(cfg)
 	if err := pg.Start(); err != nil {
 		_ = os.RemoveAll(tmp)
 		return "", nil, fmt.Errorf("start embedded PostgreSQL 18 on port %d: %w\n%s", port, err, log.String())
@@ -106,4 +100,83 @@ func Start(ctx context.Context) (string, func(), error) {
 		_ = pg.Stop()
 		_ = os.RemoveAll(tmp)
 	}, nil
+}
+
+// version is the PostgreSQL the server runs; it is part of the name of the shared binaries'
+// directory, so changing it unpacks the new version beside the old.
+const version = embeddedpostgres.V18
+
+// config is the server's configuration: on port, with its data and runtime directories under tmp.
+func config(log *bytes.Buffer, port int, tmp string) embeddedpostgres.Config {
+	// DefaultConfig reads os.Stdout, which jetgen may be replacing.
+	stdoutlock.Lock()
+	cfg := embeddedpostgres.DefaultConfig()
+	stdoutlock.Unlock()
+	return cfg.
+		Version(version).
+		Logger(log).
+		Port(uint32(port)). //nolint:gosec // a TCP port fits in uint32
+		DataPath(filepath.Join(tmp, "data")).
+		RuntimePath(filepath.Join(tmp, "runtime")).
+		Username("postgres").Password("postgres").Database("postgres").
+		StartTimeout(90 * time.Second)
+}
+
+// sharedBinaries returns the directory that holds one unpacked copy of the PostgreSQL binaries for
+// this machine, unpacking it first when there is none; false when it cannot be had, and the server
+// then unpacks its own copy as it always did.
+//
+// The library unpacks the PostgreSQL archive into the runtime directory on every start, and every
+// test package starts a server of its own: under the race detector that unpack was most of what a
+// database test package took. The copy is in <user cache dir>/flowcatalyst-framework/pgembed/
+// postgres-<version>-<os>-<arch>; deleting it is always safe.
+//
+// A cold cache is filled without a lock: this process unpacks into a directory of its own beside
+// the final one (by starting and stopping a throwaway server there, which is the only way the
+// library unpacks) and renames it into place. A rename is atomic, so the final directory is either
+// absent or complete, and when two processes unpack at once one rename wins and the other copy is
+// removed.
+func sharedBinaries() (string, bool) {
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		return "", false
+	}
+	root := filepath.Join(cache, "flowcatalyst-framework", "pgembed")
+	dir := filepath.Join(root, fmt.Sprintf("postgres-%s-%s-%s", version, runtime.GOOS, runtime.GOARCH))
+	if isDir(dir) {
+		return dir, true
+	}
+	if err := os.MkdirAll(root, 0o750); err != nil {
+		return "", false
+	}
+	staging, err := os.MkdirTemp(root, "unpacking-*")
+	if err != nil {
+		return "", false
+	}
+	defer func() { _ = os.RemoveAll(staging) }() // gone already when the rename took it
+	port, err := FreePort()
+	if err != nil {
+		return "", false
+	}
+	var log bytes.Buffer
+	bin := filepath.Join(staging, "bin")
+	pg := embeddedpostgres.NewDatabase(config(&log, port, filepath.Join(staging, "run")).BinariesPath(bin))
+	if err := pg.Start(); err != nil {
+		return "", false
+	}
+	if err := pg.Stop(); err != nil {
+		return "", false
+	}
+	if err := os.Rename(bin, dir); err != nil && !isDir(dir) {
+		return "", false
+	}
+	return dir, true
+}
+
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil || info == nil {
+		return false
+	}
+	return info.IsDir()
 }
