@@ -485,14 +485,26 @@ func (a *Admin) Build(p *partitions.Partitions) (*httpfw.Routes, error) {
 		if err != nil {
 			return admin.Page[Archive]{}, err
 		}
+		more := len(records) > limit
+		if !more && len(records) == limit && limit >= partitions.MaxArchivePage {
+			// Archives returns at most MaxArchivePage records, so a full page of that size cannot
+			// carry the extra record that says another page follows: ask for it.
+			next, err := p.Archives(ctx, table, records[limit-1].Partition, 1)
+			if err != nil {
+				return admin.Page[Archive]{}, err
+			}
+			more = len(next) > 0
+		}
 		page := admin.Page[Archive]{Items: []Archive{}}
 		for i, r := range records {
 			if i == limit {
-				last := records[limit-1].Partition
-				page.NextCursor = &last
 				break
 			}
 			page.Items = append(page.Items, archiveOf(r))
+		}
+		if more {
+			last := records[limit-1].Partition
+			page.NextCursor = &last
 		}
 		return page, nil
 	}))

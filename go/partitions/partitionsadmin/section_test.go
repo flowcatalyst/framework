@@ -1,6 +1,7 @@
 package partitionsadmin_test
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -280,5 +281,38 @@ func TestEnsureAnswersCreatedAndAlreadyDueAndEveryRefusalHasItsCode(t *testing.T
 	}
 	if !strings.Contains(r.logs.String(), "principal=prn_TESTOP") {
 		t.Errorf("the record does not name the principal:\n%s", r.logs.String())
+	}
+}
+
+// A full page of the largest size must still say whether another follows: Archives returns at most
+// that many records, so the handler cannot see the next one in the same read.
+func TestTheLargestArchivesPageStillSaysWhetherAnotherFollows(t *testing.T) {
+	t.Parallel()
+	r := startRig(t)
+	for i := range 201 {
+		name := fmt.Sprintf("readings_p%08d", 10000000+i)
+		r.exec(`INSERT INTO fw_partition_archives (table_name, partition_name, part, object_key, row_count, byte_count, sha256, archived_at)
+VALUES ('public.readings', $1, 1, $2, 1, 1, 'x', now())`, name, "k/"+name)
+	}
+	a := r.send("GET", "/api/admin/partitions/readings/archives?limit=200", "", operatorViewOnly)
+	if a.status != 200 || len(a.list("items")) != 200 {
+		t.Fatalf("the first page: %d, %d items", a.status, len(a.list("items")))
+	}
+	cursor, _ := a.tree()["nextCursor"].(string)
+	if cursor != "readings_p10000001" {
+		t.Fatalf("nextCursor %q, want the last item of the page (one more follows)", cursor)
+	}
+	a = r.send("GET", "/api/admin/partitions/readings/archives?limit=200&after="+cursor, "", operatorViewOnly)
+	if len(a.list("items")) != 1 {
+		t.Errorf("the second page has %d items, want 1", len(a.list("items")))
+	}
+	if _, has := a.tree()["nextCursor"]; has {
+		t.Errorf("the last page has a nextCursor: %s", a.body)
+	}
+	// exactly 200 left: a full page with nothing after it has no cursor
+	r.exec(`DELETE FROM fw_partition_archives WHERE partition_name = 'readings_p10000000'`)
+	a = r.send("GET", "/api/admin/partitions/readings/archives?limit=200", "", operatorViewOnly)
+	if _, has := a.tree()["nextCursor"]; has || len(a.list("items")) != 200 {
+		t.Errorf("200 archives in one page of 200: %d items, nextCursor present %v", len(a.list("items")), has)
 	}
 }
