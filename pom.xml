@@ -45,6 +45,7 @@
     <module>framework-locks-database</module>
     <module>framework-locks-redis</module>
     <module>framework-partitions</module>
+    <module>framework-partitions-admin</module>
     <module>framework-objectstore</module>
     <module>framework-objectstore-s3</module>
     <module>framework-usecase</module>

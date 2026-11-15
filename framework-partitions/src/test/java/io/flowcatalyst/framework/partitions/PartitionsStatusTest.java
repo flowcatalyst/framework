@@ -302,6 +302,19 @@ class PartitionsStatusTest extends PartitionsTestBase {
   }
 
   @Test
+  void theRecordOfAManualActionCarriesTheTierWhenTheContextHasOne() throws IOException {
+    exec(ID_TABLE);
+    Started s = start(Cfg.of(monthly("readings", Key.byId("rdg"), Retention.dropAfter(days(90)))));
+    s.ps().runPass(operator().withTier("ANCHOR"), "readings");
+    s.ps().ensureAs(operator().withTier("ANCHOR"), "readings", Instant.parse("2026-05-10T00:00:00Z"), Instant.parse("2026-06-10T00:00:00Z"));
+    String withTier = log.text();
+    assertThat(withTier.split("tier=ANCHOR", -1).length - 1).as("one tier on the pass and one on the ensure").isEqualTo(2);
+    int before = log.text().length();
+    s.ps().runPass(operator(), "readings"); // no tier in this context
+    assertThat(log.text().substring(before)).contains("partitions: manual pass").doesNotContain("tier=");
+  }
+
+  @Test
   void aRunningPassRefusesAManualPassUntilItEnds() throws Exception {
     for (boolean withLocks : new boolean[] {false, true}) {
       pg.reset();

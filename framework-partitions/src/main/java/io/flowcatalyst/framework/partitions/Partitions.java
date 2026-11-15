@@ -378,7 +378,7 @@ public final class Partitions {
   }
 
   /**
-   * The record of an operator's action: who (the context's principal, its kind and the correlation id), what
+   * The record of an operator's action: who (the context's principal, its kind, its tier when it has one, and the correlation id), what
    * and the outcome.
    */
   private void recordManual(String message, Context by, String table, String outcome, Object[]... extra) {
@@ -390,6 +390,12 @@ public final class Partitions {
             kind -> {
               pairs.add("principal_kind");
               pairs.add(kind.name());
+            });
+    by.findTier()
+        .ifPresent(
+            tier -> {
+              pairs.add("tier");
+              pairs.add(tier);
             });
     pairs.add("correlation_id");
     pairs.add(by.correlationId().value());

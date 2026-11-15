@@ -18,6 +18,7 @@ import io.flowcatalyst.framework.http.NoBody;
 import io.flowcatalyst.framework.http.Operation;
 import io.flowcatalyst.framework.http.Outcome;
 import io.flowcatalyst.framework.http.Routes;
+import io.flowcatalyst.framework.partitions.admin.PartitionsAdminModule;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -80,6 +81,25 @@ class OperatorsOnlyGuardTest {
       @Override
       public void boot(App app) {
         app.get(Routes.class).forModule(id()).bind(RUN, r -> Outcome.ok(new Done(true)));
+      }
+    };
+  }
+
+  /**
+   * The real partitions section (its five operations and permissions, as an application lists
+   * {@code PartitionsAdminModule}), registered without the partitions module behind it: the guard
+   * reads the registry, not the handlers.
+   */
+  static Module realPartitionsSection() {
+    return new Module() {
+      @Override
+      public String id() {
+        return "partitions-section";
+      }
+
+      @Override
+      public void register(AppBuilder app) {
+        Admin.section(app, PartitionsAdminModule.section(APP));
       }
     };
   }
@@ -210,6 +230,60 @@ class OperatorsOnlyGuardTest {
                     define(d -> d.role(Definition.Role.of("operator", PARTITIONS_VIEW).withClientManaged()))))
         .isInstanceOf(StartupException.class)
         .hasMessageContaining("'" + PARTITIONS_VIEW + "'");
+  }
+
+  // ---- the real partitions section ---------------------------------------------------------------
+
+  @Test
+  void theRealPartitionsSectionRefusesAClientManagedRoleThatHoldsItsViewOrManagePermission() {
+    for (String permission : new String[] {"orders:admin:partitions:view", "orders:admin:partitions:manage"}) {
+      assertThatThrownBy(
+              () ->
+                  start(
+                      new FlowCatalystModule(),
+                      realPartitionsSection(),
+                      define(d -> d.permission(permission, "Partitions").role(Definition.Role.of("operator", permission).withClientManaged()))))
+          .as(permission)
+          .isInstanceOf(StartupException.class)
+          .hasMessageContaining("role 'orders:operator'")
+          .hasMessageContaining("client-managed")
+          .hasMessageContaining("'" + permission + "'");
+    }
+  }
+
+  @Test
+  void theRealPartitionsSectionRefusesTheAdminWildcardAndTheSectionWildcardThroughTheMapping() {
+    for (String wildcard : new String[] {"orders:admin:*:*", "orders:admin:partitions:*"}) {
+      FlowCatalystModule fc = new FlowCatalystModule().withPermissionMapping(mapping("orders:operator", wildcard));
+      assertThatThrownBy(
+              () ->
+                  start(
+                      fc,
+                      realPartitionsSection(),
+                      define(d -> d.role(Definition.Role.of("operator", "orders:sales:order:read").withClientManaged()))))
+          .as(wildcard)
+          .isInstanceOf(StartupException.class)
+          .hasMessageContaining("role 'orders:operator'")
+          .hasMessageContaining("'orders:admin:partitions:view'")
+          .hasMessageContaining("'orders:admin:partitions:manage'")
+          .hasMessageContaining("(through '" + wildcard + "')");
+    }
+  }
+
+  @Test
+  void theRealPartitionsSectionIsHeldByARoleThatIsNotClientManagedAndBySuggestedAdminRole() {
+    FlowCatalystModule fc = new FlowCatalystModule().withPermissionMapping(mapping("orders:admin", "orders:admin:*:*"));
+    try (App app =
+        start(
+            fc,
+            realPartitionsSection(),
+            define(
+                d ->
+                    d.permission("orders:admin:partitions:view", "View partitions")
+                        .permission("orders:admin:partitions:manage", "Manage partitions")
+                        .role(Definition.Role.of("dba", "orders:admin:partitions:view", "orders:admin:partitions:manage"))))) {
+      assertThat(app.get(DefinitionCatalog.class).roles()).extracting(Definition.Role::name).contains("dba", "admin");
+    }
   }
 
   // ---- what may carry them -----------------------------------------------------------------------

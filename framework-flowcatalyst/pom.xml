@@ -91,6 +91,12 @@
       <artifactId>framework-locks-database</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- The real partitions section, for the operators-only guard's test (a client-managed role may not hold its permissions). -->
+    <dependency>
+      <groupId>io.flowcatalyst.framework</groupId>
+      <artifactId>framework-partitions-admin</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers-postgresql</artifactId>

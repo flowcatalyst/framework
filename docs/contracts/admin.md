@@ -28,7 +28,7 @@ slice**, inside that application, behind that application's sign-in, in its own 
 | application config | the application's config and secret *status* (never a secret value; built, section 10) | the application itself |
 | scoped events and dispatch jobs | the application's own events and delivery attempts (built, section 12) | the platform (the scoped reads of platform change F20) |
 | health | readiness and the checks | the application itself (`/api/admin/about`, part of this skeleton) |
-| partitions | the partitioned tables, their partitions, retention and archives; run a pass, create partitions for a range (**operators only**, section 3a, section 15; Go, Java to follow) | the application itself |
+| partitions | the partitioned tables, their partitions, retention and archives; run a pass, create partitions for a range (**operators only**, section 3a, section 15) | the application itself |
 
 M4d builds **none** of the data sections. It builds what every one of them needs: the registry in
 which sections declare themselves, the permission gate, the two data-free operations, and the
@@ -309,7 +309,8 @@ the wildcard rule of core section 3. Go compares.
 
 `conformance/admin/partitions.json` (2026-11-14, Go) is the vector of the partitions section: the gate for every
 tier and permission set (including whether the navigation lists the section), the durations on the wire, the
-projection of a status to the documents, the refusals.
+projection of a status to the documents, the refusals. The Java tests run it (`PartitionsAdminOperatorsTest`,
+`PartitionsAdminProjectionTest`).
 
 ## 8a. As built (2026-10-16)
 
@@ -577,10 +578,12 @@ and `revealAdminPlatformConfig`; permissions `view`, `manage`, `reveal` (reveal 
 CLIENT_FORBIDDEN`). The wire, the rules and what was built are in [platform-config.md](platform-config.md) (sections 4
 and 8). The shared page (a seventh standard page) is section 5 of that contract.
 
-## 15. The partitions section (2026-11-14, Go; Java to follow)
+## 15. The partitions section (2026-11-14, Go; 2026-11-15, Java)
 
 Section `partitions`, path `/admin/partitions`, permission `{app}:admin:partitions:view`, **operators only**
 (section 3a); five operations under `{app}:admin:partitions:view` (the three reads) and `{app}:admin:partitions:manage`
 (run a pass, create the partitions of a range). It is headless (no page in `@flowcatalyst/ui`). The operations, the wire
 and the rules are in the [partitions contract](partitions.md), sections 10 to 13; the Go package is
-`partitions/partitionsadmin`. `AdminDefinitions` lists its two permissions like any section's.
+`partitions/partitionsadmin`; the Java one is the module `framework-partitions-admin` (`PartitionsAdminModule`, listed after
+`AdminModule` and `PartitionsModule`; `framework-admin` does not depend on `framework-partitions`). `AdminDefinitions` lists its two
+permissions like any section's, and the FlowCatalyst module's start-up refusal (section 3a, rule 4) covers them in Java as in Go.

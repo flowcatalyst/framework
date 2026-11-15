@@ -109,7 +109,8 @@ An application whose whole admin area is for operators declares it, and names (o
 
 Then the navigation and the about operation need a platform operator as well as `{app}:admin:console:view`, and
 every section you register must be operators-only too (`AdminSection.operatorsOnly()`; a section module can ask
-`AdminModule.operatorsOnly()`), or start-up fails naming the section. `AdminConfigModule` and the platform
+`AdminModule.operatorsOnly()`), or start-up fails naming the section. The partitions section is operators-only and
+works in such an area ([Partitioned tables](partitions.md#the-admin-section-operators-only)). `AdminConfigModule` and the platform
 sections (`PlatformAdminModule` and the others) are not operators-only, so they cannot be part of such an area.
 `console:view` is then an operators-only permission, so a client-managed role that holds it fails start-up. The
 tests: `AdminOperatorsOnlyTest` and `AdminOperatorsOnlyAreaConformanceTest` (framework-admin; the vector is

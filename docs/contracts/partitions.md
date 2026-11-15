@@ -1,11 +1,11 @@
 # Contract: partitioned tables
 
-Status: Go first, 2026-11-14 (guide: `guide/go/partitions.md`); Java 2026-11-15 for sections 1 to 12 (module
-`framework-partitions`, package `io.flowcatalyst.framework.partitions`, guide: `guide/partitions.md`; see "Java" after
-section 12). PostgreSQL only: MySQL is not supported, because the framework's database layer is PostgreSQL only.
+Status: Go first, 2026-11-14 (guide: `guide/go/partitions.md`); Java 2026-11-15 for sections 1 to 13 (modules
+`framework-partitions`, package `io.flowcatalyst.framework.partitions`, and `framework-partitions-admin`, package
+`io.flowcatalyst.framework.partitions.admin`; guide: `guide/partitions.md`; see "Java" after section 12 and the end of
+section 13). PostgreSQL only: MySQL is not supported, because the framework's database layer is PostgreSQL only.
 Amended 2026-11-14: the `Year` interval and date keys (sections 1 to 3), the status read, the last-pass record, the
-two operator actions and the operators-only admin section (sections 10 to 13); sections 10 to 12 are built in Java,
-the admin section (13) is **Java to follow**.
+two operator actions and the operators-only admin section (sections 10 to 13); sections 10 to 13 are built in Java.
 
 A large append-mostly table (readings, telemetry, logs, history, audit) cannot be cleaned with `DELETE` at
 volume: the WAL and vacuum cost equal what is deleted. A range partition dropped whole is O(1). Without
@@ -407,14 +407,16 @@ modules. Its names for the concepts above:
 | `TableStatus.Rows` (`*int64`), `LastPass.Trigger`, `Actor` | `OptionalLong rows()`, `Optional<PassTrigger> trigger()`, `Optional<String> actor()` |
 
 The health check is named `partitions:<table>` with the table **as declared**, as in Go. Where Java differs from the
-text of the contract: the record of an operator action (section 12) carries `principal`, `principal_kind` and
-`correlation_id` but no `tier`, because the Java `Context` has none yet; the log line is `message key=value ...` text.
+text of the contract: the log line of an operator action (section 12) is `message key=value ...` text; it carries
+`principal`, `principal_kind`, `tier` (when the `Context` has one, which the auth module sets from the token's `tier`
+claim), `correlation_id`, the table, the range and the outcome.
 The pass failing (`Partitions.pass()`, the loop's work) throws a `PartitionsException` listing the failed tables,
 which is how the loop counts a failed run.
 
 ## 13. The admin section (operators only)
 
-Package `partitions/partitionsadmin` (Go; **Java to follow**) adds the section `partitions` to the application
+Package `partitions/partitionsadmin` (Go) and module `framework-partitions-admin` (Java, package
+`io.flowcatalyst.framework.partitions.admin`) add the section `partitions` to the application
 admin ([admin contract](admin.md), section 3a): id `partitions`, title "Partitions", path `/admin/partitions`,
 permission `{app}:admin:partitions:view`. It is **headless**: typed operations, permissions and a navigation
 entry; the application draws its own page (a server-rendered one gates on the same permission,
@@ -454,13 +456,21 @@ projection of a status to the wire, the refusals). The projection cases cover ea
 by the loop, by a manual pass with its actor and with neither recorded, `rows` absent with a non-zero
 `partitionsWithoutEstimate`, `rows` present with a partial estimate, and a table with no partitions.
 
-**Java to follow:** the contract above is the specification; sections 10 to 12 exist in Java (see "Java" after section
-12), the admin section (13) and its tests do not yet. It calls `Partitions.status()`, `tableStatus`, `archives`,
-`runPass` and `ensureAs` and maps `PartitionRefusedException.reason()`.
+**Java:** the section is the module `framework-partitions-admin`, a module of its own because `framework-admin` must not
+depend on `framework-partitions` (Go's subpackage reason) and `framework-partitions` needs neither HTTP nor the admin
+registry (the Java split of `framework-locks-database` and `framework-auth-database`). An application lists
+`PartitionsAdminModule.of(application)` after `AdminModule` and `PartitionsModule`; the module registers the section
+in `register` and binds the five operations in `boot`, calling `Partitions.status()`, `tableStatus`, `archives`,
+`runPass` and `ensureAs` and mapping `PartitionRefusedException.reason()` to the statuses above, with Go's messages.
+`PartitionsAdminModule.view(app)` and `manage(app)` are the permissions; `section(app)` is the declared section
+without handlers. The wire types are `PartitionsAdminApi.AdminPartition...` (the names of Go's document), the wire
+step names are lower case (`ensure`, `retention`, `archive`), an absent optional field is omitted. The `limit` of the
+archives is 1 to 200 and the partitions module serves at most 200 records, so the handler asks for one more and, at
+`limit=200`, asks again for one after the last record to know whether `nextCursor` is due.
 
 ## 14. Tests of sections 10 to 13
 
-Java runs every item below that belongs to sections 10 to 12 (`PartitionsStatusTest`, `PassRecordTest`); the section 13 items wait for the admin section.
+Java runs every item below that belongs to sections 10 to 12 (`PartitionsStatusTest`, `PassRecordTest`) and to section 13 (`PartitionsAdminOperationsTest`, `PartitionsAdminOperatorsTest`, `PartitionsAdminProjectionTest` in `framework-partitions-admin`, and the start-up refusal against the real section in `OperatorsOnlyGuardTest`).
 
 Status on PostgreSQL for `ByID`, `ByColumn` and `ByDateColumn` tables: sizes present, estimates absent before
 `ANALYZE` and present after, a detached (marked) table listed and an unmarked one not, a stray listed, an archived

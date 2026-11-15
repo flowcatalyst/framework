@@ -1,4 +1,4 @@
-<!-- types: PartitionsModule, Partitions, Table, Key, Interval, Retention, KeyKind, KeyColumnType, RetentionKind, TableStatus, PartitionStatus, RetentionStatus, LastPass, ArchivedPartition, ArchiveRecord, PassResult, EnsureResult, Step, StepStatus, PassTrigger, Position, PartitionRefusedException, PartitionsException, PartitionNames -->
+<!-- types: PartitionsAdminModule, PartitionsAdminApi, PartitionsModule, Partitions, Table, Key, Interval, Retention, KeyKind, KeyColumnType, RetentionKind, TableStatus, PartitionStatus, RetentionStatus, LastPass, ArchivedPartition, ArchiveRecord, PassResult, EnsureResult, Step, StepStatus, PassTrigger, Position, PartitionRefusedException, PartitionsException, PartitionNames -->
 # Partitioned tables
 
 Module `framework-partitions` (package `io.flowcatalyst.framework.partitions`) implements the
@@ -6,7 +6,8 @@ Module `framework-partitions` (package `io.flowcatalyst.framework.partitions`) i
 time and dropped whole (or archived to an object store first), with a critical health check that goes down when
 the next partition is missing. PostgreSQL only. The [Go build](go/partitions.md) behaves the same: partition names,
 bounds, DDL, tables, health check and metric names are identical. The operators-only admin section (contract
-section 13) is not built in Java yet; this page covers sections 1 to 12.
+section 13) is the module `framework-partitions-admin`, described under [The admin section](#the-admin-section-operators-only)
+below.
 
 ## When to partition, and when not
 
@@ -207,13 +208,65 @@ Two actions are for an operator, with the acting principal's `Context` for the r
 `PassResult` per table with the steps that failed; `partitions.ensureAs(by, "readings", from, to)` is `ensure` for an
 operator. A manual pass never overlaps the loop's: while one runs, here or on another replica, it is refused with a
 `PartitionRefusedException` whose reason is `PASS_RUNNING`, never queued. Each action logs `partitions: manual pass`
-or `partitions: manual ensure` at INFO with the principal's id and kind, the correlation id, the table, the range and
-the outcome (`table=... outcome=ok principal=...`); the framework has no audit store for an operator's action, so that
+or `partitions: manual ensure` at INFO with the principal's id and kind, the tier (when the context has one), the
+correlation id, the table, the range and the outcome (`table=... outcome=ok principal=... tier=ANCHOR`); the framework has no audit store for an operator's action, so that
 line is the record. Not provided, on purpose: dropping or detaching a partition by hand, changing a retention (it is
 code), restoring an archive.
 
-An admin section builds on exactly these five calls (`status`, `tableStatus`, `archives`, `runPass`, `ensureAs`) and
-the `PartitionRefusedException` reasons.
+## The admin section (operators only)
+
+`PartitionsAdminModule` (module `framework-partitions-admin`, package `io.flowcatalyst.framework.partitions.admin`)
+puts all of this behind the application admin, headless: five typed operations (the tables, one table, its archives,
+run a pass, ensure a range), the permissions `{app}:admin:partitions:view` and `:manage`
+(`PartitionsAdminModule.view(app)` and `manage(app)`, so a server-rendered page gates on the same permission), and a
+navigation entry (id `partitions`, path `/admin/partitions`). It is a module of its own because `framework-admin`
+must not depend on `framework-partitions` (the admin skeleton is HTTP-only) and `framework-partitions` needs neither
+HTTP nor the admin registry: the same split as `framework-locks-database` and `framework-auth-database`. List it after
+`AdminModule` and `PartitionsModule`:
+
+```java
+App.builder()
+    .module(AdminModule.of(APPLICATION))
+    .module(new DatabaseModule())
+    .module(PartitionsModule.builder().table(readings).locks().build())
+    .module(PartitionsAdminModule.of(APPLICATION))
+    .start();
+```
+
+A partition holds every client's rows, so the section is **operators-only**: besides the permission the caller must be
+a platform operator (tier exactly `ANCHOR`); a `PARTNER`, a `CLIENT`, a caller with no tier and a lower-case `anchor`
+get `403 FORBIDDEN` "this is for platform operators only" whatever permissions they hold (the wildcard included), and
+the navigation does not show the section ([admin](admin.md), operators-only sections). It works in an ordinary admin
+area and in one declared `AdminModule.Option.OPERATORS_ONLY`.
+
+| Operation | Id | Permission | Answers |
+|---|---|---|---|
+| `GET /api/admin/partitions` | `listAdminPartitions` | view | `tables`, each without its partitions: `partitionCount`, `bytes`, `rows`, `partitionsWithoutEstimate`, `oldestFrom`, `nextRemovalDue` |
+| `GET /api/admin/partitions/{table}` | `getAdminPartitionTable` | view | the table with every partition, `detached` and `strays`; `404 PARTITION_TABLE_NOT_FOUND` |
+| `GET /api/admin/partitions/{table}/archives` | `listAdminPartitionArchives` | view | a page (`items`, `nextCursor`; `limit` 50, 1 to 200; `after`), newest first |
+| `POST /api/admin/partitions/passes` | `runAdminPartitionPass` | manage | body `{"table": "..."}` or `{}`; `{"results": [...]}`; `404 PARTITION_TABLE_NOT_FOUND`, `409 PARTITION_PASS_RUNNING` |
+| `POST /api/admin/partitions/{table}/ensure` | `ensureAdminPartitions` | manage | body `{"from", "to"}`; `{"created", "alreadyDue"}`; `404`, `400 PARTITION_RANGE_INVALID`, `400 PARTITION_RANGE_TOO_LARGE`, `409 PARTITION_DETACHED_LEFTOVER` |
+
+A missing or malformed body field is `400 VALIDATION`. On the wire the table's `key` is an object (`kind` `ID` or
+`COLUMN`, `column`, `prefix` for an ID key, `type` `TIMESTAMPTZ` or `DATE` for a COLUMN key), `lastPass` has `trigger`
+and `actor` (omitted when not recorded), `retention.after` is an ISO-8601 duration (`PT2160H`), and `rows` is omitted
+when no partition has an estimate yet; `partitionsWithoutEstimate` is always there. The types are
+`PartitionsAdminApi.AdminPartition...`, named as in Go's OpenAPI document. A manual pass is recorded against the
+caller's context (trigger `MANUAL`, the caller's id as `actor`, and the log line with the tier).
+
+Give the permissions to a **role that is not client-managed** (never `withClientManaged()`): client-managed roles are
+the ones a client's own administrators may assign. With the FlowCatalyst module, start-up refuses a client-managed role
+that holds `{app}:admin:partitions:view` or `:manage`, directly or through `orders:admin:*:*` or
+`orders:admin:partitions:*` in `withPermissionMapping`, naming the role and the permission (proved against this
+section by `OperatorsOnlyGuardTest` in `framework-flowcatalyst`). The suggested `admin` role holds them.
+`PartitionsAdminModule.section(app)` returns the declared section without handlers, for a test of those rules.
+
+Tests (module `framework-partitions-admin`, a real PostgreSQL): `PartitionsAdminOperationsTest` (the five operations,
+paging, a pass and its 409, ensure and each refusal), `PartitionsAdminOperatorsTest` (every tier, the navigation, the
+OpenAPI marker, an operators-only area, and the gate and refusals of `conformance/admin/partitions.json`) and
+`PartitionsAdminProjectionTest` (the vector's projection and durations, without a database). The partitions module
+serves at most 200 archives a call, so at `limit=200` the section asks once more to say whether another page follows
+(`nextCursor`).
 
 ## Unique keys
 
