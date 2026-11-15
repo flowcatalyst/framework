@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/flowcatalyst/framework/go v0.4.0
-	github.com/flowcatalyst/go-sdk v0.0.19
+	github.com/flowcatalyst/go-sdk v0.0.20
 	github.com/jackc/pgx/v5 v5.13.0
 )
 
