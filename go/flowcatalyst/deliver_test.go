@@ -217,6 +217,9 @@ func TestTheJobsOfOutboxRowsNameTheirClient(t *testing.T) {
 			return fakeplatform.JobFromEvent("dj_1", `{"type":"orders:sales:order:placed","data":"{}","clientCode":"acme"}`)
 		}, "acme", ""},
 		"an event of the platform client": {func() (fakeplatform.Job, error) {
+			return fakeplatform.JobFromEvent("dj_2", `{"type":"orders:sales:order:placed","data":"{}"}`)
+		}, "", ""},
+		"an event of the platform client written before 2026-11-18": {func() (fakeplatform.Job, error) {
 			return fakeplatform.JobFromEvent("dj_2", `{"type":"orders:sales:order:placed","data":"{}","clientCode":"_platform"}`)
 		}, "", ""},
 		"a job naming its client by code": {func() (fakeplatform.Job, error) {

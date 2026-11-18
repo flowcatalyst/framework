@@ -167,8 +167,9 @@ func JobFromOutbox(payload string) (Job, error) {
 
 // JobFromEvent is the job the platform delivers to a subscription for an EVENT row of the
 // application's outbox (its payload): the job id is the platform's (pick one), the code the event
-// type, the client the event's clientCode (none for the platform client, _platform), and the data
-// the event's data.
+// type, the client the event's clientCode (none when the event has none, as an event of the
+// platform client's context has none, or when it is _platform, as such an event's was before
+// 2026-11-18), and the data the event's data.
 func JobFromEvent(jobID, payload string) (Job, error) {
 	var ev struct {
 		Type          string `json:"type"`
