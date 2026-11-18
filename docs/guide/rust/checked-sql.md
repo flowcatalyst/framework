@@ -1,4 +1,4 @@
-<!-- types: OrderRepository, OrderSummary, OrderStatus, CustomerName -->
+<!-- types: OrderRepository, OrderSummary, OrderStatus, CustomerName, PgTimestamptz, PgTimestamp, PgDate -->
 # Rust: checked SQL
 
 The Rust counterpart of the checked-SQL contract ([contract](../../contracts/checked-sql.md), Java
@@ -44,6 +44,58 @@ r#"SELECT o.id AS "id!: OrderId", o.customer AS "customer!: CustomerName", ...
 
 - Dynamic queries stay hand-written with `sqlx::QueryBuilder` and `push_bind`, never `format!`
   with values.
+
+## Time columns
+
+sqlx 0.8 maps PostgreSQL's time types only to `chrono` or `time`, and Rust's orphan rule keeps
+anyone but sqlx and jiff from teaching sqlx about jiff. So `fw-db` has one small type per column
+type that carries a jiff value across the database boundary, and an application's SQL names it where
+it binds or reads such a column; domain types hold the jiff types. (The framework's own time type is
+still `chrono`'s, which sqlx maps by itself, until it moves to jiff.)
+
+| PostgreSQL | jiff (domain, events) | In SQL (`fw_db`) | Java |
+|---|---|---|---|
+| `timestamptz` | `Timestamp` | `PgTimestamptz` | `Instant` |
+| `timestamp` | `civil::DateTime` | `PgTimestamp` | `LocalDateTime` |
+| `date` | `civil::Date` | `PgDate` | `LocalDate` |
+
+Each is a tuple struct over its jiff value (`.0`, and `From` both ways), with sqlx's `Type`,
+`Encode`, `Decode` and array support. A column read into a struct names the type in its alias, and
+`query_as!` converts it into the field's jiff type with `Into`; a bound value is wrapped and cast
+(from `fw-db`'s tests):
+
+```rust
+let applied = sqlx::query_as!(
+    Applied,                                     // applied_at: Timestamp
+    r#"SELECT module, version, applied_at AS "applied_at: PgTimestamptz"
+         FROM fw_schema_history
+        WHERE applied_at <= $1
+        ORDER BY module, version"#,
+    PgTimestamptz(cutoff) as PgTimestamptz,
+)
+.fetch_all(&pool)
+.await
+.unwrap();
+```
+
+`query!`'s anonymous record keeps the column type, and a nullable column is an `Option` of it:
+
+```rust
+let last =
+    sqlx::query!(r#"SELECT max(applied_at) AS "last: PgTimestamptz" FROM fw_schema_history"#)
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+        .last
+        .map(Timestamp::from);
+```
+
+Outside the macros:
+`.bind(PgTimestamptz(t))`, `row.try_get::<PgTimestamptz, _>(..)?.0`, and
+`#[sqlx(try_from = "PgTimestamptz")]` on a `FromRow` field. The binary encoding is the one sqlx uses
+for `chrono`, so a value is stored as a `chrono` one is (a fraction finer than a microsecond is cut towards
+2000-01-01); `infinity`, or a year after 9999, read back is an error naming the value. `time`,
+`timetz` and `interval` are not mapped, as in the contract.
 
 ## Regenerating and checking
 

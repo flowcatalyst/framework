@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT max(applied_at) AS \"last: PgTimestamptz\" FROM fw_schema_history",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last: PgTimestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c85b877c86bf7024dd56da436af4961041a09697fcb5168c49edbcce98187ccc"
+}

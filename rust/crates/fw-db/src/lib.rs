@@ -18,8 +18,10 @@
 mod database;
 pub mod migrations;
 mod sql;
+mod time;
 mod url;
 
 pub use database::{DatabaseDeclared, DatabaseModule, Databases, Db, DbError, Tx};
 pub use sql::number_placeholders;
+pub use time::{PgDate, PgTimestamp, PgTimestamptz};
 pub use url::parse_url;

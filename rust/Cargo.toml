@@ -62,6 +62,11 @@ tracing = "0.1"
 # Binaries and examples only: library crates bring no subscriber.
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+# Time: `Timestamp` for an instant, `civil::*` for dates and times, `SignedDuration` for a length of
+# time. The time zone database is bundled (`jiff-tzdb`), not read from the host: the framework runs
+# in small images without `/usr/share/zoneinfo`, and every environment then has the same rules,
+# pinned by Cargo.lock. No `tz-system`: the host's own zone is never used (servers name their zones).
+jiff = { version = "1.0.1", default-features = false, features = ["std", "tzdb-bundle-always"] }
 rand = { version = "0.9", features = ["std_rng"] }
 indexmap = "2"
 tempfile = "3"

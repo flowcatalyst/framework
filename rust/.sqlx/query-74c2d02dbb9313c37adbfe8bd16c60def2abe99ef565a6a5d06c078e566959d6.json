@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT module, version, applied_at AS \"applied_at: PgTimestamptz\"\n             FROM fw_schema_history\n            WHERE applied_at <= $1\n            ORDER BY module, version",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "module",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "version",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "applied_at: PgTimestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "74c2d02dbb9313c37adbfe8bd16c60def2abe99ef565a6a5d06c078e566959d6"
+}
