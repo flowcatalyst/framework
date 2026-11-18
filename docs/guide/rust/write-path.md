@@ -99,6 +99,17 @@ context's ids. The rows are the Java writer's **byte for byte**: the vectors in
 column, the payload text and its size. Null fields are left out of the event data (the Java
 `NON_NULL` inclusion), so an `Option` field needs no attribute.
 
+Times are `jiff::Timestamp` from the application's clock: `EventMetadata::time()` and
+`AuditEntry::performed_at`, written into the audit payload as Java's `Instant.toString()`
+(`instant_text`). A time field in event data takes `instant_serde`, so it is written as Jackson
+writes an `Instant` (from the conformance test's event):
+
+```rust
+    /// Java's form, as Jackson writes an `Instant` (jiff's own serde form trims the fraction).
+    #[serde(with = "instant_serde")]
+    placed_at: Timestamp,
+```
+
 `DispatchJob::builder(code, target_url)` builds a dispatch job with the Java builder's rules and
 messages (also in the vectors); `build()` returns `Err` for a job the platform would refuse.
 *Amended 2026-11-07 (the fulfil-go fixes, item A1, kept equal to the Java writer):* the writer names

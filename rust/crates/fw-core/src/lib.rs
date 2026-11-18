@@ -1,6 +1,7 @@
 //! The framework's core (Rust design, capabilities section 1): the application lifecycle and
 //! modules, configuration, `Context` and ids, health with criticality, background loops, metrics
-//! and the Prometheus writer, commands, and the `ServiceError` the HTTP layer maps.
+//! and the Prometheus writer, commands, and the `ServiceError` the HTTP layer maps. Wall time is a
+//! [`jiff::Timestamp`] from the injected [`Clock`], written as Java writes it ([`instant_text`]).
 //!
 //! There is no container: modules declare settings, instance sections and migrations and hand
 //! back typed handles; the application builds its services in its own `build` function, passing
@@ -28,6 +29,7 @@ pub mod config;
 pub mod context;
 pub mod health;
 mod ids;
+mod instant;
 pub mod metrics;
 mod module;
 mod problem;
@@ -47,6 +49,7 @@ pub use context::{
     PrincipalId,
 };
 pub use ids::{Id, IdError, IdKind, IdPrefix, IdPrefixError, Ids};
+pub use instant::{instant_serde, instant_text, parse_instant};
 pub use module::{Declarations, MigrationFile, MigrationSet, Module, ModuleId};
 pub use problem::{Problem, StartupError};
 pub use secret::Secret;

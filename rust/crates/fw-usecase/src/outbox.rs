@@ -6,9 +6,11 @@ use std::error::Error;
 use std::fmt;
 use std::sync::Arc;
 
-use chrono::{DateTime, SecondsFormat, Utc};
-use fw_core::{BoxFuture, ClientId, Clock, Context, Ids, MigrationFile, MigrationSet, ModuleId};
-use fw_db::{Tx, number_placeholders};
+use fw_core::{
+    BoxFuture, ClientId, Clock, Context, Ids, MigrationFile, MigrationSet, ModuleId, instant_text,
+};
+use fw_db::{PgTimestamptz, Tx, number_placeholders};
+use jiff::Timestamp;
 use serde::Serialize;
 use serde_json::Value;
 use sqlx::types::JsonValue;
@@ -86,7 +88,7 @@ pub struct AuditEntry {
     /// The principal, when one acted.
     pub principal_id: Option<String>,
     /// When, from the application's clock.
-    pub performed_at: DateTime<Utc>,
+    pub performed_at: Timestamp,
     /// The first event's source.
     pub source: String,
     /// The context's correlation id.
@@ -124,13 +126,6 @@ pub trait Sink: Send + Sync {
         tx: &'a mut Tx,
         entry: &'a AuditEntry,
     ) -> BoxFuture<'a, Result<(), SinkError>>;
-}
-
-/// The Java `Instant.toString()`: seconds always, the fraction in groups of three digits when
-/// there is one, `Z`.
-#[must_use]
-pub fn instant_text(t: DateTime<Utc>) -> String {
-    t.to_rfc3339_opts(SecondsFormat::AutoSi, true)
 }
 
 /// Writes the outbox rows (the SDK's table and payloads).
@@ -277,7 +272,7 @@ impl OutboxWriter {
     }
 
     async fn insert(&self, tx: &mut Tx, rows: Vec<Row>) -> Result<(), SinkError> {
-        let now = self.clock.now();
+        let now = PgTimestamptz(self.clock.now());
         for row in rows {
             let size = i32::try_from(row.payload.len())?;
             sqlx::query(&self.insert)
@@ -360,7 +355,6 @@ impl Sink for OutboxWriter {
 
 #[cfg(test)]
 mod tests {
-    use chrono::TimeZone;
     use fw_core::PrincipalId;
 
     use super::*;
@@ -394,7 +388,7 @@ mod tests {
                 "0ABCDEFGHJKMS",
                 Cancelled::TYPE,
                 "inv_1",
-                Utc.timestamp_millis_opt(0).unwrap(),
+                Timestamp::UNIX_EPOCH,
                 &ctx,
             ),
             invoice_id: "inv_1".into(),
@@ -407,20 +401,23 @@ mod tests {
         row.payload
     }
 
-    fn audit_payload(client: &str) -> String {
-        OutboxWriter::audit_payload(&AuditEntry {
+    fn audit_entry(client: &str) -> AuditEntry {
+        AuditEntry {
             entity_type: "Invoice".into(),
             entity_id: "inv_1".into(),
             operation: "sweep-invoices".into(),
             data: None,
             principal_id: Some("svc-1".into()),
-            performed_at: Utc.timestamp_millis_opt(0).unwrap(),
+            performed_at: Timestamp::UNIX_EPOCH,
             source: "shop:billing".into(),
             correlation_id: "corr-1".into(),
             application_code: None,
             client: ClientId::new(client).unwrap(),
-        })
-        .unwrap()
+        }
+    }
+
+    fn audit_payload(client: &str) -> String {
+        OutboxWriter::audit_payload(&audit_entry(client)).unwrap()
     }
 
     // The payloads' clientCode (write-path contract section 7, amended 2026-11-18): an event and an
@@ -464,26 +461,15 @@ mod tests {
     }
 
     #[test]
-    fn instants_print_as_java_does() {
-        let t = |ms: i64, extra_nanos: u32| {
-            Utc.timestamp_millis_opt(ms).unwrap()
-                + chrono::Duration::nanoseconds(i64::from(extra_nanos))
-        };
-        assert_eq!(
-            instant_text(t(1_759_918_530_000, 0)),
-            "2025-10-08T10:15:30Z"
-        );
-        assert_eq!(
-            instant_text(t(1_759_918_531_500, 0)),
-            "2025-10-08T10:15:31.500Z"
-        );
-        assert_eq!(
-            instant_text(t(1_759_918_530_000, 123_000)),
-            "2025-10-08T10:15:30.000123Z"
-        );
-        assert_eq!(
-            instant_text(t(1_759_918_530_000, 1)),
-            "2025-10-08T10:15:30.000000001Z"
+    fn the_audit_row_writes_its_time_as_java_does() {
+        // instant_text is fw-core's; its awkward values are tested there, the vectors' in
+        // fw-conformance.
+        let mut entry = audit_entry(PLATFORM_CLIENT);
+        entry.performed_at = Timestamp::new(1_759_918_531, 500_000_000).unwrap();
+        let payload = OutboxWriter::audit_payload(&entry).unwrap();
+        assert!(
+            payload.contains(r#""performedAt":"2025-10-08T10:15:31.500Z""#),
+            "{payload}"
         );
     }
 }

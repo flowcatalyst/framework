@@ -306,9 +306,10 @@ only where it is a different stack (`fw-httpclient` must be usable without the f
 - Dependencies are declared once in `[workspace.dependencies]` with `default-features = false`,
   as in the platform. The stack: tokio, tokio-util, futures, axum 0.8, tower 0.5, tower-http 0.6,
   hyper (through axum), serde, serde_json, serde_path_to_error, serde_ignored, sqlx 0.8 (postgres,
-  macros, chrono or time, json, runtime-tokio-rustls), redis, reqwest 0.12 (rustls), tracing,
-  tracing-subscriber (binaries), thiserror, chrono, rand, sha2, hmac, subtle, zeroize, hex,
-  askama, html5ever (tests), testcontainers (tests).
+  macros, json, runtime-tokio-rustls), redis, reqwest 0.12 (rustls), tracing,
+  tracing-subscriber (binaries), thiserror, jiff (time; `chrono` until 2026-11-18, see the guide's
+  [from chrono to jiff](../guide/rust/from-chrono-to-jiff.md)), rand, sha2, hmac, subtle, zeroize,
+  hex, askama, html5ever (tests), testcontainers (tests).
 
 ### 2.5 Features
 

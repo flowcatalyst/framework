@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use chrono::{TimeZone, Utc};
 use fw_core::metrics::{Metrics, prometheus_text};
 use fw_core::{BoxFuture, ClientId, Clock, Context, FixedClock, Ids, PrincipalId};
 use fw_core::{MigrationFile, MigrationSet, ModuleId, ServiceError};
@@ -378,9 +377,7 @@ const THINGS_SQL: &str = "CREATE TABLE things (id text PRIMARY KEY, client_id te
 CREATE TABLE thing_refs (thing_id text NOT NULL REFERENCES things (id) DEFERRABLE INITIALLY DEFERRED);";
 
 fn clock() -> Arc<dyn Clock> {
-    Arc::new(FixedClock::at(
-        Utc.with_ymd_and_hms(2026, 10, 8, 10, 15, 30).unwrap(),
-    ))
+    Arc::new(FixedClock::at("2026-10-08T10:15:30Z".parse().unwrap()))
 }
 
 async fn harness_with(sink: Option<Arc<dyn Sink>>) -> Harness {

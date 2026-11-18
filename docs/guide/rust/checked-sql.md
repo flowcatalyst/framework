@@ -47,11 +47,11 @@ r#"SELECT o.id AS "id!: OrderId", o.customer AS "customer!: CustomerName", ...
 
 ## Time columns
 
-sqlx 0.8 maps PostgreSQL's time types only to `chrono` or `time`, and Rust's orphan rule keeps
-anyone but sqlx and jiff from teaching sqlx about jiff. So `fw-db` has one small type per column
-type that carries a jiff value across the database boundary, and an application's SQL names it where
-it binds or reads such a column; domain types hold the jiff types. (The framework's own time type is
-still `chrono`'s, which sqlx maps by itself, until it moves to jiff.)
+The framework's time types are jiff's, and sqlx 0.8 maps PostgreSQL's time types only to `chrono`
+or `time` (neither is a dependency). Rust's orphan rule keeps anyone but sqlx and jiff from
+teaching sqlx about jiff, so `fw-db` has one small type per column type that carries the jiff value
+across the database boundary, and an application's SQL names it where it binds or reads such a
+column. Domain types, events and use cases hold the jiff types.
 
 | PostgreSQL | jiff (domain, events) | In SQL (`fw_db`) | Java |
 |---|---|---|---|
@@ -90,12 +90,15 @@ let last =
         .map(Timestamp::from);
 ```
 
-Outside the macros:
+A time column without the override fails the build with sqlx's own message, "SQLx feature `time`
+required for type TIMESTAMPTZ of column #1", and a bound time parameter without the cast the same
+for its parameter; the fix is the override or the cast, not the feature. Outside the macros:
 `.bind(PgTimestamptz(t))`, `row.try_get::<PgTimestamptz, _>(..)?.0`, and
-`#[sqlx(try_from = "PgTimestamptz")]` on a `FromRow` field. The binary encoding is the one sqlx uses
-for `chrono`, so a value is stored as a `chrono` one is (a fraction finer than a microsecond is cut towards
+`#[sqlx(try_from = "PgTimestamptz")]` on a `FromRow` field. The binary encoding is the one sqlx used
+for `chrono`, so stored values do not change (a fraction finer than a microsecond is cut towards
 2000-01-01); `infinity`, or a year after 9999, read back is an error naming the value. `time`,
-`timetz` and `interval` are not mapped, as in the contract.
+`timetz` and `interval` are not mapped, as in the contract. The move from `chrono`:
+[from chrono to jiff](from-chrono-to-jiff.md).
 
 ## Regenerating and checking
 

@@ -329,7 +329,8 @@ recommended.
 
 Section 2's semantics: the type mapping (with Rust types: `text` → `String`, `int4` → `i32`,
 `int8` → `i64`, `numeric` → `rust_decimal::Decimal` or `BigDecimal`, `timestamptz` →
-`DateTime<Utc>`, `uuid` → `Uuid`, `bytea` → `Vec<u8>`, `json`/`jsonb` → `serde_json::Value` or
+`jiff::Timestamp` (read and bound as `fw_db::PgTimestamptz`; `chrono`'s `DateTime<Utc>` until
+2026-11-18), `uuid` → `Uuid`, `bytea` → `Vec<u8>`, `json`/`jsonb` → `serde_json::Value` or
 `Json<T>`, arrays → `Vec<T>`); nullability read from the schema; **every column of an outer join is
 marked `?`** (sqlx does not always see it, the same weakness Java documents); `!` only where the
 query guarantees it; typed values through overrides. Section 5's scope (dynamic queries stay

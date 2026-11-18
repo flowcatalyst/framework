@@ -26,9 +26,9 @@ pub use dispatch::{
 };
 pub use error::{ErrorCode, ErrorKind, UseCaseError};
 pub use event::{DomainEvent, ErasedEvent, EventMetadata, EventType, Events};
-pub use outbox::{
-    AuditData, AuditEntry, INSERT_SQL, OutboxWriter, Sink, SinkError, instant_text, migration_set,
-};
+/// The Java `Instant.toString()`, as the outbox payloads carry it (re-exported from `fw-core`).
+pub use fw_core::instant_text;
+pub use outbox::{AuditData, AuditEntry, INSERT_SQL, OutboxWriter, Sink, SinkError, migration_set};
 pub use plan::Plan;
 pub use repository::Repository;
 pub use usecase::{

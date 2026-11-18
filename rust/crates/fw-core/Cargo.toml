@@ -15,9 +15,9 @@ default = []
 sqlx = ["dep:sqlx"]
 
 [dependencies]
-chrono = { workspace = true }
 futures = { workspace = true }
 indexmap = { workspace = true }
+jiff = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_norway = { workspace = true }

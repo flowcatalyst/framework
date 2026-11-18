@@ -7,17 +7,17 @@ mod common;
 use std::fs;
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
 use fw_conformance::json;
 use fw_core::{
     ApplicationCode, CausationId, ClientId, Context, CorrelationId, ExecutionId, FixedClock, Ids,
-    PrincipalId, tsid,
+    PrincipalId, instant_serde, instant_text, parse_instant, tsid,
 };
 use fw_db::{Db, migrations};
 use fw_usecase::{
     AuditData, AuditEntry, DispatchJob, DispatchKind, DispatchMode, DispatchQueue, DomainEvent,
     ErasedEvent, EventMetadata, EventType, OutboxWriter, Sink, migration_set,
 };
+use jiff::Timestamp;
 use serde::Serialize;
 use serde_json::Value;
 use sqlx::PgPool;
@@ -38,7 +38,9 @@ struct Placed {
     lines: Vec<Line>,
     total_cents: i64,
     note: Option<String>,
-    placed_at: DateTime<Utc>,
+    /// Java's form, as Jackson writes an `Instant` (jiff's own serde form trims the fraction).
+    #[serde(with = "instant_serde")]
+    placed_at: Timestamp,
 }
 
 impl DomainEvent for Placed {
@@ -90,7 +92,7 @@ fn context(c: &Value) -> Context {
     ctx
 }
 
-fn event(ctx: &Context, now: DateTime<Utc>, e: &Value) -> Box<dyn ErasedEvent> {
+fn event(ctx: &Context, now: Timestamp, e: &Value) -> Box<dyn ErasedEvent> {
     let mut meta = EventMetadata::new(
         s(&e["eventId"]),
         EventType::of(leak(e["type"].as_str().unwrap())),
@@ -118,7 +120,7 @@ fn event(ctx: &Context, now: DateTime<Utc>, e: &Value) -> Box<dyn ErasedEvent> {
                 .collect(),
             total_cents: f["totalCents"].as_i64().unwrap(),
             note: f["note"].as_str().map(str::to_owned),
-            placed_at: f["placedAt"].as_str().unwrap().parse().unwrap(),
+            placed_at: parse_instant(f["placedAt"].as_str().unwrap()).unwrap(),
         }),
         "cancelled" => Box::new(Cancelled {
             meta,
@@ -222,7 +224,7 @@ fn dispatch_job(j: &Value) -> Result<DispatchJob, String> {
     b.build().map_err(|e| e.to_string())
 }
 
-fn audit(ctx: &Context, now: DateTime<Utc>, a: &Value) -> AuditEntry {
+fn audit(ctx: &Context, now: Timestamp, a: &Value) -> AuditEntry {
     AuditEntry {
         entity_type: s(&a["entityType"]),
         entity_id: s(&a["entityId"]),
@@ -294,7 +296,7 @@ async fn rows_match_java_byte_for_byte() {
         migrations::apply("main", &pool, &[migration_set()])
             .await
             .unwrap();
-        let now: DateTime<Utc> = case["now"].as_str().unwrap().parse().unwrap();
+        let now = parse_instant(case["now"].as_str().unwrap()).unwrap();
         let ctx = context(&case["context"]);
         let events: Vec<Box<dyn ErasedEvent>> = case["events"]
             .as_array()
@@ -331,6 +333,51 @@ async fn rows_match_java_byte_for_byte() {
             assert_eq!(g, e, "{name}");
         }
     }
+}
+
+/// The instants in the vectors as Java wrote them, on their own: an audit row's `performedAt` is the
+/// case's `now` through `instant_text` (whole seconds, `.123`, `.500` for a `now` of `.5`), an
+/// event's `placedAt` is its value through `instant_serde` (`.123`, `.000123`). The rows' `created_at`
+/// and `updated_at` (to microseconds, from the database) are compared in the test above.
+#[test]
+fn instants_are_written_as_java_wrote_them() {
+    #[derive(Serialize)]
+    struct Field(#[serde(with = "instant_serde")] Timestamp);
+
+    let mut audit = Vec::new();
+    let mut data = Vec::new();
+    for case in json("outbox/outbox.json")["cases"].as_array().unwrap() {
+        let now = parse_instant(case["now"].as_str().unwrap()).unwrap();
+        for row in case["rows"].as_array().unwrap() {
+            let payload: Value =
+                serde_json::from_str(row["payloadText"].as_str().unwrap()).unwrap();
+            if let Some(at) = payload["performedAt"].as_str() {
+                assert_eq!(instant_text(now), at, "{}", case["name"]);
+                audit.push(at.to_owned());
+            }
+            if let Some(event) = payload["data"].as_str() {
+                let event: Value = serde_json::from_str(event).unwrap();
+                if let Some(at) = event["placedAt"].as_str() {
+                    let written = serde_json::to_value(Field(parse_instant(at).unwrap())).unwrap();
+                    assert_eq!(written, at, "{}", case["name"]);
+                    data.push(at.to_owned());
+                }
+            }
+        }
+    }
+    assert_eq!(
+        audit,
+        [
+            "2026-10-08T10:15:30.123Z",
+            "2026-10-08T10:15:30Z",
+            "2026-10-08T10:15:31.500Z",
+            "2026-10-08T10:15:32Z"
+        ]
+    );
+    assert_eq!(
+        data,
+        ["2026-10-08T10:15:30.123Z", "2026-10-08T10:15:30.000123Z"]
+    );
 }
 
 #[test]

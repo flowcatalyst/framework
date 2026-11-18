@@ -6,3 +6,15 @@ absolute-paths-max-segments = 2
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
+
+# Wall time comes from the injected `fw_core::Clock` (the house rule, as Java's `InstantSource` and
+# Go's forbidigo on `time.Now`); `SystemClock` is the one reader, with an `#[expect]`. The host's
+# own time zone is never used: a server's zone says nothing about a client or a site, and without
+# jiff's `tz-system` feature it would read as UTC without a word. Name the zone instead.
+disallowed-methods = [
+    { path = "jiff::Timestamp::now", reason = "read the injected fw_core::Clock" },
+    { path = "jiff::ZonedDateTime::now", reason = "read the injected fw_core::Clock and name the zone" },
+    { path = "std::time::SystemTime::now", reason = "read the injected fw_core::Clock" },
+    { path = "jiff::tz::TimeZone::system", reason = "the host's zone is never used; name the zone (jiff::tz::TimeZone::get)" },
+    { path = "jiff::tz::TimeZone::try_system", reason = "the host's zone is never used; name the zone (jiff::tz::TimeZone::get)" },
+]

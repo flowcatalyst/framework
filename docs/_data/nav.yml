@@ -58,6 +58,7 @@
     - { title: "Rust: object stores", path: guide/rust/object-stores.md }
     - { title: "Rust: write path", path: guide/rust/write-path.md }
     - { title: "Rust: checked SQL", path: guide/rust/checked-sql.md }
+    - { title: "Rust: from chrono to jiff", path: guide/rust/from-chrono-to-jiff.md }
 - group: Go
   items:
     - { title: Go overview, path: guide/go/index.md }

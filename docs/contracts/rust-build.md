@@ -41,7 +41,9 @@ vectors in `conformance/` at the repository root.
   `let_underscore_must_use`, `await_holding_lock`, `await_holding_refcell_ref`, `dbg_macro`, `todo`,
   `unimplemented`), plus `missing_docs`, `unreachable_pub` and `rust_2018_idioms`. Every crate has
   `[lints] workspace = true`.
-- `clippy.toml`: tests may unwrap, expect and panic.
+- `clippy.toml`: tests may unwrap, expect and panic. Wall time comes from the injected `Clock`:
+  `disallowed-methods` refuses jiff's and the standard library's readers of the system clock and of
+  the host's time zone (`SystemClock` is the one reader, with an `#[expect]`).
 - CI runs `cargo fmt --all --check` and `cargo clippy --workspace --all-targets --all-features --
   -D warnings`.
 
@@ -57,7 +59,7 @@ in) or by replacing an unmaintained crate. Only an advisory with no fixed versio
 accepted instead, as an entry in `deny.toml`'s `ignore` list with its id, why it does not apply or
 cannot be fixed yet, and a date to look again; the checks themselves are never loosened. Accepted
 since 2026-11-18: `RUSTSEC-2026-0440` (`astral-tokio-tar` unmaintained, through `testcontainers` in
-`fw-test` only) and `RUSTSEC-2026-0543` (`chrono` unmaintained; replacing it changes the public API).
+`fw-test` only). `chrono` is refused (a `bans` entry): time is `jiff`.
 
 ## 6. CI
 

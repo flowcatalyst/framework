@@ -1,4 +1,4 @@
-<!-- types: AppBuilder, Configured, Built, Running, Boot, Module, Declarations, ModuleId, Setting, SettingHandle, Key, Config, Environment, InstanceSection, DriverSpec, KeySpec, ConfiguredInstances, InstanceConfig, ConfigEnum, Context, ClientId, CorrelationId, Ids, Id, IdKind, IdPrefix, Clock, FixedClock, ManualClock, Secret, Problem, StartupError, Health, Criticality, CheckResult, Background, LoopOptions, LoopTick, LoopGate, GateOutcome, Metrics, Command -->
+<!-- types: AppBuilder, Configured, Built, Running, Boot, Module, Declarations, ModuleId, Setting, SettingHandle, Key, Config, Environment, InstanceSection, DriverSpec, KeySpec, ConfiguredInstances, InstanceConfig, ConfigEnum, Context, ClientId, CorrelationId, Ids, Id, IdKind, IdPrefix, Clock, SystemClock, FixedClock, ManualClock, Secret, Problem, StartupError, Health, Criticality, CheckResult, Background, LoopOptions, LoopTick, LoopGate, GateOutcome, Metrics, Command -->
 # Rust: the application, modules and config
 
 `fw-core` is the Rust counterpart of `framework-core`: the lifecycle, modules, configuration,
@@ -118,6 +118,67 @@ let id: Id<Order> = ids.next();
 `Id<Order>` and `Id<Line>` are different types. `Ids::seeded(clock, seed)` (or
 `AppBuilder::seeded_ids`) with a `FixedClock` gives the same ids every run.
 
+## Time and the clock
+
+Wall time is a `jiff::Timestamp` from the injected `Clock` (Java's `InstantSource`, Go's
+`fw.Clock`): event times, audit times and the outbox rows' `created_at` all read it, so a test that
+gives the builder a `FixedClock` or a `ManualClock` fixes them. `SystemClock` is the only reader of
+the system clock. `Clock::millis` rounds down before 1970, as Java and Go do. A `ManualClock` moves by
+a `jiff::SignedDuration`, forwards or back (from `fw-core`'s tests):
+
+```rust
+let clock = ManualClock::starting_at(at(1_000, 0));
+clock.advance(SignedDuration::from_millis(1_500));
+assert_eq!(clock.now(), at(1_001, 500_000_000));
+clock.advance(SignedDuration::from_secs(-2));
+assert_eq!(clock.now(), at(999, 500_000_000));
+```
+
+Elapsed time (leases, timeouts, loop intervals) stays `std::time::Duration` and
+`tokio::time::Instant`, which tests pause and advance.
+
+The workspace's `clippy.toml` refuses `jiff::Timestamp::now`, `jiff::ZonedDateTime::now`,
+`std::time::SystemTime::now` and the host's time zone (`TimeZone::system`, `try_system`): read the
+clock, and name the zone. A server's own zone says nothing about a client or a site.
+
+**Text.** Where an instant's bytes are a contract (outbox payloads, event data, JSON on the wire),
+write it as Java does: `instant_text(t)` is Java's `Instant.toString()` (`2026-10-08T10:15:31.500Z`:
+seconds always, a fraction of 3, 6 or 9 digits when there is one). A `Timestamp` field of a
+serialised struct takes `instant_serde` (from the same tests):
+
+```rust
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Data {
+    #[serde(with = "instant_serde")]
+    placed_at: Timestamp,
+    #[serde(with = "instant_serde::option", default)]
+    paid_at: Option<Timestamp>,
+}
+// {"placedAt":"2026-10-08T10:15:31.500Z","paidAt":null}
+```
+
+jiff's own `Display` and serde forms trim the fraction (`10:15:31.5Z`), so they are not used where the
+bytes count. `parse_instant` (and `instant_serde` reading) accepts RFC 3339 with any offset, `Z` or
+`z`, `T`, `t` or a space, and zero to nine fraction digits.
+
+**Time zones.** jiff is built with its bundled IANA database and without `tz-system`
+(`rust/Cargo.toml`): the framework runs in small images with no `/usr/share/zoneinfo`, and every
+environment then has the same rules, pinned by `Cargo.lock`. A zone the database does not have is an
+error that names it, never UTC:
+
+```rust
+let joburg = TimeZone::get("Africa/Johannesburg").unwrap();
+let local = at(1_760_000_000, 0).to_zoned_datetime(joburg);
+assert_eq!(
+    local.to_string(),
+    "2025-10-09T10:53:20+02:00[Africa/Johannesburg]"
+);
+let missing = TimeZone::get("Nowhere/Land").unwrap_err().to_string();
+```
+
+Moving from the previous API (`chrono`): [from chrono to jiff](from-chrono-to-jiff.md).
+
 ## Health, background loops, metrics
 
 - `Health::add(name, Criticality, check)`; `app.health.critical` and `app.health.informational`
@@ -136,6 +197,9 @@ let id: Id<Order> = ids.next();
 - Configuration problems are collected in one report, as in Java. Problems found while building (a
   database that does not answer) stop at the failing step.
 - A loop's health reason does not name the error type (`the last 3 runs failed`).
+- An instant (`jiff::Timestamp`) holds years -9999 to 9999 and nanoseconds, Java's `Instant` years
+  ±1 000 000 000; both write the same text in that range (`instant_text`). Go's `time.Time` carries a
+  location, which the framework ignores for an instant.
 - `Secret` is zeroised on drop; it has no `Display` and no `Serialize`, so it cannot be formatted or
   serialised by mistake.
 - YAML is read with `serde_norway`: a mapping with a duplicate key is an error, where the Java

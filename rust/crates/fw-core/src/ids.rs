@@ -369,7 +369,7 @@ pub struct IdPrefixError(String);
 mod tests {
     use std::collections::HashSet;
 
-    use chrono::{TimeZone, Utc};
+    use jiff::Timestamp;
 
     use super::*;
     use std::thread;
@@ -386,7 +386,7 @@ mod tests {
     }
 
     fn fixed(ms: i64) -> Arc<dyn Clock> {
-        Arc::new(FixedClock::at(Utc.timestamp_millis_opt(ms).unwrap()))
+        Arc::new(FixedClock::at(Timestamp::from_millisecond(ms).unwrap()))
     }
 
     #[test]
@@ -425,11 +425,11 @@ mod tests {
     #[test]
     fn a_clock_going_back_does_not_go_back() {
         let clock = Arc::new(ManualClock::starting_at(
-            Utc.timestamp_millis_opt(2_000_000).unwrap(),
+            Timestamp::from_millisecond(2_000_000).unwrap(),
         ));
         let ids = Ids::new(clock.clone());
         let a = tsid::decode(&ids.generate()).unwrap();
-        clock.set(Utc.timestamp_millis_opt(1_000_000).unwrap());
+        clock.set(Timestamp::from_millisecond(1_000_000).unwrap());
         let b = tsid::decode(&ids.generate()).unwrap();
         assert!(b > a);
     }

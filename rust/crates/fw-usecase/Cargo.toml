@@ -9,10 +9,10 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-chrono = { workspace = true }
 futures = { workspace = true }
 fw-core = { workspace = true, features = ["sqlx"] }
 fw-db = { workspace = true }
+jiff = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

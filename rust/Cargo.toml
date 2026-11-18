@@ -61,7 +61,6 @@ thiserror = "2.0"
 tracing = "0.1"
 # Binaries and examples only: library crates bring no subscriber.
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
-chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 # Time: `Timestamp` for an instant, `civil::*` for dates and times, `SignedDuration` for a length of
 # time. The time zone database is bundled (`jiff-tzdb`), not read from the host: the framework runs
 # in small images without `/usr/share/zoneinfo`, and every environment then has the same rules,
@@ -76,7 +75,7 @@ hex = "0.4"
 subtle = "2.6"
 zeroize = "1.8"
 uuid = { version = "1", default-features = false, features = ["v4", "std"] }
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros", "json"] }
 redis = { version = "0.29", default-features = false, features = ["tokio-comp", "connection-manager", "script"] }
 # S3 driver of fw-objectstore. No sigv4a (multi-region access points), nothing else the driver uses.
 aws-config = { version = "1.13", features = ["behavior-version-latest"] }

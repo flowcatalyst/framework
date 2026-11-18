@@ -23,12 +23,6 @@ ignore = [
     # files into a container, which fw-test does not do. Look again 2027-02-18, or when a
     # testcontainers release drops it.
     { id = "RUSTSEC-2026-0440", reason = "unmaintained, no fix; via testcontainers in fw-test only; review 2027-02-18" },
-    # chrono is unmaintained (advisory 2026-09-14), all versions, no fixed release; the advisory
-    # names jiff and time. chrono is in the public API (fw-core Clock, FixedClock, ManualClock;
-    # fw-usecase Event::time, OutboxRow::performed_at, instant_text) and is sqlx's timestamp
-    # mapping, so replacing it is an API change for the owner to decide, not a dependency bump.
-    # No vulnerability is reported. Look again 2026-12-18.
-    { id = "RUSTSEC-2026-0543", reason = "unmaintained, no fix; replacing it changes the public API (owner's decision); review 2026-12-18" },
 ]
 
 [licenses]
@@ -61,6 +55,9 @@ deny = [
     { crate = "native-tls", reason = "TLS is rustls" },
     { crate = "openssl", reason = "TLS is rustls" },
     { crate = "serde_yaml", reason = "unmaintained; use serde_norway" },
+    # Unmaintained (RUSTSEC-2026-0543); the framework's time is jiff (owner, 2026-11-18). It stays
+    # in Cargo.lock only as an optional dependency of serde_with that nothing turns on.
+    { crate = "chrono", reason = "unmaintained; use jiff" },
 ]
 
 [sources]

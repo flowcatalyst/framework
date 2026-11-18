@@ -3,8 +3,8 @@
 use std::fmt;
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
 use fw_core::{Clock, Context, Ids};
+use jiff::Timestamp;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -124,7 +124,7 @@ pub struct EventMetadata {
     event_type: EventType,
     source: String,
     subject: String,
-    time: DateTime<Utc>,
+    time: Timestamp,
     correlation_id: String,
     principal_id: Option<String>,
     causation_id: Option<String>,
@@ -139,7 +139,7 @@ impl EventMetadata {
         event_id: impl Into<String>,
         event_type: EventType,
         subject_id: &str,
-        time: DateTime<Utc>,
+        time: Timestamp,
         ctx: &Context,
     ) -> Self {
         Self {
@@ -195,7 +195,7 @@ impl EventMetadata {
 
     /// The time, from the application's clock.
     #[must_use]
-    pub fn time(&self) -> DateTime<Utc> {
+    pub fn time(&self) -> Timestamp {
         self.time
     }
 

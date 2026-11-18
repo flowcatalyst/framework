@@ -20,7 +20,7 @@ rust/
   Cargo.toml            workspace: members, shared package fields, lint table, dependency versions
   rust-toolchain.toml   1.98.1, the platform's pin
   deny.toml             licences (permissive only), advisories, crates.io only
-  clippy.toml           tests may unwrap, expect and panic
+  clippy.toml           tests may unwrap, expect and panic; wall time only from the Clock
   .cargo/config.toml    SQLX_OFFLINE=true
   crates/fw-core        lifecycle, modules, config, Context and ids, health, background loops, metrics
   crates/fw-db          PostgreSQL instances, the migration runner, Db and Tx
