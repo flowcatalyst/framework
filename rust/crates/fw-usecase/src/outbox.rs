@@ -13,7 +13,7 @@ use serde::Serialize;
 use serde_json::Value;
 use sqlx::types::JsonValue;
 
-use crate::dispatch::DispatchJob;
+use crate::dispatch::{DispatchJob, PLATFORM_CLIENT};
 use crate::event::ErasedEvent;
 
 /// What a sink failure carries (logged by the runner, never shown to a caller).
@@ -176,7 +176,9 @@ struct EventPayload<'a> {
     causation_id: Option<&'a str>,
     deduplication_id: &'a str,
     message_group: &'a str,
-    client_code: &'a str,
+    /// The context's client, absent for [`PLATFORM_CLIENT`] (write-path contract section 7).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_code: Option<&'a str>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     context_data: Vec<Entry<'a>>,
 }
@@ -197,7 +199,18 @@ struct AuditPayload<'a> {
     correlation_id: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     application_code: Option<&'a str>,
-    client_code: &'a str,
+    /// The entry's client, absent for [`PLATFORM_CLIENT`] (write-path contract section 7).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_code: Option<&'a str>,
+}
+
+/// The client a payload names as its `clientCode`: every client but [`PLATFORM_CLIENT`] ("no
+/// particular client"), which is no platform client's identifier, so the platform could not
+/// resolve it (write-path contract section 7, amended 2026-11-18). The row's `client_id` column
+/// keeps the client either way.
+fn client_code(client: &ClientId) -> Option<&str> {
+    let code = client.as_str();
+    (code != PLATFORM_CLIENT).then_some(code)
 }
 
 impl OutboxWriter {
@@ -236,7 +249,7 @@ impl OutboxWriter {
             causation_id: meta.causation_id(),
             deduplication_id: meta.event_id(),
             message_group: meta.message_group(),
-            client_code: ctx.client().as_str(),
+            client_code: client_code(ctx.client()),
             context_data,
         })?;
         Ok(Row {
@@ -259,7 +272,7 @@ impl OutboxWriter {
             source: &entry.source,
             correlation_id: &entry.correlation_id,
             application_code: entry.application_code.as_deref(),
-            client_code: entry.client.as_str(),
+            client_code: client_code(&entry.client),
         })
     }
 
@@ -348,8 +361,107 @@ impl Sink for OutboxWriter {
 #[cfg(test)]
 mod tests {
     use chrono::TimeZone;
+    use fw_core::PrincipalId;
 
     use super::*;
+    use crate::event::{DomainEvent, EventMetadata, EventType};
+
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Cancelled {
+        #[serde(skip)]
+        meta: EventMetadata,
+        invoice_id: String,
+    }
+
+    impl DomainEvent for Cancelled {
+        const TYPE: EventType = EventType::of("shop:billing:invoice:cancelled");
+        fn metadata(&self) -> &EventMetadata {
+            &self.meta
+        }
+    }
+
+    fn keys(payload: &str) -> Vec<String> {
+        let v: serde_json::Map<String, Value> = serde_json::from_str(payload).unwrap();
+        v.keys().cloned().collect()
+    }
+
+    fn event_payload(client: &str) -> String {
+        let ctx = Context::new(ClientId::new(client).unwrap())
+            .with_principal(PrincipalId::new("svc-1").unwrap());
+        let ev = Cancelled {
+            meta: EventMetadata::new(
+                "0ABCDEFGHJKMS",
+                Cancelled::TYPE,
+                "inv_1",
+                Utc.timestamp_millis_opt(0).unwrap(),
+                &ctx,
+            ),
+            invoice_id: "inv_1".into(),
+        };
+        let row = OutboxWriter::event_row(&ctx, &ev).unwrap();
+        assert_eq!(
+            row.client_id, client,
+            "the row's client_id keeps the client"
+        );
+        row.payload
+    }
+
+    fn audit_payload(client: &str) -> String {
+        OutboxWriter::audit_payload(&AuditEntry {
+            entity_type: "Invoice".into(),
+            entity_id: "inv_1".into(),
+            operation: "sweep-invoices".into(),
+            data: None,
+            principal_id: Some("svc-1".into()),
+            performed_at: Utc.timestamp_millis_opt(0).unwrap(),
+            source: "shop:billing".into(),
+            correlation_id: "corr-1".into(),
+            application_code: None,
+            client: ClientId::new(client).unwrap(),
+        })
+        .unwrap()
+    }
+
+    // The payloads' clientCode (write-path contract section 7, amended 2026-11-18): an event and an
+    // audit row of a client's context name that client where they always did; of the platform's
+    // own context (PLATFORM_CLIENT) they name none, because "_platform" is no platform client's
+    // identifier and the platform could not resolve it.
+
+    #[test]
+    fn an_event_and_audit_row_of_a_clients_context_name_that_client() {
+        let event = event_payload("acme");
+        assert!(
+            event.contains(
+                r#""messageGroup":"billing:invoice:inv_1","clientCode":"acme","contextData""#
+            ),
+            "{event}"
+        );
+        let audit = audit_payload("acme");
+        assert!(
+            audit.ends_with(r#","correlationId":"corr-1","clientCode":"acme"}"#),
+            "{audit}"
+        );
+    }
+
+    #[test]
+    fn an_event_and_audit_row_of_the_platforms_own_context_name_no_client() {
+        let event = event_payload(PLATFORM_CLIENT);
+        assert!(!keys(&event).contains(&"clientCode".to_owned()), "{event}");
+        assert!(
+            event.contains(r#""messageGroup":"billing:invoice:inv_1","contextData""#),
+            "{event}"
+        );
+        let audit = audit_payload(PLATFORM_CLIENT);
+        assert!(!keys(&audit).contains(&"clientCode".to_owned()), "{audit}");
+        assert!(audit.ends_with(r#","correlationId":"corr-1"}"#), "{audit}");
+    }
+
+    #[test]
+    fn a_client_other_than_the_platforms_is_written_as_it_is() {
+        assert!(event_payload("_platform2").contains(r#""clientCode":"_platform2""#));
+        assert!(audit_payload("_platform2").contains(r#""clientCode":"_platform2""#));
+    }
 
     #[test]
     fn instants_print_as_java_does() {

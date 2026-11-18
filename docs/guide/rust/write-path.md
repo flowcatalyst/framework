@@ -104,7 +104,9 @@ messages (also in the vectors); `build()` returns `Err` for a job the platform w
 *Amended 2026-11-07 (the fulfil-go fixes, item A1, kept equal to the Java writer):* the writer names
 the context's client as `clientCode` unless the job has a `platform_client_id` or the client is
 `PLATFORM_CLIENT` (`_platform`), and the builder takes `connection_id` and `idempotency_key` (not
-blank, at most 100 bytes; explicit only).
+blank, at most 100 bytes; explicit only). *Amended 2026-11-18 (write-path contract section 7):* an
+event or an audit row written in the context of `PLATFORM_CLIENT` names no client either (no
+`clientCode`); the row's `client_id` is still `_platform`.
 
 ## Where Rust differs from Java
 

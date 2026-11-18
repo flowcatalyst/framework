@@ -266,9 +266,9 @@ processor reads them unchanged:
   this section's rule that it is a platform client's identifier. Built in Go first
   (`go/usecase/outbox.go`, 2026-11-18), then in Java the same day (`OutboxWriter`, the event and
   audit payloads): `OutboxConformanceTest` with `-Dconformance.update=true` writes `outbox.json`
-  byte for byte as it was edited for Go (`outbox-push.json` is Go's, push contract 17). The Rust
-  writer (`fw-usecase` `outbox.rs`, `EventPayload` and `AuditPayload`) still writes the member, and
-  its outbox vector test fails against these vectors until it follows.
+  byte for byte as it was edited for Go (`outbox-push.json` is Go's, push contract 17); and in
+  Rust the same day (`fw-usecase` `outbox.rs`, `EventPayload` and `AuditPayload`, whose
+  `clientCode` is optional), whose outbox vector test compares these rows.
 
 Nothing in M2 reads the outbox; delivering it is the platform's job (M3).
 
