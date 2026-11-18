@@ -121,8 +121,9 @@ passed explicitly beside `context.Context`, never stored in one. `fw.Ids` genera
 
 - `fw.PlatformClient` is `_platform`, "no particular client": the client of a receiver run whose
   delivery named none and of every scheduled-job firing (`auth.PlatformClient` and
-  `flowcatalyst.PlatformClientID` are the same value). A dispatch job written in its context names
-  no client.
+  `flowcatalyst.PlatformClientID` are the same value). An event, a dispatch job, an audit row or a
+  push written in its context names no client (no `clientCode`): the platform keeps it
+  platform-scoped (for the application's own service account, which is an anchor).
 - `cx.SubjectName()` returns the principal's display name when the auth layer knew it: a field
   worker's (the token's `name`), a user's when the token carries one. It is for showing and recording
   who did something; it identifies nobody (use `Principal`) and grants nothing. `cx.Actor()` stays the

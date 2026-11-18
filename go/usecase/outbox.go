@@ -88,7 +88,9 @@ type AuditEntry struct {
 // OutboxWriter writes events, dispatch jobs and audit rows to outbox_messages inside the
 // attempt's transaction (write-path contract sections 7 and 7a): the FlowCatalyst SDK's table and
 // payloads, so the platform's outbox processor reads them unchanged, byte for byte what the Java
-// framework writes (conformance/outbox/outbox.json).
+// framework writes (conformance/outbox/outbox.json). Every payload names the Context's client as
+// clientCode unless that is [fw.PlatformClient], which names no platform client: an event, job,
+// audit row or push of the platform's own context is platform-scoped and names none.
 type OutboxWriter struct {
 	ids   *fw.Ids
 	clock fw.Clock
@@ -195,7 +197,7 @@ func (w *OutboxWriter) WritePushes(ctx context.Context, tx *database.Tx, pushes 
 			}
 		}
 		code := p.clientCode
-		if code == "" && pp.Context.Client() != fw.PlatformClient {
+		if code == "" && namesClient(pp.Context.Client()) {
 			code = pp.Context.Client().String()
 		}
 		payload := pushPayload(p, code, id)
@@ -281,7 +283,8 @@ func keyValues(pairs [][2]string) []byte {
 
 // EventPayload is the SDK's CreateEventDto for an event: specVersion, type, source, subject,
 // data (the event's JSON fields as a string), correlationId, causationId (when present),
-// deduplicationId (the event id), messageGroup, clientCode and contextData (principalId and
+// deduplicationId (the event id), messageGroup, clientCode (the Context's client, unless it is
+// [fw.PlatformClient]: a platform-scoped event names none) and contextData (principalId and
 // executionId, when present).
 func EventPayload(cx fw.Context, ev event.Event) (string, error) {
 	m := ev.Metadata()
@@ -301,7 +304,9 @@ func EventPayload(cx fw.Context, ev event.Event) (string, error) {
 	}
 	o.str("deduplicationId", m.EventID())
 	o.str("messageGroup", m.MessageGroup())
-	o.str("clientCode", cx.Client().String())
+	if namesClient(cx.Client()) {
+		o.str("clientCode", cx.Client().String())
+	}
 	var contextData [][2]string
 	if p, ok := m.PrincipalID(); ok {
 		contextData = append(contextData, [2]string{"principalId", p})
@@ -338,7 +343,7 @@ func DispatchJobPayload(cx fw.Context, id string, j DispatchJob) string {
 	optional(&o, "eventId", j.eventID)
 	o.str("correlationId", cx.Correlation().String())
 	optional(&o, "clientId", j.platformClientID)
-	if j.platformClientID == "" && cx.Client() != fw.PlatformClient {
+	if j.platformClientID == "" && namesClient(cx.Client()) {
 		o.str("clientCode", cx.Client().String())
 	}
 	optional(&o, "subscriptionId", j.subscriptionID)
@@ -377,7 +382,8 @@ func optionalInt(o *object, k string, v *int) {
 
 // AuditPayload is the SDK's CreateAuditLogDto: entityType, entityId, operation, operationData (the
 // command's audit data as a JSON string, when it has any), principalId (when present),
-// performedAt, source, correlationId, applicationCode (when present) and clientCode.
+// performedAt, source, correlationId, applicationCode (when present) and clientCode (the entry's
+// client, unless it is [fw.PlatformClient]: a platform-scoped audit row names none).
 func AuditPayload(e AuditEntry) (string, error) {
 	var o object
 	o.str("entityType", e.EntityType)
@@ -407,6 +413,13 @@ func AuditPayload(e AuditEntry) (string, error) {
 	if e.ApplicationCode != "" {
 		o.str("applicationCode", e.ApplicationCode)
 	}
-	o.str("clientCode", e.Client.String())
+	if namesClient(e.Client) {
+		o.str("clientCode", e.Client.String())
+	}
 	return o.done(), nil
 }
+
+// namesClient reports whether a payload names the client as its clientCode: every client but
+// [fw.PlatformClient] ("no particular client"), which is no platform client's identifier, so the
+// platform could not resolve it. The row's client_id column keeps the client either way.
+func namesClient(c fw.ClientID) bool { return c != fw.PlatformClient }

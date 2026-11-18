@@ -224,7 +224,10 @@ processor reads them unchanged:
   correlation id, client. Command data is included only when the command implements
   `AuditData`, which returns the map to record.
 - `clientCode` in both payloads is the `ClientId` value. (In FlowCatalyst mode the client id is
-  the platform client's identifier.)
+  the platform client's identifier.) *Amended 2026-11-18:* not when the context's client is
+  `ClientId.PLATFORM` (`_platform`): then neither payload has a `clientCode` member, as a
+  dispatch job (7a) and a push (push contract, amendment 17.17) of that context have none. The
+  row's `client_id` column is still the `ClientId` value.
 - The SDK's event payload has no field for the event time, the principal or the execution id.
   The row carries the event id as `deduplicationId`, and the principal and execution id as
   `contextData` entries (`principalId`, `executionId`) when present; the event time is not sent
@@ -241,6 +244,29 @@ processor reads them unchanged:
   audit row has an `operationData` even when the command has none). `principalId` stays the
   subject (the worker). Without an actor nothing changes, byte for byte: the existing conformance
   vectors are unchanged. An app's audit trail then reads "done by `operatorId` as worker `principalId`".
+
+- *Added 2026-11-18 (no `clientCode` for the platform's context):* `_platform` is no platform
+  client's identifier (core contract section 3), so a payload naming it named a client the platform
+  cannot resolve. The platform's events batch (flowcatalyst-go `ResolveEventClient`, read
+  2026-11-18) keeps an anchor credential's event with an unknown code platform-scoped and refuses
+  the whole batch with `403` for any other credential; its audit batch answered `SKIPPED` for such
+  an entry and stored nothing, and its outbox processor deleted a `SKIPPED` row as delivered, so the
+  audit row of every use case run in the platform's context (a scheduled job's sweep, a receiver
+  run whose delivery named no client, a request whose principal has no client) was lost. Without
+  the member the platform stores the event and the audit row platform-scoped for an anchor (and, for
+  an event, under the credential's one client for a credential confined to one). Rule, for every
+  implementation: the event payload's `clientCode` and the audit payload's `clientCode` are written
+  exactly when the context's (the entry's) client is not `ClientId.PLATFORM`, in the same place
+  as before (the event's after `messageGroup`, the audit row's last); nothing else changes, byte
+  for byte. The vectors' platform-context cases (`conformance/outbox/outbox.json` "dispatch jobs in
+  the platform's context: no clientCode", `outbox-push.json` "pushes in the platform's context: no
+  clientCode") have the event and audit rows without the member, and `payload_size` 25 bytes
+  smaller. A client the application chose that the platform does not know (any code other than
+  `_platform`) is still written as it is: that is the application's choice of `ClientId`, against
+  this section's rule that it is a platform client's identifier. Built in Go first
+  (`go/usecase/outbox.go`, 2026-11-18); the Java writer (`OutboxWriter`, the event and audit
+  payloads) and the Rust writer (`fw-usecase` `outbox.rs`, `EventPayload` and `AuditPayload`) still
+  write the member, and their outbox vector tests fail against these vectors until they follow.
 
 Nothing in M2 reads the outbox; delivering it is the platform's job (M3).
 

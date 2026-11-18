@@ -231,7 +231,8 @@ the other copies keep it. It is added to the log attributes. Go `fw.Context.Acto
   `flowcatalyst.PlatformClientID` now name) is the core's name for "no particular
   client", the value the receivers and the client selector already used (`Receivers.PLATFORM_CLIENT`
   and `ClientSelector.PLATFORM` are now this constant). The outbox does not write it as a dispatch
-  job's `clientCode` (write-path contract section 7a).
+  job's `clientCode` (write-path contract section 7a), nor, since 2026-11-18, as an event's or an
+  audit row's (section 7).
 
 *Amended 2026-11-15 (the principal's tier, admin contract section 3a):* `Context` gains an optional
 **tier**: the principal's `tier` claim as its token said it (`ANCHOR`, `PARTNER` or `CLIENT`). The request

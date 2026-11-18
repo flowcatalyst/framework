@@ -202,7 +202,7 @@
       "status" : 0,
       "retry_count" : 0,
       "client_id" : "_platform",
-      "payload_size" : 282,
+      "payload_size" : 257,
       "headers" : null,
       "error_message" : null,
       "created_at" : "2026-10-08T10:15:34.000000Z",
@@ -218,10 +218,9 @@
         },
         "correlationId" : "corr-6",
         "deduplicationId" : "0ABCDEFGHJKMV",
-        "messageGroup" : "sales:order:ord_3",
-        "clientCode" : "_platform"
+        "messageGroup" : "sales:order:ord_3"
       },
-      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:sales:order:cancelled\",\"source\":\"shop:sales\",\"subject\":\"sales.order.ord_3\",\"data\":\"{\\\"orderId\\\":\\\"ord_3\\\",\\\"reason\\\":\\\"sweep\\\"}\",\"correlationId\":\"corr-6\",\"deduplicationId\":\"0ABCDEFGHJKMV\",\"messageGroup\":\"sales:order:ord_3\",\"clientCode\":\"_platform\"}"
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:sales:order:cancelled\",\"source\":\"shop:sales\",\"subject\":\"sales.order.ord_3\",\"data\":\"{\\\"orderId\\\":\\\"ord_3\\\",\\\"reason\\\":\\\"sweep\\\"}\",\"correlationId\":\"corr-6\",\"deduplicationId\":\"0ABCDEFGHJKMV\",\"messageGroup\":\"sales:order:ord_3\"}"
     }, {
       "id" : "0PQRSTVWXYZ04",
       "type" : "PUSH",
@@ -250,7 +249,7 @@
       "status" : 0,
       "retry_count" : 0,
       "client_id" : "_platform",
-      "payload_size" : 177,
+      "payload_size" : 152,
       "headers" : null,
       "error_message" : null,
       "created_at" : "2026-10-08T10:15:34.000000Z",
@@ -261,10 +260,9 @@
         "operation" : "sweep-orders",
         "performedAt" : "2026-10-08T10:15:34Z",
         "source" : "shop:sales",
-        "correlationId" : "corr-6",
-        "clientCode" : "_platform"
+        "correlationId" : "corr-6"
       },
-      "payloadText" : "{\"entityType\":\"Order\",\"entityId\":\"ord_3\",\"operation\":\"sweep-orders\",\"performedAt\":\"2026-10-08T10:15:34Z\",\"source\":\"shop:sales\",\"correlationId\":\"corr-6\",\"clientCode\":\"_platform\"}"
+      "payloadText" : "{\"entityType\":\"Order\",\"entityId\":\"ord_3\",\"operation\":\"sweep-orders\",\"performedAt\":\"2026-10-08T10:15:34Z\",\"source\":\"shop:sales\",\"correlationId\":\"corr-6\"}"
     } ]
   } ],
   "invalidPushes" : [ {

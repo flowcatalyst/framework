@@ -486,7 +486,7 @@
       "status" : 0,
       "retry_count" : 0,
       "client_id" : "_platform",
-      "payload_size" : 353,
+      "payload_size" : 328,
       "headers" : null,
       "error_message" : null,
       "created_at" : "2026-10-08T10:15:32.000000Z",
@@ -503,13 +503,12 @@
         "correlationId" : "corr-4",
         "deduplicationId" : "0ABCDEFGHJKMS",
         "messageGroup" : "billing:invoice:inv_10",
-        "clientCode" : "_platform",
         "contextData" : [ {
           "key" : "principalId",
           "value" : "svc-1"
         } ]
       },
-      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:billing:invoice:cancelled\",\"source\":\"shop:billing\",\"subject\":\"billing.invoice.inv_10\",\"data\":\"{\\\"orderId\\\":\\\"ord_10\\\",\\\"reason\\\":\\\"sweep\\\"}\",\"correlationId\":\"corr-4\",\"deduplicationId\":\"0ABCDEFGHJKMS\",\"messageGroup\":\"billing:invoice:inv_10\",\"clientCode\":\"_platform\",\"contextData\":[{\"key\":\"principalId\",\"value\":\"svc-1\"}]}"
+      "payloadText" : "{\"specVersion\":\"1.0\",\"type\":\"shop:billing:invoice:cancelled\",\"source\":\"shop:billing\",\"subject\":\"billing.invoice.inv_10\",\"data\":\"{\\\"orderId\\\":\\\"ord_10\\\",\\\"reason\\\":\\\"sweep\\\"}\",\"correlationId\":\"corr-4\",\"deduplicationId\":\"0ABCDEFGHJKMS\",\"messageGroup\":\"billing:invoice:inv_10\",\"contextData\":[{\"key\":\"principalId\",\"value\":\"svc-1\"}]}"
     }, {
       "id" : "job-platform",
       "type" : "DISPATCH_JOB",
@@ -542,7 +541,7 @@
       "status" : 0,
       "retry_count" : 0,
       "client_id" : "_platform",
-      "payload_size" : 206,
+      "payload_size" : 181,
       "headers" : null,
       "error_message" : null,
       "created_at" : "2026-10-08T10:15:32.000000Z",
@@ -554,10 +553,9 @@
         "principalId" : "svc-1",
         "performedAt" : "2026-10-08T10:15:32Z",
         "source" : "shop:billing",
-        "correlationId" : "corr-4",
-        "clientCode" : "_platform"
+        "correlationId" : "corr-4"
       },
-      "payloadText" : "{\"entityType\":\"Invoice\",\"entityId\":\"inv_10\",\"operation\":\"sweep-invoices\",\"principalId\":\"svc-1\",\"performedAt\":\"2026-10-08T10:15:32Z\",\"source\":\"shop:billing\",\"correlationId\":\"corr-4\",\"clientCode\":\"_platform\"}"
+      "payloadText" : "{\"entityType\":\"Invoice\",\"entityId\":\"inv_10\",\"operation\":\"sweep-invoices\",\"principalId\":\"svc-1\",\"performedAt\":\"2026-10-08T10:15:32Z\",\"source\":\"shop:billing\",\"correlationId\":\"corr-4\"}"
     } ]
   } ],
   "invalidDispatchJobs" : [ {
