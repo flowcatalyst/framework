@@ -52,6 +52,13 @@ BSD, ISC, Zlib, Unicode and similar), no copyleft (no AGPL, GPL, LGPL or MPL); R
 unmaintained and unsound crates refused. Dependencies are declared once in
 `[workspace.dependencies]`. `cargo vet` is not required (decision 3).
 
+An advisory is cleared by updating the crate (the lock file first, then the dependency that pulls it
+in) or by replacing an unmaintained crate. Only an advisory with no fixed version anywhere may be
+accepted instead, as an entry in `deny.toml`'s `ignore` list with its id, why it does not apply or
+cannot be fixed yet, and a date to look again; the checks themselves are never loosened. Accepted
+since 2026-11-18: `RUSTSEC-2026-0440` (`astral-tokio-tar` unmaintained, through `testcontainers` in
+`fw-test` only) and `RUSTSEC-2026-0543` (`chrono` unmaintained; replacing it changes the public API).
+
 ## 6. CI
 
 `.github/workflows/rust.yml`, run when `rust/`, `conformance/` or the workflow change: format,

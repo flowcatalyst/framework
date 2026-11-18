@@ -14,7 +14,22 @@ targets = [
 unmaintained = "all"
 unsound = "all"
 yanked = "deny"
-ignore = []
+# Only advisories with no fixed version anywhere, each with why it is accepted and when to look
+# again. Remove an entry as soon as its crate can be updated or replaced.
+ignore = [
+    # astral-tokio-tar is unmaintained (2026-11-03), no fixed release. It comes in only through
+    # testcontainers (0.27 and the latest, 0.28, both require it), so only through fw-test: test
+    # code and the cargo-fw developer tool, never an application. testcontainers uses it to copy
+    # files into a container, which fw-test does not do. Look again 2027-02-18, or when a
+    # testcontainers release drops it.
+    { id = "RUSTSEC-2026-0440", reason = "unmaintained, no fix; via testcontainers in fw-test only; review 2027-02-18" },
+    # chrono is unmaintained (advisory 2026-09-14), all versions, no fixed release; the advisory
+    # names jiff and time. chrono is in the public API (fw-core Clock, FixedClock, ManualClock;
+    # fw-usecase Event::time, OutboxRow::performed_at, instant_text) and is sqlx's timestamp
+    # mapping, so replacing it is an API change for the owner to decide, not a dependency bump.
+    # No vulnerability is reported. Look again 2026-12-18.
+    { id = "RUSTSEC-2026-0543", reason = "unmaintained, no fix; replacing it changes the public API (owner's decision); review 2026-12-18" },
+]
 
 [licenses]
 confidence-threshold = 0.9
