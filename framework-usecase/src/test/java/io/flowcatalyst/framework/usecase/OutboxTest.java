@@ -285,6 +285,19 @@ class OutboxTest {
   }
 
   @Test
+  void aRunInThePlatformsContextKeepsTheClientIdColumnButNamesNoClientCode() throws Exception {
+    // write-path contract section 7, amended 2026-11-18: _platform names no platform client
+    useCases.run(create(), Context.of(ClientId.PLATFORM).withPrincipal(new PrincipalId("svc-1")), new Create("t1", "B-1"));
+    List<Map<String, String>> rows = rows("SELECT type, client_id, payload FROM outbox_messages ORDER BY type");
+
+    assertThat(rows).extracting(r -> r.get("type")).containsExactly("AUDIT_LOG", "EVENT");
+    for (Map<String, String> row : rows) {
+      assertThat(row.get("client_id")).as(row.get("type")).isEqualTo("_platform");
+      assertThat(json.readTree(row.get("payload")).has("clientCode")).as(row.get("type")).isFalse();
+    }
+  }
+
+  @Test
   void eventsAreWrittenInPlanOrderWithTheirOwnMessageGroups() {
     UseCase<Create, ThingEvent> two =
         UseCase.named("create-two", Create.class, ThingEvent.class)

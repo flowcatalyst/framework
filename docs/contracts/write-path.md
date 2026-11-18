@@ -264,9 +264,11 @@ processor reads them unchanged:
   smaller. A client the application chose that the platform does not know (any code other than
   `_platform`) is still written as it is: that is the application's choice of `ClientId`, against
   this section's rule that it is a platform client's identifier. Built in Go first
-  (`go/usecase/outbox.go`, 2026-11-18); the Java writer (`OutboxWriter`, the event and audit
-  payloads) and the Rust writer (`fw-usecase` `outbox.rs`, `EventPayload` and `AuditPayload`) still
-  write the member, and their outbox vector tests fail against these vectors until they follow.
+  (`go/usecase/outbox.go`, 2026-11-18), then in Java the same day (`OutboxWriter`, the event and
+  audit payloads): `OutboxConformanceTest` with `-Dconformance.update=true` writes `outbox.json`
+  byte for byte as it was edited for Go (`outbox-push.json` is Go's, push contract 17). The Rust
+  writer (`fw-usecase` `outbox.rs`, `EventPayload` and `AuditPayload`) still writes the member, and
+  its outbox vector test fails against these vectors until it follows.
 
 Nothing in M2 reads the outbox; delivering it is the platform's job (M3).
 

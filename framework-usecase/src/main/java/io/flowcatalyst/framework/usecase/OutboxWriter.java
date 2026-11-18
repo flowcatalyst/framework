@@ -27,14 +27,16 @@ import tools.jackson.databind.node.ObjectNode;
  *       status {@code 0}, the {@code client_id} of the context, and the SDK's event payload:
  *       {@code specVersion, type, source, subject, data} (the record's fields as a JSON string,
  *       without the metadata), {@code correlationId, causationId, deduplicationId} (the event
- *       id), {@code messageGroup}, {@code clientCode} and {@code contextData} (the principal
- *       and the execution id, when present).
+ *       id), {@code messageGroup}, {@code clientCode} (the context's client, unless it is {@link
+ *       ClientId#PLATFORM}: a platform-scoped event names none) and {@code contextData} (the
+ *       principal and the execution id, when present).
  *   <li>A dispatch-job row: type {@code DISPATCH_JOB}, row id = the job's id, the job's message
  *       group, and the platform's dispatch-jobs batch item as the payload (section 7a), which the
  *       platform's outbox processor sends unchanged. The context's client is the item's {@code
  *       clientCode}, unless the job names a {@code platformClientId} or the context's client is
  *       {@link ClientId#PLATFORM}.
- *   <li>The audit row: type {@code AUDIT_LOG}, no message group, the SDK's audit payload.
+ *   <li>The audit row: type {@code AUDIT_LOG}, no message group, the SDK's audit payload, whose
+ *       {@code clientCode} is the entry's client unless that is {@link ClientId#PLATFORM}.
  * </ul>
  *
  * Provided by {@link OutboxModule}.
@@ -132,7 +134,9 @@ public final class OutboxWriter implements Sink {
     }
     payload.put("deduplicationId", meta.eventId());
     payload.put("messageGroup", meta.messageGroup());
-    payload.put("clientCode", context.client().value());
+    if (namesClient(context.client())) {
+      payload.put("clientCode", context.client().value());
+    }
     List<Map<String, String>> contextData = new ArrayList<>();
     if (meta.principalId() != null) {
       contextData.add(entry("principalId", meta.principalId()));
@@ -169,7 +173,7 @@ public final class OutboxWriter implements Sink {
     putIfSet(payload, "eventId", job.eventId());
     payload.put("correlationId", context.correlationId().value());
     putIfSet(payload, "clientId", job.platformClientId());
-    if (job.platformClientId() == null && !context.client().equals(ClientId.PLATFORM)) {
+    if (job.platformClientId() == null && namesClient(context.client())) {
       // the platform resolves the code to its client; an explicit platformClientId wins
       payload.put("clientCode", context.client().value());
     }
@@ -229,8 +233,20 @@ public final class OutboxWriter implements Sink {
     if (entry.applicationCode() != null) {
       payload.put("applicationCode", entry.applicationCode());
     }
-    payload.put("clientCode", entry.client().value());
+    if (namesClient(entry.client())) {
+      payload.put("clientCode", entry.client().value());
+    }
     return payload;
+  }
+
+  /**
+   * Whether a payload names the client as its {@code clientCode}: every client but {@link
+   * ClientId#PLATFORM} ("no particular client"), which is no platform client's identifier, so the
+   * platform could not resolve it (write-path contract section 7, amended 2026-11-18). The row's
+   * {@code client_id} column keeps the client either way.
+   */
+  private static boolean namesClient(ClientId client) {
+    return !client.equals(ClientId.PLATFORM);
   }
 
   private static Map<String, String> entry(String key, String value) {

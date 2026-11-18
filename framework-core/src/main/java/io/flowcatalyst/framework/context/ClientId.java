@@ -24,7 +24,8 @@ public record ClientId(String value) {
    * "No particular client" ({@code _platform}): the client of a context that acts for the platform
    * rather than for one tenant, such as a scheduled job's or a platform-scoped dispatch job's. A
    * platform client code never contains {@code _}, so this never names a real client. The outbox
-   * does not write it as a dispatch job's {@code clientCode}.
+   * does not write it as a payload's {@code clientCode} (an event's, a dispatch job's or an audit
+   * row's): a row of this context names no client and the platform keeps it platform-scoped.
    */
   public static final ClientId PLATFORM = new ClientId("_platform");
 

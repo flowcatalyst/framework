@@ -417,10 +417,11 @@ outbox processor reads them unchanged:
 - an event row has type `EVENT`, the event's message group, the SDK's `CreateEventDto` JSON, status
   `0`, and `client_id` set. `deduplicationId` is the event id; `clientCode` is the `ClientId`
   value, which must therefore be the platform's **client code** (the identifier such as `acme`),
-  not the `clt_...` id ([Context](context.md#what-goes-in-a-clientid)); the principal and execution id travel as `contextData` entries;
+  not the `clt_...` id ([Context](context.md#what-goes-in-a-clientid)), and is left out for
+  `ClientId.PLATFORM`; the principal and execution id travel as `contextData` entries;
 - the audit row has type `AUDIT_LOG` and the SDK's `CreateAuditLogDto` JSON: entity type and id
   from the first aggregate (or the event subject), `operation` = the use case name, the principal,
-  time, correlation id and client;
+  time, correlation id and client (no `clientCode` for `ClientId.PLATFORM`);
 - a command's data goes into the audit row **only if the command implements `AuditData`**
   (`Map<String, Object> auditData()`). Otherwise just the fact of the operation is recorded. Take
   care not to put secrets in `auditData()`.

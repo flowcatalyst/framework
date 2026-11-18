@@ -173,8 +173,18 @@ class ReceiverTestingTest {
 
   @Test
   void anEventOfThePlatformsContextNamesNoClient() {
-    String event = "{\"type\":\"" + TYPE + "\",\"data\":\"{}\",\"clientCode\":\"_platform\"}";
-    assertThat(ReceiverTesting.Delivery.ofEvent(event, "dj_8").clientHeader()).isNull();
+    // the writer's row since 2026-11-18 has no clientCode; a row written before it has "_platform"
+    for (String event :
+        new String[] {
+          "{\"type\":\"" + TYPE + "\",\"data\":\"{}\"}",
+          "{\"type\":\"" + TYPE + "\",\"data\":\"{}\",\"clientCode\":\"_platform\"}"
+        }) {
+      ReceiverTesting.Delivery d = ReceiverTesting.Delivery.ofEvent(event, "dj_8");
+      assertThat(d.clientHeader()).as(event).isNull();
+      assertThat(d.body()).as(event).doesNotContain("clientCode").doesNotContain("clientId");
+      assertThat(ReceiverTesting.deliver(client, SECRET, NOW, d).status()).as(event).isEqualTo(200);
+      assertThat(seenClient).as(event).hasValue(Receivers.PLATFORM_CLIENT.value());
+    }
   }
 
   @Test

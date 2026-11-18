@@ -54,7 +54,9 @@ framework uses the **code** everywhere:
   `Context` (`DispatchDelivery.client()` is an `Optional` of both halves, `id()` and `code()`);
 - the [outbox](write-path.md#6-the-outbox) writes the `ClientId` value as the payload's
   `clientCode` (and in the row's `client_id` column), which is how the platform learns whose event
-  it is.
+  it is. An event, a dispatch job or an audit row written in the context of `ClientId.PLATFORM`
+  names no client (no `clientCode`): the platform keeps it platform-scoped (for the application's
+  own service account, which is an anchor).
 
 Three things get called "client id" in this framework and the platform. Which one you hold decides
 where it may go:
@@ -190,6 +192,7 @@ code). A loop does the same inside its tick, under the loop's lock gate.
   client scopes every read and write, the principal and ids go into event metadata and the audit
   row. See [The write path](write-path.md).
 - **Locks** can be client-scoped: `LockKey.client(clientId, "invoice-run")`. See [Locks](locks.md).
-- **Outbox rows** use the `ClientId` value as the payload's `clientCode` (the client code, above).
+- **Outbox rows** use the `ClientId` value as the payload's `clientCode` (the client code, above),
+  except for `ClientId.PLATFORM`, whose rows name no client.
 
 Specification: [contracts/core.md](../contracts/core.md) section 3.

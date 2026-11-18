@@ -224,11 +224,15 @@ class ReceiverOutboxTest {
     JsonNode event = row("EVENT");
     assertThat(event.path("causationId").asString()).isEqualTo("sji_0HZXEQ5Y8JY5Z");
     assertThat(event.path("correlationId").asString()).isEqualTo("corr-8");
-    assertThat(event.path("clientCode").asString()).isEqualTo(Receivers.PLATFORM_CLIENT.value());
+    // the firing's client is Receivers.PLATFORM_CLIENT, which names no platform client: no
+    // clientCode (write-path contract section 7, amended 2026-11-18)
+    assertThat(event.has("clientCode")).isFalse();
     assertThat(contextData(event))
         .containsEntry("principalId", FakePlatform.SERVICE_PRINCIPAL)
         .containsEntry("executionId", "sji_0HZXEQ5Y8JY5Z");
-    assertThat(row("AUDIT_LOG").path("principalId").asString()).isEqualTo(FakePlatform.SERVICE_PRINCIPAL);
+    JsonNode audit = row("AUDIT_LOG");
+    assertThat(audit.path("principalId").asString()).isEqualTo(FakePlatform.SERVICE_PRINCIPAL);
+    assertThat(audit.has("clientCode")).isFalse();
   }
 
   static final String EXPORT = "orders:billing:export";

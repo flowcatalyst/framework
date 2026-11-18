@@ -1,7 +1,7 @@
 <!-- types: AdminModule, AdminSection, AppBuilder, InstanceFactory, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes, Spa, Csp, SpaTesting, Operation, OpenApi, OpenApiTesting, DeclarationCommand, Pushes, PushModule -->
 # Status
 
-Last verified against commit c1213ca (2026-11-13). `verify.sh` fails if that commit is not an
+Last verified against commit 00ed157 (2026-11-18). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -15,7 +15,7 @@ repository; nothing here has been u in production. The plan, with owner rulings,
 | # | Scope | State | Guide page |
 |---|---|---|---|
 | M1 | Foundation and locks: modules and lifecycle, named instances and drivers, `Context`, config and secrets, database and Redis connections, migrations, locks (memory, database, Redis) | **Built**. 2026-10-18: `Context.forClient` and `PerClient.each` (work for one client after another, for scheduled jobs and loops; core contract 3a, friction F3 and F15), used by the tickets SLA sweep | [lifecycle](modules-and-lifecycle.md), [config](config.md), [context](context.md), [locks](locks.md) |
-| M2a | Write path: use cases, runner, optimistic locking, client scoping, events and audit rows into the SDK-compatible outbox, TSIDs | **Built**. 2026-10-18: `load` + `authorizeLoaded` (a record-level access check between the load and execute; contract 3a, friction F1), used by the tickets example; `UseCases.run(.., Tx.of(connection))` runs a use case inside the caller's transaction under a savepoint (contract 4a, friction F13), so it composes with `DispatchDelivery.once` | [write path](write-path.md) |
+| M2a | Write path: use cases, runner, optimistic locking, client scoping, events and audit rows into the SDK-compatible outbox, TSIDs | **Built**. 2026-10-18: `load` + `authorizeLoaded` (a record-level access check between the load and execute; contract 3a, friction F1), used by the tickets example; `UseCases.run(.., Tx.of(connection))` runs a use case inside the caller's transaction under a savepoint (contract 4a, friction F13), so it composes with `DispatchDelivery.once`. 2026-11-18: an event or audit row written in the context of `ClientId.PLATFORM` names no `clientCode` (contract 7, as a dispatch job already did; Go the same), so the platform keeps it platform-scoped instead of dropping the audit row | [write path](write-path.md) |
 | M2b | Checked SQL: queries in `.sql` files, generator, Maven plugin with `generate`, `check`, `add-source` | **Built** | [checked SQL](checked-sql.md) |
 | M3 | HTTP: Jetty 12 on virtual threads, routing, middleware, typed validation, error envelope, correlation id, health endpoints, graceful shutdown, Datastar adapter | **Built** | [http](http.md) |
 | M4a | FlowCatalyst module, client side | **Built**, except the generated docs page for the platform's outbox processor. `PlatformClient`, the `flowcatalyst` and `outbox` health checks, definitions, validation, `DefinitionSync` and the `sync` command, `Command` and `launch` in core. 2026-11-13: a role can be marked client-managed (`Definition.Role.withClientManaged()`, Go `Role.WithClientManaged()`), sent as `clientManaged: true` (contract section 2) | [flowcatalyst module](flowcatalyst-module.md) |
