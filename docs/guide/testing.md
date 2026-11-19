@@ -1,4 +1,4 @@
-<!-- types: TestClient, TestResponse, PostgresFixture, RedisFixture, FakePlatform, LockStoreContract, AdjustableClock, MemoryLockDriver, AppBuilder, App, MonotonicClock, AuthTesting, TestOidcProvider, ReceiverTesting -->
+<!-- types: TestClient, TestResponse, PostgresFixture, RedisFixture, FakePlatform, LockStoreContract, AdjustableClock, MemoryLockDriver, AppBuilder, App, MonotonicClock, AuthTesting, TestOidcProvider, Respellings, ReceiverTesting -->
 # Testing
 
 The framework tests itself with JUnit 5 and AssertJ against **real PostgreSQL 18 and Redis**
@@ -18,6 +18,7 @@ the rest are published as test-jars.
 | `RedisFixture` | test-jar of `framework-redis` | a real Redis for one test class |
 | `FakePlatform`, `ReceiverTesting` | test-jar of `framework-flowcatalyst` | an in-process stand-in for the platform; signed dispatch and scheduled-job deliveries for the receivers, built from your outbox rows (`Delivery.ofJob`, `Delivery.ofEvent`, `deliver`, `fire`; [Receivers](receivers.md#testing-receivers)) |
 | `LockStoreContract`, `AdjustableClock` | test-jar of `framework-locks` | the lock driver contract suite; a movable monotonic clock |
+| `Respellings` | test-jar of `framework-auth` | every other spelling of a base64url value (`of`: other last characters for the same bytes, padding, the standard alphabet, whitespace and line breaks) changes that certainly alter it (`tampered`) and a signed part re-spelled and signed again (`resigned`, which a lenient decoder would accept), for testing a verifier of your own against the [token spelling contract](../contracts/token-spelling.md) |
 
 Dependencies for a test-jar (the BOM import manages the version; see
 [Getting started](getting-started.md#2-import-framework-bom)):

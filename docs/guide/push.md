@@ -227,6 +227,13 @@ A ticket is an EdDSA JWS, valid for two minutes, for the context's client. `Tick
 binds it to a device key: the subscribe must then be authenticated with a field token bound to that
 key (`FieldPrincipal.keyThumbprint`, the token's `cnf.jkt`). `streamExpiry` caps the stream's life.
 
+Tickets and stream tokens verify only in the spelling they were issued in (2026-11-19, [token
+spelling](sessions-and-login.md#token-spelling)): a ticket with a part that is not canonical
+base64url (padded, the standard alphabet, a line break, another last character for the same
+signature bytes) is malformed (`400 VALIDATION`), and such a stream token is `401
+STREAM_TOKEN_INVALID`. `Pushes.ticket` and the platform SDKs' minters write canonical tickets; a
+minter of your own must encode without padding in the URL-safe alphabet.
+
 ## Streams, backpressure and ends
 
 Each stream has a queue of `push.stream.buffer` pushes; a stream that falls further behind is ended

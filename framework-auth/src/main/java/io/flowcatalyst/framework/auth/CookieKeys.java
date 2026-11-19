@@ -161,13 +161,8 @@ public final class CookieKeys {
     if (key == null) {
       return Optional.empty();
     }
-    byte[] raw;
-    try {
-      raw = Base64.getUrlDecoder().decode(parts[2]);
-    } catch (IllegalArgumentException e) {
-      return Optional.empty();
-    }
-    if (raw.length < IV_BYTES + TAG_BITS / 8) {
+    byte[] raw = Base64Url.decode(parts[2]); // its canonical spelling only (token-spelling contract)
+    if (raw == null || raw.length < IV_BYTES + TAG_BITS / 8) {
       return Optional.empty();
     }
     try {

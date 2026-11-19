@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.push;
 
+import io.flowcatalyst.framework.auth.Base64Url;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -249,11 +250,16 @@ final class TicketKeys {
     claims.append('}');
     String header = "{\"alg\":\"EdDSA\",\"kid\":" + Wire.jsonString(key.kid()) + "}";
     String signed = b64(header.getBytes(StandardCharsets.UTF_8)) + "." + b64(claims.toString().getBytes(StandardCharsets.UTF_8));
+    return signed + "." + signature(signed);
+  }
+
+  /** The signature part (canonical base64url) over the text {@code header.claims}, with the signing key. */
+  String signature(String signed) {
     try {
       Signature signature = Signature.getInstance("Ed25519");
-      signature.initSign(key.privateKey());
+      signature.initSign(keys.getFirst().privateKey());
       signature.update(signed.getBytes(StandardCharsets.US_ASCII));
-      return signed + "." + b64(signature.sign());
+      return b64(signature.sign());
     } catch (GeneralSecurityException e) {
       throw new IllegalStateException("cannot sign a ticket", e);
     }
@@ -290,13 +296,18 @@ final class TicketKeys {
     if (parts.length != 3 || raw.length() > 64 * 1024) {
       throw new MalformedTicketException();
     }
+    // every part in its canonical spelling only (token-spelling contract): else the ticket is malformed
+    byte[] headerBytes = Base64Url.decode(parts[0]);
+    byte[] claimsBytes = Base64Url.decode(parts[1]);
+    byte[] sig = Base64Url.decode(parts[2]);
+    if (headerBytes == null || claimsBytes == null || sig == null) {
+      throw new MalformedTicketException();
+    }
     JsonNode header;
     JsonNode claims;
-    byte[] sig;
     try {
-      header = MAPPER.readTree(B64D.decode(parts[0]));
-      claims = MAPPER.readTree(B64D.decode(parts[1]));
-      sig = B64D.decode(parts[2]);
+      header = MAPPER.readTree(headerBytes);
+      claims = MAPPER.readTree(claimsBytes);
     } catch (RuntimeException e) {
       throw new MalformedTicketException();
     }

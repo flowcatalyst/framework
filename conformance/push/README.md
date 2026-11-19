@@ -10,6 +10,8 @@ with `description` (the setup and how to read a case) and `howToRun`.
 | `tickets.json` | a fixed Ed25519 key pair and tickets: valid, previous key, unknown `kid`, bad signature, expired, `exp` too far, wrong `aud`, wrong `iss`, a topic outside `iss`, `cnf` mismatch, another client; the granted and denied topics of each subscribe, and the JWKS |
 | `wire.json` | the exact bytes of a push event, `subscribed`, `reset`, `auth-expired`, the retry field and the heartbeat |
 | `replay.json` | a log, a subscription and a `Last-Event-ID`: the ids replayed, or a `reset` with its reason, including the client rule of section 5 |
+| `spelling.json` | written by Java (`framework-push` `SpellingConformanceTest`, 2026-11-19): the tickets and stream tokens of `issued-before.json` as issued, re-spelled every way and tampered, each with its answer ([token spelling contract](../../docs/contracts/token-spelling.md)); Go runs it in `go/push/spelling_test.go` |
+| `issued-before.json` | a fixture, never regenerated: tickets and stream tokens the Go and Java code issued before the spelling rule (identical in both), which must still verify |
 
 **The keys in `tickets.json` are test keys**, published on purpose so every implementation can
 verify and sign the same tickets. Never configure them anywhere real.

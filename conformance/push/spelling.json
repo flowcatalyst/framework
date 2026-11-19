@@ -1,0 +1,1184 @@
+{
+  "description" : "The token-spelling contract (docs/contracts/token-spelling.md) for push. tickets: the host is application 'application' with push.ticket.key the current then the previous key of tickets.json (TEST KEYS), at 'now', with push.stream.max-lifetime 'maxLifetimeSeconds' and no proof key; the answer is 'valid', the reason the ticket grants nothing (the words of tickets.json), or 'malformed' (the subscribe answers 400 VALIDATION). streamTokens: verified with push.stream.secret 'streamSecret' (a TEST SECRET) at 'now'; the answer is 'valid' or the 401 code. Each value is one of conformance/push/issued-before.json (issued by the Go and the Java code before the rule), with every re-spelling ('respelled': contract section 3, the signature or MAC re-spelled every way, the other parts padded, whitespace and line breaks around the value), changes that certainly alter it ('tampered') and, for variants of the value whose parts take every residue mod 4, the signed parts re-spelled and signed again ('resigned': the signature or MAC is valid over the new text, so a lenient decoder would accept it), each with the answer it must get. Written by framework-push SpellingConformanceTest.",
+  "howToRun" : "Build the ticket keys and the stream-token verifier from the setup; check 'issued' and every case of 'respelled', 'tampered' and 'resigned' exactly as written (no trimming) and compare the answer with 'expect'.",
+  "tickets" : {
+    "application" : "fulfil",
+    "now" : 1794139200,
+    "maxLifetimeSeconds" : 3600,
+    "keys" : "tickets.json: keys.current, then keys.previous",
+    "cases" : [ {
+      "issued" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+      "expect" : "valid",
+      "respelled" : [ {
+        "name" : "part 2 ends in R",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CR",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in S",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CS",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in T",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CT",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in U",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CU",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in V",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CV",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in W",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CW",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in X",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CX",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in Y",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CY",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in Z",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CZ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in a",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8Ca",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in b",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8Cb",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in c",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8Cc",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in d",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8Cd",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in e",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8Ce",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in f",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8Cf",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 padded with =",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ=",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 padded with ==",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ==",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 in the standard alphabet",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5/dBW/vMVCuzYo9tNkjHiThfMWltH/EYZlD8CQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 with a line feed inside",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJ\nL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 with a carriage return inside",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJ\rL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 with CRLF inside",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJ\r\nL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 padded",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0=.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 padded",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ==.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "a space before",
+        "value" : " eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "a space after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ ",
+        "expect" : "malformed"
+      }, {
+        "name" : "a tab after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ\t",
+        "expect" : "malformed"
+      }, {
+        "name" : "a line feed after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ\n",
+        "expect" : "malformed"
+      }, {
+        "name" : "CRLF after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ\r\n",
+        "expect" : "malformed"
+      }, {
+        "name" : "CRLF before",
+        "value" : "\r\neyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "malformed"
+      } ],
+      "tampered" : [ {
+        "name" : "part 2: first bit flipped",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.4DJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+        "expect" : "signature"
+      }, {
+        "name" : "part 2: last bit flipped",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CA",
+        "expect" : "signature"
+      }, {
+        "name" : "part 2: one byte shorter",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8",
+        "expect" : "signature"
+      }, {
+        "name" : "one character shorter",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8C",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 emptied",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.",
+        "expect" : "signature"
+      }, {
+        "name" : "part 2 removed",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ",
+        "expect" : "malformed"
+      } ],
+      "resigned" : [ {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in 1, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn1.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.f3FrTAc0ICvPeS18uA_GC0hSYLO3u0YItXVuqJbuz8u4RVqqC5RrJEH_n_jZ39epXd5D64rJWDy9-xgT4f-hBQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in 2, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn2.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.FRrtvOTdi3ClnVA2IQZlkFpTZ9OLlCqT36rqTza_43H3EyArD3luJK2ovs_z6qZJcbLPE60Cw4PzqDuKH4ejCA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in 3, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn3.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.Rud6QhaWaRjOiJWT7-OEx0duUnm1C1HdSBVrNvo1tudmFxmT9KYWUDU9qomuNRcuSGUzQRXwv9cyof-gFresBA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 padded with =, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0=.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.hVrTWJrPdSTnBEwxa-386x5bUnyf9YGjHxYC7fqJ4hdjfqylzaqo3I6Dy5Yyzd6uYQ7bRA5EikAfIVgcxbIsCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImt\npZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.NFhNyj0r1pQ5Ha4wL87WX1E4QBmXlqnF-pYQAVep0ilvtnUx0aR4qUWEgStWvcI_Dfx-KtAwBx83ZE_W3n13BA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImt\rpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.Cw6ii1lUA5uaPeoajzJCg7CHBlNquEQtj1wMckU3J5BR8SyyW9LEYV7MolodhUuWHndAriPelirG6KT0eznXAQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImt\r\npZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.WyElcCf0atDBRWj_RyQ-UDpkr_MlmfRdESzSGOzlqyD-xA0n1TQXn8cH--hOJB_glZ1RjGWqGtTAxC1gK4XWDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtp\nZCI6InRlc3QtMjAyNi1hIn0g.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.4OzAEAqqdpmekWyZ0d9DJvRdDLkkDF57G5_08GjaNK4kScxgl8jkq8NyJdGBnh_N3lgFchRciUKSM533Ue-8DA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtp\rZCI6InRlc3QtMjAyNi1hIn0g.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.77aB34v62j7iPpOQZxFTfik_C6MlSmMeQIz8T0_DZbnGxuqFmfe5EAq4_626Ud3mb3-7Zpgep4kk2ryoQO-aDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtp\r\nZCI6InRlc3QtMjAyNi1hIn0g.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.7Ltt0avmrEujdEqgai1sDq1VXknUwfe5T5LHsVVYLHsQm0vtFzWdx4g2IH_s7LdyfIS3I2coTTgcs_m0I8LeCA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in B, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIB.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.zdKVkNmY4zl3aH3h1eTR3ypaJnZ8TPYvAZ96rQKlfgwKuaXEFfwZAHOvRFBzwutFMCr9B1ZNJlv2iRFD2MiuAQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in C, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIC.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.8q28pVA4Yy_MXhM0EoSryDdSADJnlN2_FFsZcZNyqs_a1DJFVMY9__8ypQ2GA45eQjWON6ywToTAGLkha4WlBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in D, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gID.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.PHjUNPjtPxPgGjKQaBonOT4TgWVr8H6BaExcUnJCKk0qpK_uk2NKcbWWjt-yHCz28sv9v6L9GauA0lGiQLFCBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in E, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIE.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.0cjDAYw1VMqyWGG58K6Ng2i6bFpU6Fd5cI6FsQClWjTA0m0WQ84tIaqk5BT4q5T0Ny4Rlv_VfLxnDz78O8lwBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in F, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIF.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.sSySv_TSCd2vDynMXhsaKapNyPgYXf6qmLwVgXiuyNHbCiuRFOGvgmOr6RsGUaFRNQMEGSF6dRQ-B3GaDNLVBQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in G, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIG.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.6B3E1urDMZhmw_tY8K1RdjV1RQu0Mdl3KOGbFHSe0wUj54iwZgQcFOdH_vmcpCnrJdE4VGZGZ_Q1i-o-d-0kAA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in H, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIH.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.CsvHWv69ueuti5TkH1CzjR7obV_HH253akUjqFvSxn6P4bxDhVAhXCW0DRt1J3gWPJqfGmqrdifxV0DF1amhBQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in I, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gII.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.CF-lfcz4bpngfBogNry-iXehcG8nRUis9Zn1SMYnfcsKKMtvEquSaIeCHsEKNCOoymAwVvijnB44PLsBL0aCAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in J, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIJ.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.6hitN1kl9Q0d5Hi5rT8ORkmaGugVLX_Qfn-hdDju773qqNfUKvhwvx4iMlu9sZoKUG2rt2bXUDe9YC7PtSRVAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in K, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIK.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.V5v7_8DBdQxp1qAknHxrfYBxsV-UT_IvcV-wizWUXmmpo1Td3fK1FG4TqWOrxnMjpaXKNRGPSaFP5dW44d-eCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in L, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIL.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.TvVTEKgG-_wFU6SxCfkBFyGc5FLrx1G5ebmVPJIPOBE5MeUJTxz4hq7kqf5rByExUDnsoOUEVakTMlQa2DBqCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in M, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIM.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.el7x2hjHb9yDvKxv_cfLGOQ_38ZgTp2qlomLwIRXf3T38kQ2SSl1uIRnkpWxHi_QtnpANRdJ5FBB_y0zTjwvBA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in N, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIN.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.q1A5d7uK5JqZOohHCcgs3y1nWVZFcI3I1o3BgzIDIHHLC5dDFJYi2KwHDnDmuXZnLQKfXlCjCjFQYZvQ_cAeCQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in O, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIO.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.qpyKZqqitvqMOevAsUfG91Hcj7dO4kkgG161sn3WJkSZlECpRaZXPOiOtE74eP8H1_73bYUVgVpq9Jxb7jhSAA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in P, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIP.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.fHFqaid_aJIi7mYObtdKRa3yYd16ZH2YwJ0iEOIvvtw1WwfJXknQpAkfz75tul1mVS2yJr51m-qFF5ZdJ3AbBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 padded with ==, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIA==.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.98qfi6u6IlIMIKjB-M-AjgrDr6Eu9Q3OC1z90jW-s3w-y4qc6frrAKXTflK1p9H6SXe6xh7kijFscKgc9o8IBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZ\nCI6InRlc3QtMjAyNi1hIn0gIA.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.4D1wU1uKH4aH_ZD3ms0gXAlXs_OREC5tffUNkXl10Y2REZVchTZ8o8cbv_IV9vZMqH49eqLE-DKaK9ee8zQACQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZ\rCI6InRlc3QtMjAyNi1hIn0gIA.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.gVDCMKK7XGN5sziH2sb7NC0NCHAUNTdJLOW4GM6E8OYiSZKRe0eWADmu7vpVgbSTiD4XjuypJAznw5Eg8Ib4Cw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZ\r\nCI6InRlc3QtMjAyNi1hIn0gIA.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.6ZLj0CKYILukpc0YcnmtFHaCqMpoBm6etljtAodho4iv2lq-mgJ96LTyTzlKwHfre26-plgIdLng4-eXZcW7BQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in R, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfR.SMxT4N3G53QWfU-Xea26aLfANQOPayZi9AjpA0lyKmIZe2IHfJeJ48lL0sKTf-UWuMfk2IBkNMNpGwpNABgHDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in S, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfS.5oURS41-rgVmwGoA9gFH3J_vaIK9iyq6euYILItkPYTIAJEKwWbkJJJkiHk1Y9huSb4jERWHXfKMax_jpeHBAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in T, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfT.PyLnxfyqazVdZCFhvfD9DfPmeizUzawRZxoQgaGXG93j6NAiusJbCzdtWU7WxZMjbvMSaGO2KXfHkVHBXZh0Cg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in U, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfU.BiU3wQRb8g7dh9nF1rxtNgC5Hl2gEJoYaOZ_6Av6FFa0mtpZI7yIwG7fC25be6ULdXPKVITe7_UALxCFjFclCw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in V, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfV.aHrv7drXeIh9A0-fhhhJJoUNghUTNRGS8_a8pnvoSQdA1kbgTdCH0bhh09u_HyQg32bZ53LWLWfWZD7X9aqQDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in W, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfW.K0kGeAO3MGa2INryrKJWh2hMKKsEJaLE9qVm5sVh9aOlrkrx5CrYZYZGJ42U_uhtaffoQeRGFMhKjpr8H3sDDw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in X, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfX.awKmq4i_hMx0iiPyXE5h6H3gv9PX0hukVk1xTGKvXBb5ESh9Ej8LnINb66CMEcVVmn_Q0_qG0ysN6Hlku5gqCA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in Y, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfY.4PDx6BNOn3izKPZ3J8MV1ajXHc54w1zJFL0pUMUZhkRIXCVK-zByUUGcTmbXSLmOEPMNfKNDKT9flw_2cYMlAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in Z, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfZ.PILtGkEuh3J9JfH5tz169wRf5NEEfr9IKvg174k2tYgpQibii3LM4WRSZMFjv99EBW9C6GKOvbxhn24mBBvBDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in a, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfa.OLeMbi4MUyqFeGaGFZxSyJpGhnZROul8zmsOYodBQjC9VCJMHtBtrKzL9NcEdBQ4dwhMYbXXDAmR9YRtRwJBDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in b, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfb._1LJRM8Hsetfe25KtbyPdsAtqchu1PxkFN4KNoZ_tIo_CEPEM4nuNyvigcyKcBCcA-kwbM6ESHP7HOA0hhfVCw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in c, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfc.FjrTjpnyHGczYp3cEwejmDV-CRlekrYG7PqlnjAxeuMXDMWTL23mHCZBs5tIYKGZRKvWFJR-mlxjJ083mHn1BA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in d, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfd.llh1tlIs_uKF5xm8HTKU_IR7nv9gsWVkMag0CcxOGIuPakF6ydp_0PMe48jsLGZ_TPUD4e5bv-WBKwfByaqkAA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in e, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfe.cHR0_OZcUJByYzXmbPpmPnaZLkBR6LxbanuLluSjIsOHY_ZEZks8EnpfpAePOEDjYXEj0rgOKqNW-wUEj8JsDw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 ends in f, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwff.lRwpJZMsFZ-p06LDWvpzC7He4CahxjOhBKE7PGq7u6HmUAyE0aATidjvKgH727WWatMjyT5zMTpBZZ-2E6GeCA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 padded with ==, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ==.aQvRtmNUZgaLMCFTrxlIbukae0K45aIUK1szIum6ayDZHMzOJFoWxneI5EmP0aqaEyJuqCsaC86aPx-wFLz5BQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxma\nWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ._TKiWCSp0tZpCG7A5fW90v1tbcHmt0OgSFFnYYRGwHkLEWy6T9OGb4FT9xltjaYR4Y2TryYDHzpGkuG-S11vDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxma\rWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.50yNrG_nh7rvWh82SEiGAdJ-IWNm0s8E3rlAvSljoeWS-8T61V_tvvrnJcGooYCSw7Mk_UtJJ4mQCyWMNgbpAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxma\r\nWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.82S_GTO4_eOj0rfOcdRQ46FJB0J04rRkdsPG7s74gu4JCqeo92faldS9X9ri5Gocnw5WGBCaOYaMq0ha7ZVRCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in B, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSB.J_urYEIGUcWzph6X9qlozTkQa6PC8KwPEpEU0Pz9pV8vv9URIIMtKTCkfPDGQjOIMCzWndZcbvILPi1gWv35DQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in C, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSC.xKufTHtrJPhiE4h2l3Q-abYA9kpI2kj-oOzgAdxUH9qYBQ7SbyjfYRO2TSMXWco0zejCNPQan4R0grKLgEqoCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in D, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSD.envcW_f1Xyuoj1qbcjrZ0MppbZll33389kRShva3RqBC7C_cxf7kQJyEmUW7C4-UZ9pXHL0tDPHwg-dvFoRpDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 padded with =, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSA=.oHFL3sA65Rsncwx7wCHpmxqpRFIUOsNX3Pj91S0BPPBTabB8HIoDeSyHqj4F_voX3VHcMT5A_e16FeFXmEHdCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxma\nWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSA.kMenhuS70yjAWX5EPLT5FiqWQIB35TT5BBekKHdac5iwIp_K-GrqMDa944aE4YJptEn8IRCIOHcTwgA8Jj63Bw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxma\rWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSA.5kvmgG33EDN4DDJYjKBW1e-WqkTOwomRlaBEx-KEzELruTxFwbbMxVhVl_jti6BQlJUnMegHTNcXYnpOSM-FAA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxma\r\nWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSA.OmQNgQWEBUuC4PVW0op5CqZYBjiHSYDHNrDz-hy8HT9pU-qFx4CrKZsbO8Azfb8wtBOPPODKOquKDBIrtvppDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaW\nw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSAg.VgLx4umfJ9kAWB_HN1YputkiqslU3iy_jqtNY5qADmroNWKM2julsUUN_Kxxb4Zwa_lQ-pd1VYuqt1DlIKjsBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaW\rw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSAg.01MsJ_eKQLIcOCJxPahnmPLzTZgvy90frepY0XxQ15pgSOX3MCihR728oV-diSwKi75FlxVKK8Zi1I0W_U4MBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaW\r\nw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfSAg.T6Gx1fsAFfcA-1rK1lo_hyAksGXnTPJSkKB3_hxkkXsluI6SH0U_sYu_WbIQpTTOZeMcIcXiPcuHBGHDnWIvCA",
+        "expect" : "malformed"
+      } ]
+    }, {
+      "issued" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+      "expect" : "valid",
+      "respelled" : [ {
+        "name" : "part 2 ends in h",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBh",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in i",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBi",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in j",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBj",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in k",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBk",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in l",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBl",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in m",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBm",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in n",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBn",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in o",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBo",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in p",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBp",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in q",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBq",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in r",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBr",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in s",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBs",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in t",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBt",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in u",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBu",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 ends in v",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBv",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 padded with =",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg=",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 padded with ==",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg==",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 in the standard alphabet",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z+EicQ/Ygy4DgbXkLhihm3LRu0onbprq/uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 with a line feed inside",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhi\nhm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 with a carriage return inside",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhi\rhm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 with CRLF inside",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhi\r\nhm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 padded",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0=.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "a space before",
+        "value" : " eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "a space after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg ",
+        "expect" : "malformed"
+      }, {
+        "name" : "a tab after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg\t",
+        "expect" : "malformed"
+      }, {
+        "name" : "a line feed after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg\n",
+        "expect" : "malformed"
+      }, {
+        "name" : "CRLF after",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg\r\n",
+        "expect" : "malformed"
+      }, {
+        "name" : "CRLF before",
+        "value" : "\r\neyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "malformed"
+      } ],
+      "tampered" : [ {
+        "name" : "part 2: first bit flipped",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.TUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+        "expect" : "signature"
+      }, {
+        "name" : "part 2: last bit flipped",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBw",
+        "expect" : "signature"
+      }, {
+        "name" : "part 2: one byte shorter",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMv",
+        "expect" : "signature"
+      }, {
+        "name" : "one character shorter",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvB",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 2 emptied",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.",
+        "expect" : "signature"
+      }, {
+        "name" : "part 2 removed",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9",
+        "expect" : "malformed"
+      } ],
+      "resigned" : [ {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in 1, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn1.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.U4TXV_JQPaS0yRIoy-dr9zuDufh8sPP08rBHqJnuMesKnE94SlBaAH6NsHHAD1h4Hgrm6IhozWJKh5GPzCwHAA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in 2, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn2.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.1RS4J7kVanIjJI_cs2zkTlBFQrBlzKlc3BqZ1mZOS9KcMihGBeOM2tTYX_9Z1DHaIKHmEf1OYzrVHapmD96ABQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in 3, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn3.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.T9UegjLdeiQl6zUdoo98j9pLeBMiUfaH5FRYPXb3F35tm1RDJx4-zyKaTwIJ9r26hC6D_06yx0J7SW1shBE1DA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 padded with =, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0=.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.tIkSlF2QwrxHUPUqZShmGuymsvfK9MUTVSDeHR_fKxQiVoWwvLEh_iKKuNJvd-Czta9DGpGCFd3tI0Ba8gpuCw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImt\npZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.ikdSZnjZz4LBe2ozDoBb0qJeq0-1QEwq_EEjo9bq4SQ5aj36Wo339k4UEWueiFz236myNf5rl4N-00Zk5HHACQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImt\rpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.o60p2_ah-yQws2joHqlKhnnBpUlGPtDNfVzE5ekkxFlpi4ZMIONtwqEZrC8oqt3yaNdzQadKamLYjhx0vwWpCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImt\r\npZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.6ejlSeEIy6Cyq-C3kQ5bJlsv6YuCLpTaHDpZv5BrmWSPcPu_QZLomXrJsdUcSYlYaeAcfXzDnbO3xex4OHLxDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtp\nZCI6InRlc3QtMjAyNi1hIn0g.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.08XSdq_ydEDeiktVa1lNBWbveH7MpPuIptC7Qy7U4SxGggqoNauMC0jzLQs1V0zuuJCvHTGOs5rhVFPtCqNkCw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtp\rZCI6InRlc3QtMjAyNi1hIn0g.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.IEdH2czmNb6Ibndl1VtF-e9fBYB3CZuzJx46SjW0QpZ5xQ9EWTJLHgxguwjCvKHEIwvxIOKpJfwv8fFJB71BDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtp\r\nZCI6InRlc3QtMjAyNi1hIn0g.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.wZpui485A7_k2oiOlvl_2Ma9BZyqs9Iy8EaF9LbMNMvpmn-h8EAyxivjJGsef1RjAC6lFDZ0_QskFQeFuAdfCw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in B, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIB.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.mE6EETUDhhkgGeHYAEQ85ZGOy7AbdEPjSt0yCsjhUZPHJviSeNUg23Ip621_WRWKZV0ExndP3glUk4aPV-OVAg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in C, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIC.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.M8pSJZwYuDd5VtdnXpvNZ4aqUNIK8yRILdjWAqCKvfznaMZOEutUjLZEt8jCJAyxTZPEknMJSf3Gs1b_yDykDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in D, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gID.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.-Ct6IjX3tegMtYKheoSTrZPxMF4qTxtYlGYdgaIKGLkCPDTzKLjUCBWDCHGYiGH6r3aCTSxXI9ix8waXHNpBBg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in E, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIE.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.XBAJJ8mjQTTGh4-yhPWrreiFXo4ixxy1rDrySxbatr6uxU8sDm1esO6HPew0J92VQpxNKMYWhf-8XYmKGJGaAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in F, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIF.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.5nlf2RFaghaz-MnQ3kOSc8XNR5SDNKArr5Yit7aZxXrQPl8VoXtAE0Ylqr95QqWtG_IjofjVKsLbOY-kuTIRDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in G, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIG.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.V7ay3ojarh3hi-EtAu5Ei_Pg5_WCz00gacDE9nQif8mkbZl0PuRa0TkqdEuuBoTChEIAsidlW70IbO5of3tZDw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in H, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIH.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.bgJv-KvgcZW-0N2aSfR6W4SewL0hQ7sOGUg2a4OgcJQI7V4qiRGw8fEAhsQXNHnE4uBBNw8BsmysLH_X1f4KDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in I, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gII.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.gxXl3X1ijzxnRD2Z0Gq3cn6hVjb99Qw4NPLHVN5o-tzYQ7m0ytUlb_sQmgFVhQlLoVXh7aq-nTYkm2u8_owZCA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in J, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIJ.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.uMdLUC0x5b610Sm0pG72O1QTTPZX58JtRrbXgE7FiQh3pXFnDj42V2NZmg37vWq8c6SiS-qSbHLHgkWMzzNQAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in K, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIK.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.X-YBYxD2kXHhMN8C5oKb3ocQojBhMI6jmcHa9w9U7a1umUkkrw4nJBrJtTSRw-2nx1jkcKs6onAAm_IQlO4bDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in L, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIL.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.__-8TRbB0jpev_k7ilops-qOY8nvglMdzDG6e-dZDj0Isi6iFaYPPrbqr3INMw6-BRcoeCNLmaI1k5r3ZrKoAQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in M, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIM.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.2zr5MoF4PGdz9ihEAkf62B-skJIWNtK6UP4Rk4d-59MwZMYF9I8TjNF5KGtyPflnlLHOFChS2m3SVvFhbE3gCQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in N, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIN.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.KZsJWDLYERVc248veIA6qmkqbc9UXrcFzXfZYUelRcb58AHKcRf59dts9RoiUq173j70b73uzKcifO07YNasDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in O, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIO.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.6rhwmNsDX22Q1KBNPuWkvUk-2vjfwO9DFBgP2to3nccn48WUhbFYfMxFIrl0FSQoXI3UnwNcEa7wKyobeZuUAQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in P, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIP.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.3_2JkENaOTfbfdOSv3ao_Ff2woO6qu9Q4tmwIrLdV7YWPBC-xhIGxLdiNiFINRKfEntOe0TWGqgdCraXrbctBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 padded with ==, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0gIA==.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.lzFqAnvZoicpWv3m-v9PufYcufUM1gGqSx1TByvFfkWzXOgjL7191eiv5NqJjkQ9fi1rf_uML2N4PGi3RjVqCw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZ\nCI6InRlc3QtMjAyNi1hIn0gIA.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.sgx9vfM8ux22x4TB5N7B9mY9ja_CmBmszdo52nkod6ofAdhnLRRp7UtsOTPNLEMEZGDj-ofSxSM3Ut9icd1BDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZ\rCI6InRlc3QtMjAyNi1hIn0gIA.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.hYLL1RX_N-nWq1MtmwjxdgEmlmv9KJirG7ny0aoMA4twzRPL0L8rc6pnlCowpS1VDWDMzoKXJz0Re844k013BA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZ\r\nCI6InRlc3QtMjAyNi1hIn0gIA.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.0nlqdzhGoRkWMopoh4xvylcu2O0wDvDlN3KAe6VDdZWBxZQuz-Rbr4hHsIwOydgLOtPnV5Nk6Obz6deYxf39Bg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bG\nZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.uRexUN4f6HgovqIBvNPH9KLlie5WpX77VoLT2Tq6EwR8bG6rZdDT3J2HooCzdvcR7SFt2DNLQ48rTVJT8UvwAQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bG\rZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.3FhaqwW5hrU9qAzyYZgtCJCBmOMDRnBunwZcRakHnz0NlUGNEdud-xPVqH_mZVLnQo41FMT8c68rME8svzQvDg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 0 trailing spaces: part 1 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bG\r\nZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.XSZETZk1hL53zYfIUGK0dSsvl227Rat79VRaJjUzD4Cw6qlk3FyjwnJJVn2C385S7Yf5uBLSEVyxyU3gDJ-yCg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in B, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IB.nHOLf696gbH9lj26aR-8JzBzj9vWElxJ2fcw0mO7Jg3nl_z5jSK0hjAKFz1Qmkjih6nEPjEi4YQ9pzpH_t90BA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in C, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IC.ot3AYEUIXbcV3G3tmmyURFIcq_aa1DodIM2dU0wKzqlbUoEgozIoOX58wyzdpQozA1ItgSrCEZIwT9ESbVdvAg",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in D, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ID.SXcBjcS59IDXuRJ2IzSO8GYAs-5m-7-4ssj6I5-0oy4X9q2IbgKMmObFFjSUyk1wTpl-Qad6WPw10RC0KpHWAw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in E, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IE.1HnxTrMhxoD5IsQlf73TubrrtQ7GesYU9S0qgYvfKPSUaz5BcYFLXPED9y23GLMXxIFjpIxSfWLpVmr9foIwCQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in F, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IF.RpRRA-ngx6lP77WL8r-TeEKFZEc0Cj3ORwt280g1HnT1AiM4Bq7d4zQKuG72oPNDpDVuue6t1hSKHwCMFummBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in G, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IG.l2-cSDoAXNAIR2e00PCpYh3Z9AlZdL2lyj_YE0r-UlqJX9aiuEu6pcxSdU4jom_Auk4KBsZ8jrFEJr6hWDXbBA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in H, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IH.yPmdpGMk7in8VqeJOCLjlSbZyDWWw-wsCI_GaK26B2Qxh5pqVXihMRcf-oLoycW5KMgX50BAPdEYdznMXP_nDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in I, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9II.YG17VDSYcG_BehaXzI9r3AByFNBoLUIhXkElrqBkqmpGZkcxmK7LHIvDZ9ecXSi1nF4oK4DLvemV27LIxQrNBQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in J, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IJ.E88N5z_xFQccWSmuCKrKnpqmQsjm4ud_oPr7PQWahYInG6oTumVu0SziML_CANKs4VbyHi5rwa_vn24jeCz_CA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in K, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IK.wHheYpuoFQaBAMcdvI1x8NG_2aKtKmAcWPUIgZ_lG9lqAKPK7ww3lMc-IoqLhbZ_bL0sqsehzFNFSz5moC27Dw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in L, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IL.CFy-pTDZX6DSMrldVJBVyJxs1O38vD_z82xbj-68OJMnvGuB5vPp4r3IA7ldy1Gw7HiL_ArsynfzfQ5UQvYABA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in M, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IM.zdxyMLd_i7boRyUCfWG4DvkKn6XCajaMo3a4HCJr_0vtBEgmE6rO_j0sI6pb4lLqkV2W08Hcjo_JQKjT8xIUCw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in N, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IN.GtY76EHMNojKnVJUHWJYUdhsGewKHsiinskst_gvwJK4-WIRA3Nzskka0cBnQCHLQFKt-K1K7u0VJU6mP1hKBw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in O, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IO.WZ7hvZ5P916hpoSZMailvRMb9oN2mIGqvHQEvUv67lpbV3k_qJZ7L7YPk-YZCJ7NqH2nBnZu3LLxXo1WTml1DA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 ends in P, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IP.5uOXjxXcAloK5Kpz8i9p3SKn1OTF1zWlW332Cc-mvsXUAMdbsudy4bPGs5naI3OVeHiKaLGQz47n_H0oTXfzDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 padded with ==, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IA==.-LKqy9Kb4tl8PF5wKZZGT7aJQelFrj4C_o988K7210OF1-SemWyT9cJ_cHluUMk7rsp9ote1OzfIKWK-73-GDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZ\npbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IA.EY2gdmk1bvcD7dstzWDSg1b9LemY4V6Ql01gSXn4M9NGgVL8-QZp-hZLuJAk0JP7xv5skWOkJSaS9CBNCbraDQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZ\rpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IA.rMgxUbQvbcKH1Wp4vl2eHH1EpMpat8hv5Z88noFB5WOrT0M841i6-t2qKCk1tgw8g3-lRFsDOirovRBfIvh3Aw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 1 trailing spaces: part 1 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZ\r\npbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9IA.SL43zfrHCnH42s9CY8OfiYKedb8z6bPGt2aHlhHnsnhhvtSbb8mDYYKbfOJckhYA8Phup1bSjDCjejHizcfrDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 ends in B, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ICB.cqkJaXcPCgxWakxoBOi7OEPdcLYNfoVyYQbC9EEcwztFyRAo4Xu7C9XGtgcrR10XQI7ytcPN4J56eCpUbgh3Cw",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 ends in C, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ICC.m2pKTi0w7Cfe2d5TAnHA_TylSyame_YNILnDfR7vmJGGe7KEjY1D76vUWYSAEdYSagIkuQfcWY286AOzM0fKBA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 ends in D, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ICD.V0JexYN_NQ5tHlpQVkRBvOJN8OqI684hfguas6TBPxc0d5GvdrIUo5MBvupF-o77hCH3QSQVIn1kxdGoKO8RCA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 padded with =, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ICA=.83kpwwvn2x3o9CkQ81-0Tp30U75eXw_eQTI-DC3H_MvXT9phvLpP8CiN5keN4iLpv3WXRs19c4mxICnSmPoOBQ",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 with a line feed inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZ\npbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ICA.HFXBJLBggzPJGpxX98OugxiuMbws1oP2odyb6HnJBndD-OESoqEP4EzLvBz24ZGA7PCxVCSVx6gSyC0sCBaMDA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 with a carriage return inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZ\rpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ICA.uZLxlVDLN0pNkCVFnPBv-Z-Yt71KiS9o6sLBefsSaBGl5MO3SfnymKlTC_XDNe71sm6Q9VVHkJ73Tdu9wFy_AA",
+        "expect" : "malformed"
+      }, {
+        "name" : "part 1 with 2 trailing spaces: part 1 with CRLF inside, signed again",
+        "value" : "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZ\r\npbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9ICA.3iOXdPJzdiIbltHF7r9XOzWXFVmBnA6JVjOAWJHmy2P_GJ_5kRc5pqXBc_eC-7H7_RcN_ATC3pS-J4xbErMkCQ",
+        "expect" : "malformed"
+      } ]
+    } ]
+  },
+  "streamTokens" : {
+    "streamSecret" : "test-stream-secret-not-for-use-anywhere-0001",
+    "now" : 1794139200,
+    "cases" : [ {
+      "issued" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0",
+      "expect" : "valid",
+      "respelled" : [ {
+        "name" : "part 1 ends in 1",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz1",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 ends in 2",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz2",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 ends in 3",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz3",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 padded with =",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0=",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 padded with ==",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0==",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 in the standard alphabet",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr+T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 with a line feed inside",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhy\nzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 with a carriage return inside",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhy\rzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 with CRLF inside",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhy\r\nzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 padded",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ==.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a space before",
+        "value" : " eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a space after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0 ",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a tab after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0\t",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a line feed after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0\n",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "CRLF after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0\r\n",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "CRLF before",
+        "value" : "\r\neyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      } ],
+      "tampered" : [ {
+        "name" : "part 1: first bit flipped",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.yVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1: last bit flipped",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXzw",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1: one byte shorter",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXw",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "one character shorter",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 emptied",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 removed",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ",
+        "expect" : "STREAM_TOKEN_INVALID"
+      } ],
+      "resigned" : [ {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in R, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfR.eAsDvaPzFzOdzCQ2KZiXGlY1sadBBJQql4llDgNrdSg",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in S, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfS.5TAFpQ5ATUiHKfuCDzqTkSx1jSLZBIvSCIQnJaw4Vso",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in T, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfT.g2hoVNWla2TvBdkGUAOIGO2XU9-VoR9UzGB2t0H83QA",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in U, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfU.mcCjTR-OJlHZTwfmvGt-1zt2j1XCfNvlEf3st4AX4dc",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in V, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfV.tfh9peWEB9FvOYRSAFvpz_crSeYvZi2T3i71Zms_WNk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in W, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfW.7hTp6hl_BpmX5UqaC5_aoDQHqbNx26onxzrvYQHGCLg",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in X, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfX.pLprSM0duPTlu0YheL3zET7PBKbX296OkQLfkn6i0dQ",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in Y, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfY.n5b_xGgJdJaACUroS5wxhh0WsFai9OqnM43z4hgWl_E",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in Z, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfZ.FUxq8m96ROLZxrLPstirPRVmN3Bm24ebSiAz5e7K0FY",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in a, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfa.9mGsfBL66KCg137U4-SfPEBBUY_-6ybLmye4Ifm9NCk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in b, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfb.5fc5T60qI621P0RylN3eFFWMVHgWWVNhID36_pGxJDE",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in c, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfc.wLTKYlD3hSD4aqEjNPvhr1pjGUlDxKK1DqSaPFao1z4",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in d, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfd.QlgaIOsLIY1WWerUSTRCu3h8CsHomkJI7Q35B7RdUcM",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in e, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfe.zFqasmj84VC-lXz-nJsh5rmGvokNzseM41LWgxdjfJs",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 ends in f, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwff.ATXRcp8s9vCK47H1Vkn-0fG3z41aCzdFCgT6Zfo0xWc",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 padded with ==, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ==.2Wg8X17827cJQwjv5qke_HBkn56jD1vo7SBMzfg0zhY",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOls\niZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.Gjj5t_sdcP3AVIA5Cqe6965H_si6ap2BOy4CPih6JBs",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOls\riZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.cRz7eFyzkmp4Pz71VFIANV7woDuoSPUdEfnQfu8y6jo",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOls\r\niZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.J5DUVYROQTKDHb1Jz-JoXj7yd4xLKNbpyW9iDQHElZc",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in B, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSB.SpZtVqO9VNEopaQdWjsypYF0zO62Lviz8T2Vi2hY2j8",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in C, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSC.cSARautVbkEy_r8cl4lp_6nFzxtKNzRQ1Ero48LfRT4",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in D, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSD.M-lJcDDpDx9gs0YepgGOdqoztb_D-x6Er8gX7M0Wlrs",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 padded with =, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSA=.eIh3Scpyzl59_GuZytfb1yoZkFm5mKhiS3mOs2HFT4Q",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOls\niZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSA.mOD3LW6N_cn-W9c0MxyyiPoFuLMh9sJ83a3-VNqhE-A",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOls\riZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSA.qtdh2O5l7ThwzCLVuiEwWGKJBP94nroCyJsoDpifUqc",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOls\r\niZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSA.sc01lNVn_yXUVX-3b-HcrdjjLQKokRl00WggLeMjVxE",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsi\nZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSAg.m5mdq6x9qTNS5mfpj5emU8blHf0TrC1AAP9kPYfiGjc",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsi\rZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSAg.pkkClDN8f6D_THvzoBMZJndXNuyF4oY4Sdgsl8Ee4hQ",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsi\r\nZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfSAg.zGtfrbVa1righQdzqtwm3w7DgaiduViRrVwf3ID8ElI",
+        "expect" : "STREAM_TOKEN_INVALID"
+      } ]
+    }, {
+      "issued" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk",
+      "expect" : "valid",
+      "respelled" : [ {
+        "name" : "part 1 ends in l",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezl",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 ends in m",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezm",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 ends in n",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezn",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 padded with =",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk=",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 padded with ==",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk==",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 in the standard alphabet",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA/4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 with a line feed inside",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSF\nQpjPiBXNOCEIL4TwU42Ezk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 with a carriage return inside",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSF\rQpjPiBXNOCEIL4TwU42Ezk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 with CRLF inside",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSF\r\nQpjPiBXNOCEIL4TwU42Ezk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a space before",
+        "value" : " eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a space after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk ",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a tab after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk\t",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "a line feed after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk\n",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "CRLF after",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk\r\n",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "CRLF before",
+        "value" : "\r\neyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      } ],
+      "tampered" : [ {
+        "name" : "part 1: first bit flipped",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.gA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1: last bit flipped",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezg",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1: one byte shorter",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ew",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "one character shorter",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ez",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 emptied",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 1 removed",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9",
+        "expect" : "STREAM_TOKEN_INVALID"
+      } ],
+      "resigned" : [ {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVs\nZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.1FN5R84d-fWqJe1ahUa3fpoEQ43X5zq3fku2Dw0Gd7E",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVs\rZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.9GmVoe_Z27Mo84THd-Dm6TXFg8nE_AoedGHxrvm5_zA",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 0 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVs\r\nZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.R5TE4tJGvExac_fd-Ay6QvXjNsY-AtJpMUTm2628SrE",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in B, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IB.FGO4CkKVDOkJvxGtLDz8raW1DU16G60tygTww6piL-A",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in C, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IC.oYl1csB9SC8Ev4pDLv_xTTigd5H_GXC9Kyppr9MBAfU",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in D, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ID.yITpqoh1OhHyxeJlG6DMlyPrrsFLsSpXNY7yyHRuICk",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in E, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IE.TLw9ebGLVvQezEKJhtlB0dU3FiZIGwhJwmDJlvNWoMo",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in F, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IF.tk2mUSFSLB24txVHvyoQMKTlSnjGXGaDCDAAqu4PV4I",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in G, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IG.Vr-aV8oD2_yZcPtt75lRqecoUKSK7TudbqWV8x4UlME",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in H, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IH.vL5xOy89ODBaAa0lTs2WWc0LYJISbdbK84natUAXrsU",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in I, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9II.1dFPwgtwSR6hZPBQuaKvFMt4PyRAQ70XqQAV0cFPMNo",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in J, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IJ.kaGR7UxJ2TSTCD2e5b4IFXd_1ZQLT--tij3KAp47010",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in K, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IK.JgvbhciafvJoIWpi3cuKsjS0fokOfvcgl8Q0yDAcWi4",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in L, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IL._cOU7imukKEluKFyotAm0rSDPapuBKRUjTRXyE7jmR4",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in M, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IM.bbOF9qRKbN8ZjksD7nDA2gUiddkgTj1frnLZyqpTEjQ",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in N, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IN.8kdqMsrMV8hrv-vQpx9p9jOLMPiSOnBrIihhw13slic",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in O, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IO.LuVrQ8UySpjmVBte4AcD7UoHjuCvZfhrBdonhhfCECs",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 ends in P, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IP.N1QFXX4PcQ_vt7czvX_VC97XJDdcx7HqxY9fhX8WFk4",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 padded with ==, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IA==.U1kvOUy00KJCOx6hQ2euA3pYYKC1Bo-EtR6wXhgDdMc",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZ\nmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IA.uAH6c4yAci5j4K2qRoPvkcwGKEFmi7ILXdbgFUOzPOQ",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZ\rmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IA.zuKfJNKjIRCSTj7MbAfB7VHcY4FbeFC7KHdU0Z9vlLY",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 1 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZ\r\nmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9IA.9vwlHhmLd9YszSnvlJgCx6nXXug_kRcuXa_8w6H1dA8",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in B, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ICB.zLbka_-pckzvmU6Lonh2RprH8z-ia0JcYUvE-jbHYeY",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in C, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ICC.6x_vuEGEp5jdjlXzDgNwFrPBkWJFE5OZ2A-vHI97i80",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 ends in D, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ICD.XKGcfbxKXSWNR2vQT2MfjsmjdPZfVqYbZQTklW712tM",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 padded with =, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ICA=.IH_D3ltLDSUBO-RhYJGNSKdlXAtbSjZNxJDNnQVtUmg",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a line feed inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZ\nmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ICA.yihpuStPn5ZdXQ8Emz7PB_fkKYuhDnPcEeWmSvUgjKY",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with a carriage return inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZ\rmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ICA.IL_OpJNmGMiEMNMzMCVhIZJQJB9ne42TILCROU_yEDY",
+        "expect" : "STREAM_TOKEN_INVALID"
+      }, {
+        "name" : "part 0 with 2 trailing spaces: part 0 with CRLF inside, signed again",
+        "value" : "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZ\r\nmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9ICA.efaPQ6nKJw3MfdWvd8-s0-Se05xB5Tk3tqO-z5QgdKc",
+        "expect" : "STREAM_TOKEN_INVALID"
+      } ]
+    } ]
+  }
+}

@@ -1,5 +1,6 @@
 package io.flowcatalyst.framework.push;
 
+import io.flowcatalyst.framework.auth.Base64Url;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -30,7 +31,6 @@ final class StreamTokens {
   private static final String MAC_CONTEXT = "fw-push-stream:";
   private static final ObjectMapper MAPPER = JsonMapper.builder().build();
   private static final Base64.Encoder B64 = Base64.getUrlEncoder().withoutPadding();
-  private static final Base64.Decoder B64D = Base64.getUrlDecoder();
 
   /** The token's claims. */
   record Claims(Subscription subscription, long exp) {}
@@ -89,17 +89,17 @@ final class StreamTokens {
       return new Refused(CODE_INVALID);
     }
     String payload = token.substring(0, dot);
-    byte[] got;
-    try {
-      got = B64D.decode(token.substring(dot + 1));
-    } catch (IllegalArgumentException e) {
+    // both parts in their canonical spelling only (token-spelling contract)
+    byte[] got = Base64Url.decode(token.substring(dot + 1));
+    if (got == null || !MessageDigest.isEqual(got, mac(payload))) {
       return new Refused(CODE_INVALID);
     }
-    if (!MessageDigest.isEqual(got, mac(payload))) {
+    byte[] claims = Base64Url.decode(payload);
+    if (claims == null) {
       return new Refused(CODE_INVALID);
     }
     try {
-      JsonNode node = MAPPER.readTree(B64D.decode(payload));
+      JsonNode node = MAPPER.readTree(claims);
       if (node == null
           || !node.isObject()
           || node.path("v").asInt(0) != 1

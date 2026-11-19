@@ -53,13 +53,8 @@ final class FieldNonces {
     if (nonce == null || nonce.length() > 64) {
       return false;
     }
-    byte[] raw;
-    try {
-      raw = Base64.getUrlDecoder().decode(nonce);
-    } catch (IllegalArgumentException e) {
-      return false;
-    }
-    if (raw.length != 8 + MAC_BYTES) {
+    byte[] raw = Base64Url.decode(nonce); // its canonical spelling only (token-spelling contract)
+    if (raw == null || raw.length != 8 + MAC_BYTES) {
       return false;
     }
     byte[] bucketBytes = Arrays.copyOfRange(raw, 0, 8);

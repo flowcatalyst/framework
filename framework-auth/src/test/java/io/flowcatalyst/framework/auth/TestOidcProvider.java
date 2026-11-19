@@ -78,6 +78,7 @@ public final class TestOidcProvider implements AutoCloseable {
   private volatile Map<String, Object> idTokenHeaderChanges = Map.of();
   private volatile Map<String, Object> discoveryChanges = Map.of();
   private volatile Signing signing = Signing.NORMAL;
+  private volatile java.util.function.UnaryOperator<String> idTokenText = java.util.function.UnaryOperator.identity();
   private volatile String authorizeError = "";
   private volatile int tokenStatus = 200;
   private volatile Map<String, String> lastTokenForm = Map.of();
@@ -166,6 +167,16 @@ public final class TestOidcProvider implements AutoCloseable {
    */
   public void idTokenSigning(Signing value) {
     signing = value;
+  }
+
+  /**
+   * Rewrites the text of the next id_tokens after signing (a re-spelling, say: token-spelling
+   * contract).
+   *
+   * @param rewrite from the signed token to the token sent
+   */
+  public void idTokenText(java.util.function.UnaryOperator<String> rewrite) {
+    idTokenText = rewrite;
   }
 
   /**
@@ -480,7 +491,7 @@ public final class TestOidcProvider implements AutoCloseable {
     apply(claims, idTokenChanges);
     Map<String, Object> header = header();
     apply(header, idTokenHeaderChanges);
-    String idToken = sign(header, claims, signing);
+    String idToken = idTokenText.apply(sign(header, claims, signing));
     Map<String, Object> access = new LinkedHashMap<>(user);
     access.put("iss", issuer().toString());
     access.put("aud", issuer().toString());

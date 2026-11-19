@@ -1,4 +1,4 @@
-<!-- types: AuthModule, AuthDatabaseModule, DatabaseSessionStore, RedisSessionStore, SessionStore, MemorySessionStore, CookieSessionStore, CookieKeys, SessionHandles, SessionStoreException, PlatformTokens, TokenResult, AccessToken, Principal, PrincipalKind, Authenticated, Auth, Sessions, AuthContextResolver, PermissionMapper, ClientSelector, ReturnToPolicy, LoginFailureHandler, LoginFailure, CsrfGuard, AuthTesting, TestOidcProvider, Context, ContextResolver, RouteOptions -->
+<!-- types: AuthModule, AuthDatabaseModule, DatabaseSessionStore, RedisSessionStore, SessionStore, MemorySessionStore, CookieSessionStore, CookieKeys, Base64Url, SessionHandles, SessionStoreException, PlatformTokens, TokenResult, AccessToken, Principal, PrincipalKind, Authenticated, Auth, Sessions, AuthContextResolver, PermissionMapper, ClientSelector, ReturnToPolicy, LoginFailureHandler, LoginFailure, CsrfGuard, AuthTesting, TestOidcProvider, Context, ContextResolver, RouteOptions -->
 # Sessions and login
 
 Your application signs people in through the FlowCatalyst platform and keeps them signed in with a
@@ -227,6 +227,32 @@ network unprotected. In a local or test environment build the verifier with
 `PlatformTokens.createAllowingPlainHttp(issuer, timeout, clock)`; the call site is the opt-in.
 (`AuthModule` itself allows `http` only when `APP_ENV` is `local` or `test`.)
 
+## Token spelling
+
+Since 2026-11-19 a token verifies only in the spelling it was issued in
+([token spelling contract](../contracts/token-spelling.md)). Each base64url part must be
+**canonical**: the URL-safe alphabet only, no `=` padding, no `+` or `/`, no whitespace or line
+break anywhere, and the spare bits of the last character zero (so no other last character that
+decodes to the same bytes). That applies to bearer access tokens and id_tokens (a header that is
+not canonical is `malformed`, a signature `signature`), field tokens, DPoP proofs and their key's `x`
+and `y` (`invalid_proof`), application nonces, sealed session cookies (they do not open), push
+tickets (`400`) and stream tokens (`401 STREAM_TOKEN_INVALID`). The verifiers take the value as
+received and never trim it; the HTTP layer has already removed the whitespace around a header value.
+
+**What changes for an application: nothing the platform or the framework issued.** Their encoders
+write canonical base64url, so a token, cookie, nonce, ticket or stream token issued before the change
+keeps verifying after it (the vectors `conformance/auth/issued-before.json` and
+`conformance/push/issued-before.json` hold values the code issued before, and both implementations
+accept them). What is refused now is only a value someone re-spelled on its way (a client that pads,
+a proxy that re-wraps a header, a test that builds a token by hand with the standard alphabet), or
+one from a signer of your own on an encoder that pads or leaves spare bits set: a DPoP signer or a
+push-ticket minter must use `Base64.getUrlEncoder().withoutPadding()` (or `Base64Url.encode`).
+`Base64Url.decode` and `Base64Url.isCanonical` are the framework's own check, public for an
+application that verifies a value of its own the same way.
+
+No third party's token is verified by the framework: the id_token is the platform's (the platform
+federates the external identity providers), so it is strict too.
+
 ## CSRF
 
 A request with an unsafe method (`POST`, `PUT`, `PATCH`, `DELETE`) that is authenticated by the
@@ -342,6 +368,7 @@ TestOidcProvider provider = TestOidcProvider.start(clock);
 provider.client("app-client", "", "https://app.example/auth/callback");
 String token = provider.accessToken(Map.of("sub", "prn_SVC", "scope", "orders:thing:create"));
 provider.idTokenSigning(TestOidcProvider.Signing.NONE);        // and other ways to misbehave
+provider.idTokenText(signed -> signed + "=");                    // send the next id_tokens re-spelled
 provider.down(true);
 ```
 

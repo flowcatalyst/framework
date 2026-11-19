@@ -1,0 +1,49 @@
+{
+  "description": "Push tickets and stream tokens the framework's Go and Java code issued at commit 2360d29, before the token-spelling contract (docs/contracts/token-spelling.md, section 6). A FIXTURE, written once and never regenerated: every implementation must still accept each value. Go and Java issued byte-identical values (EdDSA and HMAC are deterministic and both write the claims in the same order). The code of 2360d29 was run again in a throwaway worktree on 2026-11-19: the Go code reproduced all four values byte for byte, and the Java verifiers of 2360d29 accept them. The keys are the TEST KEYS of tickets.json (current test-2026-a, previous test-2025-z) and streamSecret is push.stream.secret (a TEST SECRET): never configure them anywhere real.",
+  "howToRun": "Tickets: build the ticket keys from tickets.json 'keys' (current, previous) and check each ticket for application 'fulfil' at 'now' with maxLifetimeSeconds 3600 and no proof key: each is valid, for 'client' and 'principal' ('' when it names none). Stream tokens: verify each with streamSecret at 'now': valid, with the claims given.",
+  "application": "fulfil",
+  "now": 1794139200,
+  "maxLifetimeSeconds": 3600,
+  "streamSecret": "test-stream-secret-not-for-use-anywhere-0001",
+  "tickets": [
+    {
+      "issuedBy": "go@2360d29 and java@2360d29",
+      "ticket": "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6e2lkfSJdLCJzdWIiOiJwcm5fMSIsImlhdCI6MTc5NDEzOTE5MCwiZXhwIjoxNzk0MTM5MzEwfQ.YDJmXlbuAfhuZeFGv70YLIjmTkZ8q5RTiq2eH5NhMfJL7bki5_dBW_vMVCuzYo9tNkjHiThfMWltH_EYZlD8CQ",
+      "client": "acme",
+      "principal": "prn_1"
+    },
+    {
+      "issuedBy": "go@2360d29 and java@2360d29",
+      "ticket": "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QtMjAyNi1hIn0.eyJpc3MiOiJmdWxmaWwiLCJhdWQiOiJmdy1wdXNoIiwiY2xpZW50IjoiYWNtZSIsInRvcGljcyI6WyJmdWxmaWw6b3JkZXI6MSIsImZ1bGZpbDpzdG9yZTp7aWR9OmRvY2siXSwiaWF0IjoxNzk0MTM5MTkwLCJleHAiOjE3OTQxMzkzMTAsInN0cmVhbS1leHAiOjE3OTQxNDEwMDB9.zUIkci8wUzne0RgaNOOu7jz7Z-EicQ_Ygy4DgbXkLhihm3LRu0onbprq_uOq8BUfVR0PpK4sGHnsu1Bx3tMvBg",
+      "client": "acme",
+      "principal": ""
+    }
+  ],
+  "streamTokens": [
+    {
+      "issuedBy": "go@2360d29 and java@2360d29",
+      "token": "eyJ2IjoxLCJjIjoiYWNtZSIsInAiOiJwcm5fMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiXSwiZXhwIjoxNzk0MTQyODAwfQ.SVYOyFQr-T4wsb4Kr4rhyzZIGYorTGAqwVwNB1rkXz0",
+      "client": "acme",
+      "principal": "prn_1",
+      "device": "",
+      "session": "",
+      "topics": [
+        "fulfil:order:1"
+      ],
+      "exp": 1794142800
+    },
+    {
+      "issuedBy": "go@2360d29 and java@2360d29",
+      "token": "eyJ2IjoxLCJjIjoiYWNtZSIsImQiOiJmd2RfMSIsInMiOiJmd3NfMSIsInQiOlsiZnVsZmlsOm9yZGVyOjEiLCJmdWxmaWw6dXNlcjpwcm5fMSJdLCJleHAiOjE3OTQxNDI4MDB9.AA_4eHu7eLTetZX1mtMSFQpjPiBXNOCEIL4TwU42Ezk",
+      "client": "acme",
+      "principal": "",
+      "device": "fwd_1",
+      "session": "fws_1",
+      "topics": [
+        "fulfil:order:1",
+        "fulfil:user:prn_1"
+      ],
+      "exp": 1794142800
+    }
+  ]
+}

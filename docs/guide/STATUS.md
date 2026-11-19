@@ -1,7 +1,7 @@
 <!-- types: AdminModule, AdminSection, AppBuilder, InstanceFactory, ContextResolver, OutboxWriter, FlowCatalystModule, JettyHttpModule, Secret, LockStore, Routes, Spa, Csp, SpaTesting, Operation, OpenApi, OpenApiTesting, DeclarationCommand, Pushes, PushModule -->
 # Status
 
-Last verified against commit 148b894 (2026-11-18). `verify.sh` fails if that commit is not an
+Last verified against commit b0775db (2026-11-19). `verify.sh` fails if that commit is not an
 ancestor of `HEAD`; update this line, and the pages it affects, in the same commit as any change to
 public API or behaviour.
 
@@ -146,6 +146,21 @@ row of `implementation-plan.md`) or a milestone.
   never allows credentials: no credentialed cross-origin request is ever allowed (deliberate, for
   sessions).
 - **Sessions over plain http** only when `APP_ENV` is `local` or `test` (start-up fails otherwise).
+- **A signed or sealed value verifies only in the spelling it was issued in** (2026-11-19, owner's
+  ruling: strict for what the framework and the platform issue, lenient for a third party's;
+  [token spelling contract](../contracts/token-spelling.md)). Bearer access tokens, id_tokens, field
+  tokens, DPoP proofs and their key, application nonces, sealed cookies, push tickets and stream
+  tokens must be canonical base64url (no `=`, `+`, `/`, whitespace or line break, no other last
+  character for the same bytes), in Java (`Base64Url`) and Go (`internal/b64url`); the DPoP proof
+  is no longer trimmed. Nothing the platform or the framework issued is affected, and values issued
+  before the change still verify (`conformance/*/issued-before.json`, produced by the code of commit
+  2360d29 and opened or verified by Java and Go); the vectors `conformance/*/spelling.json` also hold
+  headers and payloads re-spelled and signed again, which a lenient verifier accepts; only a re-spelled value, or
+  a signer of one's own on a padding or lenient encoder, is refused
+  ([migration note](sessions-and-login.md#token-spelling)). The framework verifies no third-party
+  token. Left as they were: the platform JWKS members `n` and `e`, the `auth.cookie-keys` and
+  `push.ticket.key` settings, and the FlowCatalyst receivers' hex signature, which both languages
+  lowercase before comparing (a second spelling the ruling does not cover).
 - **Not verified against a real platform or a real browser.** The login flow is tested against a
   test identity provider over real HTTP, and one test runs it over Jetty with the JDK's client and
   cookie manager; no run against the FlowCatalyst platform or a browser has been made.

@@ -1,0 +1,79 @@
+{
+  "description": "Values the framework's Go and Java code issued at commit 2360d29, before the token-spelling contract (docs/contracts/token-spelling.md, section 6), regenerated from that commit's own sealing and nonce code in a throwaway worktree on 2026-11-19 (the sealed cookies carry a random IV, so they are new values; the nonces are deterministic and came out identical to the ones first written). A FIXTURE, written once and never regenerated: every implementation must still accept each value, which shows that a value issued before the rule verifies after it (a browser holds its sealed cookie across a deploy). cookieKeys is auth.cookie-keys (a TEST KEY, published on purpose: never configure it anywhere real). sealedCookies: values sealed by the cookie driver (sessions contract 6.5) for 'kind', which open to 'plaintext' (UTF-8); their lengths give each residue mod 4 of the sealed part, so each count of spare bits. fieldNonces: application nonces (15.4) issued at 'now' (Go and Java issue the same nonce for the same key and time).",
+  "howToRun": "Parse cookieKeys as auth.cookie-keys. Each sealed value opens for its kind to its plaintext; each nonce is valid at its now. Produced by a throwaway test in a detached worktree of 2360d29 (Go go/auth CookieKeys.seal and fieldNonces.issue, Java CookieKeys.seal and FieldNonces.issue), never by the code of this change.",
+  "cookieKeys": "test1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "sealedCookies": [
+    {
+      "issuedBy": "go@2360d29",
+      "kind": "session",
+      "plaintext": "twenty-bytes-of-text",
+      "value": "v1.test1.uHrKZ4sML4TMgYTdfWF0RwHlxcbRbXjvNz147P2FS4us0S-pp5VWihdh5IjHHxpK"
+    },
+    {
+      "issuedBy": "go@2360d29",
+      "kind": "session",
+      "plaintext": "twenty-one-bytes-text",
+      "value": "v1.test1.4GnlfKT6IjVLGu72hfO61GjvjjqdUIrJectR68m_9HdO597bvb_qik-SLZBfr0qN0Q"
+    },
+    {
+      "issuedBy": "go@2360d29",
+      "kind": "session",
+      "plaintext": "twenty-two-bytes-text!",
+      "value": "v1.test1.y_JJwZCBDu1GLOcbQ3yu-KU56bpMxwp4sU6lWLIcWVcsbTt3tn438Irwnr-ouP0PHO4"
+    },
+    {
+      "issuedBy": "go@2360d29",
+      "kind": "login",
+      "plaintext": "{\"state\":\"s-1\",\"nonce\":\"n-1\",\"verifier\":\"v-1\",\"returnTo\":\"/orders\"}",
+      "value": "v1.test1.fXPfcZNbazb4ckrM_Roq7KZSObxlA7VNFKxh_gcM6TJz5qC502jcPKdDKYLlxiIRZrGSuVCWWXuZ9u2ZvGRkXYYyq5-_VSdTP-gxuMsn2dzOlSYt6-YsRQC7XSASC_o"
+    },
+    {
+      "issuedBy": "go@2360d29",
+      "kind": "session",
+      "plaintext": "{\"principal\":\"prn_0ABC\",\"clients\":[\"*\"],\"createdAt\":1794139200}",
+      "value": "v1.test1.QaVGTeH6cViVSfzVXh2c0p4gcDXWzYp_q7w2R2HdvQcE9wGKHDa9bGEp1mTK3Cg5eTTdAogLIEVwBkKvoN0NVxW2Cdw31GjFLBOt6AWL_7oyxconCTzZzEu93g"
+    },
+    {
+      "issuedBy": "java@2360d29",
+      "kind": "session",
+      "plaintext": "twenty-bytes-of-text",
+      "value": "v1.test1.i4JcD7IDB_yNl7YcC5H3HOlECLmDzlJIivIBHCHI4ofOIyT3oQC-c2DKNkm6l150"
+    },
+    {
+      "issuedBy": "java@2360d29",
+      "kind": "session",
+      "plaintext": "twenty-one-bytes-text",
+      "value": "v1.test1.wFGYwpGrVRmZWo4QIpayteDjT28q4YRimmegIUZtv1j0yE9U142NZ62Tora__oJI9g"
+    },
+    {
+      "issuedBy": "java@2360d29",
+      "kind": "session",
+      "plaintext": "twenty-two-bytes-text!",
+      "value": "v1.test1.vSeSxes1tO-nOEk6_sAMnoOtVfMucgihDXgjB_o-XeRMtQdOmoBTCuK135AKVkLEgho"
+    },
+    {
+      "issuedBy": "java@2360d29",
+      "kind": "login",
+      "plaintext": "{\"state\":\"s-1\",\"nonce\":\"n-1\",\"verifier\":\"v-1\",\"returnTo\":\"/orders\"}",
+      "value": "v1.test1.CeRDyAsP5T8ognrRZNitqiRVLBeu8-_Bwvso2HefIeCKgtekILRYY87BMD_tosvrC7Yxr0BNBnru60C9pirWr0wwU7HBbkIlpXZkgmalsnbpGQ7ry2X02NO7m_vkWmA"
+    },
+    {
+      "issuedBy": "java@2360d29",
+      "kind": "session",
+      "plaintext": "{\"principal\":\"prn_0ABC\",\"clients\":[\"*\"],\"createdAt\":1794139200}",
+      "value": "v1.test1.wrH0WjozYCMZUEOxSXYUDVw8u1wnP_N7dg1y4UhYCNTH-2O5mYMtPXlUA2-JY67JlynH5xTPUbAJi_phcSBRiGICVemS53WJKEODRoFfRwL9Pv-1GwxtZD5o5w"
+    }
+  ],
+  "fieldNonces": [
+    {
+      "issuedBy": "go@2360d29 and java@2360d29",
+      "now": "2026-11-19T10:00:00Z",
+      "nonce": "AAAAAABbTXi-SRFyCl6Dwi9yZ0ow2sf1"
+    },
+    {
+      "issuedBy": "go@2360d29 and java@2360d29",
+      "now": "2026-11-19T10:05:00Z",
+      "nonce": "AAAAAABbTXndOg5FazYxHETSNLm78WCb"
+    }
+  ]
+}

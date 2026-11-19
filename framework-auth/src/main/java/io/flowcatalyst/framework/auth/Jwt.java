@@ -7,7 +7,6 @@ import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
@@ -162,14 +161,8 @@ final class Jwt {
     }
   }
 
+  /** A part in its canonical spelling only (token-spelling contract): else null. */
   private static byte @Nullable [] decode(String part) {
-    if (part.indexOf('=') >= 0) {
-      return null;
-    }
-    try {
-      return Base64.getUrlDecoder().decode(part);
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
+    return Base64Url.decode(part);
   }
 }

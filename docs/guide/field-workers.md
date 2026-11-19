@@ -48,6 +48,13 @@ Any refusal is `401 UNAUTHENTICATED` with `WWW-Authenticate: DPoP error="invalid
 is logged at debug level. There is no fall-back to the session cookie, and CSRF does not apply (as for
 bearer tokens). A key set that cannot be read is `503 UNAVAILABLE`.
 
+Since 2026-11-19 the token, the proof and the proof key's `x` and `y` verify only in the spelling
+they were issued in: canonical base64url, no padding, standard alphabet, whitespace or line break,
+and no other last character for the same bytes ([token spelling](sessions-and-login.md#token-spelling)).
+The `DPoP` header value is checked as received, no longer trimmed. The field libraries'
+encoders are canonical, so a device built on them is not affected; a DPoP signer of your own must
+encode with an unpadded URL-safe encoder.
+
 ### Nonces
 
 Field devices keep bad time, so a proof's `iat` is accepted within 24 hours of your clock and

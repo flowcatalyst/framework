@@ -82,8 +82,10 @@ final class FieldVerifier {
     if (proofs.size() > 1) {
       return new Outcome.Refused("invalid_proof");
     }
+    // the proof as received, never trimmed (token-spelling contract): the HTTP layer has already
+    // dropped the whitespace around the header value
     FieldProofs.Checked checked =
-        FieldProofs.verify(proofs.getFirst().trim(), token, valid.jkt(), method, publicBase + path, clock.instant(), proofWindow);
+        FieldProofs.verify(proofs.getFirst(), token, valid.jkt(), method, publicBase + path, clock.instant(), proofWindow);
     FieldProofs.Checked.Ok proof;
     switch (checked) {
       case FieldProofs.Checked.Refused r -> {

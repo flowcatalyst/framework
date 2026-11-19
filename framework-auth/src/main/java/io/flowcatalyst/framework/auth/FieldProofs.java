@@ -230,14 +230,8 @@ final class FieldProofs {
     }
   }
 
+  /** A part, or a {@code jwk} coordinate, in its canonical spelling only (token-spelling contract): else null. */
   private static byte @Nullable [] decode(@Nullable String part) {
-    if (part == null || part.indexOf('=') >= 0) {
-      return null;
-    }
-    try {
-      return Base64.getUrlDecoder().decode(part);
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
+    return Base64Url.decode(part);
   }
 }
