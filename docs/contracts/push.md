@@ -192,6 +192,8 @@ topics, the stream's client, the principal (when there is one) and the expiry. T
 earliest of the credential's expiry (session, access token), every ticket's `stream-exp`, and
 `push.stream.max-lifetime` (default 1 h). The token is signed by the host with `push.stream.secret`
 (HMAC-SHA256), which every instance of the host shares. It is a capability to listen, nothing else.
+*Amended 2026-11-19 ([token spelling](token-spelling.md)):* both parts of a stream token are canonical
+base64url, else `401 STREAM_TOKEN_INVALID`.
 
 **6.2 Listen.** `GET {base}/push/stream?st=<streamToken>`, with `Last-Event-ID` (header, or
 `lastEventId` in the query) when resuming. This works from a browser `EventSource`, which cannot set
@@ -258,6 +260,9 @@ current and the previous key during a rotation. A ticket from another applicatio
 signature, an unknown `kid`, an expired `exp` or a topic outside `iss` grants nothing (the topic is
 denied with `TICKET_INVALID`). Tickets from several applications in one request are each checked
 against their own issuer's keys; an application host knows only its own (section 12 for A4).
+*Amended 2026-11-19 ([token spelling](token-spelling.md)):* the three parts of a ticket are canonical
+base64url; a ticket that is not is malformed (`400 VALIDATION`, amendment 17.6). A ticket minter of
+an SDK of one's own must use a standard unpadded base64url encoder.
 
 ## 7. Reconnecting, resets and expiry
 
@@ -424,6 +429,10 @@ In `conformance/push/`, shared by Go and Java (and later Rust and the gateway):
 - `wire.json`: the exact bytes of a push event, `subscribed`, `reset` and `auth-expired`.
 - `replay.json`: a log (ids, topics, clients) plus a subscription and a `Last-Event-ID`. Expected:
   the ids sent, or a `reset` with its reason, covering the client rule of section 5.
+- `spelling.json` (2026-11-19, written by Java): tickets and stream tokens as issued and re-spelled
+  every way, with the answer each gets; `issued-before.json`: tickets and stream tokens the Go and
+  Java code issued before the spelling rule, which must still verify ([token
+  spelling](token-spelling.md)).
 
 ## 14. Tests (contract test suite, each driver)
 

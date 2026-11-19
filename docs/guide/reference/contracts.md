@@ -31,6 +31,7 @@ end of [STATUS](../STATUS.md#where-the-guide-and-the-contracts-can-differ).
 | [Rust build](../../contracts/rust-build.md) | the Rust workspace: toolchain, crates and features, lints, supply chain, CI | [The Rust framework](../rust/index.md) |
 | [FlowCatalyst module](../../contracts/flowcatalyst.md) | the platform client, definition sync, outbox delivery stance, receivers | [The FlowCatalyst module](../flowcatalyst-module.md), [Receivers](../receivers.md) |
 | [push to clients](../../contracts/push.md) (draft) | server-sent push: topics, the push outbox and relay, the Postgres and Redis logs, subscribe and listen, rules and tickets, resets, backpressure, the A4 gateway sketch | — |
+| [token spelling](../../contracts/token-spelling.md) | the one spelling a signed or sealed value verifies in: canonical base64url for platform and field tokens, id_tokens, DPoP proofs, application nonces, sealed cookies, push tickets and stream tokens; a third party's token exempt; vectors in `conformance/auth/spelling.json` and `conformance/push/spelling.json` (2026-11-19) | [Sessions and login](../sessions-and-login.md), [Field workers](../field-workers.md), [Push](../push.md), [Go: sessions and login](../go/sessions-and-login.md) |
 
 Design documents behind the contracts:
 

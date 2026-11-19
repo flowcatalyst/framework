@@ -366,6 +366,10 @@ In this order; the name in brackets is the `details.reason` of `INVALID_ID_TOKEN
 1. At most 16 384 characters, three base64url parts without padding, the first two non-empty
    [`malformed`]. (An empty signature part, as `alg: none` produces, gets as far as step 2 and is
    refused there; an empty signature with `RS256` fails step 3.) *Amended by the build.*
+   *Amended 2026-11-19 ([token spelling](token-spelling.md)):* every part is canonical base64url
+   (no other last character for the same bytes, no `=`, `+`, `/`, whitespace or line break); a header
+   that is not is [`malformed`], a signature that is not is [`signature`]. The token is checked as
+   received, never trimmed.
 2. The header is a JSON object; `alg` is exactly `RS256` [`alg`] (so `none`, `HS256` and every other
    value are refused before any key is looked at: no algorithm confusion); `crit` is absent
    [`crit`]; `kid` is a non-empty string [`kid`].
@@ -508,7 +512,9 @@ CREATE INDEX fw_session_expires_at ON fw_session (expires_at);
 
 The record travels in the cookie, sealed: `v1.{kid}.{base64url(iv ‖ ciphertext ‖ tag)}` with
 AES-256-GCM, a 12-byte random IV, a 128-bit tag, and additional authenticated data `fw:{kind}`
-(so a login record cannot be replayed as a session). The plaintext is
+(so a login record cannot be replayed as a session). The sealed part opens only when it is
+canonical base64url ([token spelling](token-spelling.md), added 2026-11-19; every value the framework
+sealed before is canonical and still opens). The plaintext is
 `{"exp": "<ISO-8601 expiresAt>", "data": <record>}`; a record whose `exp` has passed is "none".
 
 `auth.cookie-keys` is a comma-separated list of `{kid}:{base64url of 32 bytes}`, `kid` matching
@@ -858,7 +864,9 @@ Keys unreadable: `503 UNAVAILABLE`, as in 5.6.
 ### 15.3 Verifying the proof
 
 The proof is a compact JWS: header `typ: dpop+jwt`, `alg: ES256` only, `jwk` an EC P-256 public key
-with no private members. The checks are:
+with no private members. *Amended 2026-11-19 ([token spelling](token-spelling.md)):* its three parts
+and the `jwk`'s `x` and `y` are canonical base64url, else `invalid_proof`; the `DPoP` header value
+is checked as received (both implementations trimmed whitespace around it before; they no longer do). The checks are:
 
 - the signature verifies with that `jwk`;
 - the RFC 7638 SHA-256 thumbprint of `jwk` equals the token's `cnf.jkt` (`jkt_mismatch`);
@@ -894,8 +902,9 @@ The application issues its own nonces:
   `"fw-field-nonce"`. *Pinned by the Go build:* the input key material is the key's 32 raw bytes
   (the decoded value after `<kid>:`), the salt is empty (RFC 5869: a string of zero bytes), the
   output is 32 bytes. The MAC input is the ASCII bytes `fw-field-nonce` followed by the 8 bucket
-  bytes. A valid nonce is exactly 24 bytes (32 characters); the 16 MAC bytes are compared in
-  constant time, trying every configured key;
+  bytes. A valid nonce is exactly 24 bytes (32 characters) of canonical base64url ([token
+  spelling](token-spelling.md), added 2026-11-19: no `=`, `+`, `/` or whitespace); the 16 MAC bytes
+  are compared in constant time, trying every configured key;
 - a nonce is valid when its bucket is the current or the previous one and its MAC verifies under
   the key derived from **any** configured cookie key, so key rotation does not break devices.
 
@@ -1038,7 +1047,9 @@ principal holds: `valid_unenrolled` (no `device_id`, `UNENROLLED`), `valid_imper
 worker linked to a platform user), and every `principal` object carries `linkedPrincipalId` (empty
 when absent). Go and Java assert `deviceId`, `deviceMode`, `amr`, `actor`, `test` and
 `linkedPrincipalId` against it (22 cases in all). Nonces are covered
-by their own tests (15.10). Go and Java both run every case.
+by their own tests (15.10). Go and Java both run every case. *Added 2026-11-19:* the spelling
+vectors (`conformance/auth/spelling.json`, [token spelling](token-spelling.md) section 6) re-spell
+the `valid` case's token and proof every way, and give each answer.
 
 ### 15.10 Tests
 
