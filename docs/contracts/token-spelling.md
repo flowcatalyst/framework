@@ -53,7 +53,7 @@ Everything the framework or the platform issues and the framework verifies:
 
 | Value | Contract | Parts checked | Issued by | A non-canonical part gets |
 |---|---|---|---|---|
-| platform access token (`Bearer`) | sessions 5.6 | header, payload, signature | the platform | header `malformed`; signature `signature` (a re-spelled payload fails the signature, which is over the text) |
+| platform access token (`Bearer`) | sessions 5.6 | header, payload, signature | the platform | header `malformed`; signature `signature`; a payload is `signature` (the signature is over the text as received), or `malformed` when someone signed that text again |
 | id_token at the callback | sessions 5.5 | header, payload, signature | the platform | as the access token, `INVALID_ID_TOKEN` |
 | field access token (`DPoP`) | sessions 15.2 | header, payload, signature | the platform | as the access token |
 | DPoP proof | sessions 15.3 | header, payload, signature, and the header's `jwk` `x` and `y` | the field libraries on the device | `invalid_proof` |
@@ -81,8 +81,14 @@ checked as it is: no implementation trims the value itself.
   spare bits, because a provider whose encoder left them set would otherwise fail every sign-in and
   nothing is gained by refusing. **The framework verifies no such value today**: the id_token it
   verifies is the platform's own (the platform federates the external providers and issues its own
-  id_token; sessions section 1), and so it is strict. An implementation that later verifies an
-  external provider's token directly keeps that token lenient and says so where it does.
+  id_token; sessions section 1), and so it is strict. There is one JWT verifier (Java `Jwt.verify`,
+  Go `verifyJWT`), shared by the access token, the id_token and the field token, and it is strict;
+  nothing in it tells a platform token from a third party's, because only the issuer named by
+  `auth.issuer` (the platform) has keys it trusts. An implementation that later verifies an
+  external provider's token directly keeps that token lenient, with a decoder of its own that is
+  named for it, and says so where it does. (An operator who points `auth.issuer` at a provider that
+  is not the platform makes that provider's tokens strict too; every standard encoder is canonical,
+  so this fails only for an encoder that leaves spare bits set.)
 - **Key material** read from a key set the framework trusts: the platform's JWKS (`n`, `e`; sessions
   5.2). It is fetched by the server, never compared as text, and the `kid` is its identity. It is
   read as before.
@@ -108,9 +114,28 @@ checked as it is: no implementation trims the value itself.
   the same for push tickets and stream tokens.
 - `conformance/auth/issued-before.json` and `conformance/push/issued-before.json` (fixtures, written
   once and never regenerated): values the Go and the Java code issued at framework commit `2360d29`,
-  before this contract. Every implementation must still accept each of them.
+  before this contract, produced by that commit's own code in a throwaway worktree (the sealed cookies
+  are random, so they are new values; the nonces, tickets and stream tokens are deterministic and
+  came out identical to those first written). Every implementation must still accept each of them:
+  a sealed cookie is held by a browser across a deploy.
 
-Go reads them in `go/auth` and `go/push`. Rust has no reader (no auth or push code).
+Each value of `spelling.json` has `respelled` (the part a signature, MAC or seal is over, or the
+signature itself, written every other way), `tampered` (changes that certainly alter what the value
+carries) and, where the test holds the signing key, `resigned`: a header or payload re-spelled and
+then signed again, so that the signature is valid over the text sent. A re-spelled signature, MAC or
+sealed part is accepted by a lenient decoder as it is; a header or payload re-spelled without signing
+again fails the signature of any verifier, so only `resigned` values show that those parts are checked
+too. The access token, the ticket and the stream token carry them (their keys are test keys published
+in the vectors). A field token and a DPoP proof come from keys that are not the test's (the platform's
+and a device's), so their vectors re-spell the signature only; the field token is also checked alone
+(`tokenOnly`), because the proof binds to the token's exact text (`ath`) and refuses a re-spelled token
+even when its decoding is lenient. The proof's header, claims and key coordinates, re-spelled and signed
+again, are tested per verifier with a key the test generates.
+
+A base64 part whose bytes are a multiple of three has no spare bits and so only one spelling that a
+decoder accepts: an application nonce is 24 bytes, and a sealed cookie has them only when 12 + the
+plaintext + 16 bytes is not a multiple of three. For such a value the vectors re-spell only with the
+characters other decoders already refuse, and a lenient verifier passes them all.
 
 ## 7. Compatibility
 
