@@ -7,6 +7,8 @@ import (
 	"encoding/json/v2"
 	"strings"
 	"time"
+
+	"github.com/flowcatalyst/framework/go/internal/b64url"
 )
 
 // The 401 codes of GET {base}/push/stream (push contract 6.2).
@@ -58,11 +60,12 @@ func (s streamTokens) verify(token string, now time.Time) (streamClaims, string)
 	if !ok || len(token) > 64*1024 {
 		return streamClaims{}, codeTokenInvalid
 	}
-	got, err := base64.RawURLEncoding.DecodeString(sig)
+	// both parts in their canonical spelling only (token-spelling contract)
+	got, err := b64url.Decode(sig)
 	if err != nil || !hmac.Equal(got, s.mac(payload)) {
 		return streamClaims{}, codeTokenInvalid
 	}
-	raw, err := base64.RawURLEncoding.DecodeString(payload)
+	raw, err := b64url.Decode(payload)
 	var c streamClaims
 	if err != nil || json.Unmarshal(raw, &c) != nil || c.V != 1 || len(c.Topics) == 0 || c.Client == "" {
 		return streamClaims{}, codeTokenInvalid

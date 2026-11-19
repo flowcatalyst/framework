@@ -320,7 +320,7 @@ type fieldProof struct {
 // the header rules) and returns its claims; the reason is "" on success.
 func parseProof(compact string) (fieldProof, string) {
 	bad := func() (fieldProof, string) { return fieldProof{}, "invalid_proof" }
-	parts := splitDots(strings.TrimSpace(compact))
+	parts := splitDots(compact) // as received, never trimmed (token-spelling contract)
 	if len(parts) != 3 || len(compact) > maxTokenLength {
 		return bad()
 	}

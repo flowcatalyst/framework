@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flowcatalyst/framework/go/internal/b64url"
 	"github.com/flowcatalyst/framework/go/internal/pushrow"
 )
 
@@ -212,9 +213,10 @@ func checkTicket(raw string, c ticketCheck) (ticket, error) {
 	if len(parts) != 3 || len(raw) > 64*1024 {
 		return ticket{}, errMalformedTicket
 	}
-	headerJSON, err1 := base64.RawURLEncoding.DecodeString(parts[0])
-	claimsJSON, err2 := base64.RawURLEncoding.DecodeString(parts[1])
-	sig, err3 := base64.RawURLEncoding.DecodeString(parts[2])
+	// every part in its canonical spelling only (token-spelling contract): else the ticket is malformed
+	headerJSON, err1 := b64url.Decode(parts[0])
+	claimsJSON, err2 := b64url.Decode(parts[1])
+	sig, err3 := b64url.Decode(parts[2])
 	var header, claims map[string]any
 	if err1 != nil || err2 != nil || err3 != nil ||
 		json.Unmarshal(headerJSON, &header) != nil || json.Unmarshal(claimsJSON, &claims) != nil || header == nil || claims == nil {

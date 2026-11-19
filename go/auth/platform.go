@@ -303,8 +303,8 @@ func (p *platform) rsaKey(jwk map[string]any) *rsa.PublicKey {
 	if use != "sig" || alg != "RS256" || kid == "" {
 		return nil
 	}
-	nb, ok1 := decodeB64(strField(jwk, "n"))
-	eb, ok2 := decodeB64(strField(jwk, "e"))
+	nb, ok1 := decodeKeyMember(strField(jwk, "n"))
+	eb, ok2 := decodeKeyMember(strField(jwk, "e"))
 	if !ok1 || !ok2 {
 		p.log.Warn("ignored the platform key " + kid + ": it cannot be read")
 		return nil

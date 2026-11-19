@@ -70,6 +70,12 @@ The answers:
 Every response to a request that used the `DPoP` scheme carries a fresh `DPoP-Nonce` header,
 success or error, so a client rarely needs the retry.
 
+Since 2026-11-19 the token, the proof and the proof key's `x` and `y`, and the application nonce,
+verify only in the spelling they were issued in ([token spelling](../../contracts/token-spelling.md),
+[Go: sessions and login](sessions-and-login.md#verifying-platform-tokens-on-their-own)); the proof is
+no longer trimmed. `authtest.ProofJWKMember("x", ...)` publishes a key spelled another way, for a test
+of that rule.
+
 ## Application nonces
 
 The platform's own nonces are single use and stored there, so your application issues its own,

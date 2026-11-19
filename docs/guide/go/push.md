@@ -155,6 +155,13 @@ A ticket is an EdDSA JWS, valid for two minutes, for the Context's client. `Tick
 binds it to a device key: the subscribe must then be authenticated with a field token bound to that
 key (`auth.FieldPrincipal.KeyThumbprint`). `StreamExpiry` caps the stream's life.
 
+Tickets and stream tokens verify only in the spelling they were issued in (2026-11-19, [token
+spelling](../../contracts/token-spelling.md)): a ticket with a part that is not canonical base64url
+(padded, the standard alphabet, a line break, another last character for the same signature bytes)
+is malformed (`400 VALIDATION`), and such a stream token is `401 STREAM_TOKEN_INVALID`. That holds
+on a multi-application host too, for tickets minted by any application: `push.Ticket`, `Pushes.ticket`
+and the platform SDKs' minters write canonical tickets.
+
 ## Multi-application hosts
 
 A host that serves the topics of many applications, such as the platform's push gateway

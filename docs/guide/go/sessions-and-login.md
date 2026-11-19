@@ -55,8 +55,19 @@ token endpoint or keys are off the issuer's origin, or `S256` is not offered. On
 least 2048 bits with `use` absent or `sig` and `alg` absent or `RS256` are kept.
 
 Go differences, none visible on the wire: tokens are parsed with `encoding/json/v2`, which refuses
-a duplicate member name (Java keeps the last), so such a token is `malformed` here; and the base64url
-alphabet is checked before decoding because Go's decoder would skip a newline.
+a duplicate member name (Java keeps the last), so such a token is `malformed` here.
+
+**Token spelling** (2026-11-19, [contract](../../contracts/token-spelling.md)): every base64url part
+of a token, id_token, field token, DPoP proof (and its key's `x` and `y`), application nonce and
+sealed cookie must be canonical: the URL-safe alphabet only, no `=`, `+`, `/`, whitespace or line
+break, and the spare bits of the last character zero. Go's decoder ignores those bits and skips CR
+and LF even in its strict mode, so the framework checks the text itself (the internal package
+`internal/b64url`, shared with `push`). A header that is not canonical is `malformed`, a signature
+`signature`; the DPoP proof is no longer trimmed. Nothing the platform or the framework issued is
+affected (their encoders are canonical, and `conformance/auth/issued-before.json` holds values the
+code issued before the change, which still verify); what is refused is a re-spelled value. The
+[Java page](../sessions-and-login.md#token-spelling) has the migration note; the JWKS members `n`
+and `e` and the `auth.cookie-keys` setting are read as before.
 
 ## The test identity provider
 

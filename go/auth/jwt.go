@@ -9,6 +9,8 @@ import (
 	"encoding/json/v2"
 	"math"
 	"time"
+
+	"github.com/flowcatalyst/framework/go/internal/b64url"
 )
 
 const (
@@ -158,16 +160,25 @@ func object(part string) claimSet {
 	return m
 }
 
-// decodeB64 decodes base64url without padding, strictly: only the alphabet, no '=' and no
-// whitespace (Go's decoder would skip newlines).
+// decodeB64 decodes one part of a value the framework or the platform issued (a token, a proof and
+// its key, a nonce, a sealed cookie) in its canonical spelling only (token-spelling contract): the
+// URL-safe alphabet, no '=', no whitespace or line break, the spare bits of the last character zero.
 func decodeB64(part string) ([]byte, bool) {
-	for i := range len(part) {
-		c := part[i]
+	b, err := b64url.Decode(part)
+	return b, err == nil
+}
+
+// decodeKeyMember decodes a member of the platform's key set (n, e), which is key material the
+// server fetched, never compared as text: the URL-safe alphabet without padding, the spare bits
+// not checked, as before the token-spelling contract (section 5).
+func decodeKeyMember(member string) ([]byte, bool) {
+	for i := range len(member) {
+		c := member[i]
 		if (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' && c != '_' {
 			return nil, false
 		}
 	}
-	b, err := base64.RawURLEncoding.DecodeString(part)
+	b, err := base64.RawURLEncoding.DecodeString(member)
 	if err != nil {
 		return nil, false
 	}
